@@ -10,6 +10,21 @@ description: |-
 Use the Bitwarden provider to interact with Bitwarden logins, secure notes and folders.
 You must configure the provider with the proper credentials before you can use it, and have the [Bitwarden CLI] installed.
 
+## API credentials
+If you don't host your own Bitwarden instance but use the official bitwarden.com instead, you have to generate extra API credentials in order to connect to the Vault with Terraform:
+
+1. Connect to your account on https://vault.bitwarden.com
+2. Click on "Settings" and then "My Account"
+3. Scroll down to the "API Key" section
+4. Click on "View API Key" (or maybe another label if it's the first time)
+5. Save the API credentials
+6. Before running `terraform apply`, export the API credentials as environment variable:
+
+```console
+export TF_VAR_bw_client_id=<client_id>
+export TF_VAR_bw_client_secret=<client_secret>
+export TF_VAR_bw_password=<master_password>
+```
 
 ## Example Usage
 
