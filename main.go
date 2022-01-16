@@ -18,7 +18,7 @@ var (
 	version string = "0.0.1"
 
 	// goreleaser can also pass the specific commit if you want
-	// commit string = ""
+	commit string = ""
 
 	providerAddr string = "registry.terraform.io/maxlaverse/terraform-provider-bitwarden"
 )
