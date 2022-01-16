@@ -1,6 +1,6 @@
 # Find the identifier of the resource you want to read from, with the Bitwarden CLI:
 #
-# $ bw list items --search "Minio Admin" | jq
+# $ bw list items --search "Mysql Root Credentials" | jq
 # [
 #   {
 #     "object": "item",
@@ -9,7 +9,7 @@
 #     "folderId": null,
 #     "type": 1,
 #     "reprompt": 0,
-#     "name": "Minio Admin",
+#     "name": "Mysql Root Credentials",
 #     "notes": null,
 #     "favorite": false,
 #     "login": {

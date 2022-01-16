@@ -1,3 +1,6 @@
-## 0.1.0 (Unreleased)
+CHANGELOG
+=========
 
-BACKWARDS INCOMPATIBILITIES / NOTES:
+0.0.1
+-----
+* first release

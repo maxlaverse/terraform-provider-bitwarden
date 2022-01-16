@@ -8,7 +8,8 @@ description: |-
 # Bitwarden Provider
 
 Use the Bitwarden provider to interact with Bitwarden logins, secure notes and folders.
-You must configure the provider with the proper credentials before you can use it.
+You must configure the provider with the proper credentials before you can use it, and have the [Bitwarden CLI] installed.
+
 
 ## Example Usage
 
@@ -16,8 +17,7 @@ You must configure the provider with the proper credentials before you can use i
 
 {{tffile "examples/quick/provider.tf"}}
 
-{{tffile "examples/quick/main.tf"}}
-
 {{ .SchemaMarkdown | trimspace }}
 
 [Bitwarden]: https://bitwarden.com/help/article/managing-items/
+[Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install

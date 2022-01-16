@@ -15,7 +15,7 @@ Use this data source to get (amongst other things) the username and password of 
 ```terraform
 # Find the identifier of the resource you want to read from, with the Bitwarden CLI:
 #
-# $ bw list items --search "Minio Admin" | jq
+# $ bw list items --search "Mysql Root Credentials" | jq
 # [
 #   {
 #     "object": "item",
@@ -24,7 +24,7 @@ Use this data source to get (amongst other things) the username and password of 
 #     "folderId": null,
 #     "type": 1,
 #     "reprompt": 0,
-#     "name": "Minio Admin",
+#     "name": "Mysql Root Credentials",
 #     "notes": null,
 #     "favorite": false,
 #     "login": {

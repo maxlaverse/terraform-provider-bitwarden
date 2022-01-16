@@ -14,7 +14,7 @@ Use this resource to create (amongst other things) a folder in Bitwarden, for st
 
 ```terraform
 resource "bitwarden_folder" "terraform-generated-creds-folder" {
-  name = "Terraform Generated Folder"
+  name = "Terraform-Generated"
 }
 ```
 

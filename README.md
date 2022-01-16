@@ -1,11 +1,24 @@
 # Terraform Provider for Bitwarden
 
-The Terraform Bitwarden provider is a plugin for Terraform that allows to manage different kind of Bitwarden resources.
+![Go Version](https://img.shields.io/github/go-mod/go-version/maxlaverse/terraform-provider-bitwarden)
+![Releases](https://img.shields.io/github/v/release/maxlaverse/terraform-provider-bitwarden?include_prereleases)
 
+
+The Terraform Bitwarden provider is a plugin for Terraform that allows to manage different kind of Bitwarden resources.
 This project is not associated with the Bitwarden project nor 8bit Solutions LLC.
 
-## Requirements
+**[Explore the docs »][Terraform Registry docs]**
 
+---
+
+## Table of Contents
+- [Supported Versions](#supported-versions)
+- [Usage](#usage)
+- [Developing the Provider](#developing-the-provider)
+- [License](#license)
+
+## Supported Versions
+The plugin has been tested and built with the following components:
 - [Terraform] >= 1.0.2
 - [Bitwarden CLI] >= 1.19.1
 - [Go] >= 1.17 (for development)
@@ -15,7 +28,7 @@ The provider might work with older versions but those haven't been tested.
 
 ## Usage
 
-Detailed documentation for using this provider can be found on the [Terraform Registry docs](https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs).
+Detailed documentation for using this provider can be found on the [Terraform Registry docs].
 
 ```tf
 # Bitwarden Credentials
@@ -93,7 +106,6 @@ data "bitwarden_item_secure_note" "ssh-private-key" {
 
 See the [examples](./examples/) directory for a full example.
 
-
 ## Developing the Provider
 
 If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
@@ -108,8 +120,12 @@ In order to run the full suite of Acceptance tests, run `make testacc`.
 $ make testacc
 ```
 
+## License
+
+Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more information.
 
 [Terraform]: https://www.terraform.io/downloads.html
 [Go]: https://golang.org/doc/install
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
 [Docker]: https://www.docker.com/products/docker-desktop
+[Terraform Registry docs]: https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs
