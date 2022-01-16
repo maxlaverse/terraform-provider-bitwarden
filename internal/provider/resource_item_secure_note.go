@@ -1,0 +1,65 @@
+package provider
+
+import (
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
+)
+
+func resourceItemSecureNote() *schema.Resource {
+	return &schema.Resource{
+		Description: "Use this resource to set (amongst other things) the content of a Bitwarden Secret Note.",
+
+		CreateContext: resourceItemSecureNoteCreate,
+		ReadContext:   objectRead,
+		UpdateContext: objectUpdate,
+		DeleteContext: objectDelete,
+
+		Schema: map[string]*schema.Schema{
+			attributeID: {
+				Description: descriptionIdentifier,
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
+			attributeFolderID: {
+				Description: descriptionFolderID,
+				Type:        schema.TypeString,
+				Optional:    true,
+			},
+			attributeName: {
+				Description: descriptionName,
+				Type:        schema.TypeString,
+				Required:    true,
+			},
+			attributeNotes: {
+				Description: descriptionNotes,
+				Type:        schema.TypeString,
+				Optional:    true,
+			},
+			attributeObject: {
+				Description: descriptionInternal,
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
+			attributeType: {
+				Description: descriptionInternal,
+				Type:        schema.TypeInt,
+				Computed:    true,
+			},
+		},
+	}
+}
+
+func resourceItemSecureNoteCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	err := d.Set(attributeObject, bitwarden.ObjectTypeItem)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	err = d.Set(attributeType, bitwarden.ItemTypeSecureNote)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	return objectCreate(ctx, d, meta)
+}

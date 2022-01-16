@@ -1,0 +1,23 @@
+---
+layout: ""
+page_title: "Bitwarden Provider"
+description: |-
+  Use the Bitwarden provider to read, create, or update logins, secure notes and folders in your Bitwarden Vaults.
+---
+
+# Bitwarden Provider
+
+Use the Bitwarden provider to interact with Bitwarden logins, secure notes and folders.
+You must configure the provider with the proper credentials before you can use it.
+
+## Example Usage
+
+{{tffile "examples/quick/variables.tf"}}
+
+{{tffile "examples/quick/provider.tf"}}
+
+{{tffile "examples/quick/main.tf"}}
+
+{{ .SchemaMarkdown | trimspace }}
+
+[Bitwarden]: https://bitwarden.com/help/article/managing-items/
