@@ -3,8 +3,18 @@ name: Tests
 on:
   push:
     branches: [ main ]
+    paths:
+    - 'tools/**'
+    - 'internal/**'
+    - '*.go'
+    - 'go.*'
   pull_request:
     branches: [ main ]
+    paths:
+    - 'tools/**'
+    - 'internal/**'
+    - '*.go'
+    - 'go.*'
 
 jobs:
   build:
