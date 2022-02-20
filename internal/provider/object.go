@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -29,6 +30,10 @@ func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{})
 func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(secret bitwarden.Object) (*bitwarden.Object, error)) diag.Diagnostics {
 	obj, err := operation(objectStructFromData(d))
 	if err != nil {
+		if errors.Is(err, bitwarden.ErrNotFound) {
+			d.SetId("")
+			return diag.Diagnostics{}
+		}
 		return diag.FromErr(err)
 	}
 

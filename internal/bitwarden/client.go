@@ -2,11 +2,18 @@ package bitwarden
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/executor"
 )
+
+var (
+	ErrNotFound = errNotFound()
+)
+
+func errNotFound() error { return errors.New("resource not found") }
 
 type Client interface {
 	CreateObject(Object) (*Object, error)
@@ -104,6 +111,9 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 func (c *client) GetObject(obj Object) (*Object, error) {
 	out, err := c.cmdWithSession("get", string(obj.Object), obj.ID).RunCaptureCombined()
 	if err != nil {
+		if string(out) == "Not found." {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -210,5 +220,5 @@ func (c *client) encode(item Object) (string, error) {
 }
 
 func unmarshallError(cmd string, err error, out []byte) error {
-	return fmt.Errorf("unable to parse '%s' result: %v, %v", cmd, err, string(out))
+	return fmt.Errorf("unable to parse '%s' result: %v, output: %v", cmd, err, string(out))
 }

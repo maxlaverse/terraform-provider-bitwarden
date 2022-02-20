@@ -82,7 +82,7 @@ func (c *command) RunCaptureCombined() ([]byte, error) {
 	var out bytes.Buffer
 	err := c.WithCombinedOutput(&out).RunSingle()
 	if err != nil {
-		return nil, fmt.Errorf("error running '%s': %v, %v", strings.Join(c.cmd.Args, " "), err, out.String())
+		return out.Bytes(), fmt.Errorf("error running '%s': %v, %v", strings.Join(c.cmd.Args, " "), err, out.String())
 	}
 
 	return out.Bytes(), nil
