@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -17,9 +18,8 @@ import (
 
 const (
 	// Constants used to interact with a test Vaultwarden instance
-	testServerURL = "http://127.0.0.1:8080"
-	testEmail     = "test@laverse.net"
-	testPassword  = "test1234"
+	testEmail    = "test@laverse.net"
+	testPassword = "test1234"
 
 	testSignupRequest = `
 	{
@@ -38,6 +38,7 @@ const (
 )
 
 // Generated resources used for testing
+var testServerURL string
 var testFolderID string
 var testItemLoginID string
 var testItemSecureNoteID string
@@ -70,6 +71,19 @@ func TestProvider(t *testing.T) {
 	}
 }
 
+func setTestServerUrl() {
+	host := os.Getenv("VAULTWARDEN_HOST")
+	port := os.Getenv("VAULTWARDEN_PORT")
+
+	if len(host) == 0 {
+		host = "127.0.0.1"
+	}
+	if len(port) == 0 {
+		host = "8080"
+	}
+	testServerURL = fmt.Sprintf("http://%s:%s/", host, port)
+}
+
 // code with undocumented assumptions and poor error handling.
 // don't hesitate to ping me! (unless I fixed this first?)
 func ensureTestProvider(t *testing.T) {
@@ -80,8 +94,7 @@ func ensureTestProvider(t *testing.T) {
 		return
 	}
 
-	ensureVaultWardenRunning(t)
-
+	setTestServerUrl()
 	createTestUser(t)
 
 	abs, err := filepath.Abs("./.bitwarden")
@@ -111,21 +124,6 @@ func ensureTestProvider(t *testing.T) {
 	testItemSecureNoteID = createTestResourceSecureNote(t, apiClient)
 
 	isTestProviderConfigured = true
-}
-
-func ensureVaultWardenRunning(t *testing.T) {
-	dockerExecPath, err := exec.LookPath("docker")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cmd := exec.Command(dockerExecPath, "run", "-d", "--name", "vaultwarden", "-e", "ADMIN_TOKEN=test1234", "-p", "8080:80", "vaultwarden/server:latest")
-	out, err := cmd.CombinedOutput()
-
-	if err != nil {
-		t.Log(err.Error())
-		t.Log(string(out))
-	}
 }
 
 func createTestResourceFolder(t *testing.T, apiClient bitwarden.Client) string {
