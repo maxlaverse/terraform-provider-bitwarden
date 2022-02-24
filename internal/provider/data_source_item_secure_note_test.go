@@ -9,7 +9,7 @@ import (
 )
 
 func TestAccDataSourceItemSecureNote(t *testing.T) {
-	ensureTestProvider(t)
+	ensureVaultwardenConfigured(t)
 
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,
@@ -18,7 +18,7 @@ func TestAccDataSourceItemSecureNote(t *testing.T) {
 				Config: tfTestProvider() + tfTestDataItemSecureNote(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
-						"data.bitwarden_item_secure_note.foo", attributeName, regexp.MustCompile("^test-secure-note$"),
+						"data.bitwarden_item_secure_note.foo", attributeName, regexp.MustCompile("^secure-note-([0-9]+)$"),
 					),
 					resource.TestMatchResourceAttr(
 						"data.bitwarden_item_secure_note.foo", attributeNotes, regexp.MustCompile("^Hello this is my note$"),

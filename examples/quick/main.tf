@@ -1,3 +1,9 @@
+variable "terraform_organization" {
+  type        = string
+  description = "Terraform Organization Identifier"
+  default     = "ac901e49-5417-46e2-95fa-baf63186f751"
+}
+
 # Save sensitive Terraform generated data to Bitwarden
 resource "bitwarden_folder" "terraform-bw-folder" {
   name = "Terraform Generated"
@@ -11,9 +17,8 @@ resource "bitwarden_item_login" "vpn-read-only-userpwd" {
 }
 
 resource "bitwarden_item_secure_note" "vpn-read-only-certs" {
-  name      = "VPN Read Only Certificate Access"
-  notes     = some_other_plugin.user-read-only.private_key
-  folder_id = bitwarden_folder.terraform-bw-folder.id
+  name            = "VPN Read Only Certificate Access"
+  notes           = some_other_plugin.user-read-only.private_key
 }
 
 # Read sensitive information from Bitwarden
