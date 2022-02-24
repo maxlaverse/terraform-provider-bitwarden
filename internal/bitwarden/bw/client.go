@@ -1,4 +1,4 @@
-package bitwarden
+package bw
 
 import (
 	"encoding/json"

@@ -52,12 +52,14 @@ data "bitwarden_item_secure_note" "ssh-private-key" {
 
 ### Read-Only
 
+- **collection_ids** (List of String) Identifier of the collections the item belongs to.
 - **favorite** (Boolean) Mark as a Favorite to have item appear at the top of your Vault in the UI.
 - **field** (List of Object) Extra fields. (see [below for nested schema](#nestedatt--field))
 - **folder_id** (String) Identifier of the folder.
 - **name** (String) Name.
 - **notes** (String) Notes.
 - **object** (String) INTERNAL USE
+- **organization_id** (String) Identifier of the organization.
 - **reprompt** (Boolean) Require master password “re-prompt” when displaying secret in the UI.
 - **revision_date** (String) Last time the item was updated.
 - **type** (Number) INTERNAL USE

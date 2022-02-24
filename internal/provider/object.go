@@ -6,31 +6,31 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
 )
 
 func objectCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return objectOperation(ctx, d, meta.(bitwarden.Client).CreateObject)
+	return objectOperation(ctx, d, meta.(bw.Client).CreateObject)
 }
 
 func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return objectOperation(ctx, d, meta.(bitwarden.Client).GetObject)
+	return objectOperation(ctx, d, meta.(bw.Client).GetObject)
 }
 
 func objectUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return objectOperation(ctx, d, meta.(bitwarden.Client).EditObject)
+	return objectOperation(ctx, d, meta.(bw.Client).EditObject)
 }
 
 func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return objectOperation(ctx, d, func(secret bitwarden.Object) (*bitwarden.Object, error) {
-		return nil, meta.(bitwarden.Client).RemoveObject(secret)
+	return objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
+		return nil, meta.(bw.Client).RemoveObject(secret)
 	})
 }
 
-func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(secret bitwarden.Object) (*bitwarden.Object, error)) diag.Diagnostics {
+func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(secret bw.Object) (*bw.Object, error)) diag.Diagnostics {
 	obj, err := operation(objectStructFromData(d))
 	if err != nil {
-		if errors.Is(err, bitwarden.ErrNotFound) {
+		if errors.Is(err, bw.ErrNotFound) {
 			d.SetId("")
 			return diag.Diagnostics{}
 		}
@@ -40,7 +40,7 @@ func objectOperation(ctx context.Context, d *schema.ResourceData, operation func
 	return diag.FromErr(objectDataFromStruct(d, obj))
 }
 
-func objectDataFromStruct(d *schema.ResourceData, obj *bitwarden.Object) error {
+func objectDataFromStruct(d *schema.ResourceData, obj *bw.Object) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil
@@ -58,7 +58,7 @@ func objectDataFromStruct(d *schema.ResourceData, obj *bitwarden.Object) error {
 		return err
 	}
 
-	if obj.Object == bitwarden.ObjectTypeItem {
+	if obj.Object == bw.ObjectTypeItem {
 		err = d.Set(attributeFolderID, obj.FolderID)
 		if err != nil {
 			return err
@@ -74,6 +74,16 @@ func objectDataFromStruct(d *schema.ResourceData, obj *bitwarden.Object) error {
 			return err
 		}
 
+		err = d.Set(attributeOrganizationID, obj.OrganizationID)
+		if err != nil {
+			return err
+		}
+
+		err = d.Set(attributeCollectionIDs, obj.CollectionIds)
+		if err != nil {
+			return err
+		}
+
 		err = d.Set(attributeField, objectFieldDataFromStruct(obj))
 		if err != nil {
 			return err
@@ -84,12 +94,12 @@ func objectDataFromStruct(d *schema.ResourceData, obj *bitwarden.Object) error {
 			return err
 		}
 
-		err = d.Set(attributeRevisionDate, obj.RevisionDate.Format(bitwarden.RevisionDateLayout))
+		err = d.Set(attributeRevisionDate, obj.RevisionDate.Format(bw.RevisionDateLayout))
 		if err != nil {
 			return err
 		}
 
-		if obj.Type == bitwarden.ItemTypeLogin {
+		if obj.Type == bw.ItemTypeLogin {
 			err = d.Set(attributeLoginPassword, obj.Login.Password)
 			if err != nil {
 				return err
@@ -110,8 +120,8 @@ func objectDataFromStruct(d *schema.ResourceData, obj *bitwarden.Object) error {
 	return nil
 }
 
-func objectStructFromData(d *schema.ResourceData) bitwarden.Object {
-	var obj bitwarden.Object
+func objectStructFromData(d *schema.ResourceData) bw.Object {
+	var obj bw.Object
 
 	obj.ID = d.Id()
 	if v, ok := d.Get(attributeName).(string); ok {
@@ -119,12 +129,12 @@ func objectStructFromData(d *schema.ResourceData) bitwarden.Object {
 	}
 
 	if v, ok := d.Get(attributeObject).(string); ok {
-		obj.Object = bitwarden.ObjectType(v)
+		obj.Object = bw.ObjectType(v)
 	}
 
-	if obj.Object == bitwarden.ObjectTypeItem {
+	if obj.Object == bw.ObjectTypeItem {
 		if v, ok := d.Get(attributeType).(int); ok {
-			obj.Type = bitwarden.ItemType(v)
+			obj.Type = bw.ItemType(v)
 		}
 
 		if v, ok := d.Get(attributeFolderID).(string); ok {
@@ -139,15 +149,26 @@ func objectStructFromData(d *schema.ResourceData) bitwarden.Object {
 			obj.Notes = v
 		}
 
+		if v, ok := d.Get(attributeOrganizationID).(string); ok {
+			obj.OrganizationID = v
+		}
+
 		if v, ok := d.Get(attributeReprompt).(bool); ok && v {
 			obj.Reprompt = 1
+		}
+
+		if vList, ok := d.Get(attributeCollectionIDs).([]interface{}); ok {
+			obj.CollectionIds = make([]string, len(vList))
+			for k, v := range vList {
+				obj.CollectionIds[k] = v.(string)
+			}
 		}
 
 		if v, ok := d.Get(attributeField).([]interface{}); ok {
 			obj.Fields = objectFieldStructFromData(v)
 		}
 
-		if obj.Type == bitwarden.ItemTypeLogin {
+		if obj.Type == bw.ItemTypeLogin {
 			if v, ok := d.Get(attributeLoginPassword).(string); ok {
 				obj.Login.Password = v
 			}
@@ -163,19 +184,19 @@ func objectStructFromData(d *schema.ResourceData) bitwarden.Object {
 	return obj
 }
 
-func objectFieldDataFromStruct(obj *bitwarden.Object) []interface{} {
+func objectFieldDataFromStruct(obj *bw.Object) []interface{} {
 	fields := make([]interface{}, len(obj.Fields))
 	for k, f := range obj.Fields {
 		field := map[string]interface{}{
 			attributeFieldName: f.Name,
 		}
-		if f.Type == bitwarden.FieldTypeText {
+		if f.Type == bw.FieldTypeText {
 			field[attributeFieldText] = f.Value
-		} else if f.Type == bitwarden.FieldTypeBoolean {
+		} else if f.Type == bw.FieldTypeBoolean {
 			field[attributeFieldBoolean] = (f.Value == "true")
-		} else if f.Type == bitwarden.FieldTypeHidden {
+		} else if f.Type == bw.FieldTypeHidden {
 			field[attributeFieldHidden] = f.Value
-		} else if f.Type == bitwarden.FieldTypeLinked {
+		} else if f.Type == bw.FieldTypeLinked {
 			field[attributeFieldLinked] = f.Value
 		}
 		fields[k] = field
@@ -183,24 +204,24 @@ func objectFieldDataFromStruct(obj *bitwarden.Object) []interface{} {
 	return fields
 }
 
-func objectFieldStructFromData(vList []interface{}) []bitwarden.Field {
-	fields := make([]bitwarden.Field, len(vList))
+func objectFieldStructFromData(vList []interface{}) []bw.Field {
+	fields := make([]bw.Field, len(vList))
 	for k, v := range vList {
 		vc := v.(map[string]interface{})
-		fields[k] = bitwarden.Field{
+		fields[k] = bw.Field{
 			Name: vc[attributeFieldName].(string),
 		}
 		if vs, ok := vc[attributeFieldText].(string); ok && len(vs) > 0 {
-			fields[k].Type = bitwarden.FieldTypeText
+			fields[k].Type = bw.FieldTypeText
 			fields[k].Value = vs
 		} else if vs, ok := vc[attributeFieldHidden].(string); ok && len(vs) > 0 {
-			fields[k].Type = bitwarden.FieldTypeHidden
+			fields[k].Type = bw.FieldTypeHidden
 			fields[k].Value = vs
 		} else if vs, ok := vc[attributeFieldLinked].(string); ok && len(vs) > 0 {
-			fields[k].Type = bitwarden.FieldTypeLinked
+			fields[k].Type = bw.FieldTypeLinked
 			fields[k].Value = vs
 		} else if vs, ok := vc[attributeFieldBoolean].(bool); ok {
-			fields[k].Type = bitwarden.FieldTypeBoolean
+			fields[k].Type = bw.FieldTypeBoolean
 			if vs {
 				fields[k].Value = "true"
 			} else {
