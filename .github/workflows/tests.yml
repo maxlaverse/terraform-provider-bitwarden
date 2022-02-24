@@ -24,7 +24,7 @@ jobs:
       vaultwarden:
         image: vaultwarden/server:latest
         env:
-          ADMIN_TOKEN: test1234	
+          ADMIN_TOKEN: test1234
         ports:
           - 8080:80
         options: >-

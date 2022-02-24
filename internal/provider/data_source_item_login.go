@@ -20,6 +20,17 @@ func dataSourceItemLogin() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 			},
+			attributeFavorite: {
+				Description: descriptionFavorite,
+				Type:        schema.TypeBool,
+				Computed:    true,
+			},
+			attributeField: {
+				Description: descriptionField,
+				Type:        schema.TypeList,
+				Elem:        resourceItemField(),
+				Computed:    true,
+			},
 			attributeFolderID: {
 				Description: descriptionFolderID,
 				Type:        schema.TypeString,
@@ -52,6 +63,16 @@ func dataSourceItemLogin() *schema.Resource {
 			},
 			attributeObject: {
 				Description: descriptionInternal,
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
+			attributeReprompt: {
+				Description: descriptionReprompt,
+				Type:        schema.TypeBool,
+				Computed:    true,
+			},
+			attributeRevisionDate: {
+				Description: descriptionRevisionDate,
 				Type:        schema.TypeString,
 				Computed:    true,
 			},

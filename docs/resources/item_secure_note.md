@@ -14,11 +14,29 @@ Use this resource to set (amongst other things) the content of a Bitwarden Secre
 
 ```terraform
 resource "bitwarden_item_secure_note" "exampleservice-configuration" {
-  name  = "ExampleService Configuration"
-  notes = <<EOT
+  name            = "ExampleService Configuration"
+  notes           = <<EOT
 [global]
 secret = "<sensitive>"
 EOT
+  folder_id       = "3b985a2f-0eed-461e-a5ac-adf5015b00c4"
+  favorite        = true
+
+  field {
+    name = "this-is-a-text-field"
+    text = "text-value"
+  }
+
+  field {
+    name    = "this-is-a-boolean-field"
+    boolean = true
+  }
+
+  field {
+    name   = "this-is-a-hidden-field"
+    hidden = "text-value"
+  }
+
 }
 ```
 
@@ -31,13 +49,31 @@ EOT
 
 ### Optional
 
+- **favorite** (Boolean) Mark as a Favorite to have item appear at the top of your Vault in the UI.
+- **field** (Block List) Extra fields. (see [below for nested schema](#nestedblock--field))
 - **folder_id** (String) Identifier of the folder.
 - **notes** (String) Notes.
+- **reprompt** (Boolean) Require master password “re-prompt” when displaying secret in the UI.
 
 ### Read-Only
 
 - **id** (String) Identifier.
 - **object** (String) INTERNAL USE
+- **revision_date** (String) Last time the item was updated.
 - **type** (Number) INTERNAL USE
+
+<a id="nestedblock--field"></a>
+### Nested Schema for `field`
+
+Required:
+
+- **name** (String)
+
+Optional:
+
+- **boolean** (Boolean)
+- **hidden** (String)
+- **linked** (String)
+- **text** (String)
 
 

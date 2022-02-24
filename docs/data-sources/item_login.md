@@ -56,13 +56,28 @@ data "bitwarden_item_login" "mysql-root-credentials" {
 
 ### Read-Only
 
+- **favorite** (Boolean) Mark as a Favorite to have item appear at the top of your Vault in the UI.
+- **field** (List of Object) Extra fields. (see [below for nested schema](#nestedatt--field))
 - **folder_id** (String) Identifier of the folder.
 - **name** (String) Name.
 - **notes** (String) Notes.
 - **object** (String) INTERNAL USE
 - **password** (String) Login password.
+- **reprompt** (Boolean) Require master password “re-prompt” when displaying secret in the UI.
+- **revision_date** (String) Last time the item was updated.
 - **totp** (String) Verification code.
 - **type** (Number) INTERNAL USE
 - **username** (String) Login username.
+
+<a id="nestedatt--field"></a>
+### Nested Schema for `field`
+
+Read-Only:
+
+- **boolean** (Boolean)
+- **hidden** (String)
+- **linked** (String)
+- **name** (String)
+- **text** (String)
 
 

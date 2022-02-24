@@ -9,9 +9,6 @@ import (
 	"strings"
 )
 
-type executor struct {
-}
-
 type Executor interface {
 	NewCommand(cmd string, args ...string) Command
 }
@@ -19,6 +16,8 @@ type Executor interface {
 func New() Executor {
 	return &executor{}
 }
+
+type executor struct{}
 
 func (e *executor) NewCommand(cmd string, args ...string) Command {
 	return &command{

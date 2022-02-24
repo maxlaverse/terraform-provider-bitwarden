@@ -8,7 +8,7 @@ import (
 )
 
 func TestAccResourceFolder(t *testing.T) {
-	ensureTestProvider(t)
+	ensureVaultwardenConfigured(t)
 
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,

@@ -9,6 +9,15 @@ const (
 	ItemTypeSecureNote ItemType = 2
 )
 
+type FieldType int
+
+const (
+	FieldTypeText    FieldType = 0
+	FieldTypeHidden  FieldType = 1
+	FieldTypeBoolean FieldType = 2
+	FieldTypeLinked  FieldType = 3
+)
+
 type ObjectType string
 
 const (
@@ -36,45 +45,36 @@ type Login struct {
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
 	Totp     string `json:"totp,omitempty"`
-	/*
-	* Fields that are not supported yet
-	 */
-	// PasswordRevisionDate string `json:"passwordRevisionDate,omitempty"`
 }
-
-/*
-* Item type that are not supported yet
- */
-// type Card struct {
-// 	CardholderName string `json:"cardholderName,omitempty"`
-// 	Brand          string `json:"brand,omitempty"`
-// 	Number         string `json:"number,omitempty"`
-// 	ExpMonth       string `json:"expMonth,omitempty"`
-// 	ExpYear        string `json:"expYear,omitempty"`
-// 	Code           string `json:"code,omitempty"`
-// }
 
 type SecureNote struct {
 	Type int `json:"type,omitempty"`
 }
 
 type Object struct {
-	Object     ObjectType `json:"object,omitempty"`
-	ID         string     `json:"id,omitempty"`
-	FolderID   string     `json:"folderId,omitempty"`
-	Type       ItemType   `json:"type,omitempty"`
-	Name       string     `json:"name,omitempty"`
-	Notes      string     `json:"notes,omitempty"`
-	Login      Login      `json:"login,omitempty"`
-	SecureNote SecureNote `json:"secureNote,omitempty"`
+	CollectionIds  []string   `json:"collectionIds,omitempty"`
+	ID             string     `json:"id,omitempty"`
+	ExternalID     string     `json:"externalId,omitempty"`
+	FolderID       string     `json:"folderId,omitempty"`
+	Login          Login      `json:"login,omitempty"`
+	Name           string     `json:"name,omitempty"`
+	Notes          string     `json:"notes,omitempty"`
+	Object         ObjectType `json:"object,omitempty"`
+	OrganizationID string     `json:"organizationId,omitempty"`
+	SecureNote     SecureNote `json:"secureNote,omitempty"`
+	Type           ItemType   `json:"type,omitempty"`
+	Fields         []Field    `json:"fields,omitempty"`
+	Reprompt       int        `json:"reprompt,omitempty"`
+	Favorite       bool       `json:"favorite,omitempty"`
+	RevisionDate   *time.Time `json:"revisionDate,omitempty"`
+}
 
-	/*
-	* Fields that are not supported yet
-	 */
-	// Reprompt       int       `json:"reprompt,omitempty"`
-	// Favorite       bool      `json:"favorite,omitempty"`
-	// Card           Card      `json:"card,omitempty"`
-	// CollectionIds  []string  `json:"collectionIds,omitempty"`
-	// RevisionDate   time.Time `json:"revisionDate,omitempty"`
-	OrganizationID string `json:"organizationId,omitempty"`
+const (
+	RevisionDateLayout = "2006-01-02T15:04:05.000Z"
+)
+
+type Field struct {
+	Name  string    `json:"name,omitempty"`
+	Value string    `json:"value,omitempty"`
+	Type  FieldType `json:"type,omitempty"`
 }

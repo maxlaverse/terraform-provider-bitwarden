@@ -11,9 +11,8 @@ Use the Bitwarden provider to interact with Bitwarden logins, secure notes and f
 You must configure the provider with the proper credentials before you can use it, and have the [Bitwarden CLI] installed.
 
 ## API credentials
-If you don't host your own Bitwarden instance but use the official bitwarden.com instead, you have to generate extra API credentials in order to connect to the Vault with Terraform:
-
-1. Connect to your account on https://vault.bitwarden.com
+In order to interact with your Vault using the Bitwarden Provider Terraform plugin, you need to generate an API key:
+1. Connect to your Vault on https://vault.bitwarden.com, or your self-hosted instance
 2. Click on "Settings" and then "My Account"
 3. Scroll down to the "API Key" section
 4. Click on "View API Key" (or maybe another label if it's the first time)

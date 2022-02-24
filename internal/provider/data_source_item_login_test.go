@@ -9,7 +9,7 @@ import (
 )
 
 func TestAccDataSourceItemLogin(t *testing.T) {
-	ensureTestProvider(t)
+	ensureVaultwardenConfigured(t)
 
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,
@@ -18,7 +18,7 @@ func TestAccDataSourceItemLogin(t *testing.T) {
 				Config: tfTestProvider() + tfTestDataItemLogin(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
-						"data.bitwarden_item_login.foo", attributeName, regexp.MustCompile("^test-login$"),
+						"data.bitwarden_item_login.foo", attributeName, regexp.MustCompile("^login-([0-9]+)$"),
 					),
 					resource.TestMatchResourceAttr(
 						"data.bitwarden_item_login.foo", attributeLoginUsername, regexp.MustCompile("^test-user$"),

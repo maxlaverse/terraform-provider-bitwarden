@@ -32,36 +32,7 @@ The provider might work with older versions but those haven't been tested.
 Detailed documentation for using this provider can be found on the [Terraform Registry docs].
 
 ```tf
-# Bitwarden Credentials
-variable "bw_password" {
-  type        = string
-  description = "Bitwarden Master Key"
-  sensitive   = true
-}
-
-variable "bw_client_id" {
-  type        = string
-  description = "Bitwarden Client ID"
-  sensitive   = true
-}
-
-variable "bw_client_secret" {
-  type        = string
-  description = "Bitwarden Client Secret"
-  sensitive   = true
-}
-
-# Provider configuration
-terraform {
-  required_providers {
-    bitwarden = {
-      source  = "maxlaverse/bitwarden"
-      version = "0.0.1"
-    }
-  }
-  required_version = ">= 1.0.2"
-}
-
+# Provider declaration
 provider "bitwarden" {
   master_password = var.bw_password
   client_id       = var.bw_client_id
@@ -102,6 +73,35 @@ data "bitwarden_item_secure_note" "ssh-private-key" {
 }
 
 # ....
+# Bitwarden Credentials
+variable "bw_password" {
+  type        = string
+  description = "Bitwarden Master Key"
+  sensitive   = true
+}
+
+variable "bw_client_id" {
+  type        = string
+  description = "Bitwarden Client ID"
+  sensitive   = true
+}
+
+variable "bw_client_secret" {
+  type        = string
+  description = "Bitwarden Client Secret"
+  sensitive   = true
+}
+
+# Provider configuration
+terraform {
+  required_providers {
+    bitwarden = {
+      source  = "maxlaverse/bitwarden"
+      version = "0.0.1"
+    }
+  }
+  required_version = ">= 1.0.2"
+}
 
 ```
 
