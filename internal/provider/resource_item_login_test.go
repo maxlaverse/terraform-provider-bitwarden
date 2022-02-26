@@ -38,6 +38,9 @@ func TestAccResourceItemLogin(t *testing.T) {
 					resource.TestMatchResourceAttr(
 						"bitwarden_item_login.foo", attributeNotes, regexp.MustCompile("^notes$"),
 					),
+					resource.TestMatchResourceAttr(
+						"bitwarden_item_login.foo", attributeOrganizationID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
+					),
 				),
 			},
 		},
@@ -49,6 +52,8 @@ func tfTestResourceItemLogin() string {
 	resource "bitwarden_item_login" "foo" {
 		provider 			= bitwarden
 
+		organization_id		= "%s"
+		collection_ids		= ["%s"]
 		folder_id 			= "%s"
 		username 			= "test-username"
 		password 			= "test-password"
@@ -56,5 +61,5 @@ func tfTestResourceItemLogin() string {
 		name     			= "bar"
 		notes 				= "notes"
 	}
-`, testFolderID)
+`, testOrganizationID, testCollectionID, testFolderID)
 }

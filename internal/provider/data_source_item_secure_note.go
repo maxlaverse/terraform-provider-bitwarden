@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
 )
 
 func dataSourceItemSecureNote() *schema.Resource {
@@ -15,6 +15,12 @@ func dataSourceItemSecureNote() *schema.Resource {
 		ReadContext: dataSourceItemSecureNoteRead,
 
 		Schema: map[string]*schema.Schema{
+			attributeCollectionIDs: {
+				Description: descriptionCollectionIDs,
+				Type:        schema.TypeList,
+				Elem:        &schema.Schema{Type: schema.TypeString},
+				Computed:    true,
+			},
 			attributeID: {
 				Description: descriptionIdentifier,
 				Type:        schema.TypeString,
@@ -51,6 +57,11 @@ func dataSourceItemSecureNote() *schema.Resource {
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
+			attributeOrganizationID: {
+				Description: descriptionOrganizationID,
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
 			attributeReprompt: {
 				Description: descriptionReprompt,
 				Type:        schema.TypeBool,
@@ -72,11 +83,11 @@ func dataSourceItemSecureNote() *schema.Resource {
 
 func dataSourceItemSecureNoteRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	d.SetId(d.Get(attributeID).(string))
-	err := d.Set(attributeObject, bitwarden.ObjectTypeItem)
+	err := d.Set(attributeObject, bw.ObjectTypeItem)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	err = d.Set(attributeType, bitwarden.ItemTypeLogin)
+	err = d.Set(attributeType, bw.ItemTypeLogin)
 	if err != nil {
 		return diag.FromErr(err)
 	}

@@ -19,6 +19,7 @@ resource "bitwarden_item_login" "vpn-read-only-userpwd" {
 resource "bitwarden_item_secure_note" "vpn-read-only-certs" {
   name            = "VPN Read Only Certificate Access"
   notes           = some_other_plugin.user-read-only.private_key
+  organization_id = var.terraform_organization
 }
 
 # Read sensitive information from Bitwarden

@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
 )
 
 const (
@@ -94,7 +94,7 @@ func providerConfigure(version string, p *schema.Provider) func(context.Context,
 	}
 }
 
-func ensureLoggedIn(d *schema.ResourceData, bwClient bitwarden.Client) error {
+func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 	masterPassword := d.Get(attributeMasterPassword)
 	serverURL := d.Get(attributeServer)
 	email := d.Get(attributeEmail)
@@ -113,7 +113,7 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bitwarden.Client) error {
 		}
 
 		if status.UserEmail != email.(string) {
-			if status.Status != bitwarden.StatusUnauthenticated {
+			if status.Status != bw.StatusUnauthenticated {
 				// We're already logged in as a different user, log out
 				err = bwClient.Logout()
 				if err != nil {
@@ -155,22 +155,22 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bitwarden.Client) error {
 	return nil
 }
 
-func newBitwardenClient(d *schema.ResourceData) (bitwarden.Client, error) {
-	opts := []bitwarden.Options{}
+func newBitwardenClient(d *schema.ResourceData) (bw.Client, error) {
+	opts := []bw.Options{}
 	if ded, exists := d.GetOk(attributeVaultPath); exists {
 		abs, err := filepath.Abs(ded.(string))
 		if err != nil {
 			return nil, err
 		}
-		opts = append(opts, bitwarden.WithAppDataDir(abs))
+		opts = append(opts, bw.WithAppDataDir(abs))
 	}
 	if len(os.Getenv("DEBUG_BITWARDEN_DISABLE_SYNC")) > 0 {
-		opts = append(opts, bitwarden.DisableSync())
+		opts = append(opts, bw.DisableSync())
 	}
 	bwExecutable, err := exec.LookPath("bw")
 	if err != nil {
 		return nil, err
 	}
 
-	return bitwarden.NewClient(bwExecutable, opts...), nil
+	return bw.NewClient(bwExecutable, opts...), nil
 }

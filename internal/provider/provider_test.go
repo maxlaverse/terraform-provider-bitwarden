@@ -11,14 +11,15 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/provider/test"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
 
 const (
 	// Constants used to interact with a test Vaultwarden instance
-	testEmail    = "test@laverse.net"
-	testPassword = "test1234"
+	testEmail     = "test@laverse.net"
+	testPassword  = "test1234"
+	kdfIterations = 100000
 )
 
 // Generated resources used for testing
@@ -26,6 +27,8 @@ var testServerURL string
 var testFolderID string
 var testItemLoginID string
 var testItemSecureNoteID string
+var testOrganizationID string
+var testCollectionID string
 
 // providerFactories are used to instantiate a provider during acceptance testing.
 // The factory function will be invoked for every Terraform CLI command executed
@@ -68,8 +71,6 @@ func setTestServerUrl() {
 	testServerURL = fmt.Sprintf("http://%s:%s/", host, port)
 }
 
-// code with undocumented assumptions and poor error handling.
-// don't hesitate to ping me! (unless I fixed this first?)
 func ensureVaultwardenConfigured(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -80,9 +81,29 @@ func ensureVaultwardenConfigured(t *testing.T) {
 
 	setTestServerUrl()
 
-	testClient := test.NewVaultwardenTestClient(testServerURL)
-	err := testClient.RegisterUser("test", testEmail, testPassword, 100000)
+	webapiClient := webapi.NewClient(testServerURL)
+
+	userAlreadyExists := false
+	err := webapiClient.RegisterUser("test", testEmail, testPassword, kdfIterations)
 	if err != nil && !strings.Contains(err.Error(), "User already exists") {
+		userAlreadyExists = true
+	}
+
+	err = webapiClient.Login(testEmail, testPassword, kdfIterations)
+	if err != nil {
+		if userAlreadyExists {
+			t.Fatalf("Unable to log into test instance, and the user was already present. Try removing it! Error: %v", err)
+		} else {
+			t.Fatal(err)
+		}
+	}
+	testOrganizationID, err = webapiClient.CreateOrganization(fmt.Sprintf("org-%d", time.Now().Unix()), fmt.Sprintf("coll-%d", time.Now().Unix()), testEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCollectionID, err = webapiClient.GetCollections(testOrganizationID)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -91,79 +112,75 @@ func ensureVaultwardenConfigured(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Configure client
-	opts := []bitwarden.Options{}
-	opts = append(opts, bitwarden.WithAppDataDir(abs))
-
 	bwExecutable, err := exec.LookPath("bw")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	apiClient := bitwarden.NewClient(bwExecutable, opts...)
-	apiClient.SetServer(testServerURL)
-	apiClient.LoginWithPassword(testEmail, testPassword)
-	if !apiClient.HasSessionKey() {
-		apiClient.Unlock(testPassword)
+	bwClient := bw.NewClient(bwExecutable, bw.WithAppDataDir(abs))
+	bwClient.SetServer(testServerURL)
+	bwClient.LoginWithPassword(testEmail, testPassword)
+	if !bwClient.HasSessionKey() {
+		bwClient.Unlock(testPassword)
 	}
 
 	// Create a couple of test resources
-	testFolderID = createTestResourceFolder(t, apiClient)
-	testItemLoginID = createTestResourceLogin(t, apiClient)
-	testItemSecureNoteID = createTestResourceSecureNote(t, apiClient)
+	testFolderID = createTestResourceFolder(t, bwClient)
+	testItemLoginID = createTestResourceLogin(t, bwClient)
+	testItemSecureNoteID = createTestResourceSecureNote(t, bwClient)
 
 	isTestProviderConfigured = true
 }
 
-func createTestResourceFolder(t *testing.T, apiClient bitwarden.Client) string {
-	newItem := bitwarden.Object{
+func createTestResourceFolder(t *testing.T, bwClient bw.Client) string {
+	newItem := bw.Object{
 		Name:   fmt.Sprintf("folder-%d", time.Now().Unix()),
-		Object: bitwarden.ObjectTypeFolder,
+		Object: bw.ObjectTypeFolder,
 	}
-	folder, err := apiClient.CreateObject(newItem)
+	folder, err := bwClient.CreateObject(newItem)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return folder.ID
 }
 
-func createTestResourceLogin(t *testing.T, apiClient bitwarden.Client) string {
-	newItem := bitwarden.Object{
+func createTestResourceLogin(t *testing.T, bwClient bw.Client) string {
+	newItem := bw.Object{
 		Name:   fmt.Sprintf("login-%d", time.Now().Unix()),
-		Object: bitwarden.ObjectTypeItem,
-		Type:   bitwarden.ItemTypeLogin,
-		Login: bitwarden.Login{
+		Object: bw.ObjectTypeItem,
+		Type:   bw.ItemTypeLogin,
+		Login: bw.Login{
 			Username: "test-user",
 			Password: "test-password",
 		},
 	}
-	login, err := apiClient.CreateObject(newItem)
+	login, err := bwClient.CreateObject(newItem)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return login.ID
 }
 
-func createTestResourceSecureNote(t *testing.T, apiClient bitwarden.Client) string {
-	newItem := bitwarden.Object{
+func createTestResourceSecureNote(t *testing.T, bwClient bw.Client) string {
+	newItem := bw.Object{
 		Name:   fmt.Sprintf("secure-note-%d", time.Now().Unix()),
-		Object: bitwarden.ObjectTypeItem,
-		Type:   bitwarden.ItemTypeSecureNote,
+		Object: bw.ObjectTypeItem,
+		Type:   bw.ItemTypeSecureNote,
 		Notes:  "Hello this is my note",
-		Fields: []bitwarden.Field{
+		Fields: []bw.Field{
 			{
 				Name:  "field-1",
 				Value: "value-1",
-				Type:  bitwarden.FieldTypeText,
+				Type:  bw.FieldTypeText,
 			},
 			{
 				Name:  "field-2",
 				Value: "value-2",
-				Type:  bitwarden.FieldTypeHidden,
+				Type:  bw.FieldTypeHidden,
 			},
 		},
 	}
-	note, err := apiClient.CreateObject(newItem)
+	note, err := bwClient.CreateObject(newItem)
 	if err != nil {
 		t.Fatal(err)
 	}
