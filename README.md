@@ -107,6 +107,16 @@ terraform {
 
 See the [examples](./examples/) directory for a full example.
 
+## Security considerations
+
+The Terraform Bitwarden provider entirely relies on the [Bitwarden CLI] to interact with Vaults.
+When you ask Terraform to *plan* or *apply* changes, the provider downloads the encrypted Vault locally as if you would use the Bitwarden CLI directly.
+Currently, the Terraform SDK doesn't offer a way to remove the encrypted Vault once changes have been applied.
+The issue [hashicorp/terraform-plugin-sdk#63] tracks discussions for adding such a feature.
+
+If you want find out more about this file, you can read [Terraform's documentation on Data Storage].
+Please note that the location of this file is `~/.bitwarden` by default when using the Terraform Bitwarden provider, in order to not interfer with your local Vaults.
+
 ## Developing the Provider
 
 If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
@@ -136,3 +146,5 @@ Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more informa
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
 [Docker]: https://www.docker.com/products/docker-desktop
 [Terraform Registry docs]: https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs
+[hashicorp/terraform-plugin-sdk#63]: https://github.com/hashicorp/terraform-plugin-sdk/issues/63
+[Terraform's documentation on Data Storage]: https://bitwarden.com/help/data-storage/#on-your-local-machine
