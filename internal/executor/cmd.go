@@ -35,8 +35,8 @@ type Command interface {
 	WithCombinedOutput(out io.Writer) Command
 	WithStdin(string) Command
 	Run() error
-	RunSingle() error
-	RunCaptureCombined() ([]byte, error)
+	RunCaptureOutput() ([]byte, error)
+	cmdRun() error
 }
 
 func (c *command) WithEnv(envs []string) Command {
@@ -52,38 +52,49 @@ func (c *command) WithStdin(dir string) Command {
 }
 
 func (c *command) WithCombinedOutput(out io.Writer) Command {
-	c.cmd.Stdout = out
-	c.cmd.Stderr = out
+	if c.cmd.Stdout != nil {
+		c.cmd.Stdout = io.MultiWriter(c.cmd.Stdout, out)
+	} else {
+		c.cmd.Stdout = out
+	}
+	if c.cmd.Stderr != nil {
+		c.cmd.Stderr = io.MultiWriter(c.cmd.Stderr, out)
+	} else {
+		c.cmd.Stderr = out
+	}
 	return c
 }
 
 func (c *command) WithOutput(out io.Writer) Command {
-	c.cmd.Stdout = out
+	if c.cmd.Stdout != nil {
+		c.cmd.Stdout = io.MultiWriter(c.cmd.Stdout, out)
+	} else {
+		c.cmd.Stdout = out
+	}
 	return c
 }
 
-func (c *command) RunSingle() error {
-	log.Printf("Running %v\n", c.cmd.Args)
-	return c.cmd.Run()
-}
-
 func (c *command) Run() error {
-	var out bytes.Buffer
-	err := c.WithCombinedOutput(&out).RunSingle()
+	var combinedOut bytes.Buffer
+	err := c.WithCombinedOutput(&combinedOut).cmdRun()
 	if err != nil {
-		return fmt.Errorf("error running '%s': %v, %v", strings.Join(c.cmd.Args, " "), err, out.String())
+		return fmt.Errorf("error running '%s': %v, %v", strings.Join(c.cmd.Args, " "), err, combinedOut.String())
 	}
-
 	return nil
 }
 
-func (c *command) RunCaptureCombined() ([]byte, error) {
+func (c *command) RunCaptureOutput() ([]byte, error) {
+	var combinedOut bytes.Buffer
 	var out bytes.Buffer
-	err := c.WithCombinedOutput(&out).RunSingle()
+	err := c.WithCombinedOutput(&combinedOut).WithOutput(&out).cmdRun()
 	if err != nil {
-		return out.Bytes(), fmt.Errorf("error running '%s': %v, %v", strings.Join(c.cmd.Args, " "), err, out.String())
+		return out.Bytes(), fmt.Errorf("error running '%s': %v, %v", strings.Join(c.cmd.Args, " "), err, combinedOut.String())
 	}
 
 	return out.Bytes(), nil
+}
 
+func (c *command) cmdRun() error {
+	log.Printf("Running %v\n", c.cmd.Args)
+	return c.cmd.Run()
 }
