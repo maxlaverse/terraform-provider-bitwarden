@@ -58,11 +58,9 @@ data "bitwarden_item_secure_note" "ssh-private-key" {
 - **folder_id** (String) Identifier of the folder.
 - **name** (String) Name.
 - **notes** (String) Notes.
-- **object** (String) INTERNAL USE
 - **organization_id** (String) Identifier of the organization.
 - **reprompt** (Boolean) Require master password “re-prompt” when displaying secret in the UI.
 - **revision_date** (String) Last time the item was updated.
-- **type** (Number) INTERNAL USE
 
 <a id="nestedatt--field"></a>
 ### Nested Schema for `field`

@@ -62,13 +62,11 @@ data "bitwarden_item_login" "mysql-root-credentials" {
 - **folder_id** (String) Identifier of the folder.
 - **name** (String) Name.
 - **notes** (String) Notes.
-- **object** (String) INTERNAL USE
 - **organization_id** (String) Identifier of the organization.
 - **password** (String) Login password.
 - **reprompt** (Boolean) Require master password “re-prompt” when displaying secret in the UI.
 - **revision_date** (String) Last time the item was updated.
 - **totp** (String) Verification code.
-- **type** (Number) INTERNAL USE
 - **username** (String) Login username.
 
 <a id="nestedatt--field"></a>
