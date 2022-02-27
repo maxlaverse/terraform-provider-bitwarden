@@ -71,7 +71,7 @@ func (c *client) CreateObject(obj Object) (*Object, error) {
 		return nil, err
 	}
 
-	out, err := c.cmdWithSession("create", string(obj.Object), objEncoded).RunCaptureCombined()
+	out, err := c.cmdWithSession("create", string(obj.Object), objEncoded).RunCaptureOutput()
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 		return nil, err
 	}
 
-	out, err := c.cmdWithSession("edit", string(obj.Object), obj.ID, objEncoded).RunCaptureCombined()
+	out, err := c.cmdWithSession("edit", string(obj.Object), obj.ID, objEncoded).RunCaptureOutput()
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 }
 
 func (c *client) GetObject(obj Object) (*Object, error) {
-	out, err := c.cmdWithSession("get", string(obj.Object), obj.ID).RunCaptureCombined()
+	out, err := c.cmdWithSession("get", string(obj.Object), obj.ID).RunCaptureOutput()
 	if err != nil {
 		if string(out) == "Not found." {
 			return nil, ErrNotFound
@@ -126,7 +126,7 @@ func (c *client) GetObject(obj Object) (*Object, error) {
 }
 
 func (c *client) LoginWithPassword(username, password string) error {
-	out, err := c.cmd("login", username, "--raw", "--passwordenv", "BW_PASSWORD").WithEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).RunCaptureCombined()
+	out, err := c.cmd("login", username, "--raw", "--passwordenv", "BW_PASSWORD").WithEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).RunCaptureOutput()
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (c *client) SetServer(server string) error {
 }
 
 func (c *client) Status() (*Status, error) {
-	out, err := c.cmd("status").RunCaptureCombined()
+	out, err := c.cmd("status").RunCaptureOutput()
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func (c *client) Status() (*Status, error) {
 }
 
 func (c *client) Unlock(password string) error {
-	out, err := c.cmd("unlock", "--raw", "--passwordenv", "BW_PASSWORD").WithEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).RunCaptureCombined()
+	out, err := c.cmd("unlock", "--raw", "--passwordenv", "BW_PASSWORD").WithEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).RunCaptureOutput()
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func (c *client) encode(item Object) (string, error) {
 		return "", fmt.Errorf("marshalling error: %v, %v", err, string(newOut))
 	}
 
-	out, err := c.cmd("encode").WithStdin(string(newOut)).RunCaptureCombined()
+	out, err := c.cmd("encode").WithStdin(string(newOut)).RunCaptureOutput()
 	if err != nil {
 		return "", fmt.Errorf("encoding error: %v, %v", err, string(newOut))
 	}
