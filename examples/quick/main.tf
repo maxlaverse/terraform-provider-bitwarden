@@ -30,6 +30,15 @@ data "bitwarden_item_login" "mysql-root-credentials" {
 # Later to be accessed as
 #   ... = data.bitwarden_item_login.mysql-root-credentials.username
 #   ... = data.bitwarden_item_login.mysql-root-credentials.password
+#
+# or for fields:
+# lookup(
+#    zipmap(
+#      data.bitwarden_item_login.mysql-root-credentials.field.*.name,
+#      data.bitwarden_item_login.mysql-root-credentials.field.*
+#    ),
+#    "<name-of-the-field-your-looking-for>"
+# )
 
 data "bitwarden_item_secure_note" "ssh-private-key" {
   id = "a9e19f26-1b8c-4568-bc09-191e2cf56ed6"
