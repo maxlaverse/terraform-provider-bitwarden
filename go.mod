@@ -3,7 +3,7 @@ module github.com/maxlaverse/terraform-provider-bitwarden
 go 1.17
 
 require (
-	github.com/hashicorp/terraform-plugin-docs v0.5.1
+	github.com/hashicorp/terraform-plugin-docs v0.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.12.0
 	github.com/stretchr/testify v1.7.1
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
@@ -44,7 +44,7 @@ require (
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
-	github.com/mattn/go-colorable v0.1.11 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/cli v1.1.2 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
