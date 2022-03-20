@@ -23,10 +23,10 @@ resource "bitwarden_folder" "terraform-generated-creds-folder" {
 
 ### Required
 
-- **name** (String) Name.
+- `name` (String) Name.
 
 ### Read-Only
 
-- **id** (String) Identifier.
+- `id` (String) Identifier.
 
 
