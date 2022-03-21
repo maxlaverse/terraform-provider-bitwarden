@@ -13,7 +13,7 @@
 #     "notes": null,
 #     "favorite": false,
 #     "login": {
-#       "username": "root",
+#       "username": "<sensitive>",
 #       "password": "<sensitive>",
 #       "totp": null,
 #       "passwordRevisionDate": null

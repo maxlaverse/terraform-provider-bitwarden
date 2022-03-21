@@ -36,6 +36,7 @@ func dataSourceItemLogin() *schema.Resource {
 				Type:        schema.TypeList,
 				Elem:        resourceItemField(),
 				Computed:    true,
+				Sensitive:   true,
 			},
 			attributeFolderID: {
 				Description: descriptionFolderID,
@@ -46,16 +47,19 @@ func dataSourceItemLogin() *schema.Resource {
 				Description: descriptionLoginPassword,
 				Type:        schema.TypeString,
 				Computed:    true,
+				Sensitive:   true,
 			},
 			attributeLoginUsername: {
 				Description: descriptionLoginUsername,
 				Type:        schema.TypeString,
 				Computed:    true,
+				Sensitive:   true,
 			},
 			attributeLoginTotp: {
 				Description: descriptionLoginTotp,
 				Type:        schema.TypeString,
 				Computed:    true,
+				Sensitive:   true,
 			},
 			attributeName: {
 				Description: descriptionName,
@@ -66,6 +70,7 @@ func dataSourceItemLogin() *schema.Resource {
 				Description: descriptionNotes,
 				Type:        schema.TypeString,
 				Computed:    true,
+				Sensitive:   true,
 			},
 			attributeObject: {
 				Description: descriptionInternal,

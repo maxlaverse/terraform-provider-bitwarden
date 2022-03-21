@@ -39,6 +39,7 @@ func resourceItemLogin() *schema.Resource {
 				Type:        schema.TypeList,
 				Elem:        resourceItemField(),
 				Optional:    true,
+				Sensitive:   true,
 			},
 			attributeFolderID: {
 				Description: descriptionFolderID,
@@ -55,11 +56,13 @@ func resourceItemLogin() *schema.Resource {
 				Description: descriptionLoginUsername,
 				Type:        schema.TypeString,
 				Optional:    true,
+				Sensitive:   true,
 			},
 			attributeLoginTotp: {
 				Description: descriptionLoginTotp,
 				Type:        schema.TypeString,
 				Optional:    true,
+				Sensitive:   true,
 			},
 			attributeName: {
 				Description: descriptionName,
@@ -70,6 +73,7 @@ func resourceItemLogin() *schema.Resource {
 				Description: descriptionNotes,
 				Type:        schema.TypeString,
 				Optional:    true,
+				Sensitive:   true,
 			},
 			attributeObject: {
 				Description: descriptionInternal,

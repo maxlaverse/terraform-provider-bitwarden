@@ -3,7 +3,7 @@ resource "bitwarden_item_login" "administrative-user" {
   username        = "admin"
   password        = "<sensitive>"
   totp            = "<sensitive>"
-  notes           = "some notes about this user"
+  notes           = "<sensitive>"
   folder_id       = "3b985a2f-0eed-461e-a5ac-adf5015b00c4"
   organization_id = "54421e78-95cb-40c4-a257-17231a7b6207"
   favorite        = true
