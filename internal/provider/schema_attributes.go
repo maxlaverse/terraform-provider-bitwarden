@@ -27,6 +27,11 @@ const (
 	descriptionCollectionIDs  = "Identifier of the collections the item belongs to."
 	descriptionFavorite       = "Mark as a Favorite to have item appear at the top of your Vault in the UI."
 	descriptionField          = "Extra fields."
+	descriptionFieldBoolean   = "Value of a boolean field."
+	descriptionFieldHidden    = "Value of a hidden text field."
+	descriptionFieldLinked    = "Value of a linked field."
+	descriptionFieldName      = "Name of the field."
+	descriptionFieldText      = "Value of a text field."
 	descriptionFolderID       = "Identifier of the folder."
 	descriptionIdentifier     = "Identifier."
 	descriptionInternal       = "INTERNAL USE" // TODO: Manage to hide this from the users

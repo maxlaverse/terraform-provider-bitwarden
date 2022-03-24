@@ -71,13 +71,13 @@ resource "bitwarden_item_login" "administrative-user" {
 
 Required:
 
-- `name` (String)
+- `name` (String) Name of the field.
 
 Optional:
 
-- `boolean` (Boolean)
-- `hidden` (String)
-- `linked` (String)
-- `text` (String)
+- `boolean` (Boolean) Value of a boolean field.
+- `hidden` (String) Value of a hidden text field.
+- `linked` (String) Value of a linked field.
+- `text` (String) Value of a text field.
 
 

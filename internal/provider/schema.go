@@ -76,24 +76,29 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					attributeFieldName: {
-						Type:     schema.TypeString,
-						Required: true,
+						Description: descriptionFieldName,
+						Type:        schema.TypeString,
+						Required:    true,
 					},
 					attributeFieldText: {
-						Type:     schema.TypeString,
-						Optional: true,
+						Description: descriptionFieldText,
+						Type:        schema.TypeString,
+						Optional:    true,
 					},
 					attributeFieldBoolean: {
-						Type:     schema.TypeBool,
-						Optional: true,
+						Description: descriptionFieldBoolean,
+						Type:        schema.TypeBool,
+						Optional:    true,
 					},
 					attributeFieldHidden: {
-						Type:     schema.TypeString,
-						Optional: true,
+						Description: descriptionFieldHidden,
+						Type:        schema.TypeString,
+						Optional:    true,
 					},
 					attributeFieldLinked: {
-						Type:     schema.TypeString,
-						Optional: true,
+						Description: descriptionFieldLinked,
+						Type:        schema.TypeString,
+						Optional:    true,
 					},
 				},
 			},
