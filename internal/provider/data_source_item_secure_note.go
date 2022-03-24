@@ -9,77 +9,12 @@ import (
 )
 
 func dataSourceItemSecureNote() *schema.Resource {
+	dataSourceItemSecureNoteSchema := baseSchema(DataSource)
+
 	return &schema.Resource{
 		Description: "Use this data source to get (amongst other things) the content of a Bitwarden Secret Note for use in other resources.",
-
 		ReadContext: dataSourceItemSecureNoteRead,
-
-		Schema: map[string]*schema.Schema{
-			attributeCollectionIDs: {
-				Description: descriptionCollectionIDs,
-				Type:        schema.TypeList,
-				Elem:        &schema.Schema{Type: schema.TypeString},
-				Computed:    true,
-			},
-			attributeID: {
-				Description: descriptionIdentifier,
-				Type:        schema.TypeString,
-				Required:    true,
-			},
-			attributeFavorite: {
-				Description: descriptionFavorite,
-				Type:        schema.TypeBool,
-				Computed:    true,
-			},
-			attributeField: {
-				Description: descriptionField,
-				Type:        schema.TypeList,
-				Elem:        resourceItemField(),
-				Computed:    true,
-				Sensitive:   true,
-			},
-			attributeFolderID: {
-				Description: descriptionFolderID,
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
-			attributeName: {
-				Description: descriptionName,
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
-			attributeNotes: {
-				Type:        schema.TypeString,
-				Description: descriptionNotes,
-				Computed:    true,
-				Sensitive:   true,
-			},
-			attributeObject: {
-				Description: descriptionInternal,
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
-			attributeOrganizationID: {
-				Description: descriptionOrganizationID,
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
-			attributeReprompt: {
-				Description: descriptionReprompt,
-				Type:        schema.TypeBool,
-				Computed:    true,
-			},
-			attributeRevisionDate: {
-				Description: descriptionRevisionDate,
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
-			attributeType: {
-				Description: descriptionInternal,
-				Type:        schema.TypeInt,
-				Computed:    true,
-			},
-		},
+		Schema:      dataSourceItemSecureNoteSchema,
 	}
 }
 

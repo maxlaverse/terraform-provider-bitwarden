@@ -28,6 +28,5 @@ resource "bitwarden_folder" "terraform-generated-creds-folder" {
 ### Read-Only
 
 - `id` (String) Identifier.
-- `object` (String) INTERNAL USE
 
 

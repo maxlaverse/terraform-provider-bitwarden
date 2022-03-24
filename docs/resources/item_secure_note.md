@@ -62,9 +62,7 @@ EOT
 ### Read-Only
 
 - `id` (String) Identifier.
-- `object` (String) INTERNAL USE
 - `revision_date` (String) Last time the item was updated.
-- `type` (Number) INTERNAL USE
 
 <a id="nestedblock--field"></a>
 ### Nested Schema for `field`
