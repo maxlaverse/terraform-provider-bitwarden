@@ -18,7 +18,7 @@ resource "bitwarden_item_login" "administrative-user" {
   username        = "admin"
   password        = "<sensitive>"
   totp            = "<sensitive>"
-  notes           = "some notes about this user"
+  notes           = "<sensitive>"
   folder_id       = "3b985a2f-0eed-461e-a5ac-adf5015b00c4"
   organization_id = "54421e78-95cb-40c4-a257-17231a7b6207"
   favorite        = true
@@ -54,17 +54,19 @@ resource "bitwarden_item_login" "administrative-user" {
 - `favorite` (Boolean) Mark as a Favorite to have item appear at the top of your Vault in the UI.
 - `field` (Block List) Extra fields. (see [below for nested schema](#nestedblock--field))
 - `folder_id` (String) Identifier of the folder.
-- `notes` (String) Notes.
+- `notes` (String, Sensitive) Notes.
 - `organization_id` (String) Identifier of the organization.
 - `password` (String, Sensitive) Login password.
 - `reprompt` (Boolean) Require master password “re-prompt” when displaying secret in the UI.
-- `totp` (String) Verification code.
-- `username` (String) Login username.
+- `totp` (String, Sensitive) Verification code.
+- `username` (String, Sensitive) Login username.
 
 ### Read-Only
 
 - `id` (String) Identifier.
+- `object` (String) INTERNAL USE
 - `revision_date` (String) Last time the item was updated.
+- `type` (Number) INTERNAL USE
 
 <a id="nestedblock--field"></a>
 ### Nested Schema for `field`

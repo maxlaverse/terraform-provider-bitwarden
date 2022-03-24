@@ -36,6 +36,7 @@ func dataSourceItemSecureNote() *schema.Resource {
 				Type:        schema.TypeList,
 				Elem:        resourceItemField(),
 				Computed:    true,
+				Sensitive:   true,
 			},
 			attributeFolderID: {
 				Description: descriptionFolderID,
@@ -51,6 +52,7 @@ func dataSourceItemSecureNote() *schema.Resource {
 				Type:        schema.TypeString,
 				Description: descriptionNotes,
 				Computed:    true,
+				Sensitive:   true,
 			},
 			attributeObject: {
 				Description: descriptionInternal,
