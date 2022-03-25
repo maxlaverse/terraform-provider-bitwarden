@@ -43,6 +43,13 @@ func TestAccResourceItemLogin(t *testing.T) {
 					),
 				),
 			},
+			{
+				Config:           tfTestProvider() + `resource "bitwarden_item_login" "foo_import" { provider = bitwarden }`,
+				ResourceName:     "bitwarden_item_login.foo_import",
+				ImportState:      true,
+				ImportStateId:    testItemLoginID,
+				ImportStateCheck: hasOneInstanceState,
+			},
 		},
 	})
 }
