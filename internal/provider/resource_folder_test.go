@@ -24,6 +24,13 @@ func TestAccResourceFolder(t *testing.T) {
 					),
 				),
 			},
+			{
+				Config:           tfTestProvider() + `resource "bitwarden_folder" "foo_import" { provider = bitwarden }`,
+				ResourceName:     "bitwarden_folder.foo_import",
+				ImportState:      true,
+				ImportStateId:    testFolderID,
+				ImportStateCheck: hasOneInstanceState,
+			},
 		},
 	})
 }

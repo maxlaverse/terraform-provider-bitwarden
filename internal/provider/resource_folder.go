@@ -16,6 +16,7 @@ func resourceFolder() *schema.Resource {
 		ReadContext:   objectRead,
 		UpdateContext: objectUpdate,
 		DeleteContext: objectDelete,
+		Importer:      importFolderResource(),
 
 		Schema: map[string]*schema.Schema{
 			attributeID: {
@@ -43,4 +44,17 @@ func resourceFolderCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.FromErr(err)
 	}
 	return objectCreate(ctx, d, meta)
+}
+
+func importFolderResource() *schema.ResourceImporter {
+	return &schema.ResourceImporter{
+		StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+			d.SetId(d.Id())
+			err := d.Set(attributeObject, bw.ObjectTypeFolder)
+			if err != nil {
+				return nil, err
+			}
+			return []*schema.ResourceData{d}, nil
+		},
+	}
 }

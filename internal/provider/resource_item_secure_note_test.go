@@ -60,6 +60,13 @@ func TestAccResourceItemSecureNote(t *testing.T) {
 					),
 				),
 			},
+			{
+				Config:           tfTestProvider() + `resource "bitwarden_item_secure_note" "foo_import" { provider = bitwarden }`,
+				ResourceName:     "bitwarden_item_secure_note.foo_import",
+				ImportState:      true,
+				ImportStateId:    testItemSecureNoteID,
+				ImportStateCheck: hasOneInstanceState,
+			},
 		},
 	})
 }
