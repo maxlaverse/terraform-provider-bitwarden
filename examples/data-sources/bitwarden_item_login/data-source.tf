@@ -1,27 +1,10 @@
-# Find the identifier of the resource you want to read from, with the Bitwarden CLI:
+# Find the identifier of the resource you want to import:
 #
-# $ bw list items --search "Mysql Root Credentials" | jq
-# [
-#   {
-#     "object": "item",
-#     "id": "ec4e447f-9aed-4203-b834-c8f3848828f7",
-#     "organizationId": null,
-#     "folderId": null,
-#     "type": 1,
-#     "reprompt": 0,
-#     "name": "Mysql Root Credentials",
-#     "notes": null,
-#     "favorite": false,
-#     "login": {
-#       "username": "<sensitive>",
-#       "password": "<sensitive>",
-#       "totp": null,
-#       "passwordRevisionDate": null
-#     },
-#     "collectionIds": [],
-#     "revisionDate": "2020-10-23T18:09:31.426Z"
-#   }
-# ]
+# $ bw list items --search "Mysql Root Credentials" | jq  '.[] .id'
+# ? Master password: [hidden]
+#
+# > "ec4e447f-9aed-4203-b834-c8f3848828f7"
+#
 
 data "bitwarden_item_login" "mysql-root-credentials" {
   id = "ec4e447f-9aed-4203-b834-c8f3848828f7"
