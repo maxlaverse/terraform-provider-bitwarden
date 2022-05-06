@@ -115,7 +115,7 @@ Currently, the Terraform SDK doesn't offer a way to remove the encrypted Vault o
 The issue [hashicorp/terraform-plugin-sdk#63] tracks discussions for adding such a feature.
 
 If you want find out more about this file, you can read [Terraform's documentation on Data Storage].
-Please note that the location of this file is `~/.bitwarden` by default when using the Terraform Bitwarden provider, in order to not interfer with your local Vaults.
+Please note that this file is stored at `<your-project>/.bitwarden/` by default, in order to not interfer with your local Vaults.
 
 ## Developing the Provider
 
