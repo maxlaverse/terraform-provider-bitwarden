@@ -25,6 +25,7 @@ jobs:
         image: vaultwarden/server:latest
         env:
           ADMIN_TOKEN: test1234
+          I_REALLY_WANT_VOLATILE_STORAGE: "true"
         ports:
           - 8080:80
         options: >-
