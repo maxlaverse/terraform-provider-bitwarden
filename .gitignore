@@ -37,3 +37,5 @@ terraform-provider-bitwarden
 terraform-lock
 **/.bitwarden/data.json
 **/.terraform.lock.hcl
+
+cover.out

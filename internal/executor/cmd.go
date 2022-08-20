@@ -9,6 +9,9 @@ import (
 	"strings"
 )
 
+// DefaultExecutor is only meant to be changed during tests.
+var DefaultExecutor = New()
+
 type Executor interface {
 	NewCommand(cmd string, args ...string) Command
 }
@@ -36,7 +39,7 @@ type Command interface {
 	WithStdin(string) Command
 	Run() error
 	RunCaptureOutput() ([]byte, error)
-	cmdRun() error
+	CmdRun() error
 }
 
 func (c *command) WithEnv(envs []string) Command {
@@ -76,7 +79,7 @@ func (c *command) WithOutput(out io.Writer) Command {
 
 func (c *command) Run() error {
 	var combinedOut bytes.Buffer
-	err := c.WithCombinedOutput(&combinedOut).cmdRun()
+	err := c.WithCombinedOutput(&combinedOut).CmdRun()
 	if err != nil {
 		return fmt.Errorf("error running '%s': %v, %v", strings.Join(c.cmd.Args, " "), err, combinedOut.String())
 	}
@@ -86,7 +89,7 @@ func (c *command) Run() error {
 func (c *command) RunCaptureOutput() ([]byte, error) {
 	var combinedOut bytes.Buffer
 	var out bytes.Buffer
-	err := c.WithCombinedOutput(&combinedOut).WithOutput(&out).cmdRun()
+	err := c.WithCombinedOutput(&combinedOut).WithOutput(&out).CmdRun()
 	if err != nil {
 		return out.Bytes(), fmt.Errorf("error running '%s': %v, %v", strings.Join(c.cmd.Args, " "), err, combinedOut.String())
 	}
@@ -94,7 +97,7 @@ func (c *command) RunCaptureOutput() ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func (c *command) cmdRun() error {
+func (c *command) CmdRun() error {
 	log.Printf("Running %v\n", c.cmd.Args)
 	return c.cmd.Run()
 }

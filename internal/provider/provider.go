@@ -28,19 +28,21 @@ func New(version string) func() *schema.Provider {
 					Type:        schema.TypeString,
 					Description: descriptionMasterPassword,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("BW_PASSWORD", ""),
+					DefaultFunc: schema.EnvDefaultFunc("BW_PASSWORD", nil),
 				},
 				attributeClientID: {
-					Type:        schema.TypeString,
-					Description: descriptionClientID,
-					Optional:    true,
-					DefaultFunc: schema.EnvDefaultFunc("BW_CLIENTID", ""),
+					Type:         schema.TypeString,
+					Description:  descriptionClientID,
+					Optional:     true,
+					RequiredWith: []string{attributeClientSecret},
+					DefaultFunc:  schema.EnvDefaultFunc("BW_CLIENTID", nil),
 				},
 				attributeClientSecret: {
-					Type:        schema.TypeString,
-					Description: descriptionClientSecret,
-					Optional:    true,
-					DefaultFunc: schema.EnvDefaultFunc("BW_CLIENTSECRET", ""),
+					Type:         schema.TypeString,
+					Description:  descriptionClientSecret,
+					Optional:     true,
+					RequiredWith: []string{attributeClientID},
+					DefaultFunc:  schema.EnvDefaultFunc("BW_CLIENTSECRET", nil),
 				},
 				attributeServer: {
 					Type:        schema.TypeString,
@@ -52,7 +54,7 @@ func New(version string) func() *schema.Provider {
 					Type:        schema.TypeString,
 					Description: descriptionEmail,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("BW_EMAIL", ""),
+					DefaultFunc: schema.EnvDefaultFunc("BW_EMAIL", nil),
 				},
 				attributeVaultPath: {
 					Type:        schema.TypeString,
@@ -105,6 +107,14 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 	}
 
 	if status.ServerURL != serverURL.(string) || status.UserEmail != email.(string) {
+		if status.Status != bw.StatusUnauthenticated {
+			// We're authenticated with a different user or on a different server: logout
+			err = bwClient.Logout()
+			if err != nil {
+				return err
+			}
+		}
+
 		if status.ServerURL != serverURL.(string) {
 			err = bwClient.SetServer(serverURL.(string))
 			if err != nil {
@@ -112,32 +122,23 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 			}
 		}
 
-		if status.UserEmail != email.(string) {
-			if status.Status != bw.StatusUnauthenticated {
-				// We're already logged in as a different user, log out
-				err = bwClient.Logout()
-				if err != nil {
-					return err
-				}
-			}
+		clientID, hasClientID := d.GetOk(attributeClientID)
+		clientSecret, hasClientSecret := d.GetOk(attributeClientSecret)
 
-			clientID, hasClientID := d.GetOk(attributeClientID)
-			clientSecret, hasClientSecret := d.GetOk(attributeClientSecret)
-
-			if hasClientID && hasClientSecret {
-				err = bwClient.LoginWithAPIKeyAndUnlock(masterPassword.(string), clientID.(string), clientSecret.(string))
-				if err != nil {
-					return err
-				}
-			} else if !hasClientID && !hasClientSecret {
-				err = bwClient.LoginWithPassword(email.(string), masterPassword.(string))
-				if err != nil {
-					return err
-				}
-			} else {
-				return fmt.Errorf("%s and %s must be set together", attributeClientID, attributeClientSecret)
+		if hasClientID && hasClientSecret {
+			err = bwClient.LoginWithAPIKeyAndUnlock(masterPassword.(string), clientID.(string), clientSecret.(string))
+			if err != nil {
+				return err
 			}
+		} else if !hasClientID && !hasClientSecret {
+			err = bwClient.LoginWithPassword(email.(string), masterPassword.(string))
+			if err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("PLEASE REPORT THIS BUG: schema should require %s and %s to be set together", attributeClientID, attributeClientSecret)
 		}
+
 	}
 
 	if !bwClient.HasSessionKey() {
