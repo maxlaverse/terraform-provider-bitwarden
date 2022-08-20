@@ -112,10 +112,35 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	}
 
 	bwClient := bw.NewClient(bwExecutable, bw.WithAppDataDir(abs))
-	bwClient.SetServer(testServerURL)
-	bwClient.LoginWithPassword(testEmail, testPassword)
+	status, err := bwClient.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status.ServerURL != testServerURL || status.UserEmail != testEmail {
+		if status.Status != bw.StatusUnauthenticated {
+			err = bwClient.Logout()
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		err = bwClient.SetServer(testServerURL)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = bwClient.LoginWithPassword(testEmail, testPassword)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	if !bwClient.HasSessionKey() {
-		bwClient.Unlock(testPassword)
+		err = bwClient.Unlock(testPassword)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// Create a couple of test resources

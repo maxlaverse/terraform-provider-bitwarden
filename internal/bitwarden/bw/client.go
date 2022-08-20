@@ -33,7 +33,7 @@ type Client interface {
 func NewClient(execPath string, opts ...Options) Client {
 	c := &client{
 		execPath: execPath,
-		executor: executor.New(),
+		executor: executor.DefaultExecutor,
 	}
 
 	for _, o := range opts {
@@ -155,7 +155,7 @@ func (c *client) SetServer(server string) error {
 }
 
 func (c *client) Status() (*Status, error) {
-	out, err := c.cmd("status").RunCaptureOutput()
+	out, err := c.cmdWithSession("status").RunCaptureOutput()
 	if err != nil {
 		return nil, err
 	}
