@@ -38,4 +38,5 @@ terraform-lock
 **/.bitwarden/data.json
 **/.terraform.lock.hcl
 
-cover.out
+# Code coverage artifact
+profile.cov
