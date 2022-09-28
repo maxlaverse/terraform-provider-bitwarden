@@ -19,8 +19,9 @@ const (
 type LoginMethod int
 
 const (
-	LoginMethodPersonalAPIKey LoginMethod = iota
-	LoginMethodPassword       LoginMethod = iota
+	LoginMethodPersonalAPIKey     LoginMethod = iota
+	LoginMethodPassword           LoginMethod = iota
+	LoginMethodProvidedSessionKey LoginMethod = iota
 )
 
 func init() {
@@ -31,11 +32,19 @@ func New(version string) func() *schema.Provider {
 	return func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
+				attributeSessionKey: {
+					Type:          schema.TypeString,
+					Description:   descriptionSessionKey,
+					Optional:      true,
+					ConflictsWith: []string{attributeClientID, attributeClientSecret},
+					DefaultFunc:   schema.EnvDefaultFunc("BW_SESSION", nil),
+				},
 				attributeMasterPassword: {
-					Type:        schema.TypeString,
-					Description: descriptionMasterPassword,
-					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("BW_PASSWORD", nil),
+					Type:         schema.TypeString,
+					Description:  descriptionMasterPassword,
+					Optional:     true,
+					ExactlyOneOf: []string{attributeSessionKey},
+					DefaultFunc:  schema.EnvDefaultFunc("BW_PASSWORD", nil),
 				},
 				attributeClientID: {
 					Type:         schema.TypeString,
@@ -94,6 +103,11 @@ func providerConfigure(version string, p *schema.Provider) func(context.Context,
 			return nil, diag.FromErr(err)
 		}
 
+		sessionKey, hasSessionKey := d.GetOk(attributeSessionKey)
+		if hasSessionKey {
+			bwClient.SetSessionKey(sessionKey.(string))
+		}
+
 		err = ensureLoggedIn(d, bwClient)
 		if err != nil {
 			return nil, diag.FromErr(err)
@@ -109,49 +123,52 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 		return err
 	}
 
-	masterPassword := d.Get(attributeMasterPassword)
-	if status.Status == bw.StatusUnauthenticated {
-		loginMethod := loginMethod(d)
-
-		if loginMethod == LoginMethodPersonalAPIKey {
-			clientID := d.Get(attributeClientID)
-			clientSecret := d.Get(attributeClientSecret)
-			err = bwClient.LoginWithAPIKey(masterPassword.(string), clientID.(string), clientSecret.(string))
-			if err != nil {
-				return err
-			}
-		} else if loginMethod == LoginMethodPassword {
-			email := d.Get(attributeEmail)
-			err = bwClient.LoginWithPassword(email.(string), masterPassword.(string))
-			if err != nil {
-				return err
-			}
-		} else {
-			return fmt.Errorf("INTERNAL BUG: unsupported loginMethod: %d", loginMethod)
-		}
-
+	// Situation 1: the Vault is *unlocked* meaning we have a valid session key.
+	if status.Status == bw.StatusUnlocked {
+		return bwClient.Sync()
 	}
 
-	if !bwClient.HasSessionKey() {
+	// Situation 2: the Vault is *locked* which means the Vault is already present locally
+	//              and is ours.
+	masterPassword := d.Get(attributeMasterPassword)
+	if status.Status == bw.StatusLocked {
 		err = bwClient.Unlock(masterPassword.(string))
 		if err != nil {
 			return err
 		}
 
-		err = bwClient.Sync()
-		if err != nil {
-			return err
-		}
+		return bwClient.Sync()
 	}
 
-	return nil
+	if status.Status != bw.StatusUnauthenticated {
+		return fmt.Errorf("INTERNAL BUG: unsupported status: '%s'", status.Status)
+	}
+
+	// Situation 3: the Vault is *unauthenticated*
+	loginMethod := loginMethod(d)
+	switch loginMethod {
+	case LoginMethodPersonalAPIKey:
+		clientID := d.Get(attributeClientID)
+		clientSecret := d.Get(attributeClientSecret)
+		return bwClient.LoginWithAPIKey(masterPassword.(string), clientID.(string), clientSecret.(string))
+	case LoginMethodPassword:
+		email := d.Get(attributeEmail)
+		return bwClient.LoginWithPassword(email.(string), masterPassword.(string))
+	case LoginMethodProvidedSessionKey:
+		return fmt.Errorf("unable to access the Vault with the given session key")
+	default:
+		return fmt.Errorf("INTERNAL BUG: unsupported login method: %d", loginMethod)
+	}
 }
 
 func loginMethod(d *schema.ResourceData) LoginMethod {
 	_, hasClientID := d.GetOk(attributeClientID)
 	_, hasClientSecret := d.GetOk(attributeClientSecret)
+	_, hasSessionKey := d.GetOk(attributeSessionKey)
 
-	if hasClientID && hasClientSecret {
+	if hasSessionKey {
+		return LoginMethodProvidedSessionKey
+	} else if hasClientID && hasClientSecret {
 		return LoginMethodPersonalAPIKey
 	} else {
 		return LoginMethodPassword

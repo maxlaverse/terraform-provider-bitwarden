@@ -123,6 +123,26 @@ func TestProviderReauthenticateWithAPIIfAuthenticatedWithDifferentUser(t *testin
 	}, commandsExecuted())
 }
 
+func TestProviderUseSessionKey(t *testing.T) {
+	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
+		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "test@laverse.net", "status": "authenticated"}`,
+	})
+	defer restoreDefaultExecutor(t)
+
+	raw := map[string]interface{}{
+		"server":      "http://127.0.0.1/",
+		"email":       "test@laverse.net",
+		"session_key": "abcd1234",
+	}
+
+	diag := New("dev")().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
+	assert.False(t, diag.HasError())
+
+	assert.Equal(t, []string{
+		"status",
+	}, commandsExecuted())
+}
+
 func useFakeExecutor(t *testing.T, dummyOutput map[string]string) func(t *testing.T) {
 	old := executor.DefaultExecutor
 	executor.DefaultExecutor = test_executor.New(dummyOutput)

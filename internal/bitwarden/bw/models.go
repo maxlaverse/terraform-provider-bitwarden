@@ -28,7 +28,6 @@ const (
 type VaultStatus string
 
 const (
-	StatusAuthenticated   VaultStatus = "authenticated"
 	StatusLocked          VaultStatus = "locked"
 	StatusUnauthenticated VaultStatus = "unauthenticated"
 	StatusUnlocked        VaultStatus = "unlocked"

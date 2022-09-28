@@ -19,6 +19,7 @@ type Client interface {
 	CreateObject(Object) (*Object, error)
 	EditObject(Object) (*Object, error)
 	HasSessionKey() bool
+	SetSessionKey(string)
 	GetObject(Object) (*Object, error)
 	LoginWithPassword(username, password string) error
 	LoginWithAPIKey(password, clientId, clientSecret string) error
@@ -159,7 +160,7 @@ func (c *client) SetServer(server string) error {
 }
 
 func (c *client) Status() (*Status, error) {
-	out, err := c.cmd("status").RunCaptureOutput()
+	out, err := c.cmdWithSession("status").RunCaptureOutput()
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +186,10 @@ func (c *client) Unlock(password string) error {
 
 func (c *client) HasSessionKey() bool {
 	return len(c.sessionKey) > 0
+}
+
+func (c *client) SetSessionKey(sessionKey string) {
+	c.sessionKey = sessionKey
 }
 
 func (c *client) Sync() error {
