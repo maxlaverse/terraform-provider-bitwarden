@@ -123,7 +123,7 @@ func TestProviderReauthenticateWithAPIIfAuthenticatedWithDifferentUser(t *testin
 	}, commandsExecuted())
 }
 
-func TestProviderUseSessionKey(t *testing.T) {
+func TestProviderWithSessionKeySync(t *testing.T) {
 	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
 		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "test@laverse.net", "status": "unlocked"}`,
 		"sync":   ``,
@@ -143,6 +143,33 @@ func TestProviderUseSessionKey(t *testing.T) {
 
 	assert.Equal(t, []string{
 		"status",
+		"sync",
+	}, commandsExecuted())
+}
+
+func TestProviderWithSessionKeyAndMasterPasswordCanUnlock(t *testing.T) {
+	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
+		"status":                                 `{"serverURL": "http://127.0.0.1/", "userEmail": "test@laverse.net", "status": "locked"}`,
+		"sync":                                   ``,
+		"unlock --raw --passwordenv BW_PASSWORD": `session-key1234`,
+	})
+	defer restoreDefaultExecutor(t)
+
+	raw := map[string]interface{}{
+		"server":          "http://127.0.0.1/",
+		"email":           "test@laverse.net",
+		"session_key":     "abcd1234",
+		"master_password": "master-password-9",
+	}
+
+	diag := New("dev")().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
+	if !assert.False(t, diag.HasError()) {
+		t.Fatal(diag[0])
+	}
+
+	assert.Equal(t, []string{
+		"status",
+		"unlock --raw --passwordenv BW_PASSWORD",
 		"sync",
 	}, commandsExecuted())
 }

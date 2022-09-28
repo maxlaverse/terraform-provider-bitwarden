@@ -33,18 +33,16 @@ func New(version string) func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
 				attributeSessionKey: {
-					Type:          schema.TypeString,
-					Description:   descriptionSessionKey,
-					Optional:      true,
-					ConflictsWith: []string{attributeClientID, attributeClientSecret},
-					DefaultFunc:   schema.EnvDefaultFunc("BW_SESSION", nil),
+					Type:        schema.TypeString,
+					Description: descriptionSessionKey,
+					Optional:    true,
+					DefaultFunc: schema.EnvDefaultFunc("BW_SESSION", nil),
 				},
 				attributeMasterPassword: {
-					Type:         schema.TypeString,
-					Description:  descriptionMasterPassword,
-					Optional:     true,
-					ExactlyOneOf: []string{attributeSessionKey},
-					DefaultFunc:  schema.EnvDefaultFunc("BW_PASSWORD", nil),
+					Type:        schema.TypeString,
+					Description: descriptionMasterPassword,
+					Required:    true,
+					DefaultFunc: schema.EnvDefaultFunc("BW_PASSWORD", nil),
 				},
 				attributeClientID: {
 					Type:         schema.TypeString,
@@ -154,8 +152,6 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 	case LoginMethodPassword:
 		email := d.Get(attributeEmail)
 		return bwClient.LoginWithPassword(email.(string), masterPassword.(string))
-	case LoginMethodProvidedSessionKey:
-		return fmt.Errorf("unable to access the Vault with the given session key")
 	default:
 		return fmt.Errorf("INTERNAL BUG: unsupported login method: %d", loginMethod)
 	}
@@ -164,11 +160,8 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 func loginMethod(d *schema.ResourceData) LoginMethod {
 	_, hasClientID := d.GetOk(attributeClientID)
 	_, hasClientSecret := d.GetOk(attributeClientSecret)
-	_, hasSessionKey := d.GetOk(attributeSessionKey)
 
-	if hasSessionKey {
-		return LoginMethodProvidedSessionKey
-	} else if hasClientID && hasClientSecret {
+	if hasClientID && hasClientSecret {
 		return LoginMethodPersonalAPIKey
 	} else {
 		return LoginMethodPassword
@@ -183,7 +176,7 @@ func logoutIfIdentityChanged(d *schema.ResourceData, bwClient bw.Client) (*bw.St
 
 	email := d.Get(attributeEmail)
 	serverURL := d.Get(attributeServer)
-	if status.UserEmail == email.(string) && status.ServerURL == serverURL.(string) {
+	if status.VaultOf(email.(string), serverURL.(string)) || status.FreshDataFile() {
 		return status, nil
 	}
 
