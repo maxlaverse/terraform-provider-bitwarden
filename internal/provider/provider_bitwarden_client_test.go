@@ -12,7 +12,7 @@ import (
 
 func TestProviderReauthenticateWithPasswordIfAuthenticatedOnDifferentServer(t *testing.T) {
 	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
-		"status":                          `{"serverURL": "http://127.0.0.99/", "userEmail": "test@laverse.net", "status": "authenticated"}`,
+		"status":                          `{"serverURL": "http://127.0.0.99/", "userEmail": "test@laverse.net", "status": "unlocked"}`,
 		"logout":                          ``,
 		"config server http://127.0.0.1/": ``,
 		"login test@laverse.net --raw --passwordenv BW_PASSWORD": `session-key1234`,
@@ -41,7 +41,7 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedOnDifferentServer(t *t
 
 func TestProviderReauthenticateWithPasswordIfAuthenticatedWithDifferentUser(t *testing.T) {
 	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
-		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "as-an-other-user@laverse.net", "status": "authenticated"}`,
+		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "as-an-other-user@laverse.net", "status": "unlocked"}`,
 		"logout": ``,
 		"login test@laverse.net --raw --passwordenv BW_PASSWORD": `session-key1234`,
 	})
@@ -93,7 +93,7 @@ func TestProviderDoesntLogoutFirstIfUnauthenticated(t *testing.T) {
 
 func TestProviderReauthenticateWithAPIIfAuthenticatedWithDifferentUser(t *testing.T) {
 	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
-		"status":                                 `{"serverURL": "http://127.0.0.1/", "userEmail": "as-an-other-user@laverse.net", "status": "authenticated"}`,
+		"status":                                 `{"serverURL": "http://127.0.0.1/", "userEmail": "as-an-other-user@laverse.net", "status": "unlocked"}`,
 		"logout":                                 ``,
 		"login --apikey":                         ``,
 		"unlock --raw --passwordenv BW_PASSWORD": `session-key1234`,
@@ -125,7 +125,8 @@ func TestProviderReauthenticateWithAPIIfAuthenticatedWithDifferentUser(t *testin
 
 func TestProviderUseSessionKey(t *testing.T) {
 	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
-		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "test@laverse.net", "status": "authenticated"}`,
+		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "test@laverse.net", "status": "unlocked"}`,
+		"sync":   ``,
 	})
 	defer restoreDefaultExecutor(t)
 
@@ -136,10 +137,13 @@ func TestProviderUseSessionKey(t *testing.T) {
 	}
 
 	diag := New("dev")().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
-	assert.False(t, diag.HasError())
+	if !assert.False(t, diag.HasError()) {
+		t.Fatal(diag[0])
+	}
 
 	assert.Equal(t, []string{
 		"status",
+		"sync",
 	}, commandsExecuted())
 }
 
