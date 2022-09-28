@@ -16,6 +16,13 @@ const (
 	defaultBitwardenServerURL = "https://vault.bitwarden.com"
 )
 
+type LoginMethod int
+
+const (
+	LoginMethodPersonalAPIKey LoginMethod = iota
+	LoginMethodPassword       LoginMethod = iota
+)
+
 func init() {
 	schema.DescriptionKind = schema.StringMarkdown
 }
@@ -97,46 +104,30 @@ func providerConfigure(version string, p *schema.Provider) func(context.Context,
 }
 
 func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
-	masterPassword := d.Get(attributeMasterPassword)
-	serverURL := d.Get(attributeServer)
-	email := d.Get(attributeEmail)
-
-	status, err := bwClient.Status()
+	status, err := logoutIfIdentityChanged(d, bwClient)
 	if err != nil {
 		return err
 	}
 
-	if status.ServerURL != serverURL.(string) || status.UserEmail != email.(string) {
-		if status.Status != bw.StatusUnauthenticated {
-			// We're authenticated with a different user or on a different server: logout
-			err = bwClient.Logout()
+	masterPassword := d.Get(attributeMasterPassword)
+	if status.Status == bw.StatusUnauthenticated {
+		loginMethod := loginMethod(d)
+
+		if loginMethod == LoginMethodPersonalAPIKey {
+			clientID := d.Get(attributeClientID)
+			clientSecret := d.Get(attributeClientSecret)
+			err = bwClient.LoginWithAPIKey(masterPassword.(string), clientID.(string), clientSecret.(string))
 			if err != nil {
 				return err
 			}
-		}
-
-		if status.ServerURL != serverURL.(string) {
-			err = bwClient.SetServer(serverURL.(string))
-			if err != nil {
-				return err
-			}
-		}
-
-		clientID, hasClientID := d.GetOk(attributeClientID)
-		clientSecret, hasClientSecret := d.GetOk(attributeClientSecret)
-
-		if hasClientID && hasClientSecret {
-			err = bwClient.LoginWithAPIKeyAndUnlock(masterPassword.(string), clientID.(string), clientSecret.(string))
-			if err != nil {
-				return err
-			}
-		} else if !hasClientID && !hasClientSecret {
+		} else if loginMethod == LoginMethodPassword {
+			email := d.Get(attributeEmail)
 			err = bwClient.LoginWithPassword(email.(string), masterPassword.(string))
 			if err != nil {
 				return err
 			}
 		} else {
-			return fmt.Errorf("PLEASE REPORT THIS BUG: schema should require %s and %s to be set together", attributeClientID, attributeClientSecret)
+			return fmt.Errorf("INTERNAL BUG: unsupported loginMethod: %d", loginMethod)
 		}
 
 	}
@@ -154,6 +145,48 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 	}
 
 	return nil
+}
+
+func loginMethod(d *schema.ResourceData) LoginMethod {
+	_, hasClientID := d.GetOk(attributeClientID)
+	_, hasClientSecret := d.GetOk(attributeClientSecret)
+
+	if hasClientID && hasClientSecret {
+		return LoginMethodPersonalAPIKey
+	} else {
+		return LoginMethodPassword
+	}
+}
+
+func logoutIfIdentityChanged(d *schema.ResourceData, bwClient bw.Client) (*bw.Status, error) {
+	status, err := bwClient.Status()
+	if err != nil {
+		return nil, err
+	}
+
+	email := d.Get(attributeEmail)
+	serverURL := d.Get(attributeServer)
+	if status.UserEmail == email.(string) && status.ServerURL == serverURL.(string) {
+		return status, nil
+	}
+
+	// We're not authenticated or authenticated against a different server.
+	if status.Status != bw.StatusUnauthenticated {
+		err = bwClient.Logout()
+		if err != nil {
+			return nil, err
+		}
+		status.Status = bw.StatusUnauthenticated
+	}
+
+	if status.ServerURL != serverURL.(string) {
+		err = bwClient.SetServer(serverURL.(string))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return status, nil
 }
 
 func newBitwardenClient(d *schema.ResourceData) (bw.Client, error) {

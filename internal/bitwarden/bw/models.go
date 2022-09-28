@@ -31,6 +31,7 @@ const (
 	StatusAuthenticated   VaultStatus = "authenticated"
 	StatusLocked          VaultStatus = "locked"
 	StatusUnauthenticated VaultStatus = "unauthenticated"
+	StatusUnlocked        VaultStatus = "unlocked"
 )
 
 type Status struct {

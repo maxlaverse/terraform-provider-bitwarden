@@ -21,7 +21,7 @@ type Client interface {
 	HasSessionKey() bool
 	GetObject(Object) (*Object, error)
 	LoginWithPassword(username, password string) error
-	LoginWithAPIKeyAndUnlock(password, clientId, clientSecret string) error
+	LoginWithAPIKey(password, clientId, clientSecret string) error
 	Logout() error
 	RemoveObject(Object) error
 	SetServer(string) error
@@ -125,6 +125,8 @@ func (c *client) GetObject(obj Object) (*Object, error) {
 	return &obj, nil
 }
 
+// LoginWithPassword logs in using a password and retrieves the session key,
+// allowing authenticated requests using the client.
 func (c *client) LoginWithPassword(username, password string) error {
 	out, err := c.cmd("login", username, "--raw", "--passwordenv", "BW_PASSWORD").WithEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).RunCaptureOutput()
 	if err != nil {
@@ -134,7 +136,9 @@ func (c *client) LoginWithPassword(username, password string) error {
 	return nil
 }
 
-func (c *client) LoginWithAPIKeyAndUnlock(password, clientId, clientSecret string) error {
+// LoginWithPassword logs in using an API key and unlock the Vault in order to retrieve a session key,
+// allowing authenticated requests using the client.
+func (c *client) LoginWithAPIKey(password, clientId, clientSecret string) error {
 	err := c.cmd("login", "--apikey").WithEnv([]string{fmt.Sprintf("BW_CLIENTID=%s", clientId), fmt.Sprintf("BW_CLIENTSECRET=%s", clientSecret)}).Run()
 	if err != nil {
 		return err
@@ -155,7 +159,7 @@ func (c *client) SetServer(server string) error {
 }
 
 func (c *client) Status() (*Status, error) {
-	out, err := c.cmdWithSession("status").RunCaptureOutput()
+	out, err := c.cmd("status").RunCaptureOutput()
 	if err != nil {
 		return nil, err
 	}
