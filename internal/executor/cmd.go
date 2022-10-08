@@ -33,6 +33,7 @@ type command struct {
 }
 
 type Command interface {
+	ClearEnv() Command
 	WithEnv(envs []string) Command
 	WithOutput(out io.Writer) Command
 	WithCombinedOutput(out io.Writer) Command
@@ -40,6 +41,11 @@ type Command interface {
 	Run() error
 	RunCaptureOutput() ([]byte, error)
 	CmdRun() error
+}
+
+func (c *command) ClearEnv() Command {
+	c.cmd.Env = []string{}
+	return c
 }
 
 func (c *command) WithEnv(envs []string) Command {

@@ -200,7 +200,7 @@ func (c *client) Sync() error {
 }
 
 func (c *client) cmd(args ...string) executor.Command {
-	return c.executor.NewCommand(c.execPath, args...).WithEnv(c.env())
+	return c.executor.NewCommand(c.execPath, args...).ClearEnv().WithEnv(c.env())
 }
 
 func (c *client) cmdWithSession(args ...string) executor.Command {
@@ -208,11 +208,11 @@ func (c *client) cmdWithSession(args ...string) executor.Command {
 }
 
 func (c *client) env() []string {
-	return append(
-		os.Environ(),
+	return []string{
+		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
 		fmt.Sprintf("BITWARDENCLI_APPDATA_DIR=%s", c.appDataDir),
 		"BW_NOINTERACTION=true",
-	)
+	}
 }
 
 func (c *client) encode(item Object) (string, error) {

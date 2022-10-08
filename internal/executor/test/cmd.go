@@ -35,9 +35,14 @@ type testCommand struct {
 	dummyOutput map[string]string
 }
 
+func (c *testCommand) ClearEnv() executor.Command {
+	return c
+}
+
 func (c *testCommand) WithEnv(envs []string) executor.Command {
 	return c
 }
+
 func (c *testCommand) WithStdin(dir string) executor.Command {
 	return c
 }
