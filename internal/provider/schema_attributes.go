@@ -59,6 +59,6 @@ const (
 	descriptionEmail          = "Login Email of the Vault."
 	descriptionMasterPassword = "Master password of the Vault. Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment."
 	descriptionServer         = "Bitwarden Server URL (default: https://vault.bitwarden.com)."
-	descriptionSessionKey     = "A Bitwarden Session Key."
+	descriptionSessionKey     = "(EXPERIMENTAL) A Bitwarden Session Key."
 	descriptionVaultPath      = "Alternative directory for storing the Vault locally."
 )
