@@ -28,7 +28,6 @@ const (
 type VaultStatus string
 
 const (
-	StatusAuthenticated   VaultStatus = "authenticated"
 	StatusLocked          VaultStatus = "locked"
 	StatusUnauthenticated VaultStatus = "unauthenticated"
 	StatusUnlocked        VaultStatus = "unlocked"
@@ -40,6 +39,14 @@ type Status struct {
 	UserEmail string      `json:"userEmail,omitempty"`
 	UserID    string      `json:"userID,omitempty"`
 	Status    VaultStatus `json:"status,omitempty"`
+}
+
+func (s *Status) VaultOf(email, serverUrl string) bool {
+	return s.ServerURL == serverUrl && s.UserEmail == email
+}
+
+func (s *Status) FreshDataFile() bool {
+	return len(s.UserEmail) == 0 && len(s.ServerURL) == 0 && s.Status == StatusUnauthenticated
 }
 
 type Login struct {

@@ -82,6 +82,7 @@ provider "bitwarden" {
 - `client_id` (String) Client ID.
 - `client_secret` (String) Client Secret. Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.
 - `server` (String) Bitwarden Server URL (default: https://vault.bitwarden.com).
+- `session_key` (String) (EXPERIMENTAL) A Bitwarden Session Key.
 - `vault_path` (String) Alternative directory for storing the Vault locally.
 
 [Bitwarden]: https://bitwarden.com/help/article/managing-items/

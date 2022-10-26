@@ -59,7 +59,23 @@ func TestProviderAuthAPIMethodMissingClientSecretThrowsError(t *testing.T) {
 	}
 }
 
-func TestProviderAuthAllMethodsMissingMasterPasswordThrowsError(t *testing.T) {
+func TestProviderAuthAPIMethodMissingMasterPasswordThrowsError(t *testing.T) {
+	raw := map[string]interface{}{
+		"server":        "http://127.0.0.1/",
+		"email":         "test@laverse.net",
+		"client_id":     "client-id-1234",
+		"client_secret": "client-secret-5678",
+	}
+
+	diag := New("dev")().Validate(terraform.NewResourceConfigRaw(raw))
+
+	if assert.True(t, diag.HasError()) {
+		assert.Equal(t, "Missing required argument", diag[0].Summary)
+		assert.Equal(t, "The argument \"master_password\" is required, but no definition was found.", diag[0].Detail)
+	}
+}
+
+func TestProviderAuthPasswordMethodMissingMasterPasswordThrowsError(t *testing.T) {
 	raw := map[string]interface{}{
 		"server": "http://127.0.0.1/",
 		"email":  "test@laverse.net",
@@ -71,6 +87,19 @@ func TestProviderAuthAllMethodsMissingMasterPasswordThrowsError(t *testing.T) {
 		assert.Equal(t, "Missing required argument", diag[0].Summary)
 		assert.Equal(t, "The argument \"master_password\" is required, but no definition was found.", diag[0].Detail)
 	}
+}
+
+func TestProviderAuthSessionMethodValid(t *testing.T) {
+	raw := map[string]interface{}{
+		"server":          "http://127.0.0.1/",
+		"email":           "test@laverse.net",
+		"session_key":     "1234",
+		"master_password": "master-password-9",
+	}
+
+	diag := New("dev")().Validate(terraform.NewResourceConfigRaw(raw))
+
+	assert.False(t, diag.HasError())
 }
 
 func TestProviderAuthAllMethodsMissingEmailThrowsError(t *testing.T) {

@@ -19,6 +19,7 @@ type Client interface {
 	CreateObject(Object) (*Object, error)
 	EditObject(Object) (*Object, error)
 	HasSessionKey() bool
+	SetSessionKey(string)
 	GetObject(Object) (*Object, error)
 	LoginWithPassword(username, password string) error
 	LoginWithAPIKey(password, clientId, clientSecret string) error
@@ -159,7 +160,7 @@ func (c *client) SetServer(server string) error {
 }
 
 func (c *client) Status() (*Status, error) {
-	out, err := c.cmd("status").RunCaptureOutput()
+	out, err := c.cmdWithSession("status").RunCaptureOutput()
 	if err != nil {
 		return nil, err
 	}
@@ -187,6 +188,10 @@ func (c *client) HasSessionKey() bool {
 	return len(c.sessionKey) > 0
 }
 
+func (c *client) SetSessionKey(sessionKey string) {
+	c.sessionKey = sessionKey
+}
+
 func (c *client) Sync() error {
 	if c.disableSync {
 		return nil
@@ -195,7 +200,7 @@ func (c *client) Sync() error {
 }
 
 func (c *client) cmd(args ...string) executor.Command {
-	return c.executor.NewCommand(c.execPath, args...).WithEnv(c.env())
+	return c.executor.NewCommand(c.execPath, args...).ClearEnv().WithEnv(c.env())
 }
 
 func (c *client) cmdWithSession(args ...string) executor.Command {
@@ -203,11 +208,11 @@ func (c *client) cmdWithSession(args ...string) executor.Command {
 }
 
 func (c *client) env() []string {
-	return append(
-		os.Environ(),
+	return []string{
+		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
 		fmt.Sprintf("BITWARDENCLI_APPDATA_DIR=%s", c.appDataDir),
 		"BW_NOINTERACTION=true",
-	)
+	}
 }
 
 func (c *client) encode(item Object) (string, error) {
