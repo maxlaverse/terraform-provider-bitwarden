@@ -19,9 +19,9 @@ const (
 type LoginMethod int
 
 const (
-	LoginMethodPersonalAPIKey     LoginMethod = iota
-	LoginMethodPassword           LoginMethod = iota
-	LoginMethodProvidedSessionKey LoginMethod = iota
+	LoginMethodPersonalAPIKey LoginMethod = iota
+	LoginMethodPassword       LoginMethod = iota
+	LoginMethodNone           LoginMethod = iota
 )
 
 func init() {
@@ -39,23 +39,24 @@ func New(version string) func() *schema.Provider {
 					DefaultFunc: schema.EnvDefaultFunc("BW_SESSION", nil),
 				},
 				attributeMasterPassword: {
-					Type:        schema.TypeString,
-					Description: descriptionMasterPassword,
-					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("BW_PASSWORD", nil),
+					Type:         schema.TypeString,
+					Description:  descriptionMasterPassword,
+					AtLeastOneOf: []string{attributeSessionKey},
+					Optional:     true,
+					DefaultFunc:  schema.EnvDefaultFunc("BW_PASSWORD", nil),
 				},
 				attributeClientID: {
 					Type:         schema.TypeString,
 					Description:  descriptionClientID,
 					Optional:     true,
-					RequiredWith: []string{attributeClientSecret},
+					RequiredWith: []string{attributeClientSecret, attributeMasterPassword},
 					DefaultFunc:  schema.EnvDefaultFunc("BW_CLIENTID", nil),
 				},
 				attributeClientSecret: {
 					Type:         schema.TypeString,
 					Description:  descriptionClientSecret,
 					Optional:     true,
-					RequiredWith: []string{attributeClientID},
+					RequiredWith: []string{attributeClientID, attributeMasterPassword},
 					DefaultFunc:  schema.EnvDefaultFunc("BW_CLIENTSECRET", nil),
 				},
 				attributeServer: {
@@ -153,19 +154,22 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 		email := d.Get(attributeEmail)
 		return bwClient.LoginWithPassword(email.(string), masterPassword.(string))
 	default:
-		return fmt.Errorf("INTERNAL BUG: unsupported login method: %d", loginMethod)
+		return fmt.Errorf("not enough parameters provided to login")
 	}
 }
 
 func loginMethod(d *schema.ResourceData) LoginMethod {
 	_, hasClientID := d.GetOk(attributeClientID)
 	_, hasClientSecret := d.GetOk(attributeClientSecret)
+	_, hasMasterPassword := d.GetOk(attributeMasterPassword)
 
 	if hasClientID && hasClientSecret {
 		return LoginMethodPersonalAPIKey
-	} else {
+	} else if hasMasterPassword {
 		return LoginMethodPassword
 	}
+
+	return LoginMethodNone
 }
 
 func logoutIfIdentityChanged(d *schema.ResourceData, bwClient bw.Client) (*bw.Status, error) {

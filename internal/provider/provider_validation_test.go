@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -39,7 +40,7 @@ func TestProviderAuthAPIMethodMissingClientIDThrowsError(t *testing.T) {
 
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, "Missing required argument", diag[0].Summary)
-		assert.Equal(t, "\"client_secret\": all of `client_id,client_secret` must be specified", diag[0].Detail)
+		assert.Contains(t, diag[0].Detail, "all of `client_id,client_secret,master_password` must be specified")
 	}
 }
 
@@ -55,7 +56,7 @@ func TestProviderAuthAPIMethodMissingClientSecretThrowsError(t *testing.T) {
 
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, "Missing required argument", diag[0].Summary)
-		assert.Equal(t, "\"client_id\": all of `client_id,client_secret` must be specified", diag[0].Detail)
+		assert.Regexp(t, regexp.MustCompile("all of `client_id,client_secret,master_password` must be specified|one of `master_password,session_key` must be specified"), diag[0].Detail)
 	}
 }
 
@@ -71,7 +72,7 @@ func TestProviderAuthAPIMethodMissingMasterPasswordThrowsError(t *testing.T) {
 
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, "Missing required argument", diag[0].Summary)
-		assert.Equal(t, "The argument \"master_password\" is required, but no definition was found.", diag[0].Detail)
+		assert.Regexp(t, regexp.MustCompile("all of `client_id,client_secret,master_password` must be specified|one of `master_password,session_key` must be specified"), diag[0].Detail)
 	}
 }
 
@@ -85,7 +86,7 @@ func TestProviderAuthPasswordMethodMissingMasterPasswordThrowsError(t *testing.T
 
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, "Missing required argument", diag[0].Summary)
-		assert.Equal(t, "The argument \"master_password\" is required, but no definition was found.", diag[0].Detail)
+		assert.Equal(t, "\"master_password\": one of `master_password,session_key` must be specified", diag[0].Detail)
 	}
 }
 
