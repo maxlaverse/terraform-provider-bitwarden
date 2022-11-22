@@ -175,8 +175,8 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 	// Scenario 4: We need to login but don't have the information to do so.
 	//             This is a situation we can't get out from.
 	//             => failure
-	if _, hasSessionKey := d.GetOk(attributeSessionKey); status.Status == bw.StatusLocked && hasSessionKey {
-		return fmt.Errorf("unable to unlock Vault with provided session key")
+	if _, hasSessionKey := d.GetOk(attributeSessionKey); hasSessionKey {
+		return fmt.Errorf("unable to unlock Vault with provided session key (status: %s)", status.Status)
 	}
 
 	// We should have caught already scenarios up to this point. If we haven't, it means this method's
