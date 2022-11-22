@@ -3,17 +3,13 @@ package provider
 import (
 	"context"
 	"fmt"
-	"os"
+	"log"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
-)
-
-const (
-	defaultBitwardenServerURL = "https://vault.bitwarden.com"
 )
 
 type LoginMethod int
@@ -24,6 +20,10 @@ const (
 	LoginMethodNone           LoginMethod = iota
 )
 
+const (
+	versionDev = "dev"
+)
+
 func init() {
 	schema.DescriptionKind = schema.StringMarkdown
 }
@@ -32,18 +32,22 @@ func New(version string) func() *schema.Provider {
 	return func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
-				attributeSessionKey: {
-					Type:        schema.TypeString,
-					Description: descriptionSessionKey,
-					Optional:    true,
-					DefaultFunc: schema.EnvDefaultFunc("BW_SESSION", nil),
-				},
+				// Attributes which depend on each other
 				attributeMasterPassword: {
-					Type:         schema.TypeString,
-					Description:  descriptionMasterPassword,
-					AtLeastOneOf: []string{attributeSessionKey},
-					Optional:     true,
-					DefaultFunc:  schema.EnvDefaultFunc("BW_PASSWORD", nil),
+					Type:          schema.TypeString,
+					Description:   descriptionMasterPassword,
+					ConflictsWith: []string{attributeSessionKey},
+					AtLeastOneOf:  []string{attributeSessionKey},
+					Optional:      true,
+					DefaultFunc:   schema.EnvDefaultFunc("BW_PASSWORD", nil),
+				},
+				attributeSessionKey: {
+					Type:          schema.TypeString,
+					Description:   descriptionSessionKey,
+					ConflictsWith: []string{attributeMasterPassword},
+					AtLeastOneOf:  []string{attributeMasterPassword},
+					Optional:      true,
+					DefaultFunc:   schema.EnvDefaultFunc("BW_SESSION", nil),
 				},
 				attributeClientID: {
 					Type:         schema.TypeString,
@@ -59,11 +63,13 @@ func New(version string) func() *schema.Provider {
 					RequiredWith: []string{attributeClientID, attributeMasterPassword},
 					DefaultFunc:  schema.EnvDefaultFunc("BW_CLIENTSECRET", nil),
 				},
+
+				// Standalone attributes
 				attributeServer: {
 					Type:        schema.TypeString,
 					Description: descriptionServer,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("BW_URL", defaultBitwardenServerURL),
+					DefaultFunc: schema.EnvDefaultFunc("BW_URL", bw.DefaultBitwardenServerURL),
 				},
 				attributeEmail: {
 					Type:        schema.TypeString,
@@ -97,7 +103,7 @@ func New(version string) func() *schema.Provider {
 func providerConfigure(version string, p *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	return func(_ context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 
-		bwClient, err := newBitwardenClient(d)
+		bwClient, err := newBitwardenClient(d, version)
 		if err != nil {
 			return nil, diag.FromErr(err)
 		}
@@ -117,20 +123,30 @@ func providerConfigure(version string, p *schema.Provider) func(context.Context,
 }
 
 func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
-	status, err := logoutIfIdentityChanged(d, bwClient)
+	status, err := bwClient.Status()
 	if err != nil {
 		return err
 	}
 
-	// Situation 1: the Vault is *unlocked* meaning we have a valid session key.
+	if status.Status == bw.StatusLocked || status.Status == bw.StatusUnlocked {
+		err = logoutIfIdentityChanged(d, bwClient, status)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Scenario 1: The Vault is already *unlocked*, there is nothing else to
+	//             be done. This should happen when a session key is provided.
+	//             => return
 	if status.Status == bw.StatusUnlocked {
 		return bwClient.Sync()
 	}
 
-	// Situation 2: the Vault is *locked* which means the Vault is already present locally
-	//              and is ours.
-	masterPassword := d.Get(attributeMasterPassword)
-	if status.Status == bw.StatusLocked {
+	// Scenario 2: The Vault is *locked* and we have a master password. This
+	//             happens when the Vault is already cached locally.
+	//             => unlock and return
+	masterPassword, hasMasterPassword := d.GetOk(attributeMasterPassword)
+	if hasMasterPassword && status.Status == bw.StatusLocked {
 		err = bwClient.Unlock(masterPassword.(string))
 		if err != nil {
 			return err
@@ -139,11 +155,12 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 		return bwClient.Sync()
 	}
 
-	if status.Status != bw.StatusUnauthenticated {
-		return fmt.Errorf("INTERNAL BUG: unsupported status: '%s'", status.Status)
-	}
-
-	// Situation 3: the Vault is *unauthenticated*
+	// Scenario 3: We need to login and have enough information to do so.
+	//             Happens if the Vault is not present locally, or it doesn't
+	//             belong to us.
+	//             => login and return
+	//
+	// Note: We don't trigger a manual 'sync' as login operations already do.
 	loginMethod := loginMethod(d)
 	switch loginMethod {
 	case LoginMethodPersonalAPIKey:
@@ -153,9 +170,18 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 	case LoginMethodPassword:
 		email := d.Get(attributeEmail)
 		return bwClient.LoginWithPassword(email.(string), masterPassword.(string))
-	default:
-		return fmt.Errorf("not enough parameters provided to login")
 	}
+
+	// Scenario 4: We need to login but don't have the information to do so.
+	//             This is a situation we can't get out from.
+	//             => failure
+	if _, hasSessionKey := d.GetOk(attributeSessionKey); status.Status == bw.StatusLocked && hasSessionKey {
+		return fmt.Errorf("unable to unlock Vault with provided session key")
+	}
+
+	// We should have caught already scenarios up to this point. If we haven't, it means this method's
+	// implementation is wrong or the provider parameters are.
+	return fmt.Errorf("INTERNAL BUG: not enough parameters provided to login (status: '%s')", status.Status)
 }
 
 func loginMethod(d *schema.ResourceData) LoginMethod {
@@ -172,38 +198,34 @@ func loginMethod(d *schema.ResourceData) LoginMethod {
 	return LoginMethodNone
 }
 
-func logoutIfIdentityChanged(d *schema.ResourceData, bwClient bw.Client) (*bw.Status, error) {
-	status, err := bwClient.Status()
-	if err != nil {
-		return nil, err
-	}
-
+func logoutIfIdentityChanged(d *schema.ResourceData, bwClient bw.Client, status *bw.Status) error {
 	email := d.Get(attributeEmail)
 	serverURL := d.Get(attributeServer)
-	if status.VaultOf(email.(string), serverURL.(string)) || status.FreshDataFile() {
-		return status, nil
-	}
-
-	// We're not authenticated or authenticated against a different server.
-	if status.Status != bw.StatusUnauthenticated {
-		err = bwClient.Logout()
-		if err != nil {
-			return nil, err
-		}
+	if !status.VaultOfUser(email.(string)) {
 		status.Status = bw.StatusUnauthenticated
-	}
 
-	if status.ServerURL != serverURL.(string) {
+		log.Printf("Logging out as the local Vault belongs to a different email (vault: '%v', provider: '%s')\n", status.UserEmail, email)
+		err := bwClient.Logout()
+		if err != nil {
+			return err
+		}
+	} else if !status.VaultFromServer(serverURL.(string)) {
+		status.Status = bw.StatusUnauthenticated
+
+		log.Printf("Logging out as the local Vault comes from a different server (vault: '%v', provider: '%s')\n", status.ServerURL, status.ServerURL)
+		err := bwClient.Logout()
+		if err != nil {
+			return err
+		}
 		err = bwClient.SetServer(serverURL.(string))
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-
-	return status, nil
+	return nil
 }
 
-func newBitwardenClient(d *schema.ResourceData) (bw.Client, error) {
+func newBitwardenClient(d *schema.ResourceData, version string) (bw.Client, error) {
 	opts := []bw.Options{}
 	if ded, exists := d.GetOk(attributeVaultPath); exists {
 		abs, err := filepath.Abs(ded.(string))
@@ -212,7 +234,8 @@ func newBitwardenClient(d *schema.ResourceData) (bw.Client, error) {
 		}
 		opts = append(opts, bw.WithAppDataDir(abs))
 	}
-	if len(os.Getenv("DEBUG_BITWARDEN_DISABLE_SYNC")) > 0 {
+	if version == versionDev {
+		// During development, we disable Vault synchronization to make some operations faster.
 		opts = append(opts, bw.DisableSync())
 	}
 	bwExecutable, err := exec.LookPath("bw")

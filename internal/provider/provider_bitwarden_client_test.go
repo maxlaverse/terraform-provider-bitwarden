@@ -25,7 +25,7 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedOnDifferentServer(t *t
 		"master_password": "master-password-9",
 	}
 
-	diag := New("dev")().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
+	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
 
 	if !assert.False(t, diag.HasError()) {
 		t.Fatalf("unexpected error: %v", diag[0])
@@ -53,7 +53,7 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedWithDifferentUser(t *t
 		"master_password": "master-password-9",
 	}
 
-	diag := New("dev")().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
+	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
 
 	if !assert.False(t, diag.HasError()) {
 		t.Fatalf("unexpected error: %v", diag[0])
@@ -79,7 +79,7 @@ func TestProviderDoesntLogoutFirstIfUnauthenticated(t *testing.T) {
 		"master_password": "master-password-9",
 	}
 
-	diag := New("dev")().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
+	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
 
 	if !assert.False(t, diag.HasError()) {
 		t.Fatalf("unexpected error: %v", diag[0])
@@ -109,7 +109,7 @@ func TestProviderReauthenticateWithAPIIfAuthenticatedWithDifferentUser(t *testin
 		"master_password": "master-password-9",
 	}
 
-	diag := New("dev")().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
+	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
 
 	if !assert.False(t, diag.HasError()) {
 		t.Fatalf("unexpected error: %v", diag[0])
@@ -136,40 +136,15 @@ func TestProviderWithSessionKeySync(t *testing.T) {
 		"session_key": "abcd1234",
 	}
 
-	diag := New("dev")().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
+	// We specifically set the provider's version to something else than 'versionDev'
+	// in order to capture 'sync' calls.
+	diag := New("not-dev")().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
 	if !assert.False(t, diag.HasError()) {
 		t.Fatal(diag[0])
 	}
 
 	assert.Equal(t, []string{
 		"status",
-		"sync",
-	}, commandsExecuted())
-}
-
-func TestProviderWithSessionKeyAndMasterPasswordCanUnlock(t *testing.T) {
-	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
-		"status":                                 `{"serverURL": "http://127.0.0.1/", "userEmail": "test@laverse.net", "status": "locked"}`,
-		"sync":                                   ``,
-		"unlock --raw --passwordenv BW_PASSWORD": `session-key1234`,
-	})
-	defer restoreDefaultExecutor(t)
-
-	raw := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"email":           "test@laverse.net",
-		"session_key":     "abcd1234",
-		"master_password": "master-password-9",
-	}
-
-	diag := New("dev")().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
-	if !assert.False(t, diag.HasError()) {
-		t.Fatal(diag[0])
-	}
-
-	assert.Equal(t, []string{
-		"status",
-		"unlock --raw --passwordenv BW_PASSWORD",
 		"sync",
 	}, commandsExecuted())
 }

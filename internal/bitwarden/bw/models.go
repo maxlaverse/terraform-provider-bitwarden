@@ -1,12 +1,19 @@
 package bw
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type ItemType int
 
 const (
 	ItemTypeLogin      ItemType = 1
 	ItemTypeSecureNote ItemType = 2
+)
+
+const (
+	DefaultBitwardenServerURL = "https://vault.bitwarden.com"
 )
 
 type FieldType int
@@ -41,12 +48,18 @@ type Status struct {
 	Status    VaultStatus `json:"status,omitempty"`
 }
 
-func (s *Status) VaultOf(email, serverUrl string) bool {
-	return s.ServerURL == serverUrl && s.UserEmail == email
+func (s *Status) VaultFromServer(serverUrl string) bool {
+	providerServerUrl := trimSlashSuffix(serverUrl)
+	vaultServerUrl := trimSlashSuffix(s.ServerURL)
+	return vaultServerUrl == providerServerUrl || len(vaultServerUrl) == 0 && providerServerUrl == DefaultBitwardenServerURL
 }
 
-func (s *Status) FreshDataFile() bool {
-	return len(s.UserEmail) == 0 && len(s.ServerURL) == 0 && s.Status == StatusUnauthenticated
+func (s *Status) VaultOfUser(email string) bool {
+	return s.UserEmail == email
+}
+
+func trimSlashSuffix(serverUrl string) string {
+	return strings.TrimSuffix(serverUrl, "/")
 }
 
 type Login struct {

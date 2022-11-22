@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/executor"
 )
 
 const (
@@ -35,24 +37,16 @@ var testCollectionID string
 // to create a provider server to which the CLI can reattach.
 var providerFactories = map[string]func() (*schema.Provider, error){
 	"bitwarden": func() (*schema.Provider, error) {
-		return New("dev")(), nil
+		return New(versionDev)(), nil
 	},
 }
 
-var isTestProviderConfigured bool
-var mu sync.Mutex
+var areTestResourcesCreated bool
+var testResourcesMu sync.Mutex
+var isUserCreated bool
+var userMu sync.Mutex
 
-func tfTestProvider() string {
-	return fmt.Sprintf(`
-	provider "bitwarden" {
-		master_password = "%s"
-		server          = "%s"
-		email           = "%s"
-	}
-`, testPassword, testServerURL, testEmail)
-}
-
-func setTestServerUrl() {
+func init() {
 	host := os.Getenv("VAULTWARDEN_HOST")
 	port := os.Getenv("VAULTWARDEN_PORT")
 
@@ -65,21 +59,78 @@ func setTestServerUrl() {
 	testServerURL = fmt.Sprintf("http://%s:%s/", host, port)
 }
 
-func ensureVaultwardenConfigured(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
+func ensureVaultwardenHasUser(t *testing.T) {
+	userMu.Lock()
+	defer userMu.Unlock()
 
-	if isTestProviderConfigured {
+	if isUserCreated {
 		return
 	}
 
-	setTestServerUrl()
+	webapiClient := webapi.NewClient(testServerURL)
+
+	err := webapiClient.RegisterUser("test", testEmail, testPassword, kdfIterations)
+	if err != nil && !strings.Contains(err.Error(), "User already exists") {
+		t.Fatal(err)
+	}
+	isUserCreated = true
+}
+
+func getTestSessionKey(t *testing.T) (string, string) {
+	abs, err := filepath.Abs("./.bitwarden")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bwExecutable, err := exec.LookPath("bw")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	env := []string{
+		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
+		fmt.Sprintf("BITWARDENCLI_APPDATA_DIR=%s", abs),
+		"BW_NOINTERACTION=true",
+		fmt.Sprintf("BW_PASSWORD=%s", testPassword),
+	}
+
+	var out bytes.Buffer
+
+	cmd := executor.New()
+	err = cmd.NewCommand(bwExecutable, "login", testEmail, "--raw", "--passwordenv", "BW_PASSWORD").WithOutput(&out).WithEnv(env).Run()
+	if err != nil && !strings.Contains(err.Error(), "You are already logged in as test@laverse.net") {
+		t.Fatal(err)
+	}
+	err = cmd.NewCommand(bwExecutable, "unlock", "--raw", "--passwordenv", "BW_PASSWORD").WithOutput(&out).WithEnv(env).Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessionKey := out.String()
+
+	err = cmd.NewCommand(bwExecutable, "status", "--session", sessionKey).WithOutput(&out).WithEnv(env).Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(out.String(), `"status":"unlocked"`) {
+		t.Fatal(out.String())
+	}
+	return sessionKey, abs
+}
+
+func ensureVaultwardenConfigured(t *testing.T) {
+	testResourcesMu.Lock()
+	defer testResourcesMu.Unlock()
+
+	if areTestResourcesCreated {
+		return
+	}
 
 	webapiClient := webapi.NewClient(testServerURL)
 
 	userAlreadyExists := false
 	err := webapiClient.RegisterUser("test", testEmail, testPassword, kdfIterations)
-	if err != nil && !strings.Contains(err.Error(), "User already exists") {
+	if err != nil && strings.Contains(err.Error(), "User already exists") {
 		userAlreadyExists = true
 	}
 
@@ -148,7 +199,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	testItemLoginID = createTestResourceLogin(t, bwClient)
 	testItemSecureNoteID = createTestResourceSecureNote(t, bwClient)
 
-	isTestProviderConfigured = true
+	areTestResourcesCreated = true
 }
 
 func createTestResourceFolder(t *testing.T, bwClient bw.Client) string {
@@ -204,4 +255,14 @@ func createTestResourceSecureNote(t *testing.T, bwClient bw.Client) string {
 		t.Fatal(err)
 	}
 	return note.ID
+}
+
+func tfTestProvider() string {
+	return fmt.Sprintf(`
+	provider "bitwarden" {
+		master_password = "%s"
+		server          = "%s"
+		email           = "%s"
+	}
+`, testPassword, testServerURL, testEmail)
 }

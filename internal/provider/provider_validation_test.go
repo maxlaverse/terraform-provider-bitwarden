@@ -9,7 +9,7 @@ import (
 )
 
 func TestProviderSchemaValidity(t *testing.T) {
-	if err := New("dev")().InternalValidate(); err != nil {
+	if err := New(versionDev)().InternalValidate(); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 }
@@ -23,7 +23,7 @@ func TestProviderAuthAPIMethodValid(t *testing.T) {
 		"master_password": "master-password-9",
 	}
 
-	diag := New("dev")().Validate(terraform.NewResourceConfigRaw(raw))
+	diag := New(versionDev)().Validate(terraform.NewResourceConfigRaw(raw))
 
 	assert.False(t, diag.HasError())
 }
@@ -36,7 +36,7 @@ func TestProviderAuthAPIMethodMissingClientIDThrowsError(t *testing.T) {
 		"master_password": "master-password-9",
 	}
 
-	diag := New("dev")().Validate(terraform.NewResourceConfigRaw(raw))
+	diag := New(versionDev)().Validate(terraform.NewResourceConfigRaw(raw))
 
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, "Missing required argument", diag[0].Summary)
@@ -52,7 +52,7 @@ func TestProviderAuthAPIMethodMissingClientSecretThrowsError(t *testing.T) {
 		"master_password": "master-password-9",
 	}
 
-	diag := New("dev")().Validate(terraform.NewResourceConfigRaw(raw))
+	diag := New(versionDev)().Validate(terraform.NewResourceConfigRaw(raw))
 
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, "Missing required argument", diag[0].Summary)
@@ -68,7 +68,7 @@ func TestProviderAuthAPIMethodMissingMasterPasswordThrowsError(t *testing.T) {
 		"client_secret": "client-secret-5678",
 	}
 
-	diag := New("dev")().Validate(terraform.NewResourceConfigRaw(raw))
+	diag := New(versionDev)().Validate(terraform.NewResourceConfigRaw(raw))
 
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, "Missing required argument", diag[0].Summary)
@@ -82,7 +82,7 @@ func TestProviderAuthPasswordMethodMissingMasterPasswordThrowsError(t *testing.T
 		"email":  "test@laverse.net",
 	}
 
-	diag := New("dev")().Validate(terraform.NewResourceConfigRaw(raw))
+	diag := New(versionDev)().Validate(terraform.NewResourceConfigRaw(raw))
 
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, "Missing required argument", diag[0].Summary)
@@ -92,13 +92,12 @@ func TestProviderAuthPasswordMethodMissingMasterPasswordThrowsError(t *testing.T
 
 func TestProviderAuthSessionMethodValid(t *testing.T) {
 	raw := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"email":           "test@laverse.net",
-		"session_key":     "1234",
-		"master_password": "master-password-9",
+		"server":      "http://127.0.0.1/",
+		"email":       "test@laverse.net",
+		"session_key": "1234",
 	}
 
-	diag := New("dev")().Validate(terraform.NewResourceConfigRaw(raw))
+	diag := New(versionDev)().Validate(terraform.NewResourceConfigRaw(raw))
 
 	assert.False(t, diag.HasError())
 }
@@ -109,7 +108,7 @@ func TestProviderAuthAllMethodsMissingEmailThrowsError(t *testing.T) {
 		"master_password": "master-password-9",
 	}
 
-	diag := New("dev")().Validate(terraform.NewResourceConfigRaw(raw))
+	diag := New(versionDev)().Validate(terraform.NewResourceConfigRaw(raw))
 
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, "Missing required argument", diag[0].Summary)
@@ -123,7 +122,7 @@ func TestProviderAuthAllMethodsMissingServerNoError(t *testing.T) {
 		"master_password": "master-password-9",
 	}
 
-	diag := New("dev")().Validate(terraform.NewResourceConfigRaw(raw))
+	diag := New(versionDev)().Validate(terraform.NewResourceConfigRaw(raw))
 
 	assert.False(t, diag.HasError())
 }
