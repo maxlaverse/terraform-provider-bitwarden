@@ -61,3 +61,34 @@ func TestVaultFromServer(t *testing.T) {
 	}
 
 }
+
+func TestVaultOfUser(t *testing.T) {
+	testCases := []struct {
+		vaultEmail     string
+		providerEmail  string
+		expectedResult bool
+	}{
+		{
+			vaultEmail:     "test@laverse.net",
+			providerEmail:  "test@laverse.net",
+			expectedResult: true,
+		},
+		{
+			vaultEmail:     "test@laverse.net",
+			providerEmail:  "unknown@laverse.net",
+			expectedResult: false,
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run("", func(t *testing.T) {
+			status := &Status{
+				UserEmail: test.vaultEmail,
+			}
+			match := status.VaultOfUser(test.providerEmail)
+
+			assert.Equal(t, test.expectedResult, match)
+		})
+	}
+
+}

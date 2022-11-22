@@ -58,10 +58,6 @@ func (s *Status) VaultOfUser(email string) bool {
 	return s.UserEmail == email
 }
 
-func (s *Status) FreshDataFile() bool {
-	return len(s.UserEmail) == 0 && len(s.ServerURL) == 0 && s.Status == StatusUnauthenticated
-}
-
 func trimSlashSuffix(serverUrl string) string {
 	return strings.TrimSuffix(serverUrl, "/")
 }
