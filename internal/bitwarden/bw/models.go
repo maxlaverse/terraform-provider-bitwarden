@@ -63,9 +63,26 @@ func trimSlashSuffix(serverUrl string) string {
 }
 
 type Login struct {
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
-	Totp     string `json:"totp,omitempty"`
+	Username string     `json:"username,omitempty"`
+	Password string     `json:"password,omitempty"`
+	Totp     string     `json:"totp,omitempty"`
+	URIs     []LoginURI `json:"uris,omitempty"`
+}
+
+type URIMatch int
+
+const (
+	URIMatchBaseDomain URIMatch = 0
+	URIMatchHost       URIMatch = 1
+	URIMatchStartWith  URIMatch = 2
+	URIMatchExact      URIMatch = 3
+	URIMatchRegExp     URIMatch = 4
+	URIMatchNever      URIMatch = 5
+)
+
+type LoginURI struct {
+	Match *URIMatch `json:"match,omitempty"`
+	URI   string    `json:"uri,omitempty"`
 }
 
 type SecureNote struct {

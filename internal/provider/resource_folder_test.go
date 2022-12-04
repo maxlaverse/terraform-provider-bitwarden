@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -10,36 +9,35 @@ import (
 func TestAccResourceFolder(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
+	resourceName := "bitwarden_folder.foo"
+	var objectID string
+
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfTestProvider() + tfTestResourceFolder(),
+				Config: tfConfigProvider() + tfConfigResourceFolder(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestMatchResourceAttr(
-						"bitwarden_folder.foo", attributeID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_folder.foo", attributeName, regexp.MustCompile("^bar$"),
-					),
+					checkObject(resourceName),
+					getObjectID(resourceName, &objectID),
 				),
 			},
 			{
-				Config:           tfTestProvider() + `resource "bitwarden_folder" "foo_import" { provider = bitwarden }`,
-				ResourceName:     "bitwarden_folder.foo_import",
-				ImportState:      true,
-				ImportStateId:    testFolderID,
-				ImportStateCheck: hasOneInstanceState,
+				ResourceName:      resourceName,
+				ImportStateId:     objectID,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
 }
 
-func tfTestResourceFolder() string {
+func tfConfigResourceFolder() string {
 	return `
 resource "bitwarden_folder" "foo" {
-	provider 			= bitwarden
-	name     			= "bar"
+	provider = bitwarden
+
+	name     = "folder-bar"
 }
 `
 }

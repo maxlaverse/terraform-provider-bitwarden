@@ -11,8 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/executor"
 )
@@ -21,14 +22,11 @@ const (
 	// Constants used to interact with a test Vaultwarden instance
 	testEmail     = "test@laverse.net"
 	testPassword  = "test1234"
-	kdfIterations = 100000
+	kdfIterations = 10000
 )
 
 // Generated resources used for testing
 var testServerURL string
-var testFolderID string
-var testItemLoginID string
-var testItemSecureNoteID string
 var testOrganizationID string
 var testCollectionID string
 
@@ -152,112 +150,10 @@ func ensureVaultwardenConfigured(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	abs, err := filepath.Abs("./.bitwarden")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	bwExecutable, err := exec.LookPath("bw")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	bwClient := bw.NewClient(bwExecutable, bw.WithAppDataDir(abs))
-	status, err := bwClient.Status()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if status.ServerURL != testServerURL || status.UserEmail != testEmail {
-		if status.Status != bw.StatusUnauthenticated {
-			err = bwClient.Logout()
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-
-		err = bwClient.SetServer(testServerURL)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		err = bwClient.LoginWithPassword(testEmail, testPassword)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if !bwClient.HasSessionKey() {
-		err = bwClient.Unlock(testPassword)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	// Create a couple of test resources
-	testFolderID = createTestResourceFolder(t, bwClient)
-	testItemLoginID = createTestResourceLogin(t, bwClient)
-	testItemSecureNoteID = createTestResourceSecureNote(t, bwClient)
-
 	areTestResourcesCreated = true
 }
 
-func createTestResourceFolder(t *testing.T, bwClient bw.Client) string {
-	newItem := bw.Object{
-		Name:   fmt.Sprintf("folder-%d", time.Now().Unix()),
-		Object: bw.ObjectTypeFolder,
-	}
-	folder, err := bwClient.CreateObject(newItem)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return folder.ID
-}
-
-func createTestResourceLogin(t *testing.T, bwClient bw.Client) string {
-	newItem := bw.Object{
-		Name:   fmt.Sprintf("login-%d", time.Now().Unix()),
-		Object: bw.ObjectTypeItem,
-		Type:   bw.ItemTypeLogin,
-		Login: bw.Login{
-			Username: "test-user",
-			Password: "test-password",
-		},
-	}
-	login, err := bwClient.CreateObject(newItem)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return login.ID
-}
-
-func createTestResourceSecureNote(t *testing.T, bwClient bw.Client) string {
-	newItem := bw.Object{
-		Name:   fmt.Sprintf("secure-note-%d", time.Now().Unix()),
-		Object: bw.ObjectTypeItem,
-		Type:   bw.ItemTypeSecureNote,
-		Notes:  "Hello this is my note",
-		Fields: []bw.Field{
-			{
-				Name:  "field-1",
-				Value: "value-1",
-				Type:  bw.FieldTypeText,
-			},
-			{
-				Name:  "field-2",
-				Value: "value-2",
-				Type:  bw.FieldTypeHidden,
-			},
-		},
-	}
-	note, err := bwClient.CreateObject(newItem)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return note.ID
-}
-
-func tfTestProvider() string {
+func tfConfigProvider() string {
 	return fmt.Sprintf(`
 	provider "bitwarden" {
 		master_password = "%s"
@@ -265,4 +161,16 @@ func tfTestProvider() string {
 		email           = "%s"
 	}
 `, testPassword, testServerURL, testEmail)
+}
+
+func getObjectID(n string, folder *string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[n]
+		if !ok {
+			return fmt.Errorf("Not found: %s", n)
+		}
+
+		*folder = rs.Primary.ID
+		return nil
+	}
 }

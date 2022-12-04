@@ -1,8 +1,6 @@
 package provider
 
 import (
-	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -11,28 +9,28 @@ import (
 func TestAccDataSourceItemSecureNote(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
+	resourceName := "data.bitwarden_item_secure_note.foo_data"
+
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfTestProvider() + tfTestDataItemSecureNote(),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestMatchResourceAttr(
-						"data.bitwarden_item_secure_note.foo", attributeName, regexp.MustCompile("^secure-note-([0-9]+)$"),
-					),
-					resource.TestMatchResourceAttr(
-						"data.bitwarden_item_secure_note.foo", attributeNotes, regexp.MustCompile("^Hello this is my note$"),
-					),
-				),
+				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote(),
+			},
+			{
+				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote() + tfConfigDataItemSecureNote(),
+				Check:  checkItemGeneral(resourceName),
 			},
 		},
 	})
 }
 
-func tfTestDataItemSecureNote() string {
-	return fmt.Sprintf(`
-data "bitwarden_item_secure_note" "foo" {
-  id = "%s"
+func tfConfigDataItemSecureNote() string {
+	return `
+data "bitwarden_item_secure_note" "foo_data" {
+	provider 	= bitwarden
+
+	id 			= bitwarden_item_secure_note.foo.id
 }
-`, testItemSecureNoteID)
+`
 }

@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -79,6 +80,11 @@ func objectDataFromStruct(d *schema.ResourceData, obj *bw.Object) error {
 			return err
 		}
 
+		err = d.Set(attributeFavorite, obj.Favorite)
+		if err != nil {
+			return err
+		}
+
 		err = d.Set(attributeCollectionIDs, obj.CollectionIds)
 		if err != nil {
 			return err
@@ -114,6 +120,11 @@ func objectDataFromStruct(d *schema.ResourceData, obj *bw.Object) error {
 			if err != nil {
 				return err
 			}
+
+			err = d.Set(attributeLoginURIs, objectLoginURIsFromStruct(obj.Login.URIs))
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -141,8 +152,8 @@ func objectStructFromData(d *schema.ResourceData) bw.Object {
 			obj.FolderID = v
 		}
 
-		if v, ok := d.Get(attributeFavorite).(bool); ok {
-			obj.Favorite = v
+		if v, ok := d.Get(attributeFavorite).(bool); ok && v {
+			obj.Favorite = true
 		}
 
 		if v, ok := d.Get(attributeNotes).(string); ok {
@@ -177,6 +188,9 @@ func objectStructFromData(d *schema.ResourceData) bw.Object {
 			}
 			if v, ok := d.Get(attributeLoginUsername).(string); ok {
 				obj.Login.Username = v
+			}
+			if vList, ok := d.Get(attributeLoginURIs).([]interface{}); ok {
+				obj.Login.URIs = objectLoginURIsFromData(vList)
 			}
 		}
 	}
@@ -231,3 +245,86 @@ func objectFieldStructFromData(vList []interface{}) []bw.Field {
 	}
 	return fields
 }
+
+func objectLoginURIsFromData(vList []interface{}) []bw.LoginURI {
+	uris := make([]bw.LoginURI, len(vList))
+	for k, v := range vList {
+		vc := v.(map[string]interface{})
+		uris[k] = bw.LoginURI{
+			Match: strMatchToInt(vc[attributeLoginURIsMatch].(string)),
+			URI:   vc[attributeLoginURIsValue].(string),
+		}
+	}
+	return uris
+}
+
+func objectLoginURIsFromStruct(objUris []bw.LoginURI) []interface{} {
+	uris := make([]interface{}, len(objUris))
+	for k, f := range objUris {
+		uris[k] = map[string]interface{}{
+			attributeLoginURIsMatch: intMatchToStr(f.Match),
+			attributeLoginURIsValue: f.URI,
+		}
+	}
+	return uris
+}
+
+func intMatchToStr(match *bw.URIMatch) URIMatchStr {
+	if match == nil {
+		return URIMatchDefault
+	}
+
+	switch *match {
+	case bw.URIMatchBaseDomain:
+		return URIMatchBaseDomain
+	case bw.URIMatchHost:
+		return URIMatchHost
+	case bw.URIMatchStartWith:
+		return URIMatchStartWith
+	case bw.URIMatchExact:
+		return URIMatchExact
+	case bw.URIMatchRegExp:
+		return URIMatchRegExp
+	case bw.URIMatchNever:
+		return URIMatchNever
+	default:
+		log.Printf("unsupported integer value for URI match: '%d'. Falling back to default\n", *match)
+		return URIMatchDefault
+	}
+}
+
+func strMatchToInt(match string) *bw.URIMatch {
+	var v bw.URIMatch
+	switch match {
+	case string(URIMatchDefault):
+		return nil
+	case string(URIMatchBaseDomain):
+		v = bw.URIMatchBaseDomain
+	case string(URIMatchHost):
+		v = bw.URIMatchHost
+	case string(URIMatchStartWith):
+		v = bw.URIMatchStartWith
+	case string(URIMatchExact):
+		v = bw.URIMatchExact
+	case string(URIMatchRegExp):
+		v = bw.URIMatchRegExp
+	case string(URIMatchNever):
+		v = bw.URIMatchNever
+	default:
+		log.Printf("unsupported string value for URI match: '%s'. Falling back to default\n", match)
+		return nil
+	}
+	return &v
+}
+
+type URIMatchStr string
+
+const (
+	URIMatchDefault    URIMatchStr = "default"
+	URIMatchBaseDomain URIMatchStr = "base_domain"
+	URIMatchHost       URIMatchStr = "host"
+	URIMatchStartWith  URIMatchStr = "start_with"
+	URIMatchExact      URIMatchStr = "exact"
+	URIMatchRegExp     URIMatchStr = "regexp"
+	URIMatchNever      URIMatchStr = "never"
+)

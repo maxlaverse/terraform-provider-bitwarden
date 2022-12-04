@@ -59,6 +59,7 @@ resource "bitwarden_item_login" "administrative-user" {
 - `password` (String, Sensitive) Login password.
 - `reprompt` (Boolean) Require master password “re-prompt” when displaying secret in the UI.
 - `totp` (String, Sensitive) Verification code.
+- `uri` (Block List) URI. (see [below for nested schema](#nestedblock--uri))
 - `username` (String, Sensitive) Login username.
 
 ### Read-Only
@@ -79,6 +80,18 @@ Optional:
 - `hidden` (String) Value of a hidden text field.
 - `linked` (String) Value of a linked field.
 - `text` (String) Value of a text field.
+
+
+<a id="nestedblock--uri"></a>
+### Nested Schema for `uri`
+
+Required:
+
+- `value` (String) URI Value
+
+Optional:
+
+- `match` (String) URI Match
 
 ## Import
 
