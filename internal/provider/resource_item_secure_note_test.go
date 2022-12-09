@@ -2,7 +2,6 @@ package provider
 
 import (
 	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -11,75 +10,41 @@ import (
 func TestAccResourceItemSecureNote(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
+	resourceName := "bitwarden_item_secure_note.foo"
+	var objectID string
+
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfTestProvider() + tfTestResourceItemSecureNote(),
+				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_secure_note.foo", attributeFolderID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_secure_note.foo", attributeID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
-					),
-					resource.TestCheckResourceAttr(
-						"bitwarden_item_secure_note.foo", attributeName, "bar",
-					),
-					resource.TestCheckResourceAttr(
-						"bitwarden_item_secure_note.foo", attributeNotes, "notes",
-					),
-					resource.TestCheckResourceAttr(
-						"bitwarden_item_secure_note.foo", fmt.Sprintf("%s.2.hidden", attributeField), "value-hidden",
-					),
+					checkItemGeneral(resourceName),
+					getObjectID(resourceName, &objectID),
 				),
 			},
 			{
-				Config: tfTestProvider() + tfTestResourceItemSecureNoteList(),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_secure_note.foo_in_org", attributeFolderID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_secure_note.foo_in_org", attributeID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
-					),
-					resource.TestCheckResourceAttr(
-						"bitwarden_item_secure_note.foo_in_org", attributeName, "bar",
-					),
-					resource.TestCheckResourceAttr(
-						"bitwarden_item_secure_note.foo_in_org", attributeNotes, "notes",
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_secure_note.foo_in_org", attributeOrganizationID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_secure_note.foo_in_org", fmt.Sprintf("%s.#", attributeCollectionIDs), regexp.MustCompile("^1$"),
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_secure_note.foo_in_org", fmt.Sprintf("%s.0", attributeCollectionIDs), regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
-					),
-				),
-			},
-			{
-				Config:           tfTestProvider() + `resource "bitwarden_item_secure_note" "foo_import" { provider = bitwarden }`,
-				ResourceName:     "bitwarden_item_secure_note.foo_import",
-				ImportState:      true,
-				ImportStateId:    testItemSecureNoteID,
-				ImportStateCheck: hasOneInstanceState,
+				ResourceName:      resourceName,
+				ImportStateId:     objectID,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
 }
 
-func tfTestResourceItemSecureNote() string {
+func tfConfigResourceItemSecureNote() string {
 	return fmt.Sprintf(`
 	resource "bitwarden_item_secure_note" "foo" {
 		provider 			= bitwarden
 
-		folder_id 			= "%s"
-		name     			= "bar"
+		organization_id     = "%s"
+		collection_ids		= ["%s"]
+		folder_id 			= bitwarden_folder.foo.id
+		name     			= "secure-bar"
 		notes 				= "notes"
 		reprompt			= true
+		favorite            = true 
 
 		field {
 			name = "field-text"
@@ -96,19 +61,5 @@ func tfTestResourceItemSecureNote() string {
 			hidden = "value-hidden"
 		}
 	}
-`, testFolderID)
-}
-
-func tfTestResourceItemSecureNoteList() string {
-	return fmt.Sprintf(`
-	resource "bitwarden_item_secure_note" "foo_in_org" {
-		provider 			= bitwarden
-
-		organization_id		= "%s"
-		collection_ids		= ["%s"]
-		folder_id 			= "%s"
-		name     			= "bar"
-		notes 				= "notes"
-	}
-`, testOrganizationID, testCollectionID, testFolderID)
+`, testOrganizationID, testCollectionID)
 }

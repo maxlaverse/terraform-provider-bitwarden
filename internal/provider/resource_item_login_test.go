@@ -11,62 +11,170 @@ import (
 func TestAccResourceItemLogin(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
+	resourceName := "bitwarden_item_login.foo"
+	var objectID string
+
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfTestProvider() + tfTestResourceItemLogin(),
+				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_login.foo", attributeFolderID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_login.foo", attributeID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_login.foo", attributeLoginPassword, regexp.MustCompile("^test-password$"),
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_login.foo", attributeLoginTotp, regexp.MustCompile("^1234$"),
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_login.foo", attributeLoginUsername, regexp.MustCompile("^test-username$"),
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_login.foo", attributeName, regexp.MustCompile("^bar$"),
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_login.foo", attributeNotes, regexp.MustCompile("^notes$"),
-					),
-					resource.TestMatchResourceAttr(
-						"bitwarden_item_login.foo", attributeOrganizationID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
-					),
+					checkItemLogin(resourceName),
+					getObjectID(resourceName, &objectID),
 				),
 			},
 			{
-				Config:           tfTestProvider() + `resource "bitwarden_item_login" "foo_import" { provider = bitwarden }`,
-				ResourceName:     "bitwarden_item_login.foo_import",
-				ImportState:      true,
-				ImportStateId:    testItemLoginID,
-				ImportStateCheck: hasOneInstanceState,
+				ResourceName:      resourceName,
+				ImportStateId:     objectID,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
 }
 
-func tfTestResourceItemLogin() string {
+func tfConfigResourceItemLogin() string {
 	return fmt.Sprintf(`
 	resource "bitwarden_item_login" "foo" {
 		provider 			= bitwarden
 
-		organization_id		= "%s"
+		organization_id     = "%s"
 		collection_ids		= ["%s"]
-		folder_id 			= "%s"
+		folder_id 			= bitwarden_folder.foo.id
 		username 			= "test-username"
 		password 			= "test-password"
 		totp 				= "1234"
-		name     			= "bar"
+		name     			= "login-bar"
 		notes 				= "notes"
+		reprompt			= true
+		favorite            = true
+
+		field {
+			name = "field-text"
+			text = "value-text"
+		}
+
+		field {
+			name    = "field-boolean"
+			boolean = true
+		}
+
+		field {
+			name   = "field-hidden"
+			hidden = "value-hidden"
+		}
+
+		uri {
+			match = "default"
+			value = "https://default"
+		}
+
+		uri {
+			match = "base_domain"
+			value = "https://base_domain"
+		}
+
+		uri {
+			match = "host"
+			value = "https://host"
+		}
+
+		uri {
+			match = "start_with"
+			value = "https://start_with"
+		}
+
+		uri {
+			match = "exact"
+			value = "https://exact"
+		}
+
+		uri {
+			match = "regexp"
+			value = "https://regexp"
+		}
+
+		uri {
+			match = "never"
+			value = "https://never"
+		}
+
+		uri {
+			value = "https://default"
+		}
 	}
-`, testOrganizationID, testCollectionID, testFolderID)
+`, testOrganizationID, testCollectionID)
+}
+
+func checkItemLogin(resourceName string) resource.TestCheckFunc {
+	return resource.ComposeTestCheckFunc(
+		checkItemGeneral(resourceName),
+		resource.TestMatchResourceAttr(
+			resourceName, attributeLoginUsername, regexp.MustCompile("^test-username$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, attributeLoginPassword, regexp.MustCompile("^test-password$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, attributeLoginTotp, regexp.MustCompile("^1234$"),
+		),
+		checkItemLoginUriMatches(resourceName),
+	)
+}
+
+func checkItemLoginUriMatches(resourceName string) resource.TestCheckFunc {
+	return resource.ComposeTestCheckFunc(
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.#", attributeLoginURIs), regexp.MustCompile("^8$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.0.match", attributeLoginURIs), regexp.MustCompile("^default$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.0.value", attributeLoginURIs), regexp.MustCompile("^https://default$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.1.match", attributeLoginURIs), regexp.MustCompile("^base_domain$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.1.value", attributeLoginURIs), regexp.MustCompile("^https://base_domain$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.2.match", attributeLoginURIs), regexp.MustCompile("^host$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.2.value", attributeLoginURIs), regexp.MustCompile("^https://host$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.3.match", attributeLoginURIs), regexp.MustCompile("^start_with$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.3.value", attributeLoginURIs), regexp.MustCompile("^https://start_with$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.4.match", attributeLoginURIs), regexp.MustCompile("^exact$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.4.value", attributeLoginURIs), regexp.MustCompile("^https://exact$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.5.match", attributeLoginURIs), regexp.MustCompile("^regexp$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.5.value", attributeLoginURIs), regexp.MustCompile("^https://regexp$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.6.match", attributeLoginURIs), regexp.MustCompile("^never$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.6.value", attributeLoginURIs), regexp.MustCompile("^https://never$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.7.match", attributeLoginURIs), regexp.MustCompile("^default$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s.7.value", attributeLoginURIs), regexp.MustCompile("^https://default$"),
+		),
+	)
 }

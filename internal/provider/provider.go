@@ -128,11 +128,9 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 		return err
 	}
 
-	if status.Status == bw.StatusLocked || status.Status == bw.StatusUnlocked {
-		err = logoutIfIdentityChanged(d, bwClient, status)
-		if err != nil {
-			return err
-		}
+	err = logoutIfIdentityChanged(d, bwClient, status)
+	if err != nil {
+		return err
 	}
 
 	// Scenario 1: The Vault is already *unlocked*, there is nothing else to
@@ -199,25 +197,21 @@ func loginMethod(d *schema.ResourceData) LoginMethod {
 }
 
 func logoutIfIdentityChanged(d *schema.ResourceData, bwClient bw.Client, status *bw.Status) error {
-	email := d.Get(attributeEmail)
-	serverURL := d.Get(attributeServer)
-	if !status.VaultOfUser(email.(string)) {
+	email := d.Get(attributeEmail).(string)
+	serverURL := d.Get(attributeServer).(string)
+
+	if (status.Status == bw.StatusLocked || status.Status == bw.StatusUnlocked) && (!status.VaultOfUser(email) || !status.VaultFromServer(serverURL)) {
 		status.Status = bw.StatusUnauthenticated
 
-		log.Printf("Logging out as the local Vault belongs to a different email (vault: '%v', provider: '%s')\n", status.UserEmail, email)
+		log.Printf("Logging out as the local Vault belongs to a different identity (vault: '%v' on  '%s', provider: '%v' on '%s')\n", status.UserEmail, status.ServerURL, email, status.ServerURL)
 		err := bwClient.Logout()
 		if err != nil {
 			return err
 		}
-	} else if !status.VaultFromServer(serverURL.(string)) {
-		status.Status = bw.StatusUnauthenticated
+	}
 
-		log.Printf("Logging out as the local Vault comes from a different server (vault: '%v', provider: '%s')\n", status.ServerURL, status.ServerURL)
-		err := bwClient.Logout()
-		if err != nil {
-			return err
-		}
-		err = bwClient.SetServer(serverURL.(string))
+	if !status.VaultFromServer(serverURL) {
+		err := bwClient.SetServer(serverURL)
 		if err != nil {
 			return err
 		}

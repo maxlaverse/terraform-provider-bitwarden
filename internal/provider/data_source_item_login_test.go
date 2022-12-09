@@ -1,8 +1,6 @@
 package provider
 
 import (
-	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -11,31 +9,28 @@ import (
 func TestAccDataSourceItemLogin(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
+	resourceName := "data.bitwarden_item_login.foo_data"
+
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfTestProvider() + tfTestDataItemLogin(),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestMatchResourceAttr(
-						"data.bitwarden_item_login.foo", attributeName, regexp.MustCompile("^login-([0-9]+)$"),
-					),
-					resource.TestMatchResourceAttr(
-						"data.bitwarden_item_login.foo", attributeLoginUsername, regexp.MustCompile("^test-user$"),
-					),
-					resource.TestMatchResourceAttr(
-						"data.bitwarden_item_login.foo", attributeLoginPassword, regexp.MustCompile("^test-password$"),
-					),
-				),
+				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin(),
+			},
+			{
+				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin() + tfConfigDataItemLogin(),
+				Check:  checkItemLogin(resourceName),
 			},
 		},
 	})
 }
 
-func tfTestDataItemLogin() string {
-	return fmt.Sprintf(`
-data "bitwarden_item_login" "foo" {
-  id = "%s"
+func tfConfigDataItemLogin() string {
+	return `
+data "bitwarden_item_login" "foo_data" {
+	provider	= bitwarden
+
+	id 			= bitwarden_item_login.foo.id
 }
-`, testItemLoginID)
+`
 }

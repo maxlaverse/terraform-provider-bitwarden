@@ -59,6 +59,7 @@ data "bitwarden_item_login" "mysql-root-credentials" {
 - `reprompt` (Boolean) Require master password “re-prompt” when displaying secret in the UI.
 - `revision_date` (String) Last time the item was updated.
 - `totp` (String, Sensitive) Verification code.
+- `uri` (List of Object) URI. (see [below for nested schema](#nestedatt--uri))
 - `username` (String, Sensitive) Login username.
 
 <a id="nestedatt--field"></a>
@@ -71,5 +72,14 @@ Read-Only:
 - `linked` (String)
 - `name` (String)
 - `text` (String)
+
+
+<a id="nestedatt--uri"></a>
+### Nested Schema for `uri`
+
+Read-Only:
+
+- `match` (String)
+- `value` (String)
 
 
