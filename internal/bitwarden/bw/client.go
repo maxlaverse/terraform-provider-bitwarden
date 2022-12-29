@@ -21,6 +21,7 @@ type Client interface {
 	HasSessionKey() bool
 	SetSessionKey(string)
 	GetObject(Object) (*Object, error)
+	GetItemAttachment(attachmentId string) (*Object, error)
 	LoginWithPassword(username, password string) error
 	LoginWithAPIKey(password, clientId, clientSecret string) error
 	Logout() error
@@ -67,23 +68,48 @@ func DisableSync() Options {
 }
 
 func (c *client) CreateObject(obj Object) (*Object, error) {
-	objEncoded, err := c.encode(obj)
-	if err != nil {
-		return nil, err
+	var out []byte
+	var err error
+	if string(obj.Object) == "attachment" {
+		out, err = c.cmdWithSession("create", string(obj.Object), "--file", obj.File, "--itemid", obj.ItemId).RunCaptureOutput()
+		if err != nil {
+			return nil, err
+		}
+		var tmpObj Object
+		err = json.Unmarshal(out, &tmpObj)
+		if err != nil {
+			return nil, err
+		}
+		result := filterAttachments(tmpObj.Attachments, func(val Attachment) bool {
+			return val.FileName == obj.FileName
+		})
+		if len(result) > 0 {
+			obj.ID = result[len(result)-1].Id
+		} else {
+			return nil, errors.New("error retrieving new attachment Id")
+		}
+
+	} else {
+		objEncoded, err := c.encode(obj)
+		if err != nil {
+			return nil, err
+		}
+
+		out, err = c.cmdWithSession("create", string(obj.Object), objEncoded).RunCaptureOutput()
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(out, &obj)
+		if err != nil {
+			return nil, unmarshallError("create object", err, out)
+		}
 	}
 
-	out, err := c.cmdWithSession("create", string(obj.Object), objEncoded).RunCaptureOutput()
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(out, &obj)
-	if err != nil {
-		return nil, unmarshallError("create object", err, out)
-	}
 	err = c.Sync()
 	if err != nil {
 		return nil, fmt.Errorf("error syncing: %v, %v", err, string(out))
 	}
+
 	return &obj, nil
 }
 
@@ -110,17 +136,44 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 }
 
 func (c *client) GetObject(obj Object) (*Object, error) {
-	out, err := c.cmdWithSession("get", string(obj.Object), obj.ID).RunCaptureOutput()
-	if err != nil {
-		if string(out) == "Not found." {
-			return nil, ErrNotFound
+	var out []byte
+	var err error
+	if string(obj.Object) == "attachment" {
+		var tmpObj Object
+		out, err = c.cmdWithSession("get", "item", obj.ItemId).RunCaptureOutput()
+		if err != nil {
+			if string(out) == "Not found." {
+				return nil, ErrNotFound
+			}
+			return nil, err
 		}
-		return nil, err
-	}
 
-	err = json.Unmarshal(out, &obj)
-	if err != nil {
-		return nil, unmarshallError("get object", err, out)
+		err = json.Unmarshal(out, &tmpObj)
+		if err != nil {
+			return nil, err
+		}
+		result := filterAttachments(tmpObj.Attachments, func(val Attachment) bool {
+			return val.FileName == obj.FileName
+		})
+		if len(result) > 0 {
+			obj.ID = result[len(result)-1].Id
+		} else {
+			return nil, fmt.Errorf("error retrieving attachment %s for item %s", obj.ID, obj.ItemId)
+		}
+	} else {
+		out, err = c.cmdWithSession("get", string(obj.Object), obj.ID).RunCaptureOutput()
+
+		if err != nil {
+			if string(out) == "Not found." {
+				return nil, ErrNotFound
+			}
+			return nil, err
+		}
+
+		err = json.Unmarshal(out, &obj)
+		if err != nil {
+			return nil, unmarshallError("get object", err, out)
+		}
 	}
 
 	return &obj, nil
@@ -152,7 +205,11 @@ func (c *client) Logout() error {
 }
 
 func (c *client) RemoveObject(obj Object) error {
-	return c.cmdWithSession("delete", string(obj.Object), obj.ID).Run()
+	if string(obj.Object) == "attachment" {
+		return c.cmdWithSession("delete", string(obj.Object), obj.ID, "--itemid", obj.ItemId).Run()
+	} else {
+		return c.cmdWithSession("delete", string(obj.Object), obj.ID).Run()
+	}
 }
 
 func (c *client) SetServer(server string) error {
@@ -199,6 +256,36 @@ func (c *client) Sync() error {
 	return c.cmdWithSession("sync").Run()
 }
 
+func (c *client) GetItemAttachment(attachmentId string) (*Object, error) {
+	var items []Object
+	out, err := c.cmdWithSession("list", "items").RunCaptureOutput()
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(out, &items)
+	if err != nil {
+		return nil, unmarshallError("list object", err, out)
+	}
+
+	for _, item := range items {
+		if len(item.Attachments) > 0 {
+			for _, a := range item.Attachments {
+				if a.Id == attachmentId {
+					return &Object{
+						ID:       a.Id,
+						Object:   ObjectTypeItemAttachment,
+						ItemId:   item.ID,
+						FileName: a.FileName,
+					}, nil
+				}
+			}
+		}
+	}
+
+	return &Object{}, nil
+}
+
 func (c *client) cmd(args ...string) executor.Command {
 	return c.executor.NewCommand(c.execPath, args...).ClearEnv().WithEnv(c.env())
 }
@@ -230,4 +317,14 @@ func (c *client) encode(item Object) (string, error) {
 
 func unmarshallError(cmd string, err error, out []byte) error {
 	return fmt.Errorf("unable to parse '%s' result: %v, output: %v", cmd, err, string(out))
+}
+
+func filterAttachments(arr []Attachment, cond func(Attachment) bool) []Attachment {
+	attachments := make([]Attachment, 0)
+	for i := 0; i < len(arr); i++ {
+		if a := arr[i]; cond(a) {
+			attachments = append(attachments, a)
+		}
+	}
+	return attachments
 }

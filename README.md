@@ -60,6 +60,11 @@ resource "bitwarden_item_secure_note" "vpn-read-only-certs" {
   folder_id = bitwarden_folder.terraform-bw-folder.id
 }
 
+resource "bitwarden_item_attachment" "vpn-config" {
+  file = "./vpn-config.txt"
+  itemid = bitwarden_item_login.vpn-read-only-userpwd.id
+}
+
 # Read sensitive information from Bitwarden
 data "bitwarden_item_login" "mysql-root-credentials" {
   id = "ec4e447f-9aed-4203-b834-c8f3848828f7"
