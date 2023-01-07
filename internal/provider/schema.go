@@ -162,6 +162,14 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Type:        schema.TypeInt,
 			Computed:    true,
 		},
+		attributeAttachments: {
+			Description: descriptionAttachments,
+			Type:        schema.TypeList,
+			Elem: &schema.Resource{
+				Schema: attachmentSchema(),
+			},
+			Computed: true,
+		},
 	}
 }
 
@@ -182,6 +190,36 @@ func uriElem() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 			},
+		},
+	}
+}
+
+func attachmentSchema() map[string]*schema.Schema {
+	return map[string]*schema.Schema{
+		attributeID: {
+			Description: descriptionIdentifier,
+			Type:        schema.TypeString,
+			Computed:    true,
+		},
+		attributeAttachmentFileName: {
+			Description: descriptionItemAttachmentFileName,
+			Type:        schema.TypeString,
+			Computed:    true,
+		},
+		attributeAttachmentSize: {
+			Description: descriptionItemAttachmentSize,
+			Type:        schema.TypeString,
+			Computed:    true,
+		},
+		attributeAttachmentSizeName: {
+			Description: descriptionItemAttachmentSizeName,
+			Type:        schema.TypeString,
+			Computed:    true,
+		},
+		attributeAttachmentURL: {
+			Description: descriptionItemAttachmentURL,
+			Type:        schema.TypeString,
+			Computed:    true,
 		},
 	}
 }

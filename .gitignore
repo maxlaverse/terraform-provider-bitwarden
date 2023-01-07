@@ -33,10 +33,12 @@ website/vendor
 
 # Keep windows files with windows line endings
 *.winfile eol=crlf
+
+# Project specific
 terraform-provider-bitwarden
 terraform-lock
-**/.bitwarden/data.json
 **/.terraform.lock.hcl
+**/data.json
 
 # Code coverage artifact
 profile.cov

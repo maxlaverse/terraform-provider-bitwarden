@@ -47,6 +47,7 @@ data "bitwarden_item_secure_note" "ssh_notes" {
 
 ### Read-Only
 
+- `attachments` (List of Object) List of item attachments. (see [below for nested schema](#nestedatt--attachments))
 - `collection_ids` (List of String) Identifier of the collections the item belongs to.
 - `favorite` (Boolean) Mark as a Favorite to have item appear at the top of your Vault in the UI.
 - `field` (List of Object, Sensitive) Extra fields. (see [below for nested schema](#nestedatt--field))
@@ -56,6 +57,18 @@ data "bitwarden_item_secure_note" "ssh_notes" {
 - `organization_id` (String) Identifier of the organization.
 - `reprompt` (Boolean) Require master password “re-prompt” when displaying secret in the UI.
 - `revision_date` (String) Last time the item was updated.
+
+<a id="nestedatt--attachments"></a>
+### Nested Schema for `attachments`
+
+Read-Only:
+
+- `file_name` (String)
+- `id` (String)
+- `size` (String)
+- `size_name` (String)
+- `url` (String)
+
 
 <a id="nestedatt--field"></a>
 ### Nested Schema for `field`

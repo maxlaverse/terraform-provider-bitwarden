@@ -93,6 +93,11 @@ func objectDataFromStruct(d *schema.ResourceData, obj *bw.Object) error {
 			return err
 		}
 
+		err = d.Set(attributeAttachments, objectAttachmentsFromStruct(obj.Attachments))
+		if err != nil {
+			return err
+		}
+
 		err = d.Set(attributeField, objectFieldDataFromStruct(obj))
 		if err != nil {
 			return err
@@ -178,6 +183,10 @@ func objectStructFromData(d *schema.ResourceData) bw.Object {
 			}
 		}
 
+		if vList, ok := d.Get(attributeAttachments).([]interface{}); ok {
+			obj.Attachments = objectAttachmentStructFromData(vList)
+		}
+
 		if v, ok := d.Get(attributeField).([]interface{}); ok {
 			obj.Fields = objectFieldStructFromData(v)
 		}
@@ -219,6 +228,35 @@ func objectFieldDataFromStruct(obj *bw.Object) []interface{} {
 		fields[k] = field
 	}
 	return fields
+}
+
+func objectAttachmentStructFromData(vList []interface{}) []bw.Attachment {
+	attachments := make([]bw.Attachment, len(vList))
+	for k, v := range vList {
+		vc := v.(map[string]interface{})
+		attachments[k] = bw.Attachment{
+			ID:       vc[attributeID].(string),
+			FileName: vc[attributeAttachmentFileName].(string),
+			Size:     vc[attributeAttachmentSize].(string),
+			SizeName: vc[attributeAttachmentSizeName].(string),
+			Url:      vc[attributeAttachmentURL].(string),
+		}
+	}
+	return attachments
+}
+
+func objectAttachmentsFromStruct(objAttachments []bw.Attachment) []interface{} {
+	attachments := make([]interface{}, len(objAttachments))
+	for k, f := range objAttachments {
+		attachments[k] = map[string]interface{}{
+			attributeID:                 f.ID,
+			attributeAttachmentFileName: f.FileName,
+			attributeAttachmentSize:     f.Size,
+			attributeAttachmentSizeName: f.SizeName,
+			attributeAttachmentURL:      f.Url,
+		}
+	}
+	return attachments
 }
 
 func objectFieldStructFromData(vList []interface{}) []bw.Field {

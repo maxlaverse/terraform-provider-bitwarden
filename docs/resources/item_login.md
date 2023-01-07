@@ -64,6 +64,7 @@ resource "bitwarden_item_login" "administrative-user" {
 
 ### Read-Only
 
+- `attachments` (List of Object) List of item attachments. (see [below for nested schema](#nestedatt--attachments))
 - `id` (String) Identifier.
 - `revision_date` (String) Last time the item was updated.
 
@@ -92,6 +93,18 @@ Required:
 Optional:
 
 - `match` (String) URI Match
+
+
+<a id="nestedatt--attachments"></a>
+### Nested Schema for `attachments`
+
+Read-Only:
+
+- `file_name` (String)
+- `id` (String)
+- `size` (String)
+- `size_name` (String)
+- `url` (String)
 
 ## Import
 

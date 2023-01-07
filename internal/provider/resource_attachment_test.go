@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-func TestAccResourceItemAttachment(t *testing.T) {
+func TestAccResourceAttachment(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "bitwarden_attachment.foo"
@@ -32,18 +32,7 @@ func TestAccResourceItemAttachment(t *testing.T) {
 					resource.TestMatchResourceAttr(
 						resourceName, attributeAttachmentItemID, regexp.MustCompile(regExpId),
 					),
-					resource.TestMatchResourceAttr(
-						resourceName, attributeAttachmentFileName, regexp.MustCompile(`^attachment1.txt$`),
-					),
-					resource.TestMatchResourceAttr(
-						resourceName, attributeAttachmentSize, regexp.MustCompile("^81$"),
-					),
-					resource.TestMatchResourceAttr(
-						resourceName, attributeAttachmentSizeName, regexp.MustCompile(`^81\.00 bytes$`),
-					),
-					resource.TestMatchResourceAttr(
-						resourceName, attributeAttachmentURL, regexp.MustCompile(`^http://127.0.0.1:8080/attachments/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}/[a-fA-F0-9]{20}$`),
-					),
+					checkAttachmentMatches(resourceName, ""),
 				),
 			},
 			{
@@ -54,6 +43,52 @@ func TestAccResourceItemAttachment(t *testing.T) {
 			},
 		},
 	})
+}
+
+func TestAccResourceItemAttachmentFields(t *testing.T) {
+	ensureVaultwardenConfigured(t)
+
+	resourceName := "bitwarden_item_login.foo"
+
+	resource.UnitTest(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+			},
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestMatchResourceAttr(
+						resourceName, "attachments.#", regexp.MustCompile("^1$"),
+					),
+					checkAttachmentMatches(resourceName, "attachments.0."),
+				),
+			},
+		},
+	})
+}
+
+func checkAttachmentMatches(resourceName, baseAttribute string) resource.TestCheckFunc {
+	return resource.ComposeTestCheckFunc(
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, attributeID), regexp.MustCompile("^[a-fA-F0-9]{20}$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, attributeAttachmentFileName), regexp.MustCompile(`^attachment1.txt$`),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, attributeAttachmentSize), regexp.MustCompile("^81$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, attributeAttachmentSizeName), regexp.MustCompile(`^81\.00 bytes$`),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, attributeAttachmentURL), regexp.MustCompile(`^http://127.0.0.1:8080/attachments/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}/[a-fA-F0-9]{20}$`),
+		),
+	)
 }
 
 func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
