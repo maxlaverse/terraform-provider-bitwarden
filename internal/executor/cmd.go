@@ -105,5 +105,11 @@ func (c *command) RunCaptureOutput() ([]byte, error) {
 
 func (c *command) CmdRun() error {
 	log.Printf("[DEBUG] Running command '%v'\n", c.cmd.Args)
-	return c.cmd.Run()
+	err := c.cmd.Run()
+	if err != nil {
+		log.Printf("[ERROR] Command '%v' finished with error: %v\n", c.cmd.Args, err)
+		return err
+	}
+	log.Printf("[DEBUG] Command '%v' finished with success\n", c.cmd.Args)
+	return nil
 }

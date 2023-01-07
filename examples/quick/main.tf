@@ -1,29 +1,35 @@
 variable "terraform_organization" {
   type        = string
-  description = "Terraform Organization Identifier"
+  description = "My Cloud Organization"
   default     = "ac901e49-5417-46e2-95fa-baf63186f751"
 }
 
-# Save sensitive Terraform generated data to Bitwarden
-resource "bitwarden_folder" "terraform-bw-folder" {
-  name = "Terraform Generated"
-}
-
-resource "bitwarden_item_login" "vpn-read-only-userpwd" {
-  name      = "VPN Read Only User/Password Access"
-  username  = "vpn-read-only"
-  password  = some_other_plugin.user-read-only.secret
-  folder_id = bitwarden_folder.terraform-bw-folder.id
-}
-
-resource "bitwarden_item_secure_note" "vpn-read-only-certs" {
-  name            = "VPN Read Only Certificate Access"
-  notes           = some_other_plugin.user-read-only.private_key
+resource "bitwarden_folder" "cloud_credentials" {
   organization_id = var.terraform_organization
+  name            = "My Cloud Credentials"
 }
+
+resource "bitwarden_item_login" "vpn_credentials" {
+  organization_id = var.terraform_organization
+  folder_id       = bitwarden_folder.cloud_credentials.id
+
+  name     = "VPN Read Only User/Password Access"
+  username = "vpn-user"
+  password = random_password.vpn_password.result
+}
+
+resource "bitwarden_item_secure_note" "vpn_note" {
+  organization_id = var.terraform_organization
+  folder_id       = bitwarden_folder.cloud_credentials.id
+
+  name  = "Notes on the preshared Secret"
+  notes = "It's 1234"
+}
+
 
 # Read sensitive information from Bitwarden
-data "bitwarden_item_login" "mysql-root-credentials" {
+# Using Login information
+data "bitwarden_item_login" "mysql_credentials" {
   id = "ec4e447f-9aed-4203-b834-c8f3848828f7"
 }
 
@@ -40,8 +46,19 @@ data "bitwarden_item_login" "mysql-root-credentials" {
 #    "<name-of-the-field-your-looking-for>"
 # )
 
-data "bitwarden_item_secure_note" "ssh-private-key" {
-  id = "a9e19f26-1b8c-4568-bc09-191e2cf56ed6"
+# Using Attachments
+data "bitwarden_attachment" "ssh_credentials" {
+  id      = "4d6a41364d6a4dea8ddb1a"
+  item_id = "59575167-4d36-5a58-466e-d9021926df8a"
 }
 
+resource "kubernetes_secret" "ssh" {
+  metadata {
+    name = "ssh"
+  }
+
+  data = {
+    "private.key" = data.bitwarden_attachment.ssh_credentials.content
+  }
+}
 # ....

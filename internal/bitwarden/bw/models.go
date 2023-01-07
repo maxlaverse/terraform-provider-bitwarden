@@ -28,9 +28,9 @@ const (
 type ObjectType string
 
 const (
-	ObjectTypeItem           ObjectType = "item"
-	ObjectTypeItemAttachment ObjectType = "attachment"
-	ObjectTypeFolder         ObjectType = "folder"
+	ObjectTypeItem       ObjectType = "item"
+	ObjectTypeAttachment ObjectType = "attachment"
+	ObjectTypeFolder     ObjectType = "folder"
 )
 
 type VaultStatus string
@@ -106,9 +106,6 @@ type Object struct {
 	Reprompt       int          `json:"reprompt,omitempty"`
 	Favorite       bool         `json:"favorite,omitempty"`
 	RevisionDate   *time.Time   `json:"revisionDate,omitempty"`
-	File           string       `json:"file,omitempty"`
-	FileName       string       `json:"fileName,omitempty"`
-	ItemId         string       `json:"itemid,omitempty"`
 	Attachments    []Attachment `json:"attachments,omitempty"`
 }
 
@@ -123,7 +120,7 @@ type Field struct {
 }
 
 type Attachment struct {
-	Id       string `json:"id,omitempty"`
+	ID       string `json:"id,omitempty"`
 	FileName string `json:"fileName,omitempty"`
 	Size     string `json:"size,omitempty"`
 	SizeName string `json:"sizeName,omitempty"`

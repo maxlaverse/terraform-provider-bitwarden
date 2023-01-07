@@ -12,7 +12,7 @@ func resourceItemLogin() *schema.Resource {
 	}
 
 	return &schema.Resource{
-		Description:   "Use this resource to set (amongst other things) the username and password of a Bitwarden Login item.",
+		Description:   "Manages a Vault Login item.",
 		CreateContext: createResource(bw.ObjectTypeItem, bw.ItemTypeLogin),
 		ReadContext:   objectRead,
 		UpdateContext: objectUpdate,

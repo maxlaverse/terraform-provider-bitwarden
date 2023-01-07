@@ -3,12 +3,12 @@
 page_title: "bitwarden_item_secure_note Resource - terraform-provider-bitwarden"
 subcategory: ""
 description: |-
-  Use this resource to set (amongst other things) the content of a Bitwarden Secret Note.
+  Manages a Vault Secure Note item.
 ---
 
 # bitwarden_item_secure_note (Resource)
 
-Use this resource to set (amongst other things) the content of a Bitwarden Secret Note.
+Manages a Vault Secure Note item.
 
 ## Example Usage
 

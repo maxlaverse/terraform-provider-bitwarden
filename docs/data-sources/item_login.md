@@ -3,12 +3,12 @@
 page_title: "bitwarden_item_login Data Source - terraform-provider-bitwarden"
 subcategory: ""
 description: |-
-  Use this data source to get (amongst other things) the username and password of a Bitwarden Login item for use in other resources.
+  Use this data source to get information on an existing Login.
 ---
 
 # bitwarden_item_login (Data Source)
 
-Use this data source to get (amongst other things) the username and password of a Bitwarden Login item for use in other resources.
+Use this data source to get information on an existing Login.
 
 ## Example Usage
 
@@ -21,19 +21,19 @@ Use this data source to get (amongst other things) the username and password of 
 # > "ec4e447f-9aed-4203-b834-c8f3848828f7"
 #
 
-data "bitwarden_item_login" "mysql-root-credentials" {
+data "bitwarden_item_login" "database_credentials" {
   id = "ec4e447f-9aed-4203-b834-c8f3848828f7"
 }
 
 # Later to be accessed as
-#   ... = data.bitwarden_item_login.mysql-root-credentials.username
-#   ... = data.bitwarden_item_login.mysql-root-credentials.password
+#   ... = data.bitwarden_item_login.database_credentials.username
+#   ... = data.bitwarden_item_login.database_credentials.password
 #
 # or for fields:
 # lookup(
 #    zipmap(
-#      data.bitwarden_item_login.mysql-root-credentials.field.*.name,
-#      data.bitwarden_item_login.mysql-root-credentials.field.*
+#      data.bitwarden_item_login.database_credentials.field.*.name,
+#      data.bitwarden_item_login.database_credentials.field.*
 #    ),
 #    "<name-of-the-field-your-looking-for>"
 # )

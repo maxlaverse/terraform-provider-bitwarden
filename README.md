@@ -21,65 +21,19 @@ This project is not associated with the Bitwarden project nor 8bit Solutions LLC
 
 ## Supported Versions
 The plugin has been tested and built with the following components:
-- [Terraform] >= 1.0.2
-- [Bitwarden CLI] >= 1.19.1
-- [Go] >= 1.18 (for development)
-- [Docker] >= 4.2 (for development)
+- [Terraform] v1.3.7
+- [Bitwarden CLI] v2023.1.0
+- [Go] 1.18.3 (for development)
+- [Docker] 20.10.21 (for development)
 
-The provider might work with older versions but those haven't been tested.
+The provider likely works with older versions but those haven't been tested.
 
 ## Usage
 
-Detailed documentation for using this provider can be found on the [Terraform Registry docs].
+The complete documentation for this provider can be found on the [Terraform Registry docs].
 
 ```tf
-# Provider declaration
-provider "bitwarden" {
-  master_password = var.bw_password
-  client_id       = var.bw_client_id
-  client_secret   = var.bw_client_secret
-  email           = "test@laverse.net"
-  server          = "https://vault.bitwarden.com"
-}
-
-# Save sensitive Terraform generated data to Bitwarden
-resource "bitwarden_folder" "terraform-bw-folder" {
-  name = "Terraform Generated"
-}
-
-resource "bitwarden_item_login" "vpn-read-only-userpwd" {
-  name      = "VPN Read Only User/Password Access"
-  username  = "vpn-read-only"
-  password  = <some_other_plugin>.user-read-only.secret
-  folder_id = bitwarden_folder.terraform-bw-folder.id
-}
-
-resource "bitwarden_item_secure_note" "vpn-read-only-certs" {
-  name      = "VPN Read Only Certificate Access"
-  notes     = <some_other_plugin>.user-read-only.private_key
-  folder_id = bitwarden_folder.terraform-bw-folder.id
-}
-
-resource "bitwarden_item_attachment" "vpn-config" {
-  file = "./vpn-config.txt"
-  itemid = bitwarden_item_login.vpn-read-only-userpwd.id
-}
-
-# Read sensitive information from Bitwarden
-data "bitwarden_item_login" "mysql-root-credentials" {
-  id = "ec4e447f-9aed-4203-b834-c8f3848828f7"
-}
-
-# Later to be accessed as
-#   ... = data.bitwarden_item_login.mysql-root-credentials.username
-#   ... = data.bitwarden_item_login.mysql-root-credentials.password
-
-data "bitwarden_item_secure_note" "ssh-private-key" {
-  id = "a9e19f26-1b8c-4568-bc09-191e2cf56ed6"
-}
-
-# ....
-# Bitwarden Credentials
+# Setting up the Provider
 variable "bw_password" {
   type        = string
   description = "Bitwarden Master Key"
@@ -98,22 +52,97 @@ variable "bw_client_secret" {
   sensitive   = true
 }
 
-# Provider configuration
 terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.1.1"
+      version = ">= 0.5.0"
     }
   }
-  required_version = ">= 1.0.2"
 }
 
+provider "bitwarden" {
+  master_password = var.bw_password
+  client_id       = var.bw_client_id
+  client_secret   = var.bw_client_secret
+  email           = "test@laverse.net"
+  server          = "https://vault.bitwarden.com"
+}
+
+
+# Managing Folders
+resource "bitwarden_folder" "cloud_credentials" {
+  name = "My Cloud Credentials"
+}
+
+
+# Managing Logins and Secure Notes
+resource "random_password" "vpn_password" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+resource "bitwarden_item_login" "vpn_credentials" {
+  folder_id = bitwarden_folder.cloud_credentials.id
+
+  name      = "VPN Read Only User/Password Access"
+  username  = "vpn-user"
+  password  = random_password.vpn_password.result
+}
+
+resource "bitwarden_item_secure_note" "vpn_note" {
+  folder_id = bitwarden_folder.cloud_credentials.id
+
+  name      = "Notes on the preshared Secret"
+  notes     = "It's 1234"
+}
+
+
+# Managing Attachments
+resource "bitwarden_attachment" "vpn_config" {
+  file = "./vpn_config.txt"
+  item_id = bitwarden_item_login.vpn_note.id
+}
+
+
+# Using Login information
+data "bitwarden_item_login" "mysql_credentials" {
+  id = "ec4e447f-9aed-4203-b834-c8f3848828f7"
+}
+
+resource "kubernetes_secret" "database" {
+  metadata {
+    name = "database"
+  }
+
+  data = {
+    username = data.bitwarden_item_login.mysql_root_credentials.username
+    password = data.bitwarden_item_login.mysql_root_credentials.password
+  }
+}
+
+
+# Using Attachments
+data "bitwarden_attachment" "ssh_credentials" {
+  id = "4d6a41364d6a4dea8ddb1a"
+  item_id = "59575167-4d36-5a58-466e-d9021926df8a"
+}
+
+resource "kubernetes_secret" "ssh" {
+  metadata {
+    name = "ssh"
+  }
+
+  data = {
+    "private.key" = data.bitwarden_attachment.ssh_credentials.content
+  }
+}
 ```
 
-See the [examples](./examples/) directory for a full example.
+See the [examples](./examples/) directory for more examples.
 
-## Security considerations
+## Security Considerations
 
 The Terraform Bitwarden provider entirely relies on the [Bitwarden CLI] to interact with Vaults.
 When you ask Terraform to *plan* or *apply* changes, the provider downloads the encrypted Vault locally as if you would use the Bitwarden CLI directly.
@@ -131,7 +160,7 @@ To compile the provider, run `go install`. This will build the provider and put 
 
 To generate or update documentation, run `go generate`.
 
-In order to run the full suite of Acceptance tests, first start a Vaultwarden server:
+In order to run the full suite of Acceptance tests, start a Vaultwarden server:
 ```sh
 $ docker run -ti \
   -e I_REALLY_WANT_VOLATILE_STORAGE=true \

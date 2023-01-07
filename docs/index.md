@@ -54,10 +54,9 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.1.1"
+      version = ">= 0.5.0"
     }
   }
-  required_version = ">= 1.0.2"
 }
 
 provider "bitwarden" {

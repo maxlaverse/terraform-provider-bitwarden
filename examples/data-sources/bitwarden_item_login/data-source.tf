@@ -6,19 +6,19 @@
 # > "ec4e447f-9aed-4203-b834-c8f3848828f7"
 #
 
-data "bitwarden_item_login" "mysql-root-credentials" {
+data "bitwarden_item_login" "database_credentials" {
   id = "ec4e447f-9aed-4203-b834-c8f3848828f7"
 }
 
 # Later to be accessed as
-#   ... = data.bitwarden_item_login.mysql-root-credentials.username
-#   ... = data.bitwarden_item_login.mysql-root-credentials.password
+#   ... = data.bitwarden_item_login.database_credentials.username
+#   ... = data.bitwarden_item_login.database_credentials.password
 #
 # or for fields:
 # lookup(
 #    zipmap(
-#      data.bitwarden_item_login.mysql-root-credentials.field.*.name,
-#      data.bitwarden_item_login.mysql-root-credentials.field.*
+#      data.bitwarden_item_login.database_credentials.field.*.name,
+#      data.bitwarden_item_login.database_credentials.field.*
 #    ),
 #    "<name-of-the-field-your-looking-for>"
 # )

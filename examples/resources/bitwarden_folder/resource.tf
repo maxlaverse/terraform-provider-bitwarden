@@ -1,3 +1,3 @@
-resource "bitwarden_folder" "terraform-generated-creds-folder" {
-  name = "Terraform-Generated"
+resource "bitwarden_folder" "cloud_credentials" {
+  name = "My Cloud Credentials"
 }

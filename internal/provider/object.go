@@ -15,7 +15,9 @@ func objectCreate(ctx context.Context, d *schema.ResourceData, meta interface{})
 }
 
 func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return objectOperation(ctx, d, meta.(bw.Client).GetObject)
+	return objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
+		return meta.(bw.Client).GetObject(string(secret.Object), secret.ID)
+	})
 }
 
 func objectUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -24,7 +26,7 @@ func objectUpdate(ctx context.Context, d *schema.ResourceData, meta interface{})
 
 func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
-		return nil, meta.(bw.Client).RemoveObject(secret)
+		return nil, meta.(bw.Client).DeleteObject(string(secret.Object), secret.ID)
 	})
 }
 
@@ -32,7 +34,7 @@ func objectOperation(ctx context.Context, d *schema.ResourceData, operation func
 	obj, err := operation(objectStructFromData(d))
 
 	if err != nil {
-		if errors.Is(err, bw.ErrNotFound) {
+		if errors.Is(err, bw.ErrObjectNotFound) {
 			d.SetId("")
 			return diag.Diagnostics{}
 		}
@@ -50,98 +52,81 @@ func objectDataFromStruct(d *schema.ResourceData, obj *bw.Object) error {
 
 	d.SetId(obj.ID)
 
-	err := d.Set(attributeObject, obj.Object)
+	err := d.Set(attributeName, obj.Name)
 	if err != nil {
 		return err
 	}
 
-	if obj.Object == bw.ObjectTypeItemAttachment {
-		err = d.Set(attributeItemAttachmentFile, obj.File)
+	err = d.Set(attributeObject, obj.Object)
+	if err != nil {
+		return err
+	}
+
+	if obj.Object == bw.ObjectTypeItem {
+		err = d.Set(attributeFolderID, obj.FolderID)
 		if err != nil {
 			return err
 		}
 
-		err = d.Set(attributeItemAttachmentFileName, obj.FileName)
+		err = d.Set(attributeType, obj.Type)
 		if err != nil {
 			return err
 		}
 
-		err = d.Set(attributeItemAttachmentItemID, obj.ItemId)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := d.Set(attributeName, obj.Name)
+		err = d.Set(attributeNotes, obj.Notes)
 		if err != nil {
 			return err
 		}
 
-		if obj.Object == bw.ObjectTypeItem {
-			err = d.Set(attributeFolderID, obj.FolderID)
+		err = d.Set(attributeOrganizationID, obj.OrganizationID)
+		if err != nil {
+			return err
+		}
+
+		err = d.Set(attributeFavorite, obj.Favorite)
+		if err != nil {
+			return err
+		}
+
+		err = d.Set(attributeCollectionIDs, obj.CollectionIds)
+		if err != nil {
+			return err
+		}
+
+		err = d.Set(attributeField, objectFieldDataFromStruct(obj))
+		if err != nil {
+			return err
+		}
+
+		err = d.Set(attributeReprompt, obj.Reprompt == 1)
+		if err != nil {
+			return err
+		}
+
+		err = d.Set(attributeRevisionDate, obj.RevisionDate.Format(bw.RevisionDateLayout))
+		if err != nil {
+			return err
+		}
+
+		if obj.Type == bw.ItemTypeLogin {
+			err = d.Set(attributeLoginPassword, obj.Login.Password)
 			if err != nil {
 				return err
 			}
 
-			err = d.Set(attributeType, obj.Type)
+			err = d.Set(attributeLoginTotp, obj.Login.Totp)
 			if err != nil {
 				return err
 			}
 
-			err = d.Set(attributeNotes, obj.Notes)
+			err = d.Set(attributeLoginUsername, obj.Login.Username)
 			if err != nil {
 				return err
 			}
 
-			err = d.Set(attributeOrganizationID, obj.OrganizationID)
+			err = d.Set(attributeLoginURIs, objectLoginURIsFromStruct(obj.Login.URIs))
 			if err != nil {
 				return err
-			}
-
-			err = d.Set(attributeFavorite, obj.Favorite)
-			if err != nil {
-				return err
-			}
-
-			err = d.Set(attributeCollectionIDs, obj.CollectionIds)
-			if err != nil {
-				return err
-			}
-
-			err = d.Set(attributeField, objectFieldDataFromStruct(obj))
-			if err != nil {
-				return err
-			}
-
-			err = d.Set(attributeReprompt, obj.Reprompt == 1)
-			if err != nil {
-				return err
-			}
-
-			err = d.Set(attributeRevisionDate, obj.RevisionDate.Format(bw.RevisionDateLayout))
-			if err != nil {
-				return err
-			}
-
-			if obj.Type == bw.ItemTypeLogin {
-				err = d.Set(attributeLoginPassword, obj.Login.Password)
-				if err != nil {
-					return err
-				}
-
-				err = d.Set(attributeLoginTotp, obj.Login.Totp)
-				if err != nil {
-					return err
-				}
-
-				err = d.Set(attributeLoginUsername, obj.Login.Username)
-				if err != nil {
-					return err
-				}
-
-				err = d.Set(attributeLoginURIs, objectLoginURIsFromStruct(obj.Login.URIs))
-				if err != nil {
-					return err
-				}
 			}
 		}
 	}
@@ -153,77 +138,62 @@ func objectStructFromData(d *schema.ResourceData) bw.Object {
 	var obj bw.Object
 
 	obj.ID = d.Id()
+	if v, ok := d.Get(attributeName).(string); ok {
+		obj.Name = v
+	}
 
 	if v, ok := d.Get(attributeObject).(string); ok {
 		obj.Object = bw.ObjectType(v)
 	}
 
-	if obj.Object == bw.ObjectTypeItemAttachment {
-		if v, ok := d.Get(attributeItemAttachmentFile).(string); ok {
-			obj.File = v
+	if obj.Object == bw.ObjectTypeItem {
+		if v, ok := d.Get(attributeType).(int); ok {
+			obj.Type = bw.ItemType(v)
 		}
 
-		if v, ok := d.Get(attributeItemAttachmentFileName).(string); ok {
-			obj.FileName = v
+		if v, ok := d.Get(attributeFolderID).(string); ok {
+			obj.FolderID = v
 		}
 
-		if v, ok := d.Get(attributeItemAttachmentItemID).(string); ok {
-			obj.ItemId = v
-		}
-	} else {
-		if v, ok := d.Get(attributeName).(string); ok {
-			obj.Name = v
+		if v, ok := d.Get(attributeFavorite).(bool); ok && v {
+			obj.Favorite = true
 		}
 
-		if obj.Object == bw.ObjectTypeItem {
-			if v, ok := d.Get(attributeType).(int); ok {
-				obj.Type = bw.ItemType(v)
-			}
+		if v, ok := d.Get(attributeNotes).(string); ok {
+			obj.Notes = v
+		}
 
-			if v, ok := d.Get(attributeFolderID).(string); ok {
-				obj.FolderID = v
-			}
+		if v, ok := d.Get(attributeOrganizationID).(string); ok {
+			obj.OrganizationID = v
+		}
 
-			if v, ok := d.Get(attributeFavorite).(bool); ok && v {
-				obj.Favorite = true
-			}
+		if v, ok := d.Get(attributeReprompt).(bool); ok && v {
+			obj.Reprompt = 1
+		}
 
-			if v, ok := d.Get(attributeNotes).(string); ok {
-				obj.Notes = v
+		if vList, ok := d.Get(attributeCollectionIDs).([]interface{}); ok {
+			obj.CollectionIds = make([]string, len(vList))
+			for k, v := range vList {
+				obj.CollectionIds[k] = v.(string)
 			}
+		}
 
-			if v, ok := d.Get(attributeOrganizationID).(string); ok {
-				obj.OrganizationID = v
+		if v, ok := d.Get(attributeField).([]interface{}); ok {
+			obj.Fields = objectFieldStructFromData(v)
+		}
+
+		if obj.Type == bw.ItemTypeLogin {
+			if v, ok := d.Get(attributeLoginPassword).(string); ok {
+				obj.Login.Password = v
 			}
-
-			if v, ok := d.Get(attributeReprompt).(bool); ok && v {
-				obj.Reprompt = 1
+			if v, ok := d.Get(attributeLoginTotp).(string); ok {
+				obj.Login.Totp = v
 			}
-
-			if vList, ok := d.Get(attributeCollectionIDs).([]interface{}); ok {
-				obj.CollectionIds = make([]string, len(vList))
-				for k, v := range vList {
-					obj.CollectionIds[k] = v.(string)
-				}
+			if v, ok := d.Get(attributeLoginUsername).(string); ok {
+				obj.Login.Username = v
 			}
-
-			if v, ok := d.Get(attributeField).([]interface{}); ok {
-				obj.Fields = objectFieldStructFromData(v)
-			}
-
-			if obj.Type == bw.ItemTypeLogin {
-				if v, ok := d.Get(attributeLoginPassword).(string); ok {
-					obj.Login.Password = v
-				}
-				if v, ok := d.Get(attributeLoginTotp).(string); ok {
-					obj.Login.Totp = v
-				}
-				if v, ok := d.Get(attributeLoginUsername).(string); ok {
-					obj.Login.Username = v
-				}
-				if vList, ok := d.Get(attributeLoginURIs).([]interface{}); ok {
-					obj.Login.URIs = objectLoginURIsFromData(vList)
-				}
+			if vList, ok := d.Get(attributeLoginURIs).([]interface{}); ok {
+				obj.Login.URIs = objectLoginURIsFromData(vList)
 			}
 		}
 	}

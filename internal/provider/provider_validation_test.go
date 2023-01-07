@@ -86,7 +86,7 @@ func TestProviderAuthPasswordMethodMissingMasterPasswordThrowsError(t *testing.T
 
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, "Missing required argument", diag[0].Summary)
-		assert.Equal(t, "\"master_password\": one of `master_password,session_key` must be specified", diag[0].Detail)
+		assert.Regexp(t, "\"(master_password|session_key)\": one of `master_password,session_key` must be specified", diag[0].Detail)
 	}
 }
 
