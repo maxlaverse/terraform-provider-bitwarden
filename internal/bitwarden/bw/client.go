@@ -5,27 +5,41 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/executor"
 )
 
 var (
-	ErrNotFound = errNotFound()
+	ErrObjectNotFound     = errObjectNotFound()
+	ErrAttachmentNotFound = errAttachmentNotFound()
+
+	attachmentNotFoundRegexp = regexp.MustCompile(`^Attachment .* was not found.$`)
 )
 
-func errNotFound() error { return errors.New("resource not found") }
+func errObjectNotFound() error     { return errors.New("object not found") }
+func errAttachmentNotFound() error { return errors.New("attachment not found") }
+func isErrorObjectNotFound(errorMessage []byte) bool {
+	return string(errorMessage) == "Not found."
+}
+func isErrorAttachmentNotFound(errorMessage []byte) bool {
+	return attachmentNotFoundRegexp.Match(errorMessage)
+}
 
 type Client interface {
+	CreateAttachment(itemId, filePath string) (*Object, error)
 	CreateObject(Object) (*Object, error)
 	EditObject(Object) (*Object, error)
+	GetAttachment(itemId, attachmentId string) ([]byte, error)
+	GetObject(objType, itemId string) (*Object, error)
 	HasSessionKey() bool
-	SetSessionKey(string)
-	GetObject(Object) (*Object, error)
-	LoginWithPassword(username, password string) error
 	LoginWithAPIKey(password, clientId, clientSecret string) error
+	LoginWithPassword(username, password string) error
 	Logout() error
-	RemoveObject(Object) error
+	DeleteAttachment(itemId, attachmentId string) error
+	DeleteObject(objType, itemId string) error
 	SetServer(string) error
+	SetSessionKey(string)
 	Status() (*Status, error)
 	Sync() error
 	Unlock(password string) error
@@ -80,10 +94,26 @@ func (c *client) CreateObject(obj Object) (*Object, error) {
 	if err != nil {
 		return nil, unmarshallError("create object", err, out)
 	}
-	err = c.Sync()
+
+	// NOTE(maxime): there is no need to sync after creating an item
+	// as the creation issued an API call on the Vault directly.
+	return &obj, nil
+}
+
+func (c *client) CreateAttachment(itemId string, filePath string) (*Object, error) {
+	out, err := c.cmdWithSession("create", string(ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).RunCaptureOutput()
 	if err != nil {
-		return nil, fmt.Errorf("error syncing: %v, %v", err, string(out))
+		return nil, err
 	}
+
+	var obj Object
+	err = json.Unmarshal(out, &obj)
+	if err != nil {
+		return nil, err
+	}
+
+	// NOTE(maxime): there is no need to sync after creating an item
+	// as the creation issued an API call on the Vault directly.
 	return &obj, nil
 }
 
@@ -109,21 +139,36 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 	return &obj, nil
 }
 
-func (c *client) GetObject(obj Object) (*Object, error) {
-	out, err := c.cmdWithSession("get", string(obj.Object), obj.ID).RunCaptureOutput()
+func (c *client) GetObject(objType, itemId string) (*Object, error) {
+	out, err := c.cmdWithSession("get", objType, itemId).RunCaptureOutput()
 	if err != nil {
-		if string(out) == "Not found." {
-			return nil, ErrNotFound
+		if isErrorObjectNotFound(out) {
+			return nil, ErrObjectNotFound
 		}
 		return nil, err
 	}
 
+	var obj Object
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
 		return nil, unmarshallError("get object", err, out)
 	}
 
 	return &obj, nil
+}
+
+func (c *client) GetAttachment(itemId, attachmentId string) ([]byte, error) {
+	out, err := c.cmdWithSession("get", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId, "--raw").RunCaptureOutput()
+	if err != nil {
+		if isErrorObjectNotFound(out) {
+			return nil, ErrObjectNotFound
+		} else if isErrorAttachmentNotFound(out) {
+			return nil, ErrAttachmentNotFound
+		}
+		return nil, err
+	}
+
+	return out, nil
 }
 
 // LoginWithPassword logs in using a password and retrieves the session key,
@@ -151,8 +196,12 @@ func (c *client) Logout() error {
 	return c.cmd("logout").Run()
 }
 
-func (c *client) RemoveObject(obj Object) error {
-	return c.cmdWithSession("delete", string(obj.Object), obj.ID).Run()
+func (c *client) DeleteObject(objType, itemId string) error {
+	return c.cmdWithSession("delete", objType, itemId).Run()
+}
+
+func (c *client) DeleteAttachment(itemId, attachmentId string) error {
+	return c.cmdWithSession("delete", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId).Run()
 }
 
 func (c *client) SetServer(server string) error {

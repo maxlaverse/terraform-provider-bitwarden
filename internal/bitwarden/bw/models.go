@@ -28,8 +28,9 @@ const (
 type ObjectType string
 
 const (
-	ObjectTypeItem   ObjectType = "item"
-	ObjectTypeFolder ObjectType = "folder"
+	ObjectTypeItem       ObjectType = "item"
+	ObjectTypeAttachment ObjectType = "attachment"
+	ObjectTypeFolder     ObjectType = "folder"
 )
 
 type VaultStatus string
@@ -90,21 +91,22 @@ type SecureNote struct {
 }
 
 type Object struct {
-	CollectionIds  []string   `json:"collectionIds,omitempty"`
-	ID             string     `json:"id,omitempty"`
-	ExternalID     string     `json:"externalId,omitempty"`
-	FolderID       string     `json:"folderId,omitempty"`
-	Login          Login      `json:"login,omitempty"`
-	Name           string     `json:"name,omitempty"`
-	Notes          string     `json:"notes,omitempty"`
-	Object         ObjectType `json:"object,omitempty"`
-	OrganizationID string     `json:"organizationId,omitempty"`
-	SecureNote     SecureNote `json:"secureNote,omitempty"`
-	Type           ItemType   `json:"type,omitempty"`
-	Fields         []Field    `json:"fields,omitempty"`
-	Reprompt       int        `json:"reprompt,omitempty"`
-	Favorite       bool       `json:"favorite,omitempty"`
-	RevisionDate   *time.Time `json:"revisionDate,omitempty"`
+	CollectionIds  []string     `json:"collectionIds,omitempty"`
+	ID             string       `json:"id,omitempty"`
+	ExternalID     string       `json:"externalId,omitempty"`
+	FolderID       string       `json:"folderId,omitempty"`
+	Login          Login        `json:"login,omitempty"`
+	Name           string       `json:"name,omitempty"`
+	Notes          string       `json:"notes,omitempty"`
+	Object         ObjectType   `json:"object,omitempty"`
+	OrganizationID string       `json:"organizationId,omitempty"`
+	SecureNote     SecureNote   `json:"secureNote,omitempty"`
+	Type           ItemType     `json:"type,omitempty"`
+	Fields         []Field      `json:"fields,omitempty"`
+	Reprompt       int          `json:"reprompt,omitempty"`
+	Favorite       bool         `json:"favorite,omitempty"`
+	RevisionDate   *time.Time   `json:"revisionDate,omitempty"`
+	Attachments    []Attachment `json:"attachments,omitempty"`
 }
 
 const (
@@ -115,4 +117,12 @@ type Field struct {
 	Name  string    `json:"name,omitempty"`
 	Value string    `json:"value,omitempty"`
 	Type  FieldType `json:"type,omitempty"`
+}
+
+type Attachment struct {
+	ID       string `json:"id,omitempty"`
+	FileName string `json:"fileName,omitempty"`
+	Size     string `json:"size,omitempty"`
+	SizeName string `json:"sizeName,omitempty"`
+	Url      string `json:"url,omitempty"`
 }

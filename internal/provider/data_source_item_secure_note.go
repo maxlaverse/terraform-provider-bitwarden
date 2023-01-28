@@ -9,7 +9,7 @@ func dataSourceItemSecureNote() *schema.Resource {
 	dataSourceItemSecureNoteSchema := baseSchema(DataSource)
 
 	return &schema.Resource{
-		Description: "Use this data source to get (amongst other things) the content of a Bitwarden Secret Note for use in other resources.",
+		Description: "Use this data source to get information on an existing Secure Note.",
 		ReadContext: readDataSource(bw.ObjectTypeItem, bw.ItemTypeSecureNote),
 		Schema:      dataSourceItemSecureNoteSchema,
 	}

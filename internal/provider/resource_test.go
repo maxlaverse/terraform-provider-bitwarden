@@ -7,13 +7,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
+const (
+	regExpId = "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"
+)
+
 func checkObject(resourceName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
 		resource.TestMatchResourceAttr(
 			resourceName, attributeName, regexp.MustCompile("^([a-z0-9]+)-bar$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, attributeID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
+			resourceName, attributeID, regexp.MustCompile(regExpId),
 		),
 	)
 }
@@ -25,7 +29,7 @@ func checkItemGeneral(resourceName string) resource.TestCheckFunc {
 			resourceName, attributeNotes, regexp.MustCompile("^notes$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, attributeFolderID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
+			resourceName, attributeFolderID, regexp.MustCompile(regExpId),
 		),
 		resource.TestMatchResourceAttr(
 			resourceName, attributeReprompt, regexp.MustCompile("^true"),
@@ -34,13 +38,13 @@ func checkItemGeneral(resourceName string) resource.TestCheckFunc {
 			resourceName, attributeFavorite, regexp.MustCompile("^true"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, attributeOrganizationID, regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
+			resourceName, attributeOrganizationID, regexp.MustCompile(regExpId),
 		),
 		resource.TestMatchResourceAttr(
 			resourceName, fmt.Sprintf("%s.#", attributeCollectionIDs), regexp.MustCompile("^1$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.0", attributeCollectionIDs), regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"),
+			resourceName, fmt.Sprintf("%s.0", attributeCollectionIDs), regexp.MustCompile(regExpId),
 		),
 		checkItemFields(resourceName),
 	)

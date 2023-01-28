@@ -3,12 +3,12 @@
 page_title: "bitwarden_item_login Resource - terraform-provider-bitwarden"
 subcategory: ""
 description: |-
-  Use this resource to set (amongst other things) the username and password of a Bitwarden Login item.
+  Manages a Vault Login item.
 ---
 
 # bitwarden_item_login (Resource)
 
-Use this resource to set (amongst other things) the username and password of a Bitwarden Login item.
+Manages a Vault Login item.
 
 ## Example Usage
 

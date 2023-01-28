@@ -68,7 +68,7 @@ func ensureVaultwardenHasUser(t *testing.T) {
 	webapiClient := webapi.NewClient(testServerURL)
 
 	err := webapiClient.RegisterUser("test", testEmail, testPassword, kdfIterations)
-	if err != nil && !strings.Contains(err.Error(), "User already exists") {
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
 	isUserCreated = true
@@ -163,14 +163,14 @@ func tfConfigProvider() string {
 `, testPassword, testServerURL, testEmail)
 }
 
-func getObjectID(n string, folder *string) resource.TestCheckFunc {
+func getObjectID(n string, objectId *string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
 			return fmt.Errorf("Not found: %s", n)
 		}
 
-		*folder = rs.Primary.ID
+		*objectId = rs.Primary.ID
 		return nil
 	}
 }

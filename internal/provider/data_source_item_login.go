@@ -12,7 +12,7 @@ func dataSourceItemLogin() *schema.Resource {
 	}
 
 	return &schema.Resource{
-		Description: "Use this data source to get (amongst other things) the username and password of a Bitwarden Login item for use in other resources.",
+		Description: "Use this data source to get information on an existing Login.",
 		ReadContext: readDataSource(bw.ObjectTypeItem, bw.ItemTypeLogin),
 		Schema:      dataSourceItemLoginSchema,
 	}

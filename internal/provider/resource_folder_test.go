@@ -16,7 +16,8 @@ func TestAccResourceFolder(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder(),
+				ResourceName: resourceName,
+				Config:       tfConfigProvider() + tfConfigResourceFolder(),
 				Check: resource.ComposeTestCheckFunc(
 					checkObject(resourceName),
 					getObjectID(resourceName, &objectID),

@@ -3,18 +3,18 @@
 page_title: "bitwarden_folder Resource - terraform-provider-bitwarden"
 subcategory: ""
 description: |-
-  Use this resource to create (amongst other things) a folder in Bitwarden, for storing other resources into.
+  Manages a folder.
 ---
 
 # bitwarden_folder (Resource)
 
-Use this resource to create (amongst other things) a folder in Bitwarden, for storing other resources into.
+Manages a folder.
 
 ## Example Usage
 
 ```terraform
-resource "bitwarden_folder" "terraform-generated-creds-folder" {
-  name = "Terraform-Generated"
+resource "bitwarden_folder" "cloud_credentials" {
+  name = "My Cloud Credentials"
 }
 ```
 
@@ -36,12 +36,15 @@ Import is supported using the following syntax:
 ```shell
 # Find the identifier of the resource you want to import:
 #
-# $ bw list folders --search "us-west-2" | jq  '.[] .id'
+# $ bw list folders --search "My Cloud Credentials" | jq  '.[] .id'
 # ? Master password: [hidden]
 #
 # > "94d858f7-03b9-4897-bee1-9af465988932"
 #
+resource "bitwarden_folder" "cloud_credentials" {
+  name = "My Cloud Credentials"
+}
 
 # Provide this identifier to Terraform:
-$ terraform import bitwarden_folder.us-west-2 94d858f7-03b9-4897-bee1-9af465988932
+$ terraform import bitwarden_folder.cloud_credentials 94d858f7-03b9-4897-bee1-9af465988932
 ```

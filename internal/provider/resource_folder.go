@@ -10,7 +10,7 @@ import (
 
 func resourceFolder() *schema.Resource {
 	return &schema.Resource{
-		Description: "Use this resource to create (amongst other things) a folder in Bitwarden, for storing other resources into.",
+		Description: "Manages a folder.",
 
 		CreateContext: resourceFolderCreate,
 		ReadContext:   objectRead,

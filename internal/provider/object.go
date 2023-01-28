@@ -15,7 +15,9 @@ func objectCreate(ctx context.Context, d *schema.ResourceData, meta interface{})
 }
 
 func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return objectOperation(ctx, d, meta.(bw.Client).GetObject)
+	return objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
+		return meta.(bw.Client).GetObject(string(secret.Object), secret.ID)
+	})
 }
 
 func objectUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -24,14 +26,15 @@ func objectUpdate(ctx context.Context, d *schema.ResourceData, meta interface{})
 
 func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
-		return nil, meta.(bw.Client).RemoveObject(secret)
+		return nil, meta.(bw.Client).DeleteObject(string(secret.Object), secret.ID)
 	})
 }
 
 func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(secret bw.Object) (*bw.Object, error)) diag.Diagnostics {
 	obj, err := operation(objectStructFromData(d))
+
 	if err != nil {
-		if errors.Is(err, bw.ErrNotFound) {
+		if errors.Is(err, bw.ErrObjectNotFound) {
 			d.SetId("")
 			return diag.Diagnostics{}
 		}
