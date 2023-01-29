@@ -48,6 +48,7 @@ data "bitwarden_item_login" "database_credentials" {
 
 ### Read-Only
 
+- `attachments` (List of Object) List of item attachments. (see [below for nested schema](#nestedatt--attachments))
 - `collection_ids` (List of String) Identifier of the collections the item belongs to.
 - `favorite` (Boolean) Mark as a Favorite to have item appear at the top of your Vault in the UI.
 - `field` (List of Object, Sensitive) Extra fields. (see [below for nested schema](#nestedatt--field))
@@ -61,6 +62,18 @@ data "bitwarden_item_login" "database_credentials" {
 - `totp` (String, Sensitive) Verification code.
 - `uri` (List of Object) URI. (see [below for nested schema](#nestedatt--uri))
 - `username` (String, Sensitive) Login username.
+
+<a id="nestedatt--attachments"></a>
+### Nested Schema for `attachments`
+
+Read-Only:
+
+- `file_name` (String)
+- `id` (String)
+- `size` (String)
+- `size_name` (String)
+- `url` (String)
+
 
 <a id="nestedatt--field"></a>
 ### Nested Schema for `field`

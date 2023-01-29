@@ -11,6 +11,22 @@ import (
 )
 
 func resourceAttachment() *schema.Resource {
+	resourceAttachmentSchema := attachmentSchema()
+	resourceAttachmentSchema[attributeAttachmentFile] = &schema.Schema{
+		Description:      descriptionItemAttachmentFile,
+		Type:             schema.TypeString,
+		Required:         true,
+		ForceNew:         true,
+		ValidateDiagFunc: fileHashComputable,
+		StateFunc:        fileHash,
+	}
+	resourceAttachmentSchema[attributeAttachmentItemID] = &schema.Schema{
+		Description: descriptionItemIdentifier,
+		Type:        schema.TypeString,
+		Required:    true,
+		ForceNew:    true,
+	}
+
 	return &schema.Resource{
 		Description: "(EXPERIMENTAL) Manages a Vault item's attachment.",
 
@@ -19,47 +35,7 @@ func resourceAttachment() *schema.Resource {
 		DeleteContext: attachmentDelete,
 		Importer:      importAttachmentResource(),
 
-		Schema: map[string]*schema.Schema{
-			attributeID: {
-				Description: descriptionIdentifier,
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
-			attributeAttachmentFile: {
-				Description:      descriptionItemAttachmentFile,
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				ValidateDiagFunc: fileHashComputable,
-				StateFunc:        fileHash,
-			},
-			attributeAttachmentItemID: {
-				Description: descriptionItemIdentifier,
-				Type:        schema.TypeString,
-				Required:    true,
-				ForceNew:    true,
-			},
-			attributeAttachmentFileName: {
-				Description: descriptionItemAttachmentFileName,
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
-			attributeAttachmentSize: {
-				Description: descriptionItemAttachmentSize,
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
-			attributeAttachmentSizeName: {
-				Description: descriptionItemAttachmentSizeName,
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
-			attributeAttachmentURL: {
-				Description: descriptionItemAttachmentURL,
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
-		},
+		Schema: resourceAttachmentSchema,
 	}
 }
 

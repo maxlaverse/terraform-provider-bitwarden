@@ -2,6 +2,7 @@ package provider
 
 const (
 	// Datasource and Resource field attributes
+	attributeAttachments        = "attachments"
 	attributeCollectionIDs      = "collection_ids"
 	attributeID                 = "id"
 	attributeFavorite           = "favorite"
@@ -34,6 +35,7 @@ const (
 	attributeType               = "type"
 
 	// Datasource and Resource field descriptions
+	descriptionAttachments            = "List of item attachments."
 	descriptionCollectionIDs          = "Identifier of the collections the item belongs to."
 	descriptionFavorite               = "Mark as a Favorite to have item appear at the top of your Vault in the UI."
 	descriptionField                  = "Extra fields."

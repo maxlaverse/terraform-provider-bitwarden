@@ -61,6 +61,7 @@ EOT
 
 ### Read-Only
 
+- `attachments` (List of Object) List of item attachments. (see [below for nested schema](#nestedatt--attachments))
 - `id` (String) Identifier.
 - `revision_date` (String) Last time the item was updated.
 
@@ -77,6 +78,18 @@ Optional:
 - `hidden` (String) Value of a hidden text field.
 - `linked` (String) Value of a linked field.
 - `text` (String) Value of a text field.
+
+
+<a id="nestedatt--attachments"></a>
+### Nested Schema for `attachments`
+
+Read-Only:
+
+- `file_name` (String)
+- `id` (String)
+- `size` (String)
+- `size_name` (String)
+- `url` (String)
 
 ## Import
 
