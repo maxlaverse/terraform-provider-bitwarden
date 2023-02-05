@@ -55,5 +55,8 @@ func (c *testCommand) Run() ([]byte, error) {
 	if v, ok := c.dummyOutput[argsStr]; ok {
 		return []byte(v), nil
 	}
-	return nil, fmt.Errorf("unknown test command: '%s', '%s'", c.cmd, c.args)
+	if v, ok := c.dummyOutput[strings.Join(append(c.args, "@error"), " ")]; ok {
+		return nil, fmt.Errorf("failing command '%s' for test purposes: %v", argsStr, v)
+	}
+	return nil, fmt.Errorf("[unknown test command: '%s', '%s'", c.cmd, c.args)
 }
