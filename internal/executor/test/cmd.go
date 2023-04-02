@@ -10,21 +10,24 @@ import (
 )
 
 type FakeExecutor struct {
-	CommandsExecuted []string
-	DummyOutput      map[string]string
+	Callback    func(string)
+	DummyOutput map[string]string
 }
 
 func (e *FakeExecutor) NewCommand(cmd string, args ...string) executor.Command {
-	e.CommandsExecuted = append(e.CommandsExecuted, strings.Join(args, " "))
 	return &testCommand{
 		cmd:         cmd,
 		args:        args,
+		callback:    e.Callback,
 		dummyOutput: e.DummyOutput,
 	}
 }
 
-func New(dummyOutput map[string]string) executor.Executor {
-	return &FakeExecutor{DummyOutput: dummyOutput}
+func New(dummyOutput map[string]string, callback func(string)) executor.Executor {
+	return &FakeExecutor{
+		DummyOutput: dummyOutput,
+		Callback:    callback,
+	}
 }
 
 type testCommand struct {
@@ -32,6 +35,7 @@ type testCommand struct {
 	args        []string
 	stdOut      io.Writer
 	stdErr      io.Writer
+	callback    func(string)
 	dummyOutput map[string]string
 }
 
@@ -79,7 +83,9 @@ func (c *testCommand) RunCaptureOutput() ([]byte, error) {
 }
 
 func (c *testCommand) runnerCmd() error {
-	if v, ok := c.dummyOutput[strings.Join(c.args, " ")]; ok {
+	argsStr := strings.Join(c.args, " ")
+	c.callback(argsStr)
+	if v, ok := c.dummyOutput[argsStr]; ok {
 		c.stdOut.Write([]byte(v))
 		return nil
 	}
