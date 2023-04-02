@@ -40,7 +40,6 @@ type Command interface {
 	WithStdin(string) Command
 	Run() error
 	RunCaptureOutput() ([]byte, error)
-	CmdRun() error
 }
 
 func (c *command) ClearEnv() Command {
@@ -85,7 +84,7 @@ func (c *command) WithOutput(out io.Writer) Command {
 
 func (c *command) Run() error {
 	var combinedOut bytes.Buffer
-	err := c.WithCombinedOutput(&combinedOut).CmdRun()
+	err := c.WithCombinedOutput(&combinedOut).(*command).runnerCmd()
 	if err != nil {
 		return fmt.Errorf("error running '%s': %v, %v", strings.Join(c.cmd.Args, " "), err, combinedOut.String())
 	}
@@ -95,7 +94,7 @@ func (c *command) Run() error {
 func (c *command) RunCaptureOutput() ([]byte, error) {
 	var combinedOut bytes.Buffer
 	var out bytes.Buffer
-	err := c.WithCombinedOutput(&combinedOut).WithOutput(&out).CmdRun()
+	err := c.WithCombinedOutput(&combinedOut).WithOutput(&out).(*command).runnerCmd()
 	if err != nil {
 		return out.Bytes(), fmt.Errorf("error running '%s': %v, %v", strings.Join(c.cmd.Args, " "), err, combinedOut.String())
 	}
@@ -103,7 +102,7 @@ func (c *command) RunCaptureOutput() ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func (c *command) CmdRun() error {
+func (c *command) runnerCmd() error {
 	log.Printf("[DEBUG] Running command '%v'\n", c.cmd.Args)
 	err := c.cmd.Run()
 	if err != nil {
