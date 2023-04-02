@@ -11,7 +11,7 @@ import (
 )
 
 func TestProviderReauthenticateWithPasswordIfAuthenticatedOnDifferentServer(t *testing.T) {
-	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
+	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
 		"status":                          `{"serverURL": "http://127.0.0.99/", "userEmail": "test@laverse.net", "status": "unlocked"}`,
 		"logout":                          ``,
 		"config server http://127.0.0.1/": ``,
@@ -40,7 +40,7 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedOnDifferentServer(t *t
 }
 
 func TestProviderReauthenticateWithPasswordIfAuthenticatedWithDifferentUser(t *testing.T) {
-	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
+	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
 		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "as-an-other-user@laverse.net", "status": "unlocked"}`,
 		"logout": ``,
 		"login test@laverse.net --raw --passwordenv BW_PASSWORD": `session-key1234`,
@@ -67,7 +67,7 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedWithDifferentUser(t *t
 }
 
 func TestProviderDoesntLogoutFirstIfUnauthenticated(t *testing.T) {
-	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
+	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
 		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "as-an-other-user@laverse.net", "status": "unauthenticated"}`,
 		"login test@laverse.net --raw --passwordenv BW_PASSWORD": `session-key1234`,
 	})
@@ -92,7 +92,7 @@ func TestProviderDoesntLogoutFirstIfUnauthenticated(t *testing.T) {
 }
 
 func TestProviderReauthenticateWithAPIIfAuthenticatedWithDifferentUser(t *testing.T) {
-	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
+	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
 		"status":                                 `{"serverURL": "http://127.0.0.1/", "userEmail": "as-an-other-user@laverse.net", "status": "unlocked"}`,
 		"logout":                                 ``,
 		"login --apikey":                         ``,
@@ -124,7 +124,7 @@ func TestProviderReauthenticateWithAPIIfAuthenticatedWithDifferentUser(t *testin
 }
 
 func TestProviderWithSessionKeySync(t *testing.T) {
-	restoreDefaultExecutor := useFakeExecutor(t, map[string]string{
+	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
 		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "test@laverse.net", "status": "unlocked"}`,
 		"sync":   ``,
 	})
@@ -149,14 +149,16 @@ func TestProviderWithSessionKeySync(t *testing.T) {
 	}, commandsExecuted())
 }
 
-func useFakeExecutor(t *testing.T, dummyOutput map[string]string) func(t *testing.T) {
+func useFakeExecutor(t *testing.T, dummyOutput map[string]string) (func(t *testing.T), func() []string) {
+	commandsExecuted := []string{}
 	old := executor.DefaultExecutor
-	executor.DefaultExecutor = test_executor.New(dummyOutput)
+	executor.DefaultExecutor = test_executor.New(dummyOutput, func(args string) {
+		commandsExecuted = append(commandsExecuted, args)
+	})
 	return func(t *testing.T) {
-		executor.DefaultExecutor = old
-	}
-}
-
-func commandsExecuted() []string {
-	return executor.DefaultExecutor.(*test_executor.FakeExecutor).CommandsExecuted
+			executor.DefaultExecutor = old
+		},
+		func() []string {
+			return commandsExecuted
+		}
 }
