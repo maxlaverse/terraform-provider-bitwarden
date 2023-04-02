@@ -60,7 +60,7 @@ func (c *testCommand) WithOutput(out io.Writer) executor.Command {
 
 func (c *testCommand) Run() error {
 	var combinedOut bytes.Buffer
-	err := c.WithCombinedOutput(&combinedOut).CmdRun()
+	err := c.WithCombinedOutput(&combinedOut).(*testCommand).runnerCmd()
 	if err != nil {
 		return fmt.Errorf("error running '%s': %v, %v", strings.Join(c.args, " "), err, combinedOut.String())
 	}
@@ -70,7 +70,7 @@ func (c *testCommand) Run() error {
 func (c *testCommand) RunCaptureOutput() ([]byte, error) {
 	var combinedOut bytes.Buffer
 	var out bytes.Buffer
-	err := c.WithCombinedOutput(&combinedOut).WithOutput(&out).CmdRun()
+	err := c.WithCombinedOutput(&combinedOut).WithOutput(&out).(*testCommand).runnerCmd()
 	if err != nil {
 		return out.Bytes(), fmt.Errorf("error running '%s': %v, %v", strings.Join(c.args, " "), err, combinedOut.String())
 	}
@@ -78,7 +78,7 @@ func (c *testCommand) RunCaptureOutput() ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func (c *testCommand) CmdRun() error {
+func (c *testCommand) runnerCmd() error {
 	if v, ok := c.dummyOutput[strings.Join(c.args, " ")]; ok {
 		c.stdOut.Write([]byte(v))
 		return nil
