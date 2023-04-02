@@ -17,14 +17,14 @@ type Executor interface {
 }
 
 func New() Executor {
-	return &executor{}
+	return &defaultExecutor{}
 }
 
-type executor struct{}
+type defaultExecutor struct{}
 
-func (e *executor) NewCommand(cmd string, args ...string) Command {
+func (e *defaultExecutor) NewCommand(binary string, args ...string) Command {
 	return &command{
-		cmd: exec.Command(cmd, args...),
+		cmd: exec.Command(binary, args...),
 	}
 }
 
