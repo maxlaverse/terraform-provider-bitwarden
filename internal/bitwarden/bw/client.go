@@ -54,7 +54,7 @@ func NewClient(execPath string, opts ...Options) Client {
 		o(c)
 	}
 
-	c.executor = executor.NewWithRetries(&retryHandler{disableRetryBackoff: c.disableRetryBackoff})
+	c.newCommand = executor.NewCommandWithRetries(&retryHandler{disableRetryBackoff: c.disableRetryBackoff})
 
 	return c
 }
@@ -64,7 +64,7 @@ type client struct {
 	disableSync         bool
 	disableRetryBackoff bool
 	execPath            string
-	executor            executor.Executor
+	newCommand          executor.NewCommandFn
 	sessionKey          string
 }
 
@@ -262,7 +262,7 @@ func (c *client) Sync() error {
 }
 
 func (c *client) cmd(args ...string) executor.Command {
-	return c.executor.NewCommand(c.execPath, args...).AppendEnv(c.env())
+	return c.newCommand(c.execPath, args...).AppendEnv(c.env())
 }
 
 func (c *client) cmdWithSession(args ...string) executor.Command {

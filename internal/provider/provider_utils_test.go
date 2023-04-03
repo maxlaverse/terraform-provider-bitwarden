@@ -94,18 +94,17 @@ func getTestSessionKey(t *testing.T) (string, string) {
 
 	var out bytes.Buffer
 
-	cmd := executor.New()
-	_, err = cmd.NewCommand(bwExecutable, "login", testEmail, "--raw", "--passwordenv", "BW_PASSWORD").WithOutput(&out).AppendEnv(env).Run()
+	_, err = executor.NewCommand(bwExecutable, "login", testEmail, "--raw", "--passwordenv", "BW_PASSWORD").WithOutput(&out).AppendEnv(env).Run()
 	if err != nil && !strings.Contains(err.Error(), "You are already logged in as test@laverse.net") {
 		t.Fatal(err)
 	}
-	_, err = cmd.NewCommand(bwExecutable, "unlock", "--raw", "--passwordenv", "BW_PASSWORD").WithOutput(&out).AppendEnv(env).Run()
+	_, err = executor.NewCommand(bwExecutable, "unlock", "--raw", "--passwordenv", "BW_PASSWORD").WithOutput(&out).AppendEnv(env).Run()
 	if err != nil {
 		t.Fatal(err)
 	}
 	sessionKey := out.String()
 
-	_, err = cmd.NewCommand(bwExecutable, "status", "--session", sessionKey).WithOutput(&out).AppendEnv(env).Run()
+	_, err = executor.NewCommand(bwExecutable, "status", "--session", sessionKey).WithOutput(&out).AppendEnv(env).Run()
 	if err != nil {
 		t.Fatal(err)
 	}

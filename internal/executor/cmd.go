@@ -9,20 +9,12 @@ import (
 	"strings"
 )
 
-// DefaultExecutor is only meant to be changed during tests.
-var DefaultExecutor = New()
+// NewCommand is only meant to be changed during tests.
+var NewCommand = newCommand
 
-type Executor interface {
-	NewCommand(cmd string, args ...string) Command
-}
+type NewCommandFn func(binary string, args ...string) Command
 
-func New() Executor {
-	return &defaultExecutor{}
-}
-
-type defaultExecutor struct{}
-
-func (e *defaultExecutor) NewCommand(binary string, args ...string) Command {
+func newCommand(binary string, args ...string) Command {
 	return &command{
 		args:   args,
 		binary: binary,

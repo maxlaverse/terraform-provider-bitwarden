@@ -11,20 +11,12 @@ type RetryHandler interface {
 	Backoff(attempt int) time.Duration
 }
 
-func NewWithRetries(retryHandler RetryHandler) Executor {
-	return &withRetriesExecutor{
-		retryHandler: retryHandler,
-	}
-}
-
-type withRetriesExecutor struct {
-	retryHandler RetryHandler
-}
-
-func (e *withRetriesExecutor) NewCommand(binary string, args ...string) Command {
-	return &retryableCommand{
-		cmd:          DefaultExecutor.NewCommand(binary, args...),
-		retryHandler: e.retryHandler,
+func NewCommandWithRetries(retryHandler RetryHandler) NewCommandFn {
+	return func(binary string, args ...string) Command {
+		return &retryableCommand{
+			cmd:          NewCommand(binary, args...),
+			retryHandler: retryHandler,
+		}
 	}
 }
 

@@ -8,24 +8,14 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/executor"
 )
 
-type FakeExecutor struct {
-	Callback    func(string)
-	DummyOutput map[string]string
-}
-
-func (e *FakeExecutor) NewCommand(cmd string, args ...string) executor.Command {
-	return &testCommand{
-		cmd:         cmd,
-		args:        args,
-		callback:    e.Callback,
-		dummyOutput: e.DummyOutput,
-	}
-}
-
-func New(dummyOutput map[string]string, callback func(string)) executor.Executor {
-	return &FakeExecutor{
-		DummyOutput: dummyOutput,
-		Callback:    callback,
+func New(dummyOutput map[string]string, callback func(string)) executor.NewCommandFn {
+	return func(cmd string, args ...string) executor.Command {
+		return &testCommand{
+			cmd:         cmd,
+			args:        args,
+			callback:    callback,
+			dummyOutput: dummyOutput,
+		}
 	}
 }
 

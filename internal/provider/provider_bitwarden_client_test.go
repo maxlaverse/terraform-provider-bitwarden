@@ -195,12 +195,12 @@ func TestProviderReturnUnhandledError(t *testing.T) {
 
 func useFakeExecutor(t *testing.T, dummyOutput map[string]string) (func(t *testing.T), func() []string) {
 	commandsExecuted := []string{}
-	old := executor.DefaultExecutor
-	executor.DefaultExecutor = test_executor.New(dummyOutput, func(args string) {
+	newCommandToRestore := executor.NewCommand
+	executor.NewCommand = test_executor.New(dummyOutput, func(args string) {
 		commandsExecuted = append(commandsExecuted, args)
 	})
 	return func(t *testing.T) {
-			executor.DefaultExecutor = old
+			executor.NewCommand = newCommandToRestore
 		},
 		func() []string {
 			return commandsExecuted
