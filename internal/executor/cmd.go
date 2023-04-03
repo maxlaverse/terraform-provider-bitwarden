@@ -24,91 +24,70 @@ type defaultExecutor struct{}
 
 func (e *defaultExecutor) NewCommand(binary string, args ...string) Command {
 	return &command{
-		cmd: exec.Command(binary, args...),
+		args:   args,
+		binary: binary,
 	}
 }
 
 type command struct {
-	cmd *exec.Cmd
+	binary string
+	args   []string
+	env    []string
+	stdin  io.Reader
+	stdout io.Writer
+	stderr io.Writer
 }
 
 type Command interface {
-	ClearEnv() Command
-	WithEnv(envs []string) Command
+	AppendEnv(envs []string) Command
 	WithOutput(out io.Writer) Command
-	WithCombinedOutput(out io.Writer) Command
 	WithStdin(string) Command
-	Run() error
-	RunCaptureOutput() ([]byte, error)
+	Run() ([]byte, error)
 }
 
-func (c *command) ClearEnv() Command {
-	c.cmd.Env = []string{}
-	return c
-}
-
-func (c *command) WithEnv(envs []string) Command {
-	c.cmd.Env = append(c.cmd.Env, envs...)
+func (c *command) AppendEnv(envs []string) Command {
+	c.env = append(c.env, envs...)
 	return c
 }
 func (c *command) WithStdin(dir string) Command {
 	var stdinBuf bytes.Buffer
 	stdinBuf.Write([]byte(dir))
 
-	c.cmd.Stdin = &stdinBuf
-	return c
-}
-
-func (c *command) WithCombinedOutput(out io.Writer) Command {
-	if c.cmd.Stdout != nil {
-		c.cmd.Stdout = io.MultiWriter(c.cmd.Stdout, out)
-	} else {
-		c.cmd.Stdout = out
-	}
-	if c.cmd.Stderr != nil {
-		c.cmd.Stderr = io.MultiWriter(c.cmd.Stderr, out)
-	} else {
-		c.cmd.Stderr = out
-	}
+	c.stdin = &stdinBuf
 	return c
 }
 
 func (c *command) WithOutput(out io.Writer) Command {
-	if c.cmd.Stdout != nil {
-		c.cmd.Stdout = io.MultiWriter(c.cmd.Stdout, out)
-	} else {
-		c.cmd.Stdout = out
-	}
+	c.stdout = out
 	return c
 }
 
-func (c *command) Run() error {
-	var combinedOut bytes.Buffer
-	err := c.WithCombinedOutput(&combinedOut).(*command).runnerCmd()
-	if err != nil {
-		return fmt.Errorf("error running '%s': %v, %v", strings.Join(c.cmd.Args, " "), err, combinedOut.String())
-	}
-	return nil
-}
+func (c *command) Run() ([]byte, error) {
+	log.Printf("[DEBUG] Running command '%v'\n", c.args)
+	cmd := exec.Command(c.binary, c.args...)
+	cmd.Stdin = c.stdin
+	cmd.Env = c.env
 
-func (c *command) RunCaptureOutput() ([]byte, error) {
 	var combinedOut bytes.Buffer
 	var out bytes.Buffer
-	err := c.WithCombinedOutput(&combinedOut).WithOutput(&out).(*command).runnerCmd()
-	if err != nil {
-		return out.Bytes(), fmt.Errorf("error running '%s': %v, %v", strings.Join(c.cmd.Args, " "), err, combinedOut.String())
+	if c.stdout != nil {
+		cmd.Stdout = io.MultiWriter(c.stdout, &combinedOut, &out)
+	} else {
+		cmd.Stdout = io.MultiWriter(&combinedOut, &out)
 	}
+
+	if c.stderr != nil {
+		cmd.Stderr = io.MultiWriter(c.stderr, &combinedOut)
+	} else {
+		cmd.Stderr = io.MultiWriter(&combinedOut)
+	}
+
+	err := cmd.Run()
+	if err != nil {
+		log.Printf("[ERROR] Command '%v' finished with error: %v\n", c.args, err)
+		return out.Bytes(), fmt.Errorf("error running '%s': %v, %v", strings.Join(c.args, " "), err, combinedOut.String())
+	}
+	log.Printf("[DEBUG] Command '%v' finished with success\n", c.args)
 
 	return out.Bytes(), nil
-}
-
-func (c *command) runnerCmd() error {
-	log.Printf("[DEBUG] Running command '%v'\n", c.cmd.Args)
-	err := c.cmd.Run()
-	if err != nil {
-		log.Printf("[ERROR] Command '%v' finished with error: %v\n", c.cmd.Args, err)
-		return err
-	}
-	log.Printf("[DEBUG] Command '%v' finished with success\n", c.cmd.Args)
-	return nil
 }

@@ -86,7 +86,7 @@ func (c *client) CreateObject(obj Object) (*Object, error) {
 		return nil, err
 	}
 
-	out, err := c.cmdWithSession("create", string(obj.Object), objEncoded).RunCaptureOutput()
+	out, err := c.cmdWithSession("create", string(obj.Object), objEncoded).Run()
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (c *client) CreateObject(obj Object) (*Object, error) {
 }
 
 func (c *client) CreateAttachment(itemId string, filePath string) (*Object, error) {
-	out, err := c.cmdWithSession("create", string(ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).RunCaptureOutput()
+	out, err := c.cmdWithSession("create", string(ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).Run()
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 		return nil, err
 	}
 
-	out, err := c.cmdWithSession("edit", string(obj.Object), obj.ID, objEncoded).RunCaptureOutput()
+	out, err := c.cmdWithSession("edit", string(obj.Object), obj.ID, objEncoded).Run()
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 }
 
 func (c *client) GetObject(objType, itemId string) (*Object, error) {
-	out, err := c.cmdWithSession("get", objType, itemId).RunCaptureOutput()
+	out, err := c.cmdWithSession("get", objType, itemId).Run()
 	if err != nil {
 		if isErrorObjectNotFound(out) {
 			return nil, ErrObjectNotFound
@@ -158,7 +158,7 @@ func (c *client) GetObject(objType, itemId string) (*Object, error) {
 }
 
 func (c *client) GetAttachment(itemId, attachmentId string) ([]byte, error) {
-	out, err := c.cmdWithSession("get", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId, "--raw").RunCaptureOutput()
+	out, err := c.cmdWithSession("get", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId, "--raw").Run()
 	if err != nil {
 		if isErrorObjectNotFound(out) {
 			return nil, ErrObjectNotFound
@@ -174,7 +174,7 @@ func (c *client) GetAttachment(itemId, attachmentId string) ([]byte, error) {
 // LoginWithPassword logs in using a password and retrieves the session key,
 // allowing authenticated requests using the client.
 func (c *client) LoginWithPassword(username, password string) error {
-	out, err := c.cmd("login", username, "--raw", "--passwordenv", "BW_PASSWORD").WithEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).RunCaptureOutput()
+	out, err := c.cmd("login", username, "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).Run()
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (c *client) LoginWithPassword(username, password string) error {
 // LoginWithPassword logs in using an API key and unlock the Vault in order to retrieve a session key,
 // allowing authenticated requests using the client.
 func (c *client) LoginWithAPIKey(password, clientId, clientSecret string) error {
-	err := c.cmd("login", "--apikey").WithEnv([]string{fmt.Sprintf("BW_CLIENTID=%s", clientId), fmt.Sprintf("BW_CLIENTSECRET=%s", clientSecret)}).Run()
+	_, err := c.cmd("login", "--apikey").AppendEnv([]string{fmt.Sprintf("BW_CLIENTID=%s", clientId), fmt.Sprintf("BW_CLIENTSECRET=%s", clientSecret)}).Run()
 	if err != nil {
 		return err
 	}
@@ -193,23 +193,27 @@ func (c *client) LoginWithAPIKey(password, clientId, clientSecret string) error 
 }
 
 func (c *client) Logout() error {
-	return c.cmd("logout").Run()
+	_, err := c.cmd("logout").Run()
+	return err
 }
 
 func (c *client) DeleteObject(objType, itemId string) error {
-	return c.cmdWithSession("delete", objType, itemId).Run()
+	_, err := c.cmdWithSession("delete", objType, itemId).Run()
+	return err
 }
 
 func (c *client) DeleteAttachment(itemId, attachmentId string) error {
-	return c.cmdWithSession("delete", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId).Run()
+	_, err := c.cmdWithSession("delete", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId).Run()
+	return err
 }
 
 func (c *client) SetServer(server string) error {
-	return c.cmd("config", "server", server).Run()
+	_, err := c.cmd("config", "server", server).Run()
+	return err
 }
 
 func (c *client) Status() (*Status, error) {
-	out, err := c.cmdWithSession("status").RunCaptureOutput()
+	out, err := c.cmdWithSession("status").Run()
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +228,7 @@ func (c *client) Status() (*Status, error) {
 }
 
 func (c *client) Unlock(password string) error {
-	out, err := c.cmd("unlock", "--raw", "--passwordenv", "BW_PASSWORD").WithEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).RunCaptureOutput()
+	out, err := c.cmd("unlock", "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).Run()
 	if err != nil {
 		return err
 	}
@@ -245,15 +249,16 @@ func (c *client) Sync() error {
 	if c.disableSync {
 		return nil
 	}
-	return c.cmdWithSession("sync").Run()
+	_, err := c.cmdWithSession("sync").Run()
+	return err
 }
 
 func (c *client) cmd(args ...string) executor.Command {
-	return c.executor.NewCommand(c.execPath, args...).ClearEnv().WithEnv(c.env())
+	return c.executor.NewCommand(c.execPath, args...).AppendEnv(c.env())
 }
 
 func (c *client) cmdWithSession(args ...string) executor.Command {
-	return c.cmd(args...).WithEnv([]string{fmt.Sprintf("BW_SESSION=%s", c.sessionKey)})
+	return c.cmd(args...).AppendEnv([]string{fmt.Sprintf("BW_SESSION=%s", c.sessionKey)})
 }
 
 func (c *client) env() []string {
@@ -270,7 +275,7 @@ func (c *client) encode(item Object) (string, error) {
 		return "", fmt.Errorf("marshalling error: %v, %v", err, string(newOut))
 	}
 
-	out, err := c.cmd("encode").WithStdin(string(newOut)).RunCaptureOutput()
+	out, err := c.cmd("encode").WithStdin(string(newOut)).Run()
 	if err != nil {
 		return "", fmt.Errorf("encoding error: %v, %v", err, string(newOut))
 	}
