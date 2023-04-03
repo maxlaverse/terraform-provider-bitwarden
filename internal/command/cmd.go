@@ -24,13 +24,10 @@ type command struct {
 	args   []string
 	env    []string
 	stdin  io.Reader
-	stdout io.Writer
-	stderr io.Writer
 }
 
 type Command interface {
 	AppendEnv(envs []string) Command
-	WithOutput(out io.Writer) Command
 	WithStdin(string) Command
 	Run() ([]byte, error)
 }
@@ -47,11 +44,6 @@ func (c *command) WithStdin(dir string) Command {
 	return c
 }
 
-func (c *command) WithOutput(out io.Writer) Command {
-	c.stdout = out
-	return c
-}
-
 func (c *command) Run() ([]byte, error) {
 	log.Printf("[DEBUG] Running command '%v'\n", c.args)
 	cmd := exec.Command(c.binary, c.args...)
@@ -60,17 +52,8 @@ func (c *command) Run() ([]byte, error) {
 
 	var combinedOut bytes.Buffer
 	var out bytes.Buffer
-	if c.stdout != nil {
-		cmd.Stdout = io.MultiWriter(c.stdout, &combinedOut, &out)
-	} else {
-		cmd.Stdout = io.MultiWriter(&combinedOut, &out)
-	}
-
-	if c.stderr != nil {
-		cmd.Stderr = io.MultiWriter(c.stderr, &combinedOut)
-	} else {
-		cmd.Stderr = io.MultiWriter(&combinedOut)
-	}
+	cmd.Stdout = io.MultiWriter(&combinedOut, &out)
+	cmd.Stderr = io.MultiWriter(&combinedOut)
 
 	err := cmd.Run()
 	if err != nil {

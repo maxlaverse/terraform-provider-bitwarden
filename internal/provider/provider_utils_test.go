@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -92,25 +91,24 @@ func getTestSessionKey(t *testing.T) (string, string) {
 		fmt.Sprintf("BW_PASSWORD=%s", testPassword),
 	}
 
-	var out bytes.Buffer
-
-	_, err = command.New(bwExecutable, "login", testEmail, "--raw", "--passwordenv", "BW_PASSWORD").WithOutput(&out).AppendEnv(env).Run()
+	_, err = command.New(bwExecutable, "login", testEmail, "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv(env).Run()
 	if err != nil && !strings.Contains(err.Error(), "You are already logged in as test@laverse.net") {
 		t.Fatal(err)
 	}
-	_, err = command.New(bwExecutable, "unlock", "--raw", "--passwordenv", "BW_PASSWORD").WithOutput(&out).AppendEnv(env).Run()
+
+	out, err := command.New(bwExecutable, "unlock", "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv(env).Run()
 	if err != nil {
 		t.Fatal(err)
 	}
-	sessionKey := out.String()
+	sessionKey := string(out)
 
-	_, err = command.New(bwExecutable, "status", "--session", sessionKey).WithOutput(&out).AppendEnv(env).Run()
+	out, err = command.New(bwExecutable, "status", "--session", sessionKey).AppendEnv(env).Run()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(out.String(), `"status":"unlocked"`) {
-		t.Fatal(out.String())
+	if !strings.Contains(string(out), `"status":"unlocked"`) {
+		t.Fatal(string(out))
 	}
 	return sessionKey, abs
 }

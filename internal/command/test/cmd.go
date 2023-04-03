@@ -2,7 +2,6 @@ package test
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
@@ -31,10 +30,6 @@ func (c *testCommand) AppendEnv(envs []string) command.Command {
 }
 
 func (c *testCommand) WithStdin(dir string) command.Command {
-	return c
-}
-
-func (c *testCommand) WithOutput(out io.Writer) command.Command {
 	return c
 }
 

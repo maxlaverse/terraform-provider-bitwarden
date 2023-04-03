@@ -1,7 +1,6 @@
 package command
 
 import (
-	"io"
 	"log"
 	"time"
 )
@@ -31,11 +30,6 @@ func (c *retryableCommand) AppendEnv(envs []string) Command {
 }
 func (c *retryableCommand) WithStdin(dir string) Command {
 	c.cmd.WithStdin(dir)
-	return c
-}
-
-func (c *retryableCommand) WithOutput(out io.Writer) Command {
-	c.cmd.WithOutput(out)
 	return c
 }
 
