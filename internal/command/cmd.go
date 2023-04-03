@@ -1,4 +1,4 @@
-package executor
+package command
 
 import (
 	"bytes"
@@ -9,20 +9,10 @@ import (
 	"strings"
 )
 
-// DefaultExecutor is only meant to be changed during tests.
-var DefaultExecutor = New()
+type NewFn func(binary string, args ...string) Command
 
-type Executor interface {
-	NewCommand(cmd string, args ...string) Command
-}
-
-func New() Executor {
-	return &defaultExecutor{}
-}
-
-type defaultExecutor struct{}
-
-func (e *defaultExecutor) NewCommand(binary string, args ...string) Command {
+// New is only meant to be changed during tests.
+var New = func(binary string, args ...string) Command {
 	return &command{
 		args:   args,
 		binary: binary,
