@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/executor"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
 )
 
 const (
@@ -94,17 +94,17 @@ func getTestSessionKey(t *testing.T) (string, string) {
 
 	var out bytes.Buffer
 
-	_, err = executor.NewCommand(bwExecutable, "login", testEmail, "--raw", "--passwordenv", "BW_PASSWORD").WithOutput(&out).AppendEnv(env).Run()
+	_, err = command.New(bwExecutable, "login", testEmail, "--raw", "--passwordenv", "BW_PASSWORD").WithOutput(&out).AppendEnv(env).Run()
 	if err != nil && !strings.Contains(err.Error(), "You are already logged in as test@laverse.net") {
 		t.Fatal(err)
 	}
-	_, err = executor.NewCommand(bwExecutable, "unlock", "--raw", "--passwordenv", "BW_PASSWORD").WithOutput(&out).AppendEnv(env).Run()
+	_, err = command.New(bwExecutable, "unlock", "--raw", "--passwordenv", "BW_PASSWORD").WithOutput(&out).AppendEnv(env).Run()
 	if err != nil {
 		t.Fatal(err)
 	}
 	sessionKey := out.String()
 
-	_, err = executor.NewCommand(bwExecutable, "status", "--session", sessionKey).WithOutput(&out).AppendEnv(env).Run()
+	_, err = command.New(bwExecutable, "status", "--session", sessionKey).WithOutput(&out).AppendEnv(env).Run()
 	if err != nil {
 		t.Fatal(err)
 	}

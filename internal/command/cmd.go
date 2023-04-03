@@ -1,4 +1,4 @@
-package executor
+package command
 
 import (
 	"bytes"
@@ -9,12 +9,10 @@ import (
 	"strings"
 )
 
-// NewCommand is only meant to be changed during tests.
-var NewCommand = newCommand
+type NewFn func(binary string, args ...string) Command
 
-type NewCommandFn func(binary string, args ...string) Command
-
-func newCommand(binary string, args ...string) Command {
+// New is only meant to be changed during tests.
+var New = func(binary string, args ...string) Command {
 	return &command{
 		args:   args,
 		binary: binary,

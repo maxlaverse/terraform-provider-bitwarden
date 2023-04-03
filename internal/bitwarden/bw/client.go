@@ -7,7 +7,7 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/executor"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
 )
 
 var (
@@ -54,7 +54,7 @@ func NewClient(execPath string, opts ...Options) Client {
 		o(c)
 	}
 
-	c.newCommand = executor.NewCommandWithRetries(&retryHandler{disableRetryBackoff: c.disableRetryBackoff})
+	c.newCommand = command.NewWithRetries(&retryHandler{disableRetryBackoff: c.disableRetryBackoff})
 
 	return c
 }
@@ -64,7 +64,7 @@ type client struct {
 	disableSync         bool
 	disableRetryBackoff bool
 	execPath            string
-	newCommand          executor.NewCommandFn
+	newCommand          command.NewFn
 	sessionKey          string
 }
 
@@ -261,11 +261,11 @@ func (c *client) Sync() error {
 	return err
 }
 
-func (c *client) cmd(args ...string) executor.Command {
+func (c *client) cmd(args ...string) command.Command {
 	return c.newCommand(c.execPath, args...).AppendEnv(c.env())
 }
 
-func (c *client) cmdWithSession(args ...string) executor.Command {
+func (c *client) cmdWithSession(args ...string) command.Command {
 	return c.cmd(args...).AppendEnv([]string{fmt.Sprintf("BW_SESSION=%s", c.sessionKey)})
 }
 

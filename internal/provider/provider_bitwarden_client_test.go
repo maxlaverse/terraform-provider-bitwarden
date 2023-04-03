@@ -5,19 +5,19 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/executor"
-	test_executor "github.com/maxlaverse/terraform-provider-bitwarden/internal/executor/test"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
+	test_command "github.com/maxlaverse/terraform-provider-bitwarden/internal/command/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestProviderReauthenticateWithPasswordIfAuthenticatedOnDifferentServer(t *testing.T) {
-	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
+	removeMocks, commandsExecuted := mockCommands(t, map[string]string{
 		"status":                          `{"serverURL": "http://127.0.0.99/", "userEmail": "test@laverse.net", "status": "unlocked"}`,
 		"logout":                          ``,
 		"config server http://127.0.0.1/": ``,
 		"login test@laverse.net --raw --passwordenv BW_PASSWORD": `session-key1234`,
 	})
-	defer restoreDefaultExecutor(t)
+	defer removeMocks(t)
 
 	providerConfiguration := map[string]interface{}{
 		"server":          "http://127.0.0.1/",
@@ -40,12 +40,12 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedOnDifferentServer(t *t
 }
 
 func TestProviderReauthenticateWithPasswordIfAuthenticatedWithDifferentUser(t *testing.T) {
-	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
+	removeMocks, commandsExecuted := mockCommands(t, map[string]string{
 		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "as-an-other-user@laverse.net", "status": "unlocked"}`,
 		"logout": ``,
 		"login test@laverse.net --raw --passwordenv BW_PASSWORD": `session-key1234`,
 	})
-	defer restoreDefaultExecutor(t)
+	defer removeMocks(t)
 
 	providerConfiguration := map[string]interface{}{
 		"server":          "http://127.0.0.1/",
@@ -67,11 +67,11 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedWithDifferentUser(t *t
 }
 
 func TestProviderDoesntLogoutFirstIfUnauthenticated(t *testing.T) {
-	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
+	removeMocks, commandsExecuted := mockCommands(t, map[string]string{
 		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "as-an-other-user@laverse.net", "status": "unauthenticated"}`,
 		"login test@laverse.net --raw --passwordenv BW_PASSWORD": `session-key1234`,
 	})
-	defer restoreDefaultExecutor(t)
+	defer removeMocks(t)
 
 	providerConfiguration := map[string]interface{}{
 		"server":          "http://127.0.0.1/",
@@ -92,14 +92,14 @@ func TestProviderDoesntLogoutFirstIfUnauthenticated(t *testing.T) {
 }
 
 func TestProviderReauthenticateWithAPIIfAuthenticatedWithDifferentUser(t *testing.T) {
-	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
+	removeMocks, commandsExecuted := mockCommands(t, map[string]string{
 		"status":                                 `{"serverURL": "http://127.0.0.1/", "userEmail": "as-an-other-user@laverse.net", "status": "unlocked"}`,
 		"logout":                                 ``,
 		"login --apikey":                         ``,
 		"unlock --raw --passwordenv BW_PASSWORD": `session-key1234`,
 		"sync":                                   ``,
 	})
-	defer restoreDefaultExecutor(t)
+	defer removeMocks(t)
 
 	providerConfiguration := map[string]interface{}{
 		"server":          "http://127.0.0.1/",
@@ -124,11 +124,11 @@ func TestProviderReauthenticateWithAPIIfAuthenticatedWithDifferentUser(t *testin
 }
 
 func TestProviderWithSessionKeySync(t *testing.T) {
-	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
+	removeMocks, commandsExecuted := mockCommands(t, map[string]string{
 		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "test@laverse.net", "status": "unlocked"}`,
 		"sync":   ``,
 	})
-	defer restoreDefaultExecutor(t)
+	defer removeMocks(t)
 
 	raw := map[string]interface{}{
 		"server":      "http://127.0.0.1/",
@@ -150,10 +150,10 @@ func TestProviderWithSessionKeySync(t *testing.T) {
 }
 
 func TestProviderRetryOnRateLimitExceeded(t *testing.T) {
-	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
+	removeMocks, commandsExecuted := mockCommands(t, map[string]string{
 		"status @error": `Rate limit exceeded. Try again later.`,
 	})
-	defer restoreDefaultExecutor(t)
+	defer removeMocks(t)
 
 	raw := map[string]interface{}{
 		"server":      "http://127.0.0.1/",
@@ -173,10 +173,10 @@ func TestProviderRetryOnRateLimitExceeded(t *testing.T) {
 }
 
 func TestProviderReturnUnhandledError(t *testing.T) {
-	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
+	removeMocks, commandsExecuted := mockCommands(t, map[string]string{
 		"status @error": `Something unknown and bad happened.`,
 	})
-	defer restoreDefaultExecutor(t)
+	defer removeMocks(t)
 
 	raw := map[string]interface{}{
 		"server":      "http://127.0.0.1/",
@@ -193,14 +193,14 @@ func TestProviderReturnUnhandledError(t *testing.T) {
 	}, commandsExecuted())
 }
 
-func useFakeExecutor(t *testing.T, dummyOutput map[string]string) (func(t *testing.T), func() []string) {
+func mockCommands(t *testing.T, dummyOutput map[string]string) (func(t *testing.T), func() []string) {
 	commandsExecuted := []string{}
-	newCommandToRestore := executor.NewCommand
-	executor.NewCommand = test_executor.New(dummyOutput, func(args string) {
+	newCommandToRestore := command.New
+	command.New = test_command.New(dummyOutput, func(args string) {
 		commandsExecuted = append(commandsExecuted, args)
 	})
 	return func(t *testing.T) {
-			executor.NewCommand = newCommandToRestore
+			command.New = newCommandToRestore
 		},
 		func() []string {
 			return commandsExecuted

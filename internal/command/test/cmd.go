@@ -5,11 +5,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/executor"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
 )
 
-func New(dummyOutput map[string]string, callback func(string)) executor.NewCommandFn {
-	return func(cmd string, args ...string) executor.Command {
+func New(dummyOutput map[string]string, callback func(string)) command.NewFn {
+	return func(cmd string, args ...string) command.Command {
 		return &testCommand{
 			cmd:         cmd,
 			args:        args,
@@ -26,15 +26,15 @@ type testCommand struct {
 	dummyOutput map[string]string
 }
 
-func (c *testCommand) AppendEnv(envs []string) executor.Command {
+func (c *testCommand) AppendEnv(envs []string) command.Command {
 	return c
 }
 
-func (c *testCommand) WithStdin(dir string) executor.Command {
+func (c *testCommand) WithStdin(dir string) command.Command {
 	return c
 }
 
-func (c *testCommand) WithOutput(out io.Writer) executor.Command {
+func (c *testCommand) WithOutput(out io.Writer) command.Command {
 	return c
 }
 

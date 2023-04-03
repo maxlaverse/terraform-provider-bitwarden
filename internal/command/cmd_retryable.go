@@ -1,4 +1,4 @@
-package executor
+package command
 
 import (
 	"io"
@@ -11,10 +11,10 @@ type RetryHandler interface {
 	Backoff(attempt int) time.Duration
 }
 
-func NewCommandWithRetries(retryHandler RetryHandler) NewCommandFn {
+func NewWithRetries(retryHandler RetryHandler) NewFn {
 	return func(binary string, args ...string) Command {
 		return &retryableCommand{
-			cmd:          NewCommand(binary, args...),
+			cmd:          New(binary, args...),
 			retryHandler: retryHandler,
 		}
 	}
