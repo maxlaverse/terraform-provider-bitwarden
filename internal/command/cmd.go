@@ -46,21 +46,23 @@ func (c *command) WithStdin(dir string) Command {
 
 func (c *command) Run() ([]byte, error) {
 	log.Printf("[DEBUG] Running command '%v'\n", c.args)
-	cmd := exec.Command(c.binary, c.args...)
-	cmd.Stdin = c.stdin
-	cmd.Env = c.env
+	var stdOut, stdErr bytes.Buffer
 
-	var combinedOut bytes.Buffer
-	var out bytes.Buffer
-	cmd.Stdout = io.MultiWriter(&combinedOut, &out)
-	cmd.Stderr = io.MultiWriter(&combinedOut)
+	cmd := exec.Command(c.binary, c.args...)
+	cmd.Env = c.env
+	cmd.Stdin = c.stdin
+	cmd.Stdout = &stdOut
+	cmd.Stderr = &stdErr
 
 	err := cmd.Run()
 	if err != nil {
 		log.Printf("[ERROR] Command '%v' finished with error: %v\n", c.args, err)
-		return out.Bytes(), fmt.Errorf("error running '%s': %v, %v", strings.Join(c.args, " "), err, combinedOut.String())
+		log.Printf("[ERROR] Stdout: %v\n", stdOut.String())
+		log.Printf("[ERROR] Stderr: %v\n", stdErr.String())
+
+		return stdOut.Bytes(), fmt.Errorf("'%s' while running '%s': %v%v", err, strings.Join(c.args, " "), stdOut.String(), stdErr.String())
 	}
 	log.Printf("[DEBUG] Command '%v' finished with success\n", c.args)
 
-	return out.Bytes(), nil
+	return stdOut.Bytes(), nil
 }
