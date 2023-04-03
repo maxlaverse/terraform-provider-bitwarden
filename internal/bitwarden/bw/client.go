@@ -48,22 +48,24 @@ type Client interface {
 func NewClient(execPath string, opts ...Options) Client {
 	c := &client{
 		execPath: execPath,
-		executor: executor.DefaultExecutor,
 	}
 
 	for _, o := range opts {
 		o(c)
 	}
 
+	c.executor = executor.NewWithRetries(&retryHandler{disableRetryBackoff: c.disableRetryBackoff})
+
 	return c
 }
 
 type client struct {
-	appDataDir  string
-	disableSync bool
-	execPath    string
-	executor    executor.Executor
-	sessionKey  string
+	appDataDir          string
+	disableSync         bool
+	disableRetryBackoff bool
+	execPath            string
+	executor            executor.Executor
+	sessionKey          string
 }
 
 type Options func(c Client)
@@ -77,6 +79,12 @@ func WithAppDataDir(appDataDir string) Options {
 func DisableSync() Options {
 	return func(c Client) {
 		c.(*client).disableSync = true
+	}
+}
+
+func DisableRetryBackoff() Options {
+	return func(c Client) {
+		c.(*client).disableRetryBackoff = true
 	}
 }
 

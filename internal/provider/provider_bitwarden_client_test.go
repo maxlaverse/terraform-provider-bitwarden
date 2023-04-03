@@ -149,6 +149,50 @@ func TestProviderWithSessionKeySync(t *testing.T) {
 	}, commandsExecuted())
 }
 
+func TestProviderRetryOnRateLimitExceeded(t *testing.T) {
+	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
+		"status @error": `Rate limit exceeded. Try again later.`,
+	})
+	defer restoreDefaultExecutor(t)
+
+	raw := map[string]interface{}{
+		"server":      "http://127.0.0.1/",
+		"email":       "test@laverse.net",
+		"session_key": "abcd1234",
+	}
+
+	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
+
+	assert.True(t, diag.HasError())
+	assert.Equal(t, diag[0].Summary, "failing command 'status' for test purposes: Rate limit exceeded. Try again later.")
+	assert.Equal(t, []string{
+		"status",
+		"status",
+		"status",
+	}, commandsExecuted())
+}
+
+func TestProviderReturnUnhandledError(t *testing.T) {
+	restoreDefaultExecutor, commandsExecuted := useFakeExecutor(t, map[string]string{
+		"status @error": `Something unknown and bad happened.`,
+	})
+	defer restoreDefaultExecutor(t)
+
+	raw := map[string]interface{}{
+		"server":      "http://127.0.0.1/",
+		"email":       "test@laverse.net",
+		"session_key": "abcd1234",
+	}
+
+	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
+
+	assert.True(t, diag.HasError())
+	assert.Equal(t, diag[0].Summary, "failing command 'status' for test purposes: Something unknown and bad happened.")
+	assert.Equal(t, []string{
+		"status",
+	}, commandsExecuted())
+}
+
 func useFakeExecutor(t *testing.T, dummyOutput map[string]string) (func(t *testing.T), func() []string) {
 	commandsExecuted := []string{}
 	old := executor.DefaultExecutor
