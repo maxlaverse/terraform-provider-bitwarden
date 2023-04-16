@@ -147,6 +147,16 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 		/*
 		* Attributes that are always computed
 		 */
+		attributeCreationDate: {
+			Description: descriptionCreationDate,
+			Type:        schema.TypeString,
+			Computed:    true,
+		},
+		attributeDeletedDate: {
+			Description: descriptionDeletedDate,
+			Type:        schema.TypeString,
+			Computed:    true,
+		},
 		attributeObject: {
 			Description: descriptionInternal,
 			Type:        schema.TypeString,

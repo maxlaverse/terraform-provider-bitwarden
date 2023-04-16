@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	regExpId = "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"
+	regExpId   = `^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$`
+	regExpDate = `^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z)?$`
 )
 
 func checkObject(resourceName string) resource.TestCheckFunc {
@@ -36,6 +37,15 @@ func checkItemGeneral(resourceName string) resource.TestCheckFunc {
 		),
 		resource.TestMatchResourceAttr(
 			resourceName, attributeFavorite, regexp.MustCompile("^true"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, attributeRevisionDate, regexp.MustCompile(regExpDate),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, attributeCreationDate, regexp.MustCompile(regExpDate),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, attributeDeletedDate, regexp.MustCompile(regExpDate),
 		),
 		resource.TestMatchResourceAttr(
 			resourceName, attributeOrganizationID, regexp.MustCompile(regExpId),

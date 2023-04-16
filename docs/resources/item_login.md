@@ -65,6 +65,8 @@ resource "bitwarden_item_login" "administrative-user" {
 ### Read-Only
 
 - `attachments` (List of Object) List of item attachments. (see [below for nested schema](#nestedatt--attachments))
+- `creation_date` (String) Date the item was created.
+- `deleted_date` (String) Date the item was deleted.
 - `id` (String) Identifier.
 - `revision_date` (String) Last time the item was updated.
 

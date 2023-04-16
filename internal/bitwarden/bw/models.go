@@ -92,6 +92,8 @@ type SecureNote struct {
 
 type Object struct {
 	CollectionIds  []string     `json:"collectionIds,omitempty"`
+	CreationDate   *time.Time   `json:"creationDate,omitempty"`
+	DeletedDate    *time.Time   `json:"deletedDate,omitempty"`
 	ID             string       `json:"id,omitempty"`
 	ExternalID     string       `json:"externalId,omitempty"`
 	FolderID       string       `json:"folderId,omitempty"`
@@ -110,7 +112,7 @@ type Object struct {
 }
 
 const (
-	RevisionDateLayout = "2006-01-02T15:04:05.000Z"
+	DateLayout = "2006-01-02T15:04:05.000Z"
 )
 
 type Field struct {
