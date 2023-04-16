@@ -21,10 +21,10 @@ This project is not associated with the Bitwarden project nor 8bit Solutions LLC
 
 ## Supported Versions
 The plugin has been tested and built with the following components:
-- [Terraform] v1.3.7
+- [Terraform] v1.4.5
 - [Bitwarden CLI] v2023.1.0
-- [Go] 1.19.5 (for development)
-- [Docker] 20.10.21 (for development)
+- [Go] 1.20.3 (for development)
+- [Docker] 4.17.0 (for development)
 
 The provider likely works with older versions but those haven't been tested.
 
