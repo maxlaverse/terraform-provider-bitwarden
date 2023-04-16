@@ -14,6 +14,7 @@ type Client interface {
 	EditObject(Object) (*Object, error)
 	GetAttachment(itemId, attachmentId string) ([]byte, error)
 	GetObject(objType, itemId string) (*Object, error)
+	GetSessionKey() string
 	HasSessionKey() bool
 	LoginWithAPIKey(password, clientId, clientSecret string) error
 	LoginWithPassword(username, password string) error
@@ -151,6 +152,10 @@ func (c *client) GetAttachment(itemId, attachmentId string) ([]byte, error) {
 	}
 
 	return out, nil
+}
+
+func (c *client) GetSessionKey() string {
+	return c.sessionKey
 }
 
 // LoginWithPassword logs in using a password and retrieves the session key,

@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAccResourceAttachment(t *testing.T) {
@@ -66,6 +67,39 @@ func TestAccResourceItemAttachmentFields(t *testing.T) {
 					),
 					checkAttachmentMatches(resourceName, "attachments.0."),
 				),
+			},
+		},
+	})
+}
+
+func TestAccMissingAttachmentIsRecreated(t *testing.T) {
+	ensureVaultwardenConfigured(t)
+
+	var attachmentID string
+	var itemID string
+
+	resource.UnitTest(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Check: resource.ComposeTestCheckFunc(
+					getAttachmentIDs("bitwarden_attachment.foo", &attachmentID, &itemID),
+				),
+			},
+			{
+				Config:             tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+			{
+				Config: tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				PreConfig: func() {
+					err := bwTestClient(t).DeleteAttachment(itemID, attachmentID)
+					assert.NoError(t, err)
+				},
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: true,
 			},
 		},
 	})

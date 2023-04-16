@@ -13,7 +13,7 @@ func resourceFolder() *schema.Resource {
 		Description: "Manages a folder.",
 
 		CreateContext: resourceFolderCreate,
-		ReadContext:   objectRead,
+		ReadContext:   objectReadIgnoreMissing,
 		UpdateContext: objectUpdate,
 		DeleteContext: objectDelete,
 		Importer:      importFolderResource(),

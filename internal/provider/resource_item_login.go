@@ -14,7 +14,7 @@ func resourceItemLogin() *schema.Resource {
 	return &schema.Resource{
 		Description:   "Manages a Vault Login item.",
 		CreateContext: createResource(bw.ObjectTypeItem, bw.ItemTypeLogin),
-		ReadContext:   objectRead,
+		ReadContext:   objectReadIgnoreMissing,
 		UpdateContext: objectUpdate,
 		DeleteContext: objectDelete,
 		Importer:      importItemResource(bw.ObjectTypeItem, bw.ItemTypeLogin),

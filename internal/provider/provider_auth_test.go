@@ -49,15 +49,15 @@ func TestAccProviderAuthUsernamePassword(t *testing.T) {
 
 func TestAccProviderAuthSessionKey(t *testing.T) {
 	ensureVaultwardenHasUser(t)
-	sessionKey, vaultPath := getTestSessionKey(t)
-	validProvider := sessionKeyTestProvider(testEmail, vaultPath, sessionKey)
-	invalidSessionKey := sessionKeyTestProvider(testEmail, vaultPath, "invalid-session-key")
+
+	validProvider := sessionKeyTestProvider(testEmail, bwTestClient(t).GetSessionKey())
+	invalidProvider := sessionKeyTestProvider(testEmail, "invalid-session-key")
 
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      invalidSessionKey + testResource,
+				Config:      invalidProvider + testResource,
 				ExpectError: regexp.MustCompile("unable to unlock Vault with provided session key"),
 			},
 			{
@@ -70,15 +70,14 @@ func TestAccProviderAuthSessionKey(t *testing.T) {
 	})
 }
 
-func sessionKeyTestProvider(email, vaultPath, sessionKey string) string {
+func sessionKeyTestProvider(email, sessionKey string) string {
 	return fmt.Sprintf(`
 	provider "bitwarden" {
 		server          = "%s"
 		email           = "%s"
-		vault_path = "%s"
 		session_key = "%s"
 	}
-`, testServerURL, email, vaultPath, sessionKey)
+`, testServerURL, email, sessionKey)
 }
 
 func usernamePasswordTestProvider(email, password string) string {

@@ -11,7 +11,7 @@ func resourceItemSecureNote() *schema.Resource {
 	return &schema.Resource{
 		Description:   "Manages a Vault Secure Note item.",
 		CreateContext: createResource(bw.ObjectTypeItem, bw.ItemTypeSecureNote),
-		ReadContext:   objectRead,
+		ReadContext:   objectReadIgnoreMissing,
 		UpdateContext: objectUpdate,
 		DeleteContext: objectDelete,
 		Importer:      importItemResource(bw.ObjectTypeItem, bw.ItemTypeSecureNote),
