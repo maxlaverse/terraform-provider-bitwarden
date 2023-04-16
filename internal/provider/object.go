@@ -108,9 +108,25 @@ func objectDataFromStruct(d *schema.ResourceData, obj *bw.Object) error {
 			return err
 		}
 
-		err = d.Set(attributeRevisionDate, obj.RevisionDate.Format(bw.RevisionDateLayout))
-		if err != nil {
-			return err
+		if obj.RevisionDate != nil {
+			err = d.Set(attributeRevisionDate, obj.RevisionDate.Format(bw.DateLayout))
+			if err != nil {
+				return err
+			}
+		}
+
+		if obj.CreationDate != nil {
+			err = d.Set(attributeCreationDate, obj.CreationDate.Format(bw.DateLayout))
+			if err != nil {
+				return err
+			}
+		}
+
+		if obj.DeletedDate != nil {
+			err = d.Set(attributeDeletedDate, obj.DeletedDate.Format(bw.DateLayout))
+			if err != nil {
+				return err
+			}
 		}
 
 		if obj.Type == bw.ItemTypeLogin {

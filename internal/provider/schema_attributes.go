@@ -4,6 +4,8 @@ const (
 	// Datasource and Resource field attributes
 	attributeAttachments        = "attachments"
 	attributeCollectionIDs      = "collection_ids"
+	attributeCreationDate       = "creation_date"
+	attributeDeletedDate        = "deleted_date"
 	attributeID                 = "id"
 	attributeFavorite           = "favorite"
 	attributeField              = "field"
@@ -37,6 +39,8 @@ const (
 	// Datasource and Resource field descriptions
 	descriptionAttachments            = "List of item attachments."
 	descriptionCollectionIDs          = "Identifier of the collections the item belongs to."
+	descriptionCreationDate           = "Date the item was created."
+	descriptionDeletedDate            = "Date the item was deleted."
 	descriptionFavorite               = "Mark as a Favorite to have item appear at the top of your Vault in the UI."
 	descriptionField                  = "Extra fields."
 	descriptionFieldBoolean           = "Value of a boolean field."
