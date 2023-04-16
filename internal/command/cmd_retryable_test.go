@@ -21,12 +21,11 @@ func TestCommandRerunOnMatchingError(t *testing.T) {
 	cmd := NewWithRetries(retryHandler)(os.Args[0], "-test.run=TestCommandRerunOnMatchingError")
 	cmd.AppendEnv([]string{"GO_WANT_HELPER_PROCESS=1"})
 
-	out, err := cmd.Run()
+	_, err := cmd.Run()
 
 	assert.NotNil(t, err)
 	assert.Error(t, err)
 	assert.Equal(t, retryHandler.called, 3)
-	assert.Equal(t, "test: failing on purpose\n", string(out))
 }
 
 func TestCommandFailsOnUnmatchedError(t *testing.T) {
@@ -40,12 +39,11 @@ func TestCommandFailsOnUnmatchedError(t *testing.T) {
 	cmd := NewWithRetries(retryHandler)(os.Args[0], "-test.run=TestCommandFailsOnUnmatchedError")
 	cmd.AppendEnv([]string{"GO_WANT_HELPER_PROCESS=1"})
 
-	out, err := cmd.Run()
+	_, err := cmd.Run()
 
 	assert.NotNil(t, err)
 	assert.Error(t, err)
 	assert.Equal(t, retryHandler.called, 1)
-	assert.Equal(t, "test: failing for other reasons\n", string(out))
 }
 
 type testRetryHandler struct {

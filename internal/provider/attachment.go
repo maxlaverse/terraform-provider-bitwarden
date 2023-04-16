@@ -46,6 +46,8 @@ func attachmentRead(ctx context.Context, d *schema.ResourceData, meta interface{
 	if err != nil {
 		// If the item is not found, we can't simply consider the attachment as
 		// deleted, because we won't have an item to attach it to.
+		// This means we don't need a special handling for NotFound errors and
+		// should just return whatever we get.
 		return diag.FromErr(err)
 	}
 
