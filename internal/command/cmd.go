@@ -2,11 +2,9 @@ package command
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"log"
 	"os/exec"
-	"strings"
 )
 
 type NewFn func(binary string, args ...string) Command
@@ -60,7 +58,7 @@ func (c *command) Run() ([]byte, error) {
 		log.Printf("[ERROR] Stdout: %v\n", stdOut.String())
 		log.Printf("[ERROR] Stderr: %v\n", stdErr.String())
 
-		return stdOut.Bytes(), fmt.Errorf("'%s' while running '%s': %v%v", err, strings.Join(c.args, " "), stdOut.String(), stdErr.String())
+		return nil, NewError(err, c.args, stdOut.String(), stdErr.String())
 	}
 	log.Printf("[DEBUG] Command '%v' finished with success\n", c.args)
 

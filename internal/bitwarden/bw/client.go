@@ -2,29 +2,11 @@ package bw
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
-	"regexp"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
 )
-
-var (
-	ErrObjectNotFound     = errObjectNotFound()
-	ErrAttachmentNotFound = errAttachmentNotFound()
-
-	attachmentNotFoundRegexp = regexp.MustCompile(`^Attachment .* was not found.$`)
-)
-
-func errObjectNotFound() error     { return errors.New("object not found") }
-func errAttachmentNotFound() error { return errors.New("attachment not found") }
-func isErrorObjectNotFound(errorMessage []byte) bool {
-	return string(errorMessage) == "Not found."
-}
-func isErrorAttachmentNotFound(errorMessage []byte) bool {
-	return attachmentNotFoundRegexp.Match(errorMessage)
-}
 
 type Client interface {
 	CreateAttachment(itemId, filePath string) (*Object, error)
@@ -100,7 +82,7 @@ func (c *client) CreateObject(obj Object) (*Object, error) {
 	}
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, unmarshallError("create object", err, out)
+		return nil, newUnmarshallError(err, "create object", out)
 	}
 
 	// NOTE(maxime): there is no need to sync after creating an item
@@ -137,7 +119,7 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 	}
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, unmarshallError("edit object", err, out)
+		return nil, newUnmarshallError(err, "edit object", out)
 	}
 	err = c.Sync()
 	if err != nil {
@@ -150,16 +132,13 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 func (c *client) GetObject(objType, itemId string) (*Object, error) {
 	out, err := c.cmdWithSession("get", objType, itemId).Run()
 	if err != nil {
-		if isErrorObjectNotFound(out) {
-			return nil, ErrObjectNotFound
-		}
-		return nil, err
+		return nil, remapError(err)
 	}
 
 	var obj Object
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, unmarshallError("get object", err, out)
+		return nil, newUnmarshallError(err, "get object", out)
 	}
 
 	return &obj, nil
@@ -168,12 +147,7 @@ func (c *client) GetObject(objType, itemId string) (*Object, error) {
 func (c *client) GetAttachment(itemId, attachmentId string) ([]byte, error) {
 	out, err := c.cmdWithSession("get", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId, "--raw").Run()
 	if err != nil {
-		if isErrorObjectNotFound(out) {
-			return nil, ErrObjectNotFound
-		} else if isErrorAttachmentNotFound(out) {
-			return nil, ErrAttachmentNotFound
-		}
-		return nil, err
+		return nil, remapError(err)
 	}
 
 	return out, nil
@@ -229,7 +203,7 @@ func (c *client) Status() (*Status, error) {
 	var status Status
 	err = json.Unmarshal(out, &status)
 	if err != nil {
-		return nil, unmarshallError("status", err, out)
+		return nil, newUnmarshallError(err, "status", out)
 	}
 
 	return &status, nil
@@ -288,8 +262,4 @@ func (c *client) encode(item Object) (string, error) {
 		return "", fmt.Errorf("encoding error: %v, %v", err, string(newOut))
 	}
 	return string(out), err
-}
-
-func unmarshallError(cmd string, err error, out []byte) error {
-	return fmt.Errorf("unable to parse '%s' result: %v, output: %v", cmd, err, string(out))
 }
