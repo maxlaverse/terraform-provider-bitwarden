@@ -11,37 +11,59 @@ import (
 )
 
 func objectCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return objectOperation(ctx, d, meta.(bw.Client).CreateObject)
+	return diag.FromErr(objectOperation(ctx, d, meta.(bw.Client).CreateObject))
 }
 
 func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
+	return diag.FromErr(objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
+		obj, err := meta.(bw.Client).GetObject(string(secret.Object), secret.ID)
+
+		// If the object exists but is marked as soft deleted, we return an error, because relying
+		// on an object in the 'trash' sounds like a bad idea.
+		if obj != nil && obj.DeletedDate != nil {
+			return nil, errors.New("object is soft deleted")
+		}
+		return obj, err
+	}))
+}
+
+func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	err := objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
 		return meta.(bw.Client).GetObject(string(secret.Object), secret.ID)
 	})
+
+	if errors.Is(err, bw.ErrObjectNotFound) {
+		d.SetId("")
+		log.Print("[WARN] Object not found, removing from state")
+		return diag.Diagnostics{}
+	}
+
+	if _, exists := d.GetOk(attributeDeletedDate); exists {
+		d.SetId("")
+		log.Print("[WARN] Object was soft deleted, removing from state")
+		return diag.Diagnostics{}
+	}
+
+	return diag.FromErr(err)
 }
 
 func objectUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return objectOperation(ctx, d, meta.(bw.Client).EditObject)
+	return diag.FromErr(objectOperation(ctx, d, meta.(bw.Client).EditObject))
 }
 
 func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
+	return diag.FromErr(objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
 		return nil, meta.(bw.Client).DeleteObject(string(secret.Object), secret.ID)
-	})
+	}))
 }
 
-func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(secret bw.Object) (*bw.Object, error)) diag.Diagnostics {
+func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(secret bw.Object) (*bw.Object, error)) error {
 	obj, err := operation(objectStructFromData(d))
-
 	if err != nil {
-		if errors.Is(err, bw.ErrObjectNotFound) {
-			d.SetId("")
-			return diag.Diagnostics{}
-		}
-		return diag.FromErr(err)
+		return err
 	}
 
-	return diag.FromErr(objectDataFromStruct(d, obj))
+	return objectDataFromStruct(d, obj)
 }
 
 func objectDataFromStruct(d *schema.ResourceData, obj *bw.Object) error {

@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
 )
 
 const (
@@ -73,46 +73,6 @@ func ensureVaultwardenHasUser(t *testing.T) {
 	isUserCreated = true
 }
 
-func getTestSessionKey(t *testing.T) (string, string) {
-	abs, err := filepath.Abs("./.bitwarden")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	bwExecutable, err := exec.LookPath("bw")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	env := []string{
-		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
-		fmt.Sprintf("BITWARDENCLI_APPDATA_DIR=%s", abs),
-		"BW_NOINTERACTION=true",
-		fmt.Sprintf("BW_PASSWORD=%s", testPassword),
-	}
-
-	_, err = command.New(bwExecutable, "login", testEmail, "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv(env).Run()
-	if err != nil && !strings.Contains(err.Error(), "You are already logged in as test@laverse.net") {
-		t.Fatal(err)
-	}
-
-	out, err := command.New(bwExecutable, "unlock", "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv(env).Run()
-	if err != nil {
-		t.Fatal(err)
-	}
-	sessionKey := string(out)
-
-	out, err = command.New(bwExecutable, "status", "--session", sessionKey).AppendEnv(env).Run()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !strings.Contains(string(out), `"status":"unlocked"`) {
-		t.Fatal(string(out))
-	}
-	return sessionKey, abs
-}
-
 func ensureVaultwardenConfigured(t *testing.T) {
 	testResourcesMu.Lock()
 	defer testResourcesMu.Unlock()
@@ -150,6 +110,22 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	areTestResourcesCreated = true
 }
 
+func bwTestClient(t *testing.T) bw.Client {
+	vault, err := filepath.Abs("./.bitwarden")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bwExec, err := exec.LookPath("bw")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client := bw.NewClient(bwExec, bw.WithAppDataDir(vault))
+	client.Unlock(testPassword)
+	return client
+}
+
 func tfConfigProvider() string {
 	return fmt.Sprintf(`
 	provider "bitwarden" {
@@ -168,6 +144,19 @@ func getObjectID(n string, objectId *string) resource.TestCheckFunc {
 		}
 
 		*objectId = rs.Primary.ID
+		return nil
+	}
+}
+
+func getAttachmentIDs(n string, objectId, itemId *string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[n]
+		if !ok {
+			return fmt.Errorf("Not found: %s", n)
+		}
+
+		*objectId = rs.Primary.ID
+		*itemId = rs.Primary.Attributes["item_id"]
 		return nil
 	}
 }

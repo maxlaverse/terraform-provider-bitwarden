@@ -1,15 +1,16 @@
 package provider
 
 import (
+	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestAccDataSourceItemLogin(t *testing.T) {
+func TestAccDataSourceItemLoginAttributes(t *testing.T) {
 	ensureVaultwardenConfigured(t)
-
-	resourceName := "data.bitwarden_item_login.foo_data"
 
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,
@@ -19,10 +20,58 @@ func TestAccDataSourceItemLogin(t *testing.T) {
 			},
 			{
 				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin() + tfConfigDataItemLogin(),
-				Check:  checkItemLogin(resourceName),
+				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},
 		},
 	})
+}
+
+func TestAccDataSourceItemLoginFailsOnInexistentItem(t *testing.T) {
+	ensureVaultwardenConfigured(t)
+
+	resource.UnitTest(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      tfConfigProvider() + tfConfigInexistentDataItemLogin(),
+				ExpectError: regexp.MustCompile("Error: object not found"),
+			},
+		},
+	})
+}
+
+func TestAccDataSourceItemLoginDeleted(t *testing.T) {
+	var objectID string
+
+	ensureVaultwardenConfigured(t)
+
+	resource.UnitTest(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: tfConfigProvider() + tfConfigResourceItemLoginSmall(),
+				Check:  getObjectID("bitwarden_item_login.foo", &objectID),
+			},
+			{
+				Config: tfConfigProvider() + tfConfigResourceItemLoginSmall() + tfConfigDataItemLoginWithId(objectID),
+				PreConfig: func() {
+					err := bwTestClient(t).DeleteObject("item", objectID)
+					assert.NoError(t, err)
+				},
+				ExpectError: regexp.MustCompile("Error: object not found"),
+			},
+		},
+	})
+}
+
+func tfConfigDataItemLoginWithId(id string) string {
+	return fmt.Sprintf(`
+data "bitwarden_item_login" "foo_data" {
+	provider	= bitwarden
+
+	id 			= "%s"
+}
+`, id)
 }
 
 func tfConfigDataItemLogin() string {
@@ -31,6 +80,16 @@ data "bitwarden_item_login" "foo_data" {
 	provider	= bitwarden
 
 	id 			= bitwarden_item_login.foo.id
+}
+`
+}
+
+func tfConfigInexistentDataItemLogin() string {
+	return `
+data "bitwarden_item_login" "foo_data" {
+	provider	= bitwarden
+
+	id 			= 123456789
 }
 `
 }

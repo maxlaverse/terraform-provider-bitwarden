@@ -6,9 +6,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestAccResourceItemLogin(t *testing.T) {
+func TestAccResourceItemLoginAttributes(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "bitwarden_item_login.foo"
@@ -32,6 +33,48 @@ func TestAccResourceItemLogin(t *testing.T) {
 			},
 		},
 	})
+}
+
+func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
+	ensureVaultwardenConfigured(t)
+
+	var objectID string
+
+	resource.UnitTest(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: tfConfigProvider() + tfConfigResourceItemLoginSmall(),
+				Check: resource.ComposeTestCheckFunc(
+					getObjectID("bitwarden_item_login.foo", &objectID),
+				),
+			},
+			{
+				Config:             tfConfigProvider() + tfConfigResourceItemLoginSmall(),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+			{
+				Config: tfConfigProvider() + tfConfigResourceItemLoginSmall(),
+				PreConfig: func() {
+					err := bwTestClient(t).DeleteObject("item", objectID)
+					assert.NoError(t, err)
+				},
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
+
+func tfConfigResourceItemLoginSmall() string {
+	return `
+	resource "bitwarden_item_login" "foo" {
+		provider 			= bitwarden
+
+		name     			= "login-bar"
+	}
+`
 }
 
 func tfConfigResourceItemLogin() string {

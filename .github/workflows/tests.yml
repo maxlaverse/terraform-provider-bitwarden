@@ -42,54 +42,54 @@ jobs:
     steps:
       - id: go-cache-paths
         run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+          echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "GOMODCACHE=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
 
       - id: binaries
         run: |
-          echo "::set-output name=local-binaries::$GITHUB_WORKSPACE/bin"
-          echo "::set-output name=vaultwarden-version::1.21.1"
+          echo "LOCAL_BINARIES=$GITHUB_WORKSPACE/bin" >> $GITHUB_OUTPUT
+          echo "BWCLI_VERSION=2023.1.0" >> $GITHUB_OUTPUT
 
       - name: Check out repository code
         uses: actions/checkout@v2
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
-          go-version: 1.19
+          go-version: '>=1.19.0'
 
       # Cache go build cache, used to speedup go test
       - name: Go Build Cache
         uses: actions/cache@v2
         with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
+          path: ${{ steps.go-cache-paths.outputs.GOCACHE }}
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
 
       # Cache go mod cache, used to speedup builds
       - name: Go Mod Cache
         uses: actions/cache@v2
         with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
+          path: ${{ steps.go-cache-paths.outputs.GOMODCACHE }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Binaries Cache
         uses: actions/cache@v2
         with:
-          path: ${{ steps.binaries.outputs.local-binaries }}
-          key: ${{ steps.binaries.outputs.vaultwarden-version }}
+          path: ${{ steps.binaries.outputs.LOCAL_BINARIES }}
+          key: ${{ steps.binaries.outputs.BWCLI_VERSION }}
 
       - name: Download Binaries
         run: |
-          echo "${{ steps.binaries.outputs.local-binaries }}" >> $GITHUB_PATH
-          if [[ -d "${{ steps.binaries.outputs.local-binaries }}" ]]; then
+          echo "${{ steps.binaries.outputs.LOCAL_BINARIES }}" >> $GITHUB_PATH
+          if [[ -d "${{ steps.binaries.outputs.LOCAL_BINARIES }}" ]]; then
               exit 0
           fi
 
-          wget https://github.com/bitwarden/cli/releases/download/v${{ steps.binaries.outputs.vaultwarden-version }}/bw-linux-${{ steps.binaries.outputs.vaultwarden-version }}.zip
-          mkdir -p ${{ steps.binaries.outputs.local-binaries }}
-          unzip bw-linux-${{ steps.binaries.outputs.vaultwarden-version }}.zip
+          wget https://github.com/bitwarden/clients/releases/download/cli-v${{ steps.binaries.outputs.BWCLI_VERSION }}/bw-linux-${{ steps.binaries.outputs.BWCLI_VERSION }}.zip
+          mkdir -p ${{ steps.binaries.outputs.LOCAL_BINARIES }}
+          unzip bw-linux-${{ steps.binaries.outputs.BWCLI_VERSION }}.zip
           chmod +x bw
-          mv bw ${{ steps.binaries.outputs.local-binaries }}
+          mv bw ${{ steps.binaries.outputs.LOCAL_BINARIES }}
 
       - name: Build
         run: go build -v ./...
