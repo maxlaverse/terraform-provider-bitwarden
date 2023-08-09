@@ -116,9 +116,10 @@ const (
 )
 
 type Field struct {
-	Name  string    `json:"name,omitempty"`
-	Value string    `json:"value,omitempty"`
-	Type  FieldType `json:"type,omitempty"`
+	Name     string    `json:"name,omitempty"`
+	Value    string    `json:"value,omitempty"`
+	Type     FieldType `json:"type"`
+	LinkedId *int      `json:"linkedId"`
 }
 
 type Attachment struct {

@@ -16,7 +16,7 @@ var (
 )
 
 func newUnmarshallError(err error, cmd string, out []byte) error {
-	return fmt.Errorf("unable to parse '%s' result: %v, output: %v", cmd, err, string(out))
+	return fmt.Errorf("unable to parse result of '%s' command: %v, output: %v", cmd, err, string(out))
 }
 
 func remapError(err error) error {
