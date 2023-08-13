@@ -1,17 +1,20 @@
-# Provider configuration
 terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.5.0"
+      version = ">= 0.6.1"
     }
   }
 }
 
+# Configure the Bitwarden Provider
 provider "bitwarden" {
-  master_password = var.bw_password
-  client_id       = var.bw_client_id
-  client_secret   = var.bw_client_secret
-  email           = "test@laverse.net"
-  server          = "https://vault.bitwarden.com"
+  email           = "terraform@example.com"
+}
+
+# Create a Bitwarden Login Resource
+resource "bitwarden_item_login" "example" {
+  name            = "Example"
+  username        = "service-account"
+  password        = "<sensitive>"
 }

@@ -33,42 +33,19 @@ The provider likely works with older versions but those haven't been tested.
 The complete documentation for this provider can be found on the [Terraform Registry docs].
 
 ```tf
-# Setting up the Provider
-variable "bw_password" {
-  type        = string
-  description = "Bitwarden Master Key"
-  sensitive   = true
-}
-
-variable "bw_client_id" {
-  type        = string
-  description = "Bitwarden Client ID"
-  sensitive   = true
-}
-
-variable "bw_client_secret" {
-  type        = string
-  description = "Bitwarden Client Secret"
-  sensitive   = true
-}
-
 terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.5.0"
+      version = ">= 0.6.2"
     }
   }
 }
 
+# Configure the Bitwarden Provider
 provider "bitwarden" {
-  master_password = var.bw_password
-  client_id       = var.bw_client_id
-  client_secret   = var.bw_client_secret
-  email           = "test@laverse.net"
-  server          = "https://vault.bitwarden.com"
+  email           = "terraform@example.com"
 }
-
 
 # Managing Folders
 resource "bitwarden_folder" "cloud_credentials" {

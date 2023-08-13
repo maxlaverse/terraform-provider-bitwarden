@@ -54,5 +54,3 @@ data "bitwarden_attachment" "ssh_private_key" {
 ### Read-Only
 
 - `content` (String) Content of the attachment
-
-

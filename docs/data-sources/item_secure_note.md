@@ -82,5 +82,3 @@ Read-Only:
 - `linked` (String)
 - `name` (String)
 - `text` (String)
-
-
