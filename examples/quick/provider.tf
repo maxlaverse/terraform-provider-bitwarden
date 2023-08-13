@@ -9,12 +9,12 @@ terraform {
 
 # Configure the Bitwarden Provider
 provider "bitwarden" {
-  email           = "terraform@example.com"
+  email = "terraform@example.com"
 }
 
 # Create a Bitwarden Login Resource
 resource "bitwarden_item_login" "example" {
-  name            = "Example"
-  username        = "service-account"
-  password        = "<sensitive>"
+  name     = "Example"
+  username = "service-account"
+  password = "<sensitive>"
 }

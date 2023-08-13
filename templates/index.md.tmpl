@@ -40,7 +40,7 @@ When doing so, it's your responsibility to:
 * revoke it when you don't need it anymore
 
 You can generate a Session Key by running the following command in your Terraform Workspace:
-```
+```console
 BITWARDENCLI_APPDATA_DIR=.bitwarden bw login
 
 # or if you use a custom vault path
@@ -53,7 +53,7 @@ Configuration for the Bitwarden Provider can be derived from two sources:
 * Environment variables
 
 ### Parameters
-Credentials can be provided by adding a `master_password` and optionally `client_id` and `client_secret` to the bitwarden provider block.
+Credentials can be provided by adding a combination of `email`, `master_password`, `client_id`, `client_secret` or `session_key` to the bitwarden provider block.
 ```terraform
 provider "bitwarden" {
   email           = "terraform@example.com"
@@ -64,7 +64,7 @@ provider "bitwarden" {
 ```
 
 ### Environment variables
-Credentials can be provided by using the `BW_PASSWORD` and optionally `BW_CLIENTID` and `BW_CLIENTSECRET` environment variables. 
+Credentials can be provided by using a combination of `BW_EMAIL`, `BW_PASSWORD`, `BW_CLIENTID`, `BW_CLIENTSECRET` or `BW_SESSION` environment variables. 
 
 For example:
 ```bitwarden
