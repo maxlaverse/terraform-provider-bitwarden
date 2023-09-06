@@ -17,7 +17,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.6.1"
+      version = ">= 0.7.0"
     }
   }
 }
@@ -114,7 +114,7 @@ export BW_CLIENTSECRET="my-client-secret"
 - `master_password` (String) Master password of the Vault (env: `BW_PASSWORD`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.
 - `server` (String) Bitwarden Server URL (default: `https://vault.bitwarden.com`, env: `BW_URL`).
 - `session_key` (String) **[EXPERIMENTAL]** A Bitwarden Session Key (env: `BW_SESSION`)
-- `vault_path` (String) Alternative directory for storing the Vault locally (default: `.bitwarden/`).
+- `vault_path` (String) Alternative directory for storing the Vault locally (default: `.bitwarden/`, env: `BITWARDENCLI_APPDATA_DIR`).
 
 [Bitwarden]: https://bitwarden.com/help/article/managing-items/
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install

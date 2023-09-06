@@ -87,6 +87,6 @@ const (
 	descriptionMasterPassword   = "Master password of the Vault (env: `BW_PASSWORD`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment."
 	descriptionServer           = "Bitwarden Server URL (default: `https://vault.bitwarden.com`, env: `BW_URL`)."
 	descriptionSessionKey       = "**[EXPERIMENTAL]** A Bitwarden Session Key (env: `BW_SESSION`)"
-	descriptionVaultPath        = "Alternative directory for storing the Vault locally (default: `.bitwarden/`)."
+	descriptionVaultPath        = "Alternative directory for storing the Vault locally (default: `.bitwarden/`, env: `BITWARDENCLI_APPDATA_DIR`)."
 	descriptionExtraCACertsPath = "Extends the well known 'root' CAs (like VeriSign) with the extra certificates in file (env: `NODE_EXTRA_CA_CERTS`)."
 )
