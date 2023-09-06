@@ -81,7 +81,7 @@ func New(version string) func() *schema.Provider {
 					Type:        schema.TypeString,
 					Description: descriptionVaultPath,
 					Optional:    true,
-					Default:     ".bitwarden/",
+					DefaultFunc: schema.EnvDefaultFunc("BITWARDENCLI_APPDATA_DIR", ".bitwarden/"),
 				},
 				attributeExtraCACertsPath: {
 					Type:        schema.TypeString,
