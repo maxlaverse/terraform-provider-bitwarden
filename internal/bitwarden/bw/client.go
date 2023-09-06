@@ -47,6 +47,7 @@ type client struct {
 	disableSync         bool
 	disableRetryBackoff bool
 	execPath            string
+	extraCACertsPath    string
 	newCommand          command.NewFn
 	sessionKey          string
 }
@@ -56,6 +57,12 @@ type Options func(c Client)
 func WithAppDataDir(appDataDir string) Options {
 	return func(c Client) {
 		c.(*client).appDataDir = appDataDir
+	}
+}
+
+func WithExtraCACertsPath(extraCACertsPath string) Options {
+	return func(c Client) {
+		c.(*client).extraCACertsPath = extraCACertsPath
 	}
 }
 
@@ -249,11 +256,15 @@ func (c *client) cmdWithSession(args ...string) command.Command {
 }
 
 func (c *client) env() []string {
-	return []string{
+	defaultEnv := []string{
 		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
 		fmt.Sprintf("BITWARDENCLI_APPDATA_DIR=%s", c.appDataDir),
 		"BW_NOINTERACTION=true",
 	}
+	if len(c.extraCACertsPath) > 0 {
+		return append(defaultEnv, fmt.Sprintf("NODE_EXTRA_CA_CERTS=%s", c.extraCACertsPath))
+	}
+	return defaultEnv
 }
 
 func (c *client) encode(item Object) (string, error) {
