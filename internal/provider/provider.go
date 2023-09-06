@@ -83,6 +83,12 @@ func New(version string) func() *schema.Provider {
 					Optional:    true,
 					Default:     ".bitwarden/",
 				},
+				attributeExtraCACertsPath: {
+					Type:        schema.TypeString,
+					Description: descriptionExtraCACertsPath,
+					Optional:    true,
+					DefaultFunc: schema.EnvDefaultFunc("NODE_EXTRA_CA_CERTS", nil),
+				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
 				"bitwarden_attachment":       dataSourceAttachment(),
@@ -223,13 +229,18 @@ func logoutIfIdentityChanged(d *schema.ResourceData, bwClient bw.Client, status 
 
 func newBitwardenClient(d *schema.ResourceData, version string) (bw.Client, error) {
 	opts := []bw.Options{}
-	if ded, exists := d.GetOk(attributeVaultPath); exists {
-		abs, err := filepath.Abs(ded.(string))
+	if vaultPath, exists := d.GetOk(attributeVaultPath); exists {
+		abs, err := filepath.Abs(vaultPath.(string))
 		if err != nil {
 			return nil, err
 		}
 		opts = append(opts, bw.WithAppDataDir(abs))
 	}
+
+	if extraCACertsPath, exists := d.GetOk(attributeExtraCACertsPath); exists {
+		opts = append(opts, bw.WithExtraCACertsPath(extraCACertsPath.(string)))
+	}
+
 	if version == versionDev {
 		// During development, we disable Vault synchronization and retry backoffs to make some
 		// operations faster.
