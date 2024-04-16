@@ -53,6 +53,10 @@ func TestAccDataSourceItemLoginDeleted(t *testing.T) {
 				Check:  getObjectID("bitwarden_item_login.foo", &objectID),
 			},
 			{
+				Config: tfConfigProvider() + tfConfigDataItemLoginWithURLFilter("https://start_with/something"),
+				Check:  getObjectID("bitwarden_item_login.foo", &objectID),
+			},
+			{
 				Config: tfConfigProvider() + tfConfigResourceItemLoginSmall() + tfConfigDataItemLoginWithId(objectID),
 				PreConfig: func() {
 					err := bwTestClient(t).DeleteObject("item", objectID)
@@ -72,6 +76,16 @@ data "bitwarden_item_login" "foo_data" {
 	id 			= "%s"
 }
 `, id)
+}
+
+func tfConfigDataItemLoginWithURLFilter(url string) string {
+	return fmt.Sprintf(`
+data "bitwarden_item_login" "foo_data" {
+	provider	= bitwarden
+
+	url = "%s"
+}
+`, url)
 }
 
 func tfConfigDataItemLogin() string {

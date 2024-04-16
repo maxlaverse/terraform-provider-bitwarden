@@ -13,9 +13,10 @@ type Client interface {
 	CreateObject(Object) (*Object, error)
 	EditObject(Object) (*Object, error)
 	GetAttachment(itemId, attachmentId string) ([]byte, error)
-	GetObject(objType, itemId string) (*Object, error)
+	GetObject(objType, itemOrSearch string) (*Object, error)
 	GetSessionKey() string
 	HasSessionKey() bool
+	ListObjects(objType string, options ...ListObjectsOption) ([]Object, error)
 	LoginWithAPIKey(password, clientId, clientSecret string) error
 	LoginWithPassword(username, password string) error
 	Logout() error
@@ -137,8 +138,8 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 	return &obj, nil
 }
 
-func (c *client) GetObject(objType, itemId string) (*Object, error) {
-	out, err := c.cmdWithSession("get", objType, itemId).Run()
+func (c *client) GetObject(objType, itemOrSearch string) (*Object, error) {
+	out, err := c.cmdWithSession("get", objType, itemOrSearch).Run()
 	if err != nil {
 		return nil, remapError(err)
 	}
@@ -163,6 +164,31 @@ func (c *client) GetAttachment(itemId, attachmentId string) ([]byte, error) {
 
 func (c *client) GetSessionKey() string {
 	return c.sessionKey
+}
+
+// ListObjects returns objects of a given type matching given filters.
+func (c *client) ListObjects(objType string, options ...ListObjectsOption) ([]Object, error) {
+	args := []string{
+		"list",
+		objType,
+	}
+
+	for _, applyOption := range options {
+		applyOption(&args)
+	}
+
+	out, err := c.cmdWithSession(args...).Run()
+	if err != nil {
+		return nil, remapError(err)
+	}
+
+	var obj []Object
+	err = json.Unmarshal(out, &obj)
+	if err != nil {
+		return nil, newUnmarshallError(err, "list object", out)
+	}
+
+	return obj, nil
 }
 
 // LoginWithPassword logs in using a password and retrieves the session key,

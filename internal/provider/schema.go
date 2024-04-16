@@ -48,7 +48,7 @@ func loginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 
 func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 
-	return map[string]*schema.Schema{
+	base := map[string]*schema.Schema{
 		/*
 		* Attributes that can be required
 		 */
@@ -56,7 +56,7 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Description: descriptionIdentifier,
 			Type:        schema.TypeString,
 			Computed:    schemaType == Resource,
-			Required:    schemaType == DataSource,
+			Optional:    true,
 		},
 		attributeName: {
 			Description: descriptionName,
@@ -73,7 +73,7 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Type:        schema.TypeList,
 			Elem:        &schema.Schema{Type: schema.TypeString},
 			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
+			Optional:    true,
 		},
 		attributeFavorite: {
 			Description: descriptionFavorite,
@@ -121,7 +121,7 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Description: descriptionFolderID,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
+			Optional:    true,
 		},
 
 		attributeNotes: {
@@ -135,7 +135,7 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Description: descriptionOrganizationID,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
+			Optional:    true,
 		},
 		attributeReprompt: {
 			Description: descriptionReprompt,
@@ -181,6 +181,23 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Computed: true,
 		},
 	}
+
+	if schemaType == DataSource {
+		base[attributeFilterSearch] = &schema.Schema{
+			Description: descriptionFilterSearch,
+			Type:        schema.TypeString,
+			Optional:    true,
+			Computed:    true,
+		}
+
+		base[attributeFilterURL] = &schema.Schema{
+			Description: descriptionFilterURL,
+			Type:        schema.TypeString,
+			Optional:    true,
+			Computed:    true,
+		}
+	}
+	return base
 }
 
 func uriElem() *schema.Resource {

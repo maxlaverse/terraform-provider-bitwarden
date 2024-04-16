@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -15,6 +16,10 @@ func objectCreate(ctx context.Context, d *schema.ResourceData, meta interface{})
 }
 
 func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	if _, areFiltersSet := d.GetOk(attributeID); !areFiltersSet {
+		return diag.FromErr(objectSearch(d, meta))
+	}
+
 	return diag.FromErr(objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
 		obj, err := meta.(bw.Client).GetObject(string(secret.Object), secret.ID)
 
@@ -23,8 +28,44 @@ func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 		if obj != nil && obj.DeletedDate != nil {
 			return nil, errors.New("object is soft deleted")
 		}
+
+		if obj != nil && obj.ID != secret.ID {
+			return nil, errors.New("returned object ID does not match requested object ID")
+		}
 		return obj, err
 	}))
+}
+
+func objectSearch(d *schema.ResourceData, meta interface{}) error {
+	objType, ok := d.GetOk(attributeObject)
+	if !ok {
+		return fmt.Errorf("BUG: object type not set in the resource data")
+	}
+
+	objs, err := meta.(bw.Client).ListObjects(fmt.Sprintf("%ss", objType), listOptionsFromData(d)...)
+	if err != nil {
+		return err
+	}
+
+	if len(objs) == 0 {
+		return fmt.Errorf("no object found matching the filter")
+	} else if len(objs) > 1 {
+		log.Print("[WARN] Too many objects found:")
+		for _, obj := range objs {
+			log.Printf("[WARN] * %s (%s)", obj.Name, obj.ID)
+		}
+		return fmt.Errorf("too many objects found")
+	}
+
+	obj := objs[0]
+
+	// If the object exists but is marked as soft deleted, we return an error, because relying
+	// on an object in the 'trash' sounds like a bad idea.
+	if obj.DeletedDate != nil {
+		return errors.New("object is soft deleted")
+	}
+
+	return objectDataFromStruct(d, &obj)
 }
 
 func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -57,7 +98,7 @@ func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{})
 	}))
 }
 
-func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(secret bw.Object) (*bw.Object, error)) error {
+func objectOperation(_ context.Context, d *schema.ResourceData, operation func(secret bw.Object) (*bw.Object, error)) error {
 	obj, err := operation(objectStructFromData(d))
 	if err != nil {
 		return err
