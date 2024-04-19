@@ -21,5 +21,5 @@ resource "bitwarden_item_login" "example" {
 
 # Use Bitwarden Resource
 data "bitwarden_item_login" "example" {
-  search     = "Example"
+  search = "Example"
 }

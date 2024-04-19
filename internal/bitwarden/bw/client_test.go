@@ -32,3 +32,18 @@ func TestCreateObjectEncoding(t *testing.T) {
 		assert.Equal(t, "create  e30K", commandsExecuted()[1])
 	}
 }
+
+func TestListObjects(t *testing.T) {
+	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
+		"list item --folderid folder-id --collectionid collection-id --search search": `[]`,
+	})
+	defer removeMocks(t)
+
+	b := NewClient("dummy")
+	_, err := b.ListObjects("item", WithFolderID("folder-id"), WithCollectionID("collection-id"), WithSearch("search"))
+
+	assert.NoError(t, err)
+	if assert.Len(t, commandsExecuted(), 1) {
+		assert.Equal(t, "list item --folderid folder-id --collectionid collection-id --search search", commandsExecuted()[0])
+	}
+}
