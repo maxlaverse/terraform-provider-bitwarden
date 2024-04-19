@@ -67,6 +67,13 @@ func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 				Config:      tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin() + tfConfigDataItemLoginWithSearchAndOrg("missing-item"),
 				ExpectError: regexp.MustCompile("Error: no object found matching the filter"),
 			},
+			{
+				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote(),
+			},
+			{
+				Config:      tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote() + tfConfigDataItemLoginWithSearchAndOrg("secure-bar"),
+				ExpectError: regexp.MustCompile("Error: no object found matching the filter"),
+			},
 		},
 	})
 }
