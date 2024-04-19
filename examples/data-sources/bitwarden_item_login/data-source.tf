@@ -1,4 +1,4 @@
-# Find the identifier of the resource you want to import:
+# Option 1: Find the identifier of the resource you want to import:
 #
 # $ bw list items --search "Mysql Root Credentials" | jq  '.[] .id'
 # ? Master password: [hidden]
@@ -8,6 +8,11 @@
 
 data "bitwarden_item_login" "database_credentials" {
   id = "ec4e447f-9aed-4203-b834-c8f3848828f7"
+}
+
+# Option 2: Use filters directly in the resource declaration
+data "bitwarden_item_secure_note" "ssh_notes" {
+  search = "SSH Private Key"
 }
 
 # Later to be accessed as

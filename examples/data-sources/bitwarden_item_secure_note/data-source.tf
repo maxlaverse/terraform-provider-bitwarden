@@ -1,4 +1,4 @@
-# Find the identifier of the resource you want to import:
+# Option 1: Find the identifier of the resource you want to import:
 #
 # $ bw list items --search "SSH Private Key" | jq  '.[] .id'
 # ? Master password: [hidden]
@@ -8,6 +8,11 @@
 
 data "bitwarden_item_secure_note" "ssh_notes" {
   id = "a9e19f26-1b8c-4568-bc09-191e2cf56ed6"
+}
+
+# Option 2: Use filters directly in the resource declaration
+data "bitwarden_item_secure_note" "ssh_notes" {
+  search = "SSH Private Key"
 }
 
 # Later to be accessed as
