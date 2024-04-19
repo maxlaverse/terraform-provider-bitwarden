@@ -77,7 +77,7 @@ data "bitwarden_item_login" "foo_data" {
 	provider	= bitwarden
 
 	search = "%s"
-	organization_id = "%s"
+	filter_organization_id = "%s"
 }
 `, search, testOrganizationID)
 }

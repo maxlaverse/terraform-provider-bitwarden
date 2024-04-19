@@ -73,7 +73,7 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Type:        schema.TypeList,
 			Elem:        &schema.Schema{Type: schema.TypeString},
 			Computed:    schemaType == DataSource,
-			Optional:    true,
+			Optional:    schemaType == Resource,
 		},
 		attributeFavorite: {
 			Description: descriptionFavorite,
@@ -121,7 +121,7 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Description: descriptionFolderID,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
-			Optional:    true,
+			Optional:    schemaType == Resource,
 		},
 
 		attributeNotes: {
@@ -135,7 +135,7 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Description: descriptionOrganizationID,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
-			Optional:    true,
+			Optional:    schemaType == Resource,
 		},
 		attributeReprompt: {
 			Description: descriptionReprompt,
@@ -183,18 +183,35 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 	}
 
 	if schemaType == DataSource {
-		base[attributeFilterSearch] = &schema.Schema{
-			Description: descriptionFilterSearch,
+		base[attributeFilterCollectionId] = &schema.Schema{
+			Description: descriptionFilterCollectionID,
 			Type:        schema.TypeString,
 			Optional:    true,
-			Computed:    true,
+		}
+
+		base[attributeFilterFolderID] = &schema.Schema{
+			Description: descriptionFilterFolderID,
+			Type:        schema.TypeString,
+			Optional:    true,
+		}
+
+		base[attributeFilterOrganizationID] = &schema.Schema{
+			Description: descriptionFilterOrganizationID,
+			Type:        schema.TypeString,
+			Optional:    true,
+		}
+
+		base[attributeFilterSearch] = &schema.Schema{
+			Description:  descriptionFilterSearch,
+			Type:         schema.TypeString,
+			Optional:     true,
+			AtLeastOneOf: []string{attributeFilterSearch, attributeID},
 		}
 
 		base[attributeFilterURL] = &schema.Schema{
 			Description: descriptionFilterURL,
 			Type:        schema.TypeString,
 			Optional:    true,
-			Computed:    true,
 		}
 	}
 	return base

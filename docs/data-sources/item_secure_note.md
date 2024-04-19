@@ -48,22 +48,25 @@ data "bitwarden_item_secure_note" "ssh_notes" {
 
 ### Optional
 
-- `collection_ids` (List of String) Identifier of the collections the item belongs to.
-- `folder_id` (String) Identifier of the folder.
+- `filter_collection_id` (String) Filter search results by collection ID
+- `filter_folder_id` (String) Filter search results by folder ID
+- `filter_organization_id` (String) Filter search results by organization ID
+- `filter_url` (String) Filter search results by URL
 - `id` (String) Identifier.
-- `organization_id` (String) Identifier of the organization.
-- `search` (String) Occurence to search for.
-- `url` (String) URL to filter results by.
+- `search` (String) Search items matching the search string. Can be combined with filters to narrow down the search.
 
 ### Read-Only
 
 - `attachments` (List of Object) List of item attachments. (see [below for nested schema](#nestedatt--attachments))
+- `collection_ids` (List of String) Identifier of the collections the item belongs to.
 - `creation_date` (String) Date the item was created.
 - `deleted_date` (String) Date the item was deleted.
 - `favorite` (Boolean) Mark as a Favorite to have item appear at the top of your Vault in the UI.
 - `field` (List of Object, Sensitive) Extra fields. (see [below for nested schema](#nestedatt--field))
+- `folder_id` (String) Identifier of the folder.
 - `name` (String) Name.
 - `notes` (String, Sensitive) Notes.
+- `organization_id` (String) Identifier of the organization.
 - `reprompt` (Boolean) Require master password “re-prompt” when displaying secret in the UI.
 - `revision_date` (String) Last time the item was updated.
 
