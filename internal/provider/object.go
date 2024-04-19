@@ -47,6 +47,16 @@ func objectSearch(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
+	// If the object is an item, also filter by type to avoid returning a login when a secure note is expected.
+	if objType == bw.ObjectTypeItem {
+		itemType, ok := d.GetOk(attributeType)
+		if !ok {
+			return fmt.Errorf("BUG: item type not set in the resource data")
+		}
+
+		objs = bw.FilterObjectsByType(objs, bw.ItemType(itemType.(int)))
+	}
+
 	if len(objs) == 0 {
 		return fmt.Errorf("no object found matching the filter")
 	} else if len(objs) > 1 {
@@ -59,8 +69,8 @@ func objectSearch(d *schema.ResourceData, meta interface{}) error {
 
 	obj := objs[0]
 
-	// If the object exists but is marked as soft deleted, we return an error, because relying
-	// on an object in the 'trash' sounds like a bad idea.
+	// If the object exists but is marked as soft deleted, we return an error. This shouldn't happen
+	// in theory since we never pass the --trash flag to the Bitwarden CLI when listing objects.
 	if obj.DeletedDate != nil {
 		return errors.New("object is soft deleted")
 	}
