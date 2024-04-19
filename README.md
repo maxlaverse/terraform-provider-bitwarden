@@ -22,7 +22,7 @@ This project is not associated with the Bitwarden project nor 8bit Solutions LLC
 ## Supported Versions
 The plugin has been tested and built with the following components:
 - [Terraform] v1.6.1
-- [Bitwarden CLI] v2024.3.1
+- [Bitwarden CLI] v2023.2.0
 - [Go] 1.22.0 (for development)
 - [Docker] 23.0.5 (for development)
 
