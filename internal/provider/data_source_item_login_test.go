@@ -39,6 +39,23 @@ func TestAccDataSourceItemLoginFailsOnInexistentItem(t *testing.T) {
 	})
 }
 
+func TestAccDataSourceItemLoginFailsOnWrongResourceType(t *testing.T) {
+	ensureVaultwardenConfigured(t)
+
+	resource.UnitTest(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote(),
+			},
+			{
+				Config:      tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote() + tfConfigDataItemLoginCrossReference(),
+				ExpectError: regexp.MustCompile("Error: returned object type does not match requested object type"),
+			},
+		},
+	})
+}
+
 func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 	resourceName := "bitwarden_item_login.foo"
 
@@ -109,12 +126,23 @@ func tfConfigResourceItemLoginDuplicate() string {
 	}
 	`
 }
+
 func tfConfigDataItemLogin() string {
 	return `
 data "bitwarden_item_login" "foo_data" {
 	provider	= bitwarden
 
 	id 			= bitwarden_item_login.foo.id
+}
+`
+}
+
+func tfConfigDataItemLoginCrossReference() string {
+	return `
+data "bitwarden_item_login" "foo_data" {
+	provider	= bitwarden
+
+	id 			= bitwarden_item_secure_note.foo.id
 }
 `
 }

@@ -22,16 +22,22 @@ func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 
 	return diag.FromErr(objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
 		obj, err := meta.(bw.Client).GetObject(string(secret.Object), secret.ID)
+		if obj != nil {
+			// If the object exists but is marked as soft deleted, we return an error, because relying
+			// on an object in the 'trash' sounds like a bad idea.
+			if obj.DeletedDate != nil {
+				return nil, errors.New("object is soft deleted")
+			}
 
-		// If the object exists but is marked as soft deleted, we return an error, because relying
-		// on an object in the 'trash' sounds like a bad idea.
-		if obj != nil && obj.DeletedDate != nil {
-			return nil, errors.New("object is soft deleted")
+			if obj.ID != secret.ID {
+				return nil, errors.New("returned object ID does not match requested object ID")
+			}
+
+			if obj.Type != secret.Type {
+				return nil, errors.New("returned object type does not match requested object type")
+			}
 		}
 
-		if obj != nil && obj.ID != secret.ID {
-			return nil, errors.New("returned object ID does not match requested object ID")
-		}
 		return obj, err
 	}))
 }
@@ -48,7 +54,7 @@ func objectSearch(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// If the object is an item, also filter by type to avoid returning a login when a secure note is expected.
-	if objType == bw.ObjectTypeItem {
+	if bw.ObjectType(objType.(string)) == bw.ObjectTypeItem {
 		itemType, ok := d.GetOk(attributeType)
 		if !ok {
 			return fmt.Errorf("BUG: item type not set in the resource data")
