@@ -12,7 +12,7 @@ func resourceItemLogin() *schema.Resource {
 	}
 
 	return &schema.Resource{
-		Description:   "Manages a Vault Login item.",
+		Description:   "Manages a login item.",
 		CreateContext: createResource(bw.ObjectTypeItem, bw.ItemTypeLogin),
 		ReadContext:   objectReadIgnoreMissing,
 		UpdateContext: objectUpdate,

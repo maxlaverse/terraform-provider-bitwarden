@@ -3,12 +3,12 @@
 page_title: "bitwarden_folder Data Source - terraform-provider-bitwarden"
 subcategory: ""
 description: |-
-  Use this data source to get information on an existing Folder.
+  Use this data source to get information on an existing folder.
 ---
 
 # bitwarden_folder (Data Source)
 
-Use this data source to get information on an existing Folder.
+Use this data source to get information on an existing folder.
 
 ## Example Usage
 
@@ -17,12 +17,12 @@ data "bitwarden_folder" "terraform" {
   search = "Terraform"
 }
 
+# Example of usage of the data source:
 resource "bitwarden_item_login" "administrative_user" {
-  name            = "Service Administrator"
-  username        = "admin"
-  password        = "<sensitive>"
+  name     = "Service Administrator"
+  username = "admin"
 
-  folder_id  = data.bitwarden_folder.terraform.id
+  folder_id = data.bitwarden_folder.terraform.id
 }
 ```
 

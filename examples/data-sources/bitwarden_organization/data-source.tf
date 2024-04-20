@@ -1,4 +1,4 @@
-data "bitwarden_folder" "terraform" {
+data "bitwarden_organization" "terraform" {
   search = "Terraform"
 }
 
@@ -6,6 +6,7 @@ data "bitwarden_folder" "terraform" {
 resource "bitwarden_item_login" "administrative_user" {
   name     = "Service Administrator"
   username = "admin"
+  password = "<sensitive>"
 
-  folder_id = data.bitwarden_folder.terraform.id
+  organization_id = data.bitwarden_organization.terraform.id
 }

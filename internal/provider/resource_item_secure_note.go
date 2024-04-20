@@ -9,7 +9,7 @@ func resourceItemSecureNote() *schema.Resource {
 	dataSourceItemSecureNoteSchema := baseSchema(Resource)
 
 	return &schema.Resource{
-		Description:   "Manages a Vault Secure Note item.",
+		Description:   "Manages a secure note item.",
 		CreateContext: createResource(bw.ObjectTypeItem, bw.ItemTypeSecureNote),
 		ReadContext:   objectReadIgnoreMissing,
 		UpdateContext: objectUpdate,

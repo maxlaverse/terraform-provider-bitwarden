@@ -7,7 +7,7 @@ import (
 
 func dataSourceOrgCollection() *schema.Resource {
 	return &schema.Resource{
-		Description: "Use this data source to get information on an existing Organization Collection.",
+		Description: "Use this data source to get information on an existing organization collection.",
 		ReadContext: readDataSourceObject(bw.ObjectTypeOrgCollection),
 		Schema:      orgCollectionSchema(DataSource),
 	}

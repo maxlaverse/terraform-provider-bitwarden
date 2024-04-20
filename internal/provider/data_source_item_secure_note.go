@@ -9,7 +9,7 @@ func dataSourceItemSecureNote() *schema.Resource {
 	dataSourceItemSecureNoteSchema := baseSchema(DataSource)
 
 	return &schema.Resource{
-		Description: "Use this data source to get information on an existing Secure Note.",
+		Description: "Use this data source to get information on an existing secure note item.",
 		ReadContext: readDataSourceItem(bw.ObjectTypeItem, bw.ItemTypeSecureNote),
 		Schema:      dataSourceItemSecureNoteSchema,
 	}

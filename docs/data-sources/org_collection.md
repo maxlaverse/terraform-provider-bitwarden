@@ -3,26 +3,32 @@
 page_title: "bitwarden_org_collection Data Source - terraform-provider-bitwarden"
 subcategory: ""
 description: |-
-  Use this data source to get information on an existing Organization Collection.
+  Use this data source to get information on an existing organization collection.
 ---
 
 # bitwarden_org_collection (Data Source)
 
-Use this data source to get information on an existing Organization Collection.
+Use this data source to get information on an existing organization collection.
 
 ## Example Usage
 
 ```terraform
-data "bitwarden_org_collection" "terraform" {
+data "bitwarden_organization" "terraform" {
   search = "Terraform"
 }
+data "bitwarden_org_collection" "engineering" {
+  search          = "Engineering"
+  organization_id = data.bitwarden_organization.terraform.id
+}
 
+
+# Example of usage of the data source:
 resource "bitwarden_item_login" "administrative_user" {
-  name            = "Service Administrator"
-  username        = "admin"
-  password        = "<sensitive>"
+  name     = "Service Administrator"
+  username = "admin"
+  password = "<sensitive>"
 
-  organization_id = "54421e78-95cb-40c4-a257-17231a7b6207"
+  organization_id = data.bitwarden_organization.terraform.id
   collection_ids  = [data.bitwarden_org_collection.terraform.id]
 }
 ```
