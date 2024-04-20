@@ -28,7 +28,7 @@ func TestCreateObjectEncoding(t *testing.T) {
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 2) {
-		assert.Equal(t, "{\"login\":{},\"secureNote\":{},\"type\":1,\"fields\":[{\"name\":\"test\",\"value\":\"passed\",\"type\":0,\"linkedId\":null}]}:/:encode", commandsExecuted()[0])
+		assert.Equal(t, "{\"groups\":null,\"login\":{},\"secureNote\":{},\"type\":1,\"fields\":[{\"name\":\"test\",\"value\":\"passed\",\"type\":0,\"linkedId\":null}]}:/:encode", commandsExecuted()[0])
 		assert.Equal(t, "create  e30K", commandsExecuted()[1])
 	}
 }
