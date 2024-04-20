@@ -13,7 +13,7 @@ type Client interface {
 	CreateObject(Object) (*Object, error)
 	EditObject(Object) (*Object, error)
 	GetAttachment(itemId, attachmentId string) ([]byte, error)
-	GetObject(objType, itemId string) (*Object, error)
+	GetObject(objType, itemOrSearch string) (*Object, error)
 	GetSessionKey() string
 	HasSessionKey() bool
 	LoginWithAPIKey(password, clientId, clientSecret string) error
@@ -137,8 +137,8 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 	return &obj, nil
 }
 
-func (c *client) GetObject(objType, itemId string) (*Object, error) {
-	out, err := c.cmdWithSession("get", objType, itemId).Run()
+func (c *client) GetObject(objType, itemOrSearch string) (*Object, error) {
+	out, err := c.cmdWithSession("get", objType, itemOrSearch).Run()
 	if err != nil {
 		return nil, remapError(err)
 	}
