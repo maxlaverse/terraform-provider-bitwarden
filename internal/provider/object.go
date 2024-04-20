@@ -21,7 +21,7 @@ func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 	}
 
 	return diag.FromErr(objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
-		obj, err := meta.(bw.Client).GetObject(string(secret.Object), secret.ID)
+		obj, err := meta.(bw.Client).GetObject(secret)
 		if obj != nil {
 			// If the object exists but is marked as soft deleted, we return an error, because relying
 			// on an object in the 'trash' sounds like a bad idea.
@@ -90,6 +90,7 @@ func listOptionsFromData(d *schema.ResourceData) []bw.ListObjectsOption {
 	filterMap := map[string]bw.ListObjectsOptionGenerator{
 		attributeFilterSearch:         bw.WithSearch,
 		attributeFilterCollectionId:   bw.WithCollectionID,
+		attributeOrganizationID:       bw.WithOrganizationID,
 		attributeFilterFolderID:       bw.WithFolderID,
 		attributeFilterOrganizationID: bw.WithOrganizationID,
 		attributeFilterURL:            bw.WithUrl,
@@ -110,7 +111,7 @@ func listOptionsFromData(d *schema.ResourceData) []bw.ListObjectsOption {
 
 func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
-		return meta.(bw.Client).GetObject(string(secret.Object), secret.ID)
+		return meta.(bw.Client).GetObject(secret)
 	})
 
 	if errors.Is(err, bw.ErrObjectNotFound) {
@@ -134,7 +135,7 @@ func objectUpdate(ctx context.Context, d *schema.ResourceData, meta interface{})
 
 func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return diag.FromErr(objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
-		return nil, meta.(bw.Client).DeleteObject(string(secret.Object), secret.ID)
+		return nil, meta.(bw.Client).DeleteObject(secret)
 	}))
 }
 
@@ -165,7 +166,15 @@ func objectDataFromStruct(d *schema.ResourceData, obj *bw.Object) error {
 		return err
 	}
 
-	if obj.Object == bw.ObjectTypeItem {
+	// Object-specific fields
+	switch obj.Object {
+	case bw.ObjectTypeOrgCollection:
+		err = d.Set(attributeOrganizationID, obj.OrganizationID)
+		if err != nil {
+			return err
+		}
+
+	case bw.ObjectTypeItem:
 		err = d.Set(attributeFolderID, obj.FolderID)
 		if err != nil {
 			return err
@@ -270,7 +279,16 @@ func objectStructFromData(d *schema.ResourceData) bw.Object {
 		obj.Object = bw.ObjectType(v)
 	}
 
-	if obj.Object == bw.ObjectTypeItem {
+	// Object-specific fields
+	switch obj.Object {
+	case bw.ObjectTypeOrgCollection:
+		if v, ok := d.Get(attributeOrganizationID).(string); ok {
+			obj.OrganizationID = v
+		}
+
+		obj.Groups = []interface{}{}
+
+	case bw.ObjectTypeItem:
 		if v, ok := d.Get(attributeType).(int); ok {
 			obj.Type = bw.ItemType(v)
 		}

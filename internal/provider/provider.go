@@ -95,12 +95,14 @@ func New(version string) func() *schema.Provider {
 				"bitwarden_folder":           dataSourceFolder(),
 				"bitwarden_item_login":       dataSourceItemLogin(),
 				"bitwarden_item_secure_note": dataSourceItemSecureNote(),
+				"bitwarden_org_collection":   dataSourceOrgCollection(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
 				"bitwarden_attachment":       resourceAttachment(),
 				"bitwarden_folder":           resourceFolder(),
 				"bitwarden_item_login":       resourceItemLogin(),
 				"bitwarden_item_secure_note": resourceItemSecureNote(),
+				"bitwarden_org_collection":   resourceOrgCollection(),
 			},
 		}
 
@@ -245,7 +247,7 @@ func newBitwardenClient(d *schema.ResourceData, version string) (bw.Client, erro
 	if version == versionDev {
 		// During development, we disable Vault synchronization and retry backoffs to make some
 		// operations faster.
-		opts = append(opts, bw.DisableSync())
+		// opts = append(opts, bw.DisableSync())
 		opts = append(opts, bw.DisableRetryBackoff())
 	}
 	bwExecutable, err := exec.LookPath("bw")

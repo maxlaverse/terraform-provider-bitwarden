@@ -49,12 +49,12 @@ data "bitwarden_item_secure_note" "ssh_notes" {
 
 ### Optional
 
-- `filter_collection_id` (String) Filter search results by collection ID
-- `filter_folder_id` (String) Filter search results by folder ID
-- `filter_organization_id` (String) Filter search results by organization ID
-- `filter_url` (String) Filter search results by URL
+- `filter_collection_id` (String) Filter search results by collection ID.
+- `filter_folder_id` (String) Filter search results by folder ID.
+- `filter_organization_id` (String) Filter search results by organization ID.
+- `filter_url` (String) Filter search results by URL.
 - `id` (String) Identifier.
-- `search` (String) Search items matching the search string. Can be combined with filters to narrow down the search.
+- `search` (String) Search items matching the search string.
 
 ### Read-Only
 

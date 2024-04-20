@@ -42,7 +42,7 @@ func attachmentCreate(ctx context.Context, d *schema.ResourceData, meta interfac
 func attachmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	itemId := d.Get(attributeAttachmentItemID).(string)
 
-	obj, err := meta.(bw.Client).GetObject(string(bw.ObjectTypeItem), itemId)
+	obj, err := meta.(bw.Client).GetObject(bw.Object{ID: itemId, Object: bw.ObjectTypeItem})
 	if err != nil {
 		// If the item is not found, we can't simply consider the attachment as
 		// deleted, because we won't have an item to attach it to.
@@ -110,7 +110,7 @@ func readDataSourceAttachment() schema.ReadContextFunc {
 }
 
 func listExistingAttachments(client bw.Client, itemId string) ([]bw.Attachment, error) {
-	obj, err := client.GetObject(string(bw.ObjectTypeItem), itemId)
+	obj, err := client.GetObject(bw.Object{ID: itemId, Object: bw.ObjectTypeItem})
 	if err != nil {
 		return nil, err
 	}

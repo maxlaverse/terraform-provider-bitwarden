@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,7 +58,8 @@ func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 			{
 				Config: tfConfigProvider() + tfConfigResourceItemLoginSmall(),
 				PreConfig: func() {
-					err := bwTestClient(t).DeleteObject("item", objectID)
+					obj := bw.Object{ID: objectID, Object: bw.ObjectTypeItem}
+					err := bwTestClient(t).DeleteObject(obj)
 					assert.NoError(t, err)
 				},
 				PlanOnly:           true,
