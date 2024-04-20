@@ -32,6 +32,7 @@ const (
 	ObjectTypeAttachment    ObjectType = "attachment"
 	ObjectTypeFolder        ObjectType = "folder"
 	ObjectTypeOrgCollection ObjectType = "org-collection"
+	ObjectTypeOrganization  ObjectType = "organization"
 )
 
 type VaultStatus string

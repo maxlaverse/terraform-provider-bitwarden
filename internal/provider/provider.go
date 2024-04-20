@@ -96,6 +96,7 @@ func New(version string) func() *schema.Provider {
 				"bitwarden_item_login":       dataSourceItemLogin(),
 				"bitwarden_item_secure_note": dataSourceItemSecureNote(),
 				"bitwarden_org_collection":   dataSourceOrgCollection(),
+				"bitwarden_organization":     dataSourceOrganization(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
 				"bitwarden_attachment":       resourceAttachment(),
