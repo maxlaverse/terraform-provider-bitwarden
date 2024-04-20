@@ -9,8 +9,8 @@ tffmt:
 	terraform fmt  -recursive examples
 
 docs:
-	go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
-	find docs -type f -exec sed -i '' '/INTERNAL USE/d' {} \;
+	go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.19.0
+	find docs -type f -name '*.md' -exec sed -i '' '/INTERNAL USE/d' {} \;
 
 clean:
 	rm internal/provider/.bitwarden/data.json || true
