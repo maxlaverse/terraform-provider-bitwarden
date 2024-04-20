@@ -1,64 +1,36 @@
-variable "terraform_organization" {
-  type        = string
-  description = "My Cloud Organization"
-  default     = "ac901e49-5417-46e2-95fa-baf63186f751"
+data "bitwarden_organization" "terraform" {
+  search = "Terraform"
 }
 
-resource "bitwarden_folder" "cloud_credentials" {
-  organization_id = var.terraform_organization
-  name            = "My Cloud Credentials"
+# Organization 
+resource "bitwarden_folder" "databases" {
+  organization_id = data.bitwarden_organization.terraform.id
+  name            = "Databases"
 }
 
 resource "bitwarden_item_login" "vpn_credentials" {
-  organization_id = var.terraform_organization
-  folder_id       = bitwarden_folder.cloud_credentials.id
+  organization_id = data.bitwarden_organization.terraform.id
+  folder_id       = bitwarden_folder.databases.id
 
-  name     = "VPN Read Only User/Password Access"
-  username = "vpn-user"
-  password = random_password.vpn_password.result
+  name     = "VPN access for Databases"
+  username = "example"
+  password = random_password.example.result
 }
 
-resource "bitwarden_item_secure_note" "vpn_note" {
-  organization_id = var.terraform_organization
-  folder_id       = bitwarden_folder.cloud_credentials.id
+data "bitwarden_item_secure_note" "vpn_preshared_key" {
+  search = "VPN/Pre-sharedSecret"
 
-  name  = "Notes on the preshared Secret"
-  notes = "It's 1234"
+  filter_organization_id = data.bitwarden_organization.terraform.id
+  filter_folder_id       = bitwarden_folder.databases.id
 }
 
 
-# Read sensitive information from Bitwarden
-# Using Login information
-data "bitwarden_item_login" "mysql_credentials" {
-  search = "mysql/server-1"
-}
-
-# Later to be accessed as
-#   ... = data.bitwarden_item_login.mysql-root-credentials.username
-#   ... = data.bitwarden_item_login.mysql-root-credentials.password
-#
-# or for fields:
-# lookup(
-#    zipmap(
-#      data.bitwarden_item_login.mysql-root-credentials.field.*.name,
-#      data.bitwarden_item_login.mysql-root-credentials.field.*
-#    ),
-#    "<name-of-the-field-your-looking-for>"
-# )
-
-# Using Attachments
-data "bitwarden_attachment" "ssh_credentials" {
-  id      = "4d6a41364d6a4dea8ddb1a"
-  item_id = "59575167-4d36-5a58-466e-d9021926df8a"
-}
-
-resource "kubernetes_secret" "ssh" {
+resource "kubernetes_secret" "preshared_key" {
   metadata {
-    name = "ssh"
+    name = "vpn-preshared-key"
   }
 
   data = {
-    "private.key" = data.bitwarden_attachment.ssh_credentials.content
+    "private.key" = data.bitwarden_item_secure_note.vpn_preshared_key.notes
   }
 }
-# ....

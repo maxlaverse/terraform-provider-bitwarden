@@ -23,10 +23,10 @@ func readDataSourceItem(attrObject bw.ObjectType, attrType bw.ItemType) schema.R
 	}
 }
 
-func readDataSourceFolder() schema.ReadContextFunc {
+func readDataSourceObject(objType bw.ObjectType) schema.ReadContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 		d.SetId(d.Get(attributeID).(string))
-		err := d.Set(attributeObject, bw.ObjectTypeFolder)
+		err := d.Set(attributeObject, objType)
 		if err != nil {
 			return diag.FromErr(err)
 		}

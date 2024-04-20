@@ -28,9 +28,11 @@ const (
 type ObjectType string
 
 const (
-	ObjectTypeItem       ObjectType = "item"
-	ObjectTypeAttachment ObjectType = "attachment"
-	ObjectTypeFolder     ObjectType = "folder"
+	ObjectTypeItem          ObjectType = "item"
+	ObjectTypeAttachment    ObjectType = "attachment"
+	ObjectTypeFolder        ObjectType = "folder"
+	ObjectTypeOrgCollection ObjectType = "org-collection"
+	ObjectTypeOrganization  ObjectType = "organization"
 )
 
 type VaultStatus string
@@ -91,24 +93,25 @@ type SecureNote struct {
 }
 
 type Object struct {
-	CollectionIds  []string     `json:"collectionIds,omitempty"`
-	CreationDate   *time.Time   `json:"creationDate,omitempty"`
-	DeletedDate    *time.Time   `json:"deletedDate,omitempty"`
-	ID             string       `json:"id,omitempty"`
-	ExternalID     string       `json:"externalId,omitempty"`
-	FolderID       string       `json:"folderId,omitempty"`
-	Login          Login        `json:"login,omitempty"`
-	Name           string       `json:"name,omitempty"`
-	Notes          string       `json:"notes,omitempty"`
-	Object         ObjectType   `json:"object,omitempty"`
-	OrganizationID string       `json:"organizationId,omitempty"`
-	SecureNote     SecureNote   `json:"secureNote,omitempty"`
-	Type           ItemType     `json:"type,omitempty"`
-	Fields         []Field      `json:"fields,omitempty"`
-	Reprompt       int          `json:"reprompt,omitempty"`
-	Favorite       bool         `json:"favorite,omitempty"`
-	RevisionDate   *time.Time   `json:"revisionDate,omitempty"`
-	Attachments    []Attachment `json:"attachments,omitempty"`
+	CollectionIds  []string      `json:"collectionIds,omitempty"`
+	CreationDate   *time.Time    `json:"creationDate,omitempty"`
+	DeletedDate    *time.Time    `json:"deletedDate,omitempty"`
+	ID             string        `json:"id,omitempty"`
+	ExternalID     string        `json:"externalId,omitempty"`
+	FolderID       string        `json:"folderId,omitempty"`
+	Groups         []interface{} `json:"groups"` // Not implemented yet
+	Login          Login         `json:"login,omitempty"`
+	Name           string        `json:"name,omitempty"`
+	Notes          string        `json:"notes,omitempty"`
+	Object         ObjectType    `json:"object,omitempty"`
+	OrganizationID string        `json:"organizationId,omitempty"`
+	SecureNote     SecureNote    `json:"secureNote,omitempty"`
+	Type           ItemType      `json:"type,omitempty"`
+	Fields         []Field       `json:"fields,omitempty"`
+	Reprompt       int           `json:"reprompt,omitempty"`
+	Favorite       bool          `json:"favorite,omitempty"`
+	RevisionDate   *time.Time    `json:"revisionDate,omitempty"`
+	Attachments    []Attachment  `json:"attachments,omitempty"`
 }
 
 const (

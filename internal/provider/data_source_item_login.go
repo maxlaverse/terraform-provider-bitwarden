@@ -12,7 +12,7 @@ func dataSourceItemLogin() *schema.Resource {
 	}
 
 	return &schema.Resource{
-		Description: "Use this data source to get information on an existing Login.",
+		Description: "Use this data source to get information on an existing login item.",
 		ReadContext: readDataSourceItem(bw.ObjectTypeItem, bw.ItemTypeLogin),
 		Schema:      dataSourceItemLoginSchema,
 	}

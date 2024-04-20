@@ -2,7 +2,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.7.0"
+      version = ">= 0.8.0"
     }
   }
 }
@@ -12,14 +12,14 @@ provider "bitwarden" {
   email = "terraform@example.com"
 }
 
-# Create a Bitwarden Login Resource
+# Create a Bitwarden Login item
 resource "bitwarden_item_login" "example" {
   name     = "Example"
   username = "service-account"
   password = "<sensitive>"
 }
 
-# Use Bitwarden Resource
+# or use an existing Bitwarden resource
 data "bitwarden_item_login" "example" {
   search = "Example"
 }

@@ -28,7 +28,7 @@ func resourceAttachment() *schema.Resource {
 	}
 
 	return &schema.Resource{
-		Description: "(EXPERIMENTAL) Manages a Vault item's attachment.",
+		Description: "Manages an item attachment.",
 
 		CreateContext: attachmentCreate,
 		ReadContext:   attachmentRead,

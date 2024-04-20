@@ -13,7 +13,7 @@ type Client interface {
 	CreateObject(Object) (*Object, error)
 	EditObject(Object) (*Object, error)
 	GetAttachment(itemId, attachmentId string) ([]byte, error)
-	GetObject(objType, itemOrSearch string) (*Object, error)
+	GetObject(Object) (*Object, error)
 	GetSessionKey() string
 	HasSessionKey() bool
 	ListObjects(objType string, options ...ListObjectsOption) ([]Object, error)
@@ -21,7 +21,7 @@ type Client interface {
 	LoginWithPassword(username, password string) error
 	Logout() error
 	DeleteAttachment(itemId, attachmentId string) error
-	DeleteObject(objType, itemId string) error
+	DeleteObject(Object) error
 	SetServer(string) error
 	SetSessionKey(string)
 	Status() (*Status, error)
@@ -85,7 +85,17 @@ func (c *client) CreateObject(obj Object) (*Object, error) {
 		return nil, err
 	}
 
-	out, err := c.cmdWithSession("create", string(obj.Object), objEncoded).Run()
+	args := []string{
+		"create",
+		string(obj.Object),
+		objEncoded,
+	}
+
+	if obj.Object == ObjectTypeOrgCollection {
+		args = append(args, "--organizationid", obj.OrganizationID)
+	}
+
+	out, err := c.cmdWithSession(args...).Run()
 	if err != nil {
 		return nil, err
 	}
@@ -138,13 +148,22 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 	return &obj, nil
 }
 
-func (c *client) GetObject(objType, itemOrSearch string) (*Object, error) {
-	out, err := c.cmdWithSession("get", objType, itemOrSearch).Run()
+func (c *client) GetObject(obj Object) (*Object, error) {
+	args := []string{
+		"get",
+		string(obj.Object),
+		obj.ID,
+	}
+
+	if obj.Object == ObjectTypeOrgCollection {
+		args = append(args, "--organizationid", obj.OrganizationID)
+	}
+
+	out, err := c.cmdWithSession(args...).Run()
 	if err != nil {
 		return nil, remapError(err)
 	}
 
-	var obj Object
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
 		return nil, newUnmarshallError(err, "get object", out)
@@ -217,8 +236,18 @@ func (c *client) Logout() error {
 	return err
 }
 
-func (c *client) DeleteObject(objType, itemId string) error {
-	_, err := c.cmdWithSession("delete", objType, itemId).Run()
+func (c *client) DeleteObject(obj Object) error {
+	args := []string{
+		"delete",
+		string(obj.Object),
+		obj.ID,
+	}
+
+	if obj.Object == ObjectTypeOrgCollection {
+		args = append(args, "--organizationid", obj.OrganizationID)
+	}
+
+	_, err := c.cmdWithSession(args...).Run()
 	return err
 }
 

@@ -7,8 +7,8 @@ description: |-
 
 # Bitwarden Provider
 
-Use the Bitwarden provider to interact with Bitwarden logins, secure notes and folders.
-You must configure the provider with the proper credentials before you can use it, and have the [Bitwarden CLI] installed.
+Use the Bitwarden provider to interact with Bitwarden logins, secure notes, folders and org-collections.
+You must configure the provider with proper credentials before you can use it, and have the [Bitwarden CLI] installed.
 
 ## Example Usage
 
@@ -17,7 +17,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.7.0"
+      version = ">= 0.8.0"
     }
   }
 }
@@ -27,14 +27,14 @@ provider "bitwarden" {
   email = "terraform@example.com"
 }
 
-# Create a Bitwarden Login Resource
+# Create a Bitwarden Login item
 resource "bitwarden_item_login" "example" {
   name     = "Example"
   username = "service-account"
   password = "<sensitive>"
 }
 
-# Use Bitwarden Resource
+# or use an existing Bitwarden resource
 data "bitwarden_item_login" "example" {
   search = "Example"
 }
@@ -118,8 +118,13 @@ export BW_CLIENTSECRET="my-client-secret"
 - `extra_ca_certs` (String) Extends the well known 'root' CAs (like VeriSign) with the extra certificates in file (env: `NODE_EXTRA_CA_CERTS`).
 - `master_password` (String) Master password of the Vault (env: `BW_PASSWORD`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.
 - `server` (String) Bitwarden Server URL (default: `https://vault.bitwarden.com`, env: `BW_URL`).
-- `session_key` (String) **[EXPERIMENTAL]** A Bitwarden Session Key (env: `BW_SESSION`)
+- `session_key` (String) A Bitwarden Session Key (env: `BW_SESSION`)
 - `vault_path` (String) Alternative directory for storing the Vault locally (default: `.bitwarden/`, env: `BITWARDENCLI_APPDATA_DIR`).
 
 [Bitwarden]: https://bitwarden.com/help/article/managing-items/
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
+
+## Known issues
+
+There is an open issue with the Bitwarden CLI that prevents it from creating attachments in recent version (see [bitwarden/clients#5618](https://github.com/bitwarden/clients/issues/5618)).
+The only workaround is to use an older version of the Bitwarden CLI, e.g. 2023.02.

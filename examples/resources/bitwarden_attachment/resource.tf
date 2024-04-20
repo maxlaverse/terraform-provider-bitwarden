@@ -4,6 +4,6 @@ resource "bitwarden_item_login" "vpn_credentials" {
 }
 
 resource "bitwarden_attachment" "vpn_config" {
-  file    = "./vpn-config.txt"
+  file    = "vpn-config.txt"
   item_id = bitwarden_item_login.vpn_credentials.id
 }
