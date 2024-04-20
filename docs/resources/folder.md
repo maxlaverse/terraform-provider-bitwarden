@@ -25,9 +25,12 @@ resource "bitwarden_folder" "cloud_credentials" {
 
 - `name` (String) Name.
 
-### Read-Only
+### Optional
 
 - `id` (String) Identifier.
+
+### Read-Only
+
 
 ## Import
 

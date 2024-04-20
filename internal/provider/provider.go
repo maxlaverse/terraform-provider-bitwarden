@@ -92,12 +92,13 @@ func New(version string) func() *schema.Provider {
 			},
 			DataSourcesMap: map[string]*schema.Resource{
 				"bitwarden_attachment":       dataSourceAttachment(),
+				"bitwarden_folder":           dataSourceFolder(),
 				"bitwarden_item_login":       dataSourceItemLogin(),
 				"bitwarden_item_secure_note": dataSourceItemSecureNote(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				"bitwarden_folder":           resourceFolder(),
 				"bitwarden_attachment":       resourceAttachment(),
+				"bitwarden_folder":           resourceFolder(),
 				"bitwarden_item_login":       resourceItemLogin(),
 				"bitwarden_item_secure_note": resourceItemSecureNote(),
 			},
