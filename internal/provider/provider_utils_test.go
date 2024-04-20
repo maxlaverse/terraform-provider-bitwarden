@@ -97,7 +97,8 @@ func ensureVaultwardenConfigured(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	testOrganizationID, err = webapiClient.CreateOrganization(fmt.Sprintf("org-%d", time.Now().Unix()), fmt.Sprintf("coll-%d", time.Now().Unix()), testEmail)
+	dateTimeStr := fmt.Sprintf("%d-%d-%d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
+	testOrganizationID, err = webapiClient.CreateOrganization(fmt.Sprintf("org-%s", dateTimeStr), fmt.Sprintf("coll-%s", dateTimeStr), testEmail)
 	if err != nil {
 		t.Fatal(err)
 	}

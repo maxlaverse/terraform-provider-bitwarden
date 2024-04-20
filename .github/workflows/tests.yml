@@ -27,6 +27,7 @@ jobs:
         env:
           ADMIN_TOKEN: test1234
           I_REALLY_WANT_VOLATILE_STORAGE: "true"
+          DISABLE_ICON_DOWNLOAD: "false"
           LOGIN_RATELIMIT_SECONDS: "1"
           LOGIN_RATELIMIT_MAX_BURST: "1000000"
           ADMIN_RATELIMIT_SECONDS: "1"
@@ -49,7 +50,7 @@ jobs:
       - id: binaries
         run: |
           echo "LOCAL_BINARIES=$GITHUB_WORKSPACE/bin" >> $GITHUB_OUTPUT
-          echo "BWCLI_VERSION=2023.1.0" >> $GITHUB_OUTPUT
+          echo "BWCLI_VERSION=2023.2.0" >> $GITHUB_OUTPUT
 
       - name: Check out repository code
         uses: actions/checkout@v3
@@ -57,7 +58,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '>=1.22.2'
+          go-version: '>=1.22.0'
 
       # Cache go build cache, used to speedup go test
       - name: Go Build Cache
