@@ -21,9 +21,9 @@ This project is not associated with the Bitwarden project nor 8bit Solutions LLC
 
 ## Supported Versions
 The plugin has been tested and built with the following components:
-- [Terraform] v1.5.2
-- [Bitwarden CLI] v2023.7.0
-- [Go] 1.22.2 (for development)
+- [Terraform] v1.6.1
+- [Bitwarden CLI] v2023.2.0
+- [Go] 1.22.0 (for development)
 - [Docker] 23.0.5 (for development)
 
 The provider likely works with older versions but those haven't been tested.
@@ -141,11 +141,13 @@ In order to run the full suite of Acceptance tests, start a Vaultwarden server:
 ```sh
 $ docker run -ti \
   -e I_REALLY_WANT_VOLATILE_STORAGE=true \
+  -e DISABLE_ICON_DOWNLOAD=false \
   -e ADMIN_TOKEN=test1234 \
   -e LOGIN_RATELIMIT_SECONDS=1 \
   -e LOGIN_RATELIMIT_MAX_BURST=1000000 \
   -e ADMIN_RATELIMIT_SECONDS=1 \
   -e ADMIN_RATELIMIT_MAX_BURST=1000000 \
+  --mount type=tmpfs,destination=/data \
   -p 8080:80 vaultwarden/server
 ```
 
