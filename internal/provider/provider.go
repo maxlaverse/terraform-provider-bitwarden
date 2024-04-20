@@ -108,7 +108,7 @@ func New(version string) func() *schema.Provider {
 	}
 }
 
-func providerConfigure(version string, p *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
+func providerConfigure(version string, _ *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	return func(_ context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 
 		bwClient, err := newBitwardenClient(d, version)

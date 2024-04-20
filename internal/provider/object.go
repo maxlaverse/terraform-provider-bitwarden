@@ -17,12 +17,22 @@ func objectCreate(ctx context.Context, d *schema.ResourceData, meta interface{})
 func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return diag.FromErr(objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
 		obj, err := meta.(bw.Client).GetObject(string(secret.Object), secret.ID)
+		if obj != nil {
+			// If the object exists but is marked as soft deleted, we return an error, because relying
+			// on an object in the 'trash' sounds like a bad idea.
+			if obj.DeletedDate != nil {
+				return nil, errors.New("object is soft deleted")
+			}
 
-		// If the object exists but is marked as soft deleted, we return an error, because relying
-		// on an object in the 'trash' sounds like a bad idea.
-		if obj != nil && obj.DeletedDate != nil {
-			return nil, errors.New("object is soft deleted")
+			if obj.ID != secret.ID {
+				return nil, errors.New("returned object ID does not match requested object ID")
+			}
+
+			if obj.Type != secret.Type {
+				return nil, errors.New("returned object type does not match requested object type")
+			}
 		}
+
 		return obj, err
 	}))
 }
@@ -57,7 +67,7 @@ func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{})
 	}))
 }
 
-func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(secret bw.Object) (*bw.Object, error)) error {
+func objectOperation(_ context.Context, d *schema.ResourceData, operation func(secret bw.Object) (*bw.Object, error)) error {
 	obj, err := operation(objectStructFromData(d))
 	if err != nil {
 		return err
