@@ -8,7 +8,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
 )
 
-func readDataSource(attrObject bw.ObjectType, attrType bw.ItemType) schema.ReadContextFunc {
+func readDataSourceItem(attrObject bw.ObjectType, attrType bw.ItemType) schema.ReadContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 		d.SetId(d.Get(attributeID).(string))
 		err := d.Set(attributeObject, attrObject)
@@ -16,6 +16,17 @@ func readDataSource(attrObject bw.ObjectType, attrType bw.ItemType) schema.ReadC
 			return diag.FromErr(err)
 		}
 		err = d.Set(attributeType, attrType)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		return objectRead(ctx, d, meta)
+	}
+}
+
+func readDataSourceFolder() schema.ReadContextFunc {
+	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+		d.SetId(d.Get(attributeID).(string))
+		err := d.Set(attributeObject, bw.ObjectTypeFolder)
 		if err != nil {
 			return diag.FromErr(err)
 		}

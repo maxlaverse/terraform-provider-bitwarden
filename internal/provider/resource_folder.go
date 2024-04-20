@@ -18,23 +18,7 @@ func resourceFolder() *schema.Resource {
 		DeleteContext: objectDelete,
 		Importer:      importFolderResource(),
 
-		Schema: map[string]*schema.Schema{
-			attributeID: {
-				Description: descriptionIdentifier,
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
-			attributeName: {
-				Description: descriptionName,
-				Type:        schema.TypeString,
-				Required:    true,
-			},
-			attributeObject: {
-				Description: descriptionInternal,
-				Type:        schema.TypeString,
-				Computed:    true,
-			},
-		},
+		Schema: folderSchema(Resource),
 	}
 }
 
