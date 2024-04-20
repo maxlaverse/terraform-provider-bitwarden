@@ -16,6 +16,7 @@ type Client interface {
 	GetObject(objType, itemOrSearch string) (*Object, error)
 	GetSessionKey() string
 	HasSessionKey() bool
+	ListObjects(objType string, options ...ListObjectsOption) ([]Object, error)
 	LoginWithAPIKey(password, clientId, clientSecret string) error
 	LoginWithPassword(username, password string) error
 	Logout() error
@@ -163,6 +164,31 @@ func (c *client) GetAttachment(itemId, attachmentId string) ([]byte, error) {
 
 func (c *client) GetSessionKey() string {
 	return c.sessionKey
+}
+
+// ListObjects returns objects of a given type matching given filters.
+func (c *client) ListObjects(objType string, options ...ListObjectsOption) ([]Object, error) {
+	args := []string{
+		"list",
+		objType,
+	}
+
+	for _, applyOption := range options {
+		applyOption(&args)
+	}
+
+	out, err := c.cmdWithSession(args...).Run()
+	if err != nil {
+		return nil, remapError(err)
+	}
+
+	var obj []Object
+	err = json.Unmarshal(out, &obj)
+	if err != nil {
+		return nil, newUnmarshallError(err, "list object", out)
+	}
+
+	return obj, nil
 }
 
 // LoginWithPassword logs in using a password and retrieves the session key,

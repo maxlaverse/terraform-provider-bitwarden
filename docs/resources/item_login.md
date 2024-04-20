@@ -54,6 +54,7 @@ resource "bitwarden_item_login" "administrative-user" {
 - `favorite` (Boolean) Mark as a Favorite to have item appear at the top of your Vault in the UI.
 - `field` (Block List) Extra fields. (see [below for nested schema](#nestedblock--field))
 - `folder_id` (String) Identifier of the folder.
+- `id` (String) Identifier.
 - `notes` (String, Sensitive) Notes.
 - `organization_id` (String) Identifier of the organization.
 - `password` (String, Sensitive) Login password.
@@ -67,7 +68,6 @@ resource "bitwarden_item_login" "administrative-user" {
 - `attachments` (List of Object) List of item attachments. (see [below for nested schema](#nestedatt--attachments))
 - `creation_date` (String) Date the item was created.
 - `deleted_date` (String) Date the item was deleted.
-- `id` (String) Identifier.
 - `revision_date` (String) Last time the item was updated.
 
 <a id="nestedblock--field"></a>

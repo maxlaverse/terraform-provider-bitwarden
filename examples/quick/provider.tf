@@ -18,3 +18,8 @@ resource "bitwarden_item_login" "example" {
   username = "service-account"
   password = "<sensitive>"
 }
+
+# Use Bitwarden Resource
+data "bitwarden_item_login" "example" {
+  search = "Example"
+}

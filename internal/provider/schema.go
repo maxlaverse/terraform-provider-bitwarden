@@ -13,7 +13,7 @@ const (
 )
 
 func loginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
-	return map[string]*schema.Schema{
+	base := map[string]*schema.Schema{
 		attributeLoginPassword: {
 			Description: descriptionLoginPassword,
 			Type:        schema.TypeString,
@@ -44,11 +44,20 @@ func loginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Sensitive:   false,
 		},
 	}
+
+	if schemaType == DataSource {
+		base[attributeFilterURL] = &schema.Schema{
+			Description: descriptionFilterURL,
+			Type:        schema.TypeString,
+			Optional:    true,
+		}
+	}
+	return base
 }
 
 func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 
-	return map[string]*schema.Schema{
+	base := map[string]*schema.Schema{
 		/*
 		* Attributes that can be required
 		 */
@@ -56,7 +65,7 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Description: descriptionIdentifier,
 			Type:        schema.TypeString,
 			Computed:    schemaType == Resource,
-			Required:    schemaType == DataSource,
+			Optional:    true,
 		},
 		attributeName: {
 			Description: descriptionName,
@@ -181,6 +190,34 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Computed: true,
 		},
 	}
+
+	if schemaType == DataSource {
+		base[attributeFilterCollectionId] = &schema.Schema{
+			Description: descriptionFilterCollectionID,
+			Type:        schema.TypeString,
+			Optional:    true,
+		}
+
+		base[attributeFilterFolderID] = &schema.Schema{
+			Description: descriptionFilterFolderID,
+			Type:        schema.TypeString,
+			Optional:    true,
+		}
+
+		base[attributeFilterOrganizationID] = &schema.Schema{
+			Description: descriptionFilterOrganizationID,
+			Type:        schema.TypeString,
+			Optional:    true,
+		}
+
+		base[attributeFilterSearch] = &schema.Schema{
+			Description:  descriptionFilterSearch,
+			Type:         schema.TypeString,
+			Optional:     true,
+			AtLeastOneOf: []string{attributeFilterSearch, attributeID},
+		}
+	}
+	return base
 }
 
 func uriElem() *schema.Resource {

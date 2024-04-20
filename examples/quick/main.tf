@@ -30,7 +30,7 @@ resource "bitwarden_item_secure_note" "vpn_note" {
 # Read sensitive information from Bitwarden
 # Using Login information
 data "bitwarden_item_login" "mysql_credentials" {
-  id = "ec4e447f-9aed-4203-b834-c8f3848828f7"
+  search = "mysql/server-1"
 }
 
 # Later to be accessed as

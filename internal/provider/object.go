@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -15,6 +16,10 @@ func objectCreate(ctx context.Context, d *schema.ResourceData, meta interface{})
 }
 
 func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	if _, idProvided := d.GetOk(attributeID); !idProvided {
+		return diag.FromErr(objectSearch(d, meta))
+	}
+
 	return diag.FromErr(objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
 		obj, err := meta.(bw.Client).GetObject(string(secret.Object), secret.ID)
 		if obj != nil {
@@ -35,6 +40,72 @@ func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 
 		return obj, err
 	}))
+}
+
+func objectSearch(d *schema.ResourceData, meta interface{}) error {
+	objType, ok := d.GetOk(attributeObject)
+	if !ok {
+		return fmt.Errorf("BUG: object type not set in the resource data")
+	}
+
+	objs, err := meta.(bw.Client).ListObjects(fmt.Sprintf("%ss", objType), listOptionsFromData(d)...)
+	if err != nil {
+		return err
+	}
+
+	// If the object is an item, also filter by type to avoid returning a login when a secure note is expected.
+	if bw.ObjectType(objType.(string)) == bw.ObjectTypeItem {
+		itemType, ok := d.GetOk(attributeType)
+		if !ok {
+			return fmt.Errorf("BUG: item type not set in the resource data")
+		}
+
+		objs = bw.FilterObjectsByType(objs, bw.ItemType(itemType.(int)))
+	}
+
+	if len(objs) == 0 {
+		return fmt.Errorf("no object found matching the filter")
+	} else if len(objs) > 1 {
+		log.Print("[WARN] Too many objects found:")
+		for _, obj := range objs {
+			log.Printf("[WARN] * %s (%s)", obj.Name, obj.ID)
+		}
+		return fmt.Errorf("too many objects found")
+	}
+
+	obj := objs[0]
+
+	// If the object exists but is marked as soft deleted, we return an error. This shouldn't happen
+	// in theory since we never pass the --trash flag to the Bitwarden CLI when listing objects.
+	if obj.DeletedDate != nil {
+		return errors.New("object is soft deleted")
+	}
+
+	return objectDataFromStruct(d, &obj)
+}
+
+func listOptionsFromData(d *schema.ResourceData) []bw.ListObjectsOption {
+	filters := []bw.ListObjectsOption{}
+
+	filterMap := map[string]bw.ListObjectsOptionGenerator{
+		attributeFilterSearch:         bw.WithSearch,
+		attributeFilterCollectionId:   bw.WithCollectionID,
+		attributeFilterFolderID:       bw.WithFolderID,
+		attributeFilterOrganizationID: bw.WithOrganizationID,
+		attributeFilterURL:            bw.WithUrl,
+	}
+
+	for attribute, optionFunc := range filterMap {
+		v, ok := d.GetOk(attribute)
+		if !ok {
+			continue
+		}
+
+		if v, ok := v.(string); ok && len(v) > 0 {
+			filters = append(filters, optionFunc(v))
+		}
+	}
+	return filters
 }
 
 func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
