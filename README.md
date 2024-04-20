@@ -37,83 +37,26 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.6.2"
+      version = ">= 0.8.0"
     }
   }
 }
 
 # Configure the Bitwarden Provider
 provider "bitwarden" {
-  email           = "terraform@example.com"
+  email = "terraform@example.com"
 }
 
-# Managing Folders
-resource "bitwarden_folder" "cloud_credentials" {
-  name = "My Cloud Credentials"
+# Create a Bitwarden Login item
+resource "bitwarden_item_login" "example" {
+  name     = "Example"
+  username = "service-account"
+  password = "<sensitive>"
 }
 
-
-# Managing Logins and Secure Notes
-resource "random_password" "vpn_password" {
-  length           = 16
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
-
-resource "bitwarden_item_login" "vpn_credentials" {
-  folder_id = bitwarden_folder.cloud_credentials.id
-
-  name      = "VPN Read Only User/Password Access"
-  username  = "vpn-user"
-  password  = random_password.vpn_password.result
-}
-
-resource "bitwarden_item_secure_note" "vpn_note" {
-  folder_id = bitwarden_folder.cloud_credentials.id
-
-  name      = "Notes on the preshared Secret"
-  notes     = "It's 1234"
-}
-
-
-# Managing Attachments
-resource "bitwarden_attachment" "vpn_config" {
-  file = "./vpn_config.txt"
-  item_id = bitwarden_item_login.vpn_note.id
-}
-
-
-# Using Login information
-data "bitwarden_item_login" "mysql_credentials" {
-  id = "ec4e447f-9aed-4203-b834-c8f3848828f7"
-}
-
-resource "kubernetes_secret" "database" {
-  metadata {
-    name = "database"
-  }
-
-  data = {
-    username = data.bitwarden_item_login.mysql_root_credentials.username
-    password = data.bitwarden_item_login.mysql_root_credentials.password
-  }
-}
-
-
-# Using Attachments
-data "bitwarden_attachment" "ssh_credentials" {
-  id = "4d6a41364d6a4dea8ddb1a"
-  item_id = "59575167-4d36-5a58-466e-d9021926df8a"
-}
-
-resource "kubernetes_secret" "ssh" {
-  metadata {
-    name = "ssh"
-  }
-
-  data = {
-    "private.key" = data.bitwarden_attachment.ssh_credentials.content
-  }
+# or use an existing Bitwarden resource
+data "bitwarden_item_login" "example" {
+  search = "Example"
 }
 ```
 
