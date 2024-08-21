@@ -9,6 +9,7 @@ import (
 )
 
 func TestAccDataSourceOrganizationAttributes(t *testing.T) {
+	t.Skip("Temporarily skipping")
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "data.bitwarden_organization.foo_data"

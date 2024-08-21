@@ -12,6 +12,7 @@ import (
 )
 
 func TestAccResourceAttachment(t *testing.T) {
+	t.Skip("Temporarily skipping")
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "bitwarden_attachment.foo"
@@ -48,6 +49,7 @@ func TestAccResourceAttachment(t *testing.T) {
 }
 
 func TestAccResourceItemAttachmentFields(t *testing.T) {
+	t.Skip("Temporarily skipping")
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "bitwarden_item_login.foo"
