@@ -50,7 +50,7 @@ func TestAccProviderAuthUsernamePassword(t *testing.T) {
 func TestAccProviderAuthSessionKey(t *testing.T) {
 	ensureVaultwardenHasUser(t)
 
-	validProvider := sessionKeyTestProvider(testEmail, bwTestClient(t).GetSessionKey())
+	validProvider := sessionKeyTestProvider(testEmail, testSessionKey)
 	invalidProvider := sessionKeyTestProvider(testEmail, "invalid-session-key")
 
 	resource.UnitTest(t, resource.TestCase{

@@ -9,6 +9,8 @@ import (
 
 func TestAccDataSourceAttachmentAttributes(t *testing.T) {
 	t.Skip("Temporarily skipping")
+	return
+
 	ensureVaultwardenConfigured(t)
 
 	resource.UnitTest(t, resource.TestCase{
@@ -29,6 +31,8 @@ func TestAccDataSourceAttachmentAttributes(t *testing.T) {
 
 func TestAccDataSourceAttachmentFailsOnInvalidConfiguration(t *testing.T) {
 	t.Skip("Temporarily skipping")
+	return
+
 	ensureVaultwardenConfigured(t)
 
 	resource.UnitTest(t, resource.TestCase{

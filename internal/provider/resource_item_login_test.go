@@ -60,12 +60,15 @@ func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 				Config: tfConfigProvider() + tfConfigResourceItemLoginSmall(),
 				PreConfig: func() {
 					obj := bw.Object{ID: objectID, Object: bw.ObjectTypeItem}
-
+					bwClient := bwTestClient(t)
 					// Not syncing here leads to "Mac failed" errors.
-					err := bwTestClient(t).Sync(context.Background())
+					err := bwClient.Sync(context.Background())
 					assert.NoError(t, err)
 
-					err = bwTestClient(t).DeleteObject(context.Background(), obj)
+					err = bwClient.DeleteObject(context.Background(), obj)
+					assert.NoError(t, err)
+
+					err = bwClient.Sync(context.Background())
 					assert.NoError(t, err)
 				},
 				PlanOnly:           true,

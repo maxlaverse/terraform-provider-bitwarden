@@ -27,6 +27,8 @@ func TestAccDataSourceItemLoginAttributes(t *testing.T) {
 
 func TestAccDataSourceItemLoginFailsOnInexistentItem(t *testing.T) {
 	t.Skip("Temporarily skipping")
+	return
+
 	ensureVaultwardenConfigured(t)
 
 	resource.UnitTest(t, resource.TestCase{

@@ -75,6 +75,8 @@ func ensureVaultwardenHasUser(t *testing.T) {
 		t.Fatal(err)
 	}
 	isUserCreated = true
+
+	bwTestClient(t)
 }
 
 func ensureVaultwardenConfigured(t *testing.T) {
@@ -184,9 +186,6 @@ func bwTestClient(t *testing.T) bw.Client {
 }
 
 func tfConfigProvider() string {
-	if len(testSessionKey) == 0 {
-		bwTestClient(nil)
-	}
 	return fmt.Sprintf(`
 	provider "bitwarden" {
 		session_key     = "%s"
