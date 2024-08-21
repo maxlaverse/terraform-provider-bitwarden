@@ -16,13 +16,13 @@ import (
 func attachmentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	itemId := d.Get(attributeAttachmentItemID).(string)
 
-	existingAttachments, err := listExistingAttachments(meta.(bw.Client), itemId)
+	existingAttachments, err := listExistingAttachments(ctx, meta.(bw.Client), itemId)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	filePath := d.Get(attributeAttachmentFile).(string)
-	obj, err := meta.(bw.Client).CreateAttachment(itemId, filePath)
+	obj, err := meta.(bw.Client).CreateAttachment(ctx, itemId, filePath)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -42,7 +42,7 @@ func attachmentCreate(ctx context.Context, d *schema.ResourceData, meta interfac
 func attachmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	itemId := d.Get(attributeAttachmentItemID).(string)
 
-	obj, err := meta.(bw.Client).GetObject(bw.Object{ID: itemId, Object: bw.ObjectTypeItem})
+	obj, err := meta.(bw.Client).GetObject(ctx, bw.Object{ID: itemId, Object: bw.ObjectTypeItem})
 	if err != nil {
 		// If the item is not found, we can't simply consider the attachment as
 		// deleted, because we won't have an item to attach it to.
@@ -65,7 +65,8 @@ func attachmentRead(ctx context.Context, d *schema.ResourceData, meta interface{
 
 func attachmentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	itemId := d.Get(attributeAttachmentItemID).(string)
-	return diag.FromErr(meta.(bw.Client).DeleteAttachment(itemId, d.Id()))
+
+	return diag.FromErr(meta.(bw.Client).DeleteAttachment(ctx, itemId, d.Id()))
 }
 
 func attachmentDataFromStruct(d *schema.ResourceData, attachment bw.Attachment) error {
@@ -96,9 +97,10 @@ func attachmentDataFromStruct(d *schema.ResourceData, attachment bw.Attachment) 
 func readDataSourceAttachment() schema.ReadContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 		itemId := d.Get(attributeAttachmentItemID).(string)
+
 		attachmentId := d.Get(attributeID).(string)
 
-		content, err := meta.(bw.Client).GetAttachment(itemId, attachmentId)
+		content, err := meta.(bw.Client).GetAttachment(ctx, itemId, attachmentId)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -109,8 +111,8 @@ func readDataSourceAttachment() schema.ReadContextFunc {
 	}
 }
 
-func listExistingAttachments(client bw.Client, itemId string) ([]bw.Attachment, error) {
-	obj, err := client.GetObject(bw.Object{ID: itemId, Object: bw.ObjectTypeItem})
+func listExistingAttachments(ctx context.Context, client bw.Client, itemId string) ([]bw.Attachment, error) {
+	obj, err := client.GetObject(ctx, bw.Object{ID: itemId, Object: bw.ObjectTypeItem})
 	if err != nil {
 		return nil, err
 	}
