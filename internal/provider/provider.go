@@ -256,9 +256,7 @@ func newBitwardenClient(d *schema.ResourceData, version string) (bw.Client, erro
 	}
 
 	if version == versionDev {
-		// During development, we disable Vault synchronization and retry backoffs to make some
-		// operations faster.
-		opts = append(opts, bw.DisableSync())
+		// During development, we disable retry backoffs to make some operations faster.
 		opts = append(opts, bw.DisableRetryBackoff())
 	}
 	bwExecutable, err := exec.LookPath("bw")
