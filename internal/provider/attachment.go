@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -15,9 +14,6 @@ import (
 )
 
 func attachmentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
-	defer cancel()
-
 	itemId := d.Get(attributeAttachmentItemID).(string)
 
 	existingAttachments, err := listExistingAttachments(ctx, meta.(bw.Client), itemId)
@@ -44,9 +40,6 @@ func attachmentCreate(ctx context.Context, d *schema.ResourceData, meta interfac
 }
 
 func attachmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
-	defer cancel()
-
 	itemId := d.Get(attributeAttachmentItemID).(string)
 
 	obj, err := meta.(bw.Client).GetObject(ctx, bw.Object{ID: itemId, Object: bw.ObjectTypeItem})
@@ -71,9 +64,6 @@ func attachmentRead(ctx context.Context, d *schema.ResourceData, meta interface{
 }
 
 func attachmentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
-	defer cancel()
-
 	itemId := d.Get(attributeAttachmentItemID).(string)
 
 	return diag.FromErr(meta.(bw.Client).DeleteAttachment(ctx, itemId, d.Id()))
@@ -106,9 +96,6 @@ func attachmentDataFromStruct(d *schema.ResourceData, attachment bw.Attachment) 
 
 func readDataSourceAttachment() schema.ReadContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-		ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
-		defer cancel()
-
 		itemId := d.Get(attributeAttachmentItemID).(string)
 
 		attachmentId := d.Get(attributeID).(string)

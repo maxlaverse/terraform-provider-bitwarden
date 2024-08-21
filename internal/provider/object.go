@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -13,16 +12,10 @@ import (
 )
 
 func objectCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
-	defer cancel()
-
 	return diag.FromErr(objectOperation(ctx, d, meta.(bw.Client).CreateObject))
 }
 
 func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
-	defer cancel()
-
 	if _, idProvided := d.GetOk(attributeID); !idProvided {
 		return diag.FromErr(objectSearch(ctx, d, meta))
 	}
@@ -137,16 +130,10 @@ func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 func objectUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
-	defer cancel()
-
 	return diag.FromErr(objectOperation(ctx, d, meta.(bw.Client).EditObject))
 }
 
 func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
-	defer cancel()
-
 	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret bw.Object) (*bw.Object, error) {
 		return nil, meta.(bw.Client).DeleteObject(ctx, secret)
 	}))

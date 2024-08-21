@@ -6,7 +6,6 @@ import (
 	"log"
 	"os/exec"
 	"path/filepath"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -84,6 +83,11 @@ func New(version string) func() *schema.Provider {
 					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("BITWARDENCLI_APPDATA_DIR", ".bitwarden/"),
 				},
+				attributeFastMode: {
+					Type:     schema.TypeBool,
+					Optional: true,
+					Default:  false,
+				},
 				attributeExtraCACertsPath: {
 					Type:        schema.TypeString,
 					Description: descriptionExtraCACertsPath,
@@ -124,10 +128,12 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 		sessionKey, hasSessionKey := d.GetOk(attributeSessionKey)
 		if hasSessionKey {
 			bwClient.SetSessionKey(sessionKey.(string))
-		}
 
-		ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
-		defer cancel()
+			// TODO: Finish this
+			if _, isSet := d.GetOk(attributeFastMode); isSet {
+				return bwClient, nil
+			}
+		}
 
 		err = ensureLoggedIn(ctx, d, bwClient)
 		if err != nil {

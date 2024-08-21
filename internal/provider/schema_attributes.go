@@ -90,6 +90,7 @@ const (
 	attributeSessionKey       = "session_key"
 	attributeVaultPath        = "vault_path"
 	attributeExtraCACertsPath = "extra_ca_certs"
+	attributeFastMode         = "debugging_fast_mode"
 
 	// Provider field descriptions
 	descriptionClientSecret     = "Client Secret (env: `BW_CLIENTSECRET`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment."

@@ -162,13 +162,14 @@ func TestProviderRetryOnRateLimitExceeded(t *testing.T) {
 
 	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
 
-	assert.True(t, diag.HasError())
-	assert.Equal(t, diag[0].Summary, "failing command 'status' for test purposes: Rate limit exceeded. Try again later.")
-	assert.Equal(t, []string{
-		"status",
-		"status",
-		"status",
-	}, commandsExecuted())
+	if assert.True(t, diag.HasError()) {
+		assert.Equal(t, diag[0].Summary, "failing command 'status' for test purposes: Rate limit exceeded. Try again later.")
+		assert.Equal(t, []string{
+			"status",
+			"status",
+			"status",
+		}, commandsExecuted())
+	}
 }
 
 func TestProviderReturnUnhandledError(t *testing.T) {
@@ -185,9 +186,10 @@ func TestProviderReturnUnhandledError(t *testing.T) {
 
 	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
 
-	assert.True(t, diag.HasError())
-	assert.Equal(t, diag[0].Summary, "failing command 'status' for test purposes: Something unknown and bad happened.")
-	assert.Equal(t, []string{
-		"status",
-	}, commandsExecuted())
+	if assert.True(t, diag.HasError()) {
+		assert.Equal(t, diag[0].Summary, "failing command 'status' for test purposes: Something unknown and bad happened.")
+		assert.Equal(t, []string{
+			"status",
+		}, commandsExecuted())
+	}
 }

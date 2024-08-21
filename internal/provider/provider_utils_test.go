@@ -29,6 +29,9 @@ const (
 var testServerURL string
 var testOrganizationID string
 var testCollectionID string
+var testFolderName string
+var testFolderID string
+var testSessionKey string
 
 // providerFactories are used to instantiate a provider during acceptance testing.
 // The factory function will be invoked for every Terraform CLI command executed
@@ -75,8 +78,12 @@ func ensureVaultwardenHasUser(t *testing.T) {
 }
 
 func ensureVaultwardenConfigured(t *testing.T) {
+	start := time.Now()
 	testResourcesMu.Lock()
-	defer testResourcesMu.Unlock()
+	defer func() {
+		testResourcesMu.Unlock()
+		t.Logf("ensureVaultwardenConfigured() took %s", time.Since(start))
+	}()
 
 	if areTestResourcesCreated {
 		return
@@ -98,11 +105,14 @@ func ensureVaultwardenConfigured(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	dateTimeStr := fmt.Sprintf("%d-%d-%d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
+	dateTimeStr := fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 	testOrganizationID, err = webapiClient.CreateOrganization(fmt.Sprintf("org-%s", dateTimeStr), fmt.Sprintf("coll-%s", dateTimeStr), testEmail)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("Created organization %s", testOrganizationID)
+
+	testFolderName = fmt.Sprintf("folder%s-bar", dateTimeStr)
 
 	testCollectionID, err = webapiClient.GetCollections(testOrganizationID)
 	if err != nil {
@@ -110,6 +120,25 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	}
 
 	areTestResourcesCreated = true
+
+	bwClient := bwTestClient(t)
+	folder, err := bwClient.CreateObject(context.Background(), bw.Object{
+		Object: bw.ObjectTypeFolder,
+		Name:   testFolderName,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testFolderID = folder.ID
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = bwClient.Sync(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("Synced Bitwarden client")
 }
 
 func bwTestClient(t *testing.T) bw.Client {
@@ -123,19 +152,49 @@ func bwTestClient(t *testing.T) bw.Client {
 		t.Fatal(err)
 	}
 
-	client := bw.NewClient(bwExec, bw.WithAppDataDir(vault))
-	client.Unlock(context.Background(), testPassword)
+	client := bw.NewClient(bwExec, bw.DisableRetryBackoff(), bw.WithAppDataDir(vault))
+	if len(testSessionKey) == 0 {
+		status, err := client.Status(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(status.ServerURL) == 0 {
+			err = client.SetServer(context.Background(), testServerURL)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		if status.Status == bw.StatusUnauthenticated {
+			err = client.LoginWithPassword(context.Background(), testEmail, testPassword)
+			if err != nil {
+				t.Fatal(err)
+			}
+		} else if status.Status == bw.StatusLocked {
+			err = client.Unlock(context.Background(), testPassword)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		testSessionKey = client.GetSessionKey()
+	} else {
+		client.SetSessionKey(testSessionKey)
+	}
 	return client
 }
 
 func tfConfigProvider() string {
+	if len(testSessionKey) == 0 {
+		bwTestClient(nil)
+	}
 	return fmt.Sprintf(`
 	provider "bitwarden" {
-		master_password = "%s"
+		session_key     = "%s"
 		server          = "%s"
 		email           = "%s"
+		debugging_fast_mode 		= true
 	}
-`, testPassword, testServerURL, testEmail)
+`, testSessionKey, testServerURL, testEmail)
 }
 
 func getObjectID(n string, objectId *string) resource.TestCheckFunc {

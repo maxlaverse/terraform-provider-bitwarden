@@ -9,7 +9,6 @@ import (
 )
 
 func TestAccDataSourceOrganizationAttributes(t *testing.T) {
-	t.Skip("Temporarily skipping")
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "data.bitwarden_organization.foo_data"
@@ -24,7 +23,7 @@ func TestAccDataSourceOrganizationAttributes(t *testing.T) {
 				Config: tfConfigProvider() + tfConfigDataOrganization(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
-						resourceName, attributeName, regexp.MustCompile("^org-([0-9]+)-([0-9]+)-([0-9]+)$"),
+						resourceName, attributeName, regexp.MustCompile("^org-([0-9]{6})$"),
 					),
 					resource.TestMatchResourceAttr(
 						resourceName, attributeID, regexp.MustCompile(regExpId),

@@ -21,7 +21,7 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin(),
+				Config: tfConfigProvider() + tfConfigResourceItemLogin(),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemLogin(resourceName),
 					getObjectID(resourceName, &objectID),
@@ -60,7 +60,12 @@ func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 				Config: tfConfigProvider() + tfConfigResourceItemLoginSmall(),
 				PreConfig: func() {
 					obj := bw.Object{ID: objectID, Object: bw.ObjectTypeItem}
-					err := bwTestClient(t).DeleteObject(context.Background(), obj)
+
+					// Not syncing here leads to "Mac failed" errors.
+					err := bwTestClient(t).Sync(context.Background())
+					assert.NoError(t, err)
+
+					err = bwTestClient(t).DeleteObject(context.Background(), obj)
 					assert.NoError(t, err)
 				},
 				PlanOnly:           true,
@@ -87,7 +92,7 @@ func tfConfigResourceItemLogin() string {
 
 		organization_id     = "%s"
 		collection_ids		= ["%s"]
-		folder_id 			= bitwarden_folder.foo.id
+		folder_id 			= "%s"
 		username 			= "test-username"
 		password 			= "test-password"
 		totp 				= "1234"
@@ -150,7 +155,7 @@ func tfConfigResourceItemLogin() string {
 			value = "https://default"
 		}
 	}
-`, testOrganizationID, testCollectionID)
+`, testOrganizationID, testCollectionID, testFolderID)
 }
 
 func checkItemLogin(resourceName string) resource.TestCheckFunc {

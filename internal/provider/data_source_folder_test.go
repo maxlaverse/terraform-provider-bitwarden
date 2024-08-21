@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -9,28 +10,23 @@ import (
 func TestAccDataSourceFolderAttributes(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
-	resourceName := "bitwarden_folder.foo"
-
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder(),
-			},
-			{
-				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigDataFolder(),
-				Check:  checkObject(resourceName),
+				Config: tfConfigProvider() + tfConfigDataFolder(),
+				Check:  checkObject("data.bitwarden_folder.foo_data"),
 			},
 		},
 	})
 }
 
 func tfConfigDataFolder() string {
-	return `
+	return fmt.Sprintf(`
 data "bitwarden_folder" "foo_data" {
 	provider	= bitwarden
 
-	search 	= "folder-bar"
+	search 	= "%s"
 }
-`
+`, testFolderName)
 }

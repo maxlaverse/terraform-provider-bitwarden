@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -34,11 +35,11 @@ func TestAccResourceFolder(t *testing.T) {
 }
 
 func tfConfigResourceFolder() string {
-	return `
+	return fmt.Sprintf(`
 resource "bitwarden_folder" "foo" {
 	provider = bitwarden
 
-	name     = "folder-bar"
+	name     = "%s"
 }
-`
+`, testFolderName)
 }

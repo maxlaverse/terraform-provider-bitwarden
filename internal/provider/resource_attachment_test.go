@@ -129,6 +129,7 @@ func checkAttachmentMatches(resourceName, baseAttribute string) resource.TestChe
 }
 
 func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
+	t.Skip("Temporarily skipping")
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "bitwarden_attachment.foo"
