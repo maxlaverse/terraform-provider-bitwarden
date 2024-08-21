@@ -98,7 +98,7 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 			{
 				Config: tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				PreConfig: func() {
-					err := bwTestClient(t).DeleteAttachment(context.TODO(), itemID, attachmentID)
+					err := bwTestClient(t).DeleteAttachment(context.Background(), itemID, attachmentID)
 					assert.NoError(t, err)
 				},
 				PlanOnly:           true,

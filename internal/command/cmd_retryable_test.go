@@ -22,7 +22,7 @@ func TestCommandRerunOnMatchingError(t *testing.T) {
 	cmd := NewWithRetries(retryHandler)(os.Args[0], "-test.run=TestCommandRerunOnMatchingError")
 	cmd.AppendEnv([]string{"GO_WANT_HELPER_PROCESS=1"})
 
-	_, err := cmd.Run(context.TODO())
+	_, err := cmd.Run(context.Background())
 
 	assert.NotNil(t, err)
 	assert.Error(t, err)
@@ -40,7 +40,7 @@ func TestCommandFailsOnUnmatchedError(t *testing.T) {
 	cmd := NewWithRetries(retryHandler)(os.Args[0], "-test.run=TestCommandFailsOnUnmatchedError")
 	cmd.AppendEnv([]string{"GO_WANT_HELPER_PROCESS=1"})
 
-	_, err := cmd.Run(context.TODO())
+	_, err := cmd.Run(context.Background())
 
 	assert.NotNil(t, err)
 	assert.Error(t, err)

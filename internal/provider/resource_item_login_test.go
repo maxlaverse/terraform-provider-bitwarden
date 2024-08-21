@@ -60,7 +60,7 @@ func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 				Config: tfConfigProvider() + tfConfigResourceItemLoginSmall(),
 				PreConfig: func() {
 					obj := bw.Object{ID: objectID, Object: bw.ObjectTypeItem}
-					err := bwTestClient(t).DeleteObject(context.TODO(), obj)
+					err := bwTestClient(t).DeleteObject(context.Background(), obj)
 					assert.NoError(t, err)
 				},
 				PlanOnly:           true,

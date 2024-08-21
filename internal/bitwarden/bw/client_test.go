@@ -16,7 +16,7 @@ func TestCreateObjectEncoding(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewClient("dummy")
-	_, err := b.CreateObject(context.TODO(), Object{
+	_, err := b.CreateObject(context.Background(), Object{
 		Type: ItemTypeLogin,
 		Fields: []Field{
 			{
@@ -41,7 +41,7 @@ func TestListObjects(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewClient("dummy")
-	_, err := b.ListObjects(context.TODO(), "item", WithFolderID("folder-id"), WithCollectionID("collection-id"), WithSearch("search"))
+	_, err := b.ListObjects(context.Background(), "item", WithFolderID("folder-id"), WithCollectionID("collection-id"), WithSearch("search"))
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
@@ -56,7 +56,7 @@ func TestGetItem(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewClient("dummy")
-	_, err := b.GetObject(context.TODO(), Object{ID: "object-id", Object: ObjectTypeItem, Type: ItemTypeLogin})
+	_, err := b.GetObject(context.Background(), Object{ID: "object-id", Object: ObjectTypeItem, Type: ItemTypeLogin})
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
@@ -71,7 +71,7 @@ func TestGetOrgCollection(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewClient("dummy")
-	_, err := b.GetObject(context.TODO(), Object{ID: "object-id", Object: ObjectTypeOrgCollection, OrganizationID: "org-id"})
+	_, err := b.GetObject(context.Background(), Object{ID: "object-id", Object: ObjectTypeOrgCollection, OrganizationID: "org-id"})
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {

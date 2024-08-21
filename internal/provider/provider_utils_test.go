@@ -124,7 +124,7 @@ func bwTestClient(t *testing.T) bw.Client {
 	}
 
 	client := bw.NewClient(bwExec, bw.WithAppDataDir(vault))
-	client.Unlock(context.TODO(), testPassword)
+	client.Unlock(context.Background(), testPassword)
 	return client
 }
 
