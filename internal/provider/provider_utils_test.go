@@ -80,16 +80,17 @@ func ensureVaultwardenHasUser(t *testing.T) {
 }
 
 func ensureVaultwardenConfigured(t *testing.T) {
-	start := time.Now()
 	testResourcesMu.Lock()
-	defer func() {
-		testResourcesMu.Unlock()
-		t.Logf("ensureVaultwardenConfigured() took %s", time.Since(start))
-	}()
+	defer testResourcesMu.Unlock()
 
 	if areTestResourcesCreated {
 		return
 	}
+
+	start := time.Now()
+	defer func() {
+		t.Logf("initial ensureVaultwardenConfigured() took %s", time.Since(start))
+	}()
 
 	webapiClient := webapi.NewClient(testServerURL)
 
