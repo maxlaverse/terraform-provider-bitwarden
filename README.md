@@ -21,8 +21,8 @@ This project is not associated with the Bitwarden project nor 8bit Solutions LLC
 
 ## Supported Versions
 The plugin has been tested and built with the following components:
-- [Terraform] v1.6.1
-- [Bitwarden CLI] v2023.2.0
+- [Terraform] v1.6.1 / [OpenTofu] v1.8.0
+- [Bitwarden CLI] 2024.7.2
 - [Go] 1.22.0 (for development)
 - [Docker] 23.0.5 (for development)
 
@@ -106,6 +106,7 @@ $ make testacc
 Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more information.
 
 [Terraform]: https://www.terraform.io/downloads.html
+[OpenTofu]: https://opentofu.org/docs/intro/install/
 [Go]: https://golang.org/doc/install
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
 [Docker]: https://www.docker.com/products/docker-desktop
