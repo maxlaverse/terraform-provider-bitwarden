@@ -10,8 +10,7 @@ import (
 
 func TestCreateObjectEncoding(t *testing.T) {
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"encode":       `e30K`,
-		"create  e30K": `{}`,
+		"create  eyJncm91cHMiOm51bGwsImxvZ2luIjp7fSwic2VjdXJlTm90ZSI6e30sInR5cGUiOjEsImZpZWxkcyI6W3sibmFtZSI6InRlc3QiLCJ2YWx1ZSI6InBhc3NlZCIsInR5cGUiOjAsImxpbmtlZElkIjpudWxsfV19": `{}`,
 	})
 	defer removeMocks(t)
 
@@ -28,9 +27,8 @@ func TestCreateObjectEncoding(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	if assert.Len(t, commandsExecuted(), 2) {
-		assert.Equal(t, "{\"groups\":null,\"login\":{},\"secureNote\":{},\"type\":1,\"fields\":[{\"name\":\"test\",\"value\":\"passed\",\"type\":0,\"linkedId\":null}]}:/:encode", commandsExecuted()[0])
-		assert.Equal(t, "create  e30K", commandsExecuted()[1])
+	if assert.Len(t, commandsExecuted(), 1) {
+		assert.Equal(t, "create  eyJncm91cHMiOm51bGwsImxvZ2luIjp7fSwic2VjdXJlTm90ZSI6e30sInR5cGUiOjEsImZpZWxkcyI6W3sibmFtZSI6InRlc3QiLCJ2YWx1ZSI6InBhc3NlZCIsInR5cGUiOjAsImxpbmtlZElkIjpudWxsfV19", commandsExecuted()[0])
 	}
 }
 
