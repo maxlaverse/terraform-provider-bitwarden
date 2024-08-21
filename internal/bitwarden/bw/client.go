@@ -1,6 +1,7 @@
 package bw
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,24 +10,24 @@ import (
 )
 
 type Client interface {
-	CreateAttachment(itemId, filePath string) (*Object, error)
-	CreateObject(Object) (*Object, error)
-	EditObject(Object) (*Object, error)
-	GetAttachment(itemId, attachmentId string) ([]byte, error)
-	GetObject(Object) (*Object, error)
+	CreateAttachment(ctx context.Context, itemId, filePath string) (*Object, error)
+	CreateObject(context.Context, Object) (*Object, error)
+	EditObject(context.Context, Object) (*Object, error)
+	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
+	GetObject(context.Context, Object) (*Object, error)
 	GetSessionKey() string
 	HasSessionKey() bool
-	ListObjects(objType string, options ...ListObjectsOption) ([]Object, error)
-	LoginWithAPIKey(password, clientId, clientSecret string) error
-	LoginWithPassword(username, password string) error
-	Logout() error
-	DeleteAttachment(itemId, attachmentId string) error
-	DeleteObject(Object) error
-	SetServer(string) error
+	ListObjects(ctx context.Context, objType string, options ...ListObjectsOption) ([]Object, error)
+	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
+	LoginWithPassword(ctx context.Context, username, password string) error
+	Logout(context.Context) error
+	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
+	DeleteObject(context.Context, Object) error
+	SetServer(context.Context, string) error
 	SetSessionKey(string)
-	Status() (*Status, error)
-	Sync() error
-	Unlock(password string) error
+	Status(context.Context) (*Status, error)
+	Sync(context.Context) error
+	Unlock(ctx context.Context, password string) error
 }
 
 func NewClient(execPath string, opts ...Options) Client {
@@ -79,8 +80,8 @@ func DisableRetryBackoff() Options {
 	}
 }
 
-func (c *client) CreateObject(obj Object) (*Object, error) {
-	objEncoded, err := c.encode(obj)
+func (c *client) CreateObject(ctx context.Context, obj Object) (*Object, error) {
+	objEncoded, err := c.encode(ctx, obj)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +96,7 @@ func (c *client) CreateObject(obj Object) (*Object, error) {
 		args = append(args, "--organizationid", obj.OrganizationID)
 	}
 
-	out, err := c.cmdWithSession(args...).Run()
+	out, err := c.cmdWithSession(args...).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -109,8 +110,8 @@ func (c *client) CreateObject(obj Object) (*Object, error) {
 	return &obj, nil
 }
 
-func (c *client) CreateAttachment(itemId string, filePath string) (*Object, error) {
-	out, err := c.cmdWithSession("create", string(ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).Run()
+func (c *client) CreateAttachment(ctx context.Context, itemId string, filePath string) (*Object, error) {
+	out, err := c.cmdWithSession("create", string(ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -126,13 +127,13 @@ func (c *client) CreateAttachment(itemId string, filePath string) (*Object, erro
 	return &obj, nil
 }
 
-func (c *client) EditObject(obj Object) (*Object, error) {
-	objEncoded, err := c.encode(obj)
+func (c *client) EditObject(ctx context.Context, obj Object) (*Object, error) {
+	objEncoded, err := c.encode(ctx, obj)
 	if err != nil {
 		return nil, err
 	}
 
-	out, err := c.cmdWithSession("edit", string(obj.Object), obj.ID, objEncoded).Run()
+	out, err := c.cmdWithSession("edit", string(obj.Object), obj.ID, objEncoded).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +141,7 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 	if err != nil {
 		return nil, newUnmarshallError(err, "edit object", out)
 	}
-	err = c.Sync()
+	err = c.Sync(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error syncing: %v, %v", err, string(out))
 	}
@@ -148,7 +149,7 @@ func (c *client) EditObject(obj Object) (*Object, error) {
 	return &obj, nil
 }
 
-func (c *client) GetObject(obj Object) (*Object, error) {
+func (c *client) GetObject(ctx context.Context, obj Object) (*Object, error) {
 	args := []string{
 		"get",
 		string(obj.Object),
@@ -159,7 +160,7 @@ func (c *client) GetObject(obj Object) (*Object, error) {
 		args = append(args, "--organizationid", obj.OrganizationID)
 	}
 
-	out, err := c.cmdWithSession(args...).Run()
+	out, err := c.cmdWithSession(args...).Run(ctx)
 	if err != nil {
 		return nil, remapError(err)
 	}
@@ -172,8 +173,8 @@ func (c *client) GetObject(obj Object) (*Object, error) {
 	return &obj, nil
 }
 
-func (c *client) GetAttachment(itemId, attachmentId string) ([]byte, error) {
-	out, err := c.cmdWithSession("get", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId, "--raw").Run()
+func (c *client) GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error) {
+	out, err := c.cmdWithSession("get", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId, "--raw").Run(ctx)
 	if err != nil {
 		return nil, remapError(err)
 	}
@@ -186,7 +187,7 @@ func (c *client) GetSessionKey() string {
 }
 
 // ListObjects returns objects of a given type matching given filters.
-func (c *client) ListObjects(objType string, options ...ListObjectsOption) ([]Object, error) {
+func (c *client) ListObjects(ctx context.Context, objType string, options ...ListObjectsOption) ([]Object, error) {
 	args := []string{
 		"list",
 		objType,
@@ -196,7 +197,7 @@ func (c *client) ListObjects(objType string, options ...ListObjectsOption) ([]Ob
 		applyOption(&args)
 	}
 
-	out, err := c.cmdWithSession(args...).Run()
+	out, err := c.cmdWithSession(args...).Run(ctx)
 	if err != nil {
 		return nil, remapError(err)
 	}
@@ -212,8 +213,8 @@ func (c *client) ListObjects(objType string, options ...ListObjectsOption) ([]Ob
 
 // LoginWithPassword logs in using a password and retrieves the session key,
 // allowing authenticated requests using the client.
-func (c *client) LoginWithPassword(username, password string) error {
-	out, err := c.cmd("login", username, "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).Run()
+func (c *client) LoginWithPassword(ctx context.Context, username, password string) error {
+	out, err := c.cmd("login", username, "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).Run(ctx)
 	if err != nil {
 		return err
 	}
@@ -223,20 +224,20 @@ func (c *client) LoginWithPassword(username, password string) error {
 
 // LoginWithPassword logs in using an API key and unlock the Vault in order to retrieve a session key,
 // allowing authenticated requests using the client.
-func (c *client) LoginWithAPIKey(password, clientId, clientSecret string) error {
-	_, err := c.cmd("login", "--apikey").AppendEnv([]string{fmt.Sprintf("BW_CLIENTID=%s", clientId), fmt.Sprintf("BW_CLIENTSECRET=%s", clientSecret)}).Run()
+func (c *client) LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error {
+	_, err := c.cmd("login", "--apikey").AppendEnv([]string{fmt.Sprintf("BW_CLIENTID=%s", clientId), fmt.Sprintf("BW_CLIENTSECRET=%s", clientSecret)}).Run(ctx)
 	if err != nil {
 		return err
 	}
-	return c.Unlock(password)
+	return c.Unlock(ctx, password)
 }
 
-func (c *client) Logout() error {
-	_, err := c.cmd("logout").Run()
+func (c *client) Logout(ctx context.Context) error {
+	_, err := c.cmd("logout").Run(ctx)
 	return err
 }
 
-func (c *client) DeleteObject(obj Object) error {
+func (c *client) DeleteObject(ctx context.Context, obj Object) error {
 	args := []string{
 		"delete",
 		string(obj.Object),
@@ -247,22 +248,22 @@ func (c *client) DeleteObject(obj Object) error {
 		args = append(args, "--organizationid", obj.OrganizationID)
 	}
 
-	_, err := c.cmdWithSession(args...).Run()
+	_, err := c.cmdWithSession(args...).Run(ctx)
 	return err
 }
 
-func (c *client) DeleteAttachment(itemId, attachmentId string) error {
-	_, err := c.cmdWithSession("delete", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId).Run()
+func (c *client) DeleteAttachment(ctx context.Context, itemId, attachmentId string) error {
+	_, err := c.cmdWithSession("delete", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId).Run(ctx)
 	return err
 }
 
-func (c *client) SetServer(server string) error {
-	_, err := c.cmd("config", "server", server).Run()
+func (c *client) SetServer(ctx context.Context, server string) error {
+	_, err := c.cmd("config", "server", server).Run(ctx)
 	return err
 }
 
-func (c *client) Status() (*Status, error) {
-	out, err := c.cmdWithSession("status").Run()
+func (c *client) Status(ctx context.Context) (*Status, error) {
+	out, err := c.cmdWithSession("status").Run(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -276,8 +277,8 @@ func (c *client) Status() (*Status, error) {
 	return &status, nil
 }
 
-func (c *client) Unlock(password string) error {
-	out, err := c.cmd("unlock", "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).Run()
+func (c *client) Unlock(ctx context.Context, password string) error {
+	out, err := c.cmd("unlock", "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).Run(ctx)
 	if err != nil {
 		return err
 	}
@@ -294,11 +295,11 @@ func (c *client) SetSessionKey(sessionKey string) {
 	c.sessionKey = sessionKey
 }
 
-func (c *client) Sync() error {
+func (c *client) Sync(ctx context.Context) error {
 	if c.disableSync {
 		return nil
 	}
-	_, err := c.cmdWithSession("sync").Run()
+	_, err := c.cmdWithSession("sync").Run(ctx)
 	return err
 }
 
@@ -322,13 +323,13 @@ func (c *client) env() []string {
 	return defaultEnv
 }
 
-func (c *client) encode(item Object) (string, error) {
+func (c *client) encode(ctx context.Context, item Object) (string, error) {
 	newOut, err := json.Marshal(item)
 	if err != nil {
 		return "", fmt.Errorf("marshalling error: %v, %v", err, string(newOut))
 	}
 
-	out, err := c.cmd("encode").WithStdin(string(newOut)).Run()
+	out, err := c.cmd("encode").WithStdin(string(newOut)).Run(ctx)
 	if err != nil {
 		return "", fmt.Errorf("encoding error: %v, %v", err, string(newOut))
 	}

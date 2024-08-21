@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -123,7 +124,7 @@ func bwTestClient(t *testing.T) bw.Client {
 	}
 
 	client := bw.NewClient(bwExec, bw.WithAppDataDir(vault))
-	client.Unlock(testPassword)
+	client.Unlock(context.TODO(), testPassword)
 	return client
 }
 

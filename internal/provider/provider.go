@@ -6,6 +6,7 @@ import (
 	"log"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -113,7 +114,7 @@ func New(version string) func() *schema.Provider {
 }
 
 func providerConfigure(version string, _ *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
-	return func(_ context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 
 		bwClient, err := newBitwardenClient(d, version)
 		if err != nil {
@@ -125,7 +126,10 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 			bwClient.SetSessionKey(sessionKey.(string))
 		}
 
-		err = ensureLoggedIn(d, bwClient)
+		ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
+		defer cancel()
+
+		err = ensureLoggedIn(ctx, d, bwClient)
 		if err != nil {
 			return nil, diag.FromErr(err)
 		}
@@ -134,13 +138,13 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 	}
 }
 
-func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
-	status, err := bwClient.Status()
+func ensureLoggedIn(ctx context.Context, d *schema.ResourceData, bwClient bw.Client) error {
+	status, err := bwClient.Status(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = logoutIfIdentityChanged(d, bwClient, status)
+	err = logoutIfIdentityChanged(ctx, d, bwClient, status)
 	if err != nil {
 		return err
 	}
@@ -149,7 +153,7 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 	//             be done. This should happen when a session key is provided.
 	//             => return
 	if status.Status == bw.StatusUnlocked {
-		return bwClient.Sync()
+		return bwClient.Sync(ctx)
 	}
 
 	// Scenario 2: The Vault is *locked* and we have a master password. This
@@ -157,12 +161,12 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 	//             => unlock and return
 	masterPassword, hasMasterPassword := d.GetOk(attributeMasterPassword)
 	if hasMasterPassword && status.Status == bw.StatusLocked {
-		err = bwClient.Unlock(masterPassword.(string))
+		err = bwClient.Unlock(ctx, masterPassword.(string))
 		if err != nil {
 			return err
 		}
 
-		return bwClient.Sync()
+		return bwClient.Sync(ctx)
 	}
 
 	// Scenario 3: We need to login and have enough information to do so.
@@ -176,10 +180,10 @@ func ensureLoggedIn(d *schema.ResourceData, bwClient bw.Client) error {
 	case LoginMethodPersonalAPIKey:
 		clientID := d.Get(attributeClientID)
 		clientSecret := d.Get(attributeClientSecret)
-		return bwClient.LoginWithAPIKey(masterPassword.(string), clientID.(string), clientSecret.(string))
+		return bwClient.LoginWithAPIKey(ctx, masterPassword.(string), clientID.(string), clientSecret.(string))
 	case LoginMethodPassword:
 		email := d.Get(attributeEmail)
-		return bwClient.LoginWithPassword(email.(string), masterPassword.(string))
+		return bwClient.LoginWithPassword(ctx, email.(string), masterPassword.(string))
 	}
 
 	// Scenario 4: We need to login but don't have the information to do so.
@@ -208,7 +212,7 @@ func loginMethod(d *schema.ResourceData) LoginMethod {
 	return LoginMethodNone
 }
 
-func logoutIfIdentityChanged(d *schema.ResourceData, bwClient bw.Client, status *bw.Status) error {
+func logoutIfIdentityChanged(ctx context.Context, d *schema.ResourceData, bwClient bw.Client, status *bw.Status) error {
 	email := d.Get(attributeEmail).(string)
 	serverURL := d.Get(attributeServer).(string)
 
@@ -216,14 +220,14 @@ func logoutIfIdentityChanged(d *schema.ResourceData, bwClient bw.Client, status 
 		status.Status = bw.StatusUnauthenticated
 
 		log.Printf("Logging out as the local Vault belongs to a different identity (vault: '%v' on  '%s', provider: '%v' on '%s')\n", status.UserEmail, status.ServerURL, email, status.ServerURL)
-		err := bwClient.Logout()
+		err := bwClient.Logout(ctx)
 		if err != nil {
 			return err
 		}
 	}
 
 	if !status.VaultFromServer(serverURL) {
-		err := bwClient.SetServer(serverURL)
+		err := bwClient.SetServer(ctx, serverURL)
 		if err != nil {
 			return err
 		}

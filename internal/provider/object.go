@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -12,16 +13,22 @@ import (
 )
 
 func objectCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
+	defer cancel()
+
 	return diag.FromErr(objectOperation(ctx, d, meta.(bw.Client).CreateObject))
 }
 
 func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
+	defer cancel()
+
 	if _, idProvided := d.GetOk(attributeID); !idProvided {
-		return diag.FromErr(objectSearch(d, meta))
+		return diag.FromErr(objectSearch(ctx, d, meta))
 	}
 
-	return diag.FromErr(objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
-		obj, err := meta.(bw.Client).GetObject(secret)
+	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret bw.Object) (*bw.Object, error) {
+		obj, err := meta.(bw.Client).GetObject(ctx, secret)
 		if obj != nil {
 			// If the object exists but is marked as soft deleted, we return an error, because relying
 			// on an object in the 'trash' sounds like a bad idea.
@@ -42,13 +49,13 @@ func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 	}))
 }
 
-func objectSearch(d *schema.ResourceData, meta interface{}) error {
+func objectSearch(ctx context.Context, d *schema.ResourceData, meta interface{}) error {
 	objType, ok := d.GetOk(attributeObject)
 	if !ok {
 		return fmt.Errorf("BUG: object type not set in the resource data")
 	}
 
-	objs, err := meta.(bw.Client).ListObjects(fmt.Sprintf("%ss", objType), listOptionsFromData(d)...)
+	objs, err := meta.(bw.Client).ListObjects(ctx, fmt.Sprintf("%ss", objType), listOptionsFromData(d)...)
 	if err != nil {
 		return err
 	}
@@ -110,8 +117,8 @@ func listOptionsFromData(d *schema.ResourceData) []bw.ListObjectsOption {
 }
 
 func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	err := objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
-		return meta.(bw.Client).GetObject(secret)
+	err := objectOperation(ctx, d, func(ctx context.Context, secret bw.Object) (*bw.Object, error) {
+		return meta.(bw.Client).GetObject(ctx, secret)
 	})
 
 	if errors.Is(err, bw.ErrObjectNotFound) {
@@ -130,17 +137,23 @@ func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 func objectUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
+	defer cancel()
+
 	return diag.FromErr(objectOperation(ctx, d, meta.(bw.Client).EditObject))
 }
 
 func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return diag.FromErr(objectOperation(ctx, d, func(secret bw.Object) (*bw.Object, error) {
-		return nil, meta.(bw.Client).DeleteObject(secret)
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(30)*time.Second)
+	defer cancel()
+
+	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret bw.Object) (*bw.Object, error) {
+		return nil, meta.(bw.Client).DeleteObject(ctx, secret)
 	}))
 }
 
-func objectOperation(_ context.Context, d *schema.ResourceData, operation func(secret bw.Object) (*bw.Object, error)) error {
-	obj, err := operation(objectStructFromData(d))
+func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(ctx context.Context, secret bw.Object) (*bw.Object, error)) error {
+	obj, err := operation(ctx, objectStructFromData(d))
 	if err != nil {
 		return err
 	}

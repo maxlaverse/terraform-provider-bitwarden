@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"testing"
@@ -95,7 +96,7 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 			{
 				Config: tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				PreConfig: func() {
-					err := bwTestClient(t).DeleteAttachment(itemID, attachmentID)
+					err := bwTestClient(t).DeleteAttachment(context.TODO(), itemID, attachmentID)
 					assert.NoError(t, err)
 				},
 				PlanOnly:           true,

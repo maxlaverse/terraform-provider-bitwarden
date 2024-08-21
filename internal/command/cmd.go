@@ -2,6 +2,7 @@ package command
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"log"
 	"os/exec"
@@ -27,7 +28,7 @@ type command struct {
 type Command interface {
 	AppendEnv(envs []string) Command
 	WithStdin(string) Command
-	Run() ([]byte, error)
+	Run(ctx context.Context) ([]byte, error)
 }
 
 func (c *command) AppendEnv(envs []string) Command {
@@ -42,11 +43,11 @@ func (c *command) WithStdin(dir string) Command {
 	return c
 }
 
-func (c *command) Run() ([]byte, error) {
+func (c *command) Run(ctx context.Context) ([]byte, error) {
 	log.Printf("[DEBUG] Running command '%v'\n", c.args)
 	var stdOut, stdErr bytes.Buffer
 
-	cmd := exec.Command(c.binary, c.args...)
+	cmd := exec.CommandContext(ctx, c.binary, c.args...)
 	cmd.Env = c.env
 	cmd.Stdin = c.stdin
 	cmd.Stdout = &stdOut
