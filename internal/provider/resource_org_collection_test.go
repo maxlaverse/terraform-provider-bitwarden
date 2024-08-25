@@ -15,7 +15,7 @@ func TestAccResourceOrgCollection(t *testing.T) {
 	resourceName := "bitwarden_org_collection.foo_org_col"
 	var objectID string
 
-	resource.UnitTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{

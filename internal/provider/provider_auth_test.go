@@ -23,7 +23,7 @@ func TestAccProviderAuthUsernamePassword(t *testing.T) {
 	invalidPassword := usernamePasswordTestProvider(testEmail, "incorrect-password")
 	invalidAccount := usernamePasswordTestProvider("unknown-account@laverse.net", testPassword)
 
-	resource.UnitTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
@@ -53,7 +53,7 @@ func TestAccProviderAuthSessionKey(t *testing.T) {
 	validProvider := sessionKeyTestProvider(testEmail, bwTestClient(t).GetSessionKey())
 	invalidProvider := sessionKeyTestProvider(testEmail, "invalid-session-key")
 
-	resource.UnitTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{

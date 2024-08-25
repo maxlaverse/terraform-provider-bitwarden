@@ -9,7 +9,7 @@ import (
 func TestAccDataSourceFolderAttributes(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
-	resource.UnitTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{

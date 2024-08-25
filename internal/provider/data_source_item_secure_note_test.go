@@ -11,8 +11,9 @@ func TestAccDataSourceItemSecureNote(t *testing.T) {
 
 	resourceName := "data.bitwarden_item_secure_note.foo_data"
 
-	resource.UnitTest(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+	resource.Test(t, resource.TestCase{
+		ProviderFactories:         providerFactories,
+		PreventPostDestroyRefresh: false,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigProvider() + tfConfigResourceItemSecureNote(),

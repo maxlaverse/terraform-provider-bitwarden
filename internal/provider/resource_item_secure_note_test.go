@@ -13,7 +13,7 @@ func TestAccResourceItemSecureNote(t *testing.T) {
 	resourceName := "bitwarden_item_secure_note.foo"
 	var objectID string
 
-	resource.UnitTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
