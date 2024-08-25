@@ -10,14 +10,14 @@ import (
 
 func TestCreateObjectEncoding(t *testing.T) {
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"encode":       `e30K`,
-		"create  e30K": `{}`,
+		"create item eyJncm91cHMiOm51bGwsImxvZ2luIjp7fSwib2JqZWN0IjoiaXRlbSIsInNlY3VyZU5vdGUiOnt9LCJ0eXBlIjoxLCJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dfQ": `{}`,
 	})
 	defer removeMocks(t)
 
 	b := NewClient("dummy")
 	_, err := b.CreateObject(context.Background(), Object{
-		Type: ItemTypeLogin,
+		Type:   ItemTypeLogin,
+		Object: ObjectTypeItem,
 		Fields: []Field{
 			{
 				Name:  "test",
@@ -28,9 +28,8 @@ func TestCreateObjectEncoding(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	if assert.Len(t, commandsExecuted(), 2) {
-		assert.Equal(t, "{\"groups\":null,\"login\":{},\"secureNote\":{},\"type\":1,\"fields\":[{\"name\":\"test\",\"value\":\"passed\",\"type\":0,\"linkedId\":null}]}:/:encode", commandsExecuted()[0])
-		assert.Equal(t, "create  e30K", commandsExecuted()[1])
+	if assert.Len(t, commandsExecuted(), 1) {
+		assert.Equal(t, "create item eyJncm91cHMiOm51bGwsImxvZ2luIjp7fSwib2JqZWN0IjoiaXRlbSIsInNlY3VyZU5vdGUiOnt9LCJ0eXBlIjoxLCJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dfQ", commandsExecuted()[0])
 	}
 }
 

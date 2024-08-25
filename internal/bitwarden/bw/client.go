@@ -2,6 +2,7 @@ package bw
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -81,7 +82,7 @@ func DisableRetryBackoff() Options {
 }
 
 func (c *client) CreateObject(ctx context.Context, obj Object) (*Object, error) {
-	objEncoded, err := c.encode(ctx, obj)
+	objEncoded, err := c.encode(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +129,7 @@ func (c *client) CreateAttachment(ctx context.Context, itemId string, filePath s
 }
 
 func (c *client) EditObject(ctx context.Context, obj Object) (*Object, error) {
-	objEncoded, err := c.encode(ctx, obj)
+	objEncoded, err := c.encode(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -323,15 +324,10 @@ func (c *client) env() []string {
 	return defaultEnv
 }
 
-func (c *client) encode(ctx context.Context, item Object) (string, error) {
+func (c *client) encode(item Object) (string, error) {
 	newOut, err := json.Marshal(item)
 	if err != nil {
 		return "", fmt.Errorf("marshalling error: %v, %v", err, string(newOut))
 	}
-
-	out, err := c.cmd("encode").WithStdin(string(newOut)).Run(ctx)
-	if err != nil {
-		return "", fmt.Errorf("encoding error: %v, %v", err, string(newOut))
-	}
-	return string(out), err
+	return base64.RawStdEncoding.EncodeToString(newOut), nil
 }
