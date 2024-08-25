@@ -128,6 +128,7 @@ func createTestOrganization(t *testing.T) {
 func createTestUserResources(t *testing.T) {
 	testFolderName := fmt.Sprintf("folder-%s-bar", testUniqueIdentifier)
 	bwClient := bwTestClient(t)
+	t.Logf("Creating Folder")
 	folder, err := bwClient.CreateObject(context.Background(), bw.Object{
 		Object: bw.ObjectTypeFolder,
 		Name:   testFolderName,
@@ -173,9 +174,19 @@ func bwTestClient(t *testing.T) bw.Client {
 		}
 	}
 	if status.Status == bw.StatusUnauthenticated {
-		err = client.LoginWithPassword(context.Background(), testEmail, testPassword)
-		if err != nil {
-			t.Fatal(err)
+
+		retries := 0
+		for retries < 3 {
+			err = client.LoginWithPassword(context.Background(), testEmail, testPassword)
+			if err != nil {
+				// Retry if the user creation hasn't been fully taken into account yet
+				if retries < 3 {
+					retries++
+					time.Sleep(1 * time.Second)
+					continue
+				}
+				t.Fatal(err)
+			}
 		}
 	} else if status.Status == bw.StatusLocked {
 		err = client.Unlock(context.Background(), testPassword)

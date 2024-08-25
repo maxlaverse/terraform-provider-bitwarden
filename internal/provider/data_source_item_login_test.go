@@ -63,6 +63,9 @@ func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
+				Config: tfConfigProvider() + tfConfigResourceItemLogin(),
+			},
+			{
 				Config: tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
 				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},

@@ -9,8 +9,6 @@ import (
 func TestAccDataSourceFolderAttributes(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
-	resourceName := "bitwarden_folder.foo"
-
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
@@ -19,7 +17,7 @@ func TestAccDataSourceFolderAttributes(t *testing.T) {
 			},
 			{
 				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigDataFolder(),
-				Check:  checkObject(resourceName),
+				Check:  checkObject("data.bitwarden_folder.foo_data"),
 			},
 		},
 	})
