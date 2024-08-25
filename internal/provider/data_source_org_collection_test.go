@@ -8,17 +8,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
-func TestAccDataSourceOrgCollectionAttributes(t *testing.T) {
+func TestAccDataSourceOrgCollection(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "data.bitwarden_org_collection.foo_data"
 
-	resource.UnitTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
-			{
-				Config: tfConfigProvider(),
-			},
 			{
 				Config: tfConfigProvider() + tfConfigDataOrgCollection(),
 				Check: resource.ComposeTestCheckFunc(

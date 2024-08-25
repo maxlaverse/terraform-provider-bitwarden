@@ -13,12 +13,9 @@ func TestAccDataSourceOrganizationAttributes(t *testing.T) {
 
 	resourceName := "data.bitwarden_organization.foo_data"
 
-	resource.UnitTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
-			{
-				Config: tfConfigProvider(),
-			},
 			{
 				Config: tfConfigProvider() + tfConfigDataOrganization(),
 				Check: resource.ComposeTestCheckFunc(

@@ -7,10 +7,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
-func TestAccDataSourceAttachmentAttributes(t *testing.T) {
+func TestAccDataSourceAttachment(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
-	resource.UnitTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
@@ -22,16 +22,6 @@ func TestAccDataSourceAttachmentAttributes(t *testing.T) {
 					"data.bitwarden_attachment.foo_data", attributeAttachmentContent, regexp.MustCompile(`^Hello, I'm a text attachment$`),
 				),
 			},
-		},
-	})
-}
-
-func TestAccDataSourceAttachmentFailsOnInvalidConfiguration(t *testing.T) {
-	ensureVaultwardenConfigured(t)
-
-	resource.UnitTest(t, resource.TestCase{
-		ProviderFactories: providerFactories,
-		Steps: []resource.TestStep{
 			{
 				Config:      tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt") + tfConfigDataAttachmentInexistent(),
 				ExpectError: regexp.MustCompile("Error: attachment not found"),

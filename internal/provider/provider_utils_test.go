@@ -48,8 +48,6 @@ var isUserCreated bool
 var userMu sync.Mutex
 
 func init() {
-	testUniqueIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
-
 	host := os.Getenv("VAULTWARDEN_HOST")
 	port := os.Getenv("VAULTWARDEN_PORT")
 
@@ -59,7 +57,9 @@ func init() {
 	if len(port) == 0 {
 		port = "8080"
 	}
+
 	testServerURL = fmt.Sprintf("http://%s:%s/", host, port)
+	testUniqueIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 }
 
 func ensureVaultwardenConfigured(t *testing.T) {
@@ -147,7 +147,7 @@ func createTestUserResources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("Synced Bitwarden client")
+	t.Log("Synced test client")
 }
 
 func bwTestClient(t *testing.T) bw.Client {
@@ -176,23 +176,27 @@ func bwTestClient(t *testing.T) bw.Client {
 	if status.Status == bw.StatusUnauthenticated {
 
 		retries := 0
-		for retries < 3 {
+		for {
 			err = client.LoginWithPassword(context.Background(), testEmail, testPassword)
 			if err != nil {
 				// Retry if the user creation hasn't been fully taken into account yet
 				if retries < 3 {
 					retries++
-					time.Sleep(1 * time.Second)
+					t.Log("Account creation not taken into account yet, retrying...")
+					time.Sleep(time.Duration(retries) * time.Second)
 					continue
 				}
 				t.Fatal(err)
 			}
+			break
 		}
 	} else if status.Status == bw.StatusLocked {
 		err = client.Unlock(context.Background(), testPassword)
 		if err != nil {
 			t.Fatal(err)
 		}
+	} else {
+		t.Logf("Test client already logged-in: %s", status.Status)
 	}
 	return client
 }

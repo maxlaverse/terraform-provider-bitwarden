@@ -11,7 +11,7 @@ import (
 func TestAccDataSourceItemLoginAttributes(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
-	resource.UnitTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
@@ -21,30 +21,11 @@ func TestAccDataSourceItemLoginAttributes(t *testing.T) {
 				Config: tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigDataItemLogin(),
 				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},
-		},
-	})
-}
-
-func TestAccDataSourceItemLoginFailsOnInexistentItem(t *testing.T) {
-	ensureVaultwardenConfigured(t)
-
-	resource.UnitTest(t, resource.TestCase{
-		ProviderFactories: providerFactories,
-		Steps: []resource.TestStep{
 			{
 				Config:      tfConfigProvider() + tfConfigInexistentDataItemLogin(),
 				ExpectError: regexp.MustCompile("Error: object not found"),
 			},
-		},
-	})
-}
-
-func TestAccDataSourceItemLoginFailsOnWrongResourceType(t *testing.T) {
-	ensureVaultwardenConfigured(t)
-
-	resource.UnitTest(t, resource.TestCase{
-		ProviderFactories: providerFactories,
-		Steps: []resource.TestStep{
+			// Test: referencing a security note from the login data source should fail
 			{
 				Config: tfConfigProvider() + tfConfigResourceItemSecureNote(),
 			},
@@ -59,7 +40,7 @@ func TestAccDataSourceItemLoginFailsOnWrongResourceType(t *testing.T) {
 func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
-	resource.UnitTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
@@ -81,6 +62,7 @@ func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 				Config:      tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigDataItemLoginWithSearchAndOrg("missing-item"),
 				ExpectError: regexp.MustCompile("Error: no object found matching the filter"),
 			},
+			// Test: search for a secure note item with a login data source should fail
 			{
 				Config: tfConfigProvider() + tfConfigResourceItemSecureNote(),
 			},
