@@ -103,7 +103,7 @@ func (c *client) CreateObject(ctx context.Context, obj Object) (*Object, error) 
 	}
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, newUnmarshallError(err, "create object", out)
+		return nil, newUnmarshallError(err, args[0:2], out)
 	}
 
 	// NOTE(maxime): there is no need to sync after creating an item
@@ -134,13 +134,20 @@ func (c *client) EditObject(ctx context.Context, obj Object) (*Object, error) {
 		return nil, err
 	}
 
-	out, err := c.cmdWithSession("edit", string(obj.Object), obj.ID, objEncoded).Run(ctx)
+	args := []string{
+		"edit",
+		string(obj.Object),
+		obj.ID,
+		objEncoded,
+	}
+
+	out, err := c.cmdWithSession(args...).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, newUnmarshallError(err, "edit object", out)
+		return nil, newUnmarshallError(err, args[0:2], out)
 	}
 	err = c.Sync(ctx)
 	if err != nil {
@@ -168,7 +175,7 @@ func (c *client) GetObject(ctx context.Context, obj Object) (*Object, error) {
 
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, newUnmarshallError(err, "get object", out)
+		return nil, newUnmarshallError(err, args[0:2], out)
 	}
 
 	return &obj, nil
@@ -206,7 +213,7 @@ func (c *client) ListObjects(ctx context.Context, objType string, options ...Lis
 	var obj []Object
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, newUnmarshallError(err, "list object", out)
+		return nil, newUnmarshallError(err, args[0:2], out)
 	}
 
 	return obj, nil
@@ -272,7 +279,7 @@ func (c *client) Status(ctx context.Context) (*Status, error) {
 	var status Status
 	err = json.Unmarshal(out, &status)
 	if err != nil {
-		return nil, newUnmarshallError(err, "status", out)
+		return nil, newUnmarshallError(err, []string{"status"}, out)
 	}
 
 	return &status, nil

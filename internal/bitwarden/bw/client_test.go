@@ -77,3 +77,17 @@ func TestGetOrgCollection(t *testing.T) {
 		assert.Equal(t, "get org-collection object-id --organizationid org-id", commandsExecuted()[0])
 	}
 }
+
+func TestErrorContainsCommand(t *testing.T) {
+	removeMocks, _ := test_command.MockCommands(t, map[string]string{
+		"list org-collection --search search": ``,
+	})
+	defer removeMocks(t)
+
+	b := NewClient("dummy")
+	_, err := b.ListObjects(context.Background(), "org-collection", WithSearch("search"))
+
+	if assert.Error(t, err) {
+		assert.ErrorContains(t, err, "unable to parse result of 'list org-collection', error: 'unexpected end of JSON input', output: ''")
+	}
+}

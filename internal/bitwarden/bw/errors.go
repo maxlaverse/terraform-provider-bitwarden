@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
 )
@@ -15,8 +16,8 @@ var (
 	attachmentNotFoundRegexp = regexp.MustCompile(`^Attachment .* was not found.$`)
 )
 
-func newUnmarshallError(err error, cmd string, out []byte) error {
-	return fmt.Errorf("unable to parse result of '%s', error: '%v', output: '%v'", cmd, err, string(out))
+func newUnmarshallError(err error, args []string, out []byte) error {
+	return fmt.Errorf("unable to parse result of '%s', error: '%v', output: '%v'", strings.Join(args, " "), err, string(out))
 }
 
 func remapError(err error) error {
