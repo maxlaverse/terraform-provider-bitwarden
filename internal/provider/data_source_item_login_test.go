@@ -25,7 +25,16 @@ func TestAccDataSourceItemLoginAttributes(t *testing.T) {
 				Config:      tfConfigProvider() + tfConfigInexistentDataItemLogin(),
 				ExpectError: regexp.MustCompile("Error: object not found"),
 			},
-			// Test: referencing a security note from the login data source should fail
+		},
+	})
+}
+
+func TestAccDataSourceItemLoginFailsOnWrongResourceType(t *testing.T) {
+	ensureVaultwardenConfigured(t)
+
+	resource.UnitTest(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
 			{
 				Config: tfConfigProvider() + tfConfigResourceItemSecureNote(),
 			},
