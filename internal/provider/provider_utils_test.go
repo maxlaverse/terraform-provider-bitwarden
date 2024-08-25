@@ -20,13 +20,13 @@ import (
 
 const (
 	// Constants used to interact with a test Vaultwarden instance
-	testUsername  = "test"
-	testEmail     = "test@laverse.net"
 	testPassword  = "test1234"
 	kdfIterations = 10000
 )
 
 // Generated resources used for testing
+var testEmail string
+var testUsername string
 var testServerURL string
 var testOrganizationID string
 var testCollectionID string
@@ -84,13 +84,23 @@ func ensureVaultwardenHasUser(t *testing.T) {
 		return
 	}
 
-	webapiClient := webapi.NewClient(testServerURL)
+	clearTestVault(t)
 
+	webapiClient := webapi.NewClient(testServerURL)
+	testUsername = fmt.Sprintf("test-%s", testUniqueIdentifier)
+	testEmail = fmt.Sprintf("test-%s@laverse.net", testUniqueIdentifier)
 	err := webapiClient.RegisterUser(testUsername, testEmail, testPassword, kdfIterations)
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
 	isUserCreated = true
+}
+
+func clearTestVault(t *testing.T) {
+	err := os.Remove(".bitwarden/data.json")
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
 }
 
 func createTestOrganization(t *testing.T) {
