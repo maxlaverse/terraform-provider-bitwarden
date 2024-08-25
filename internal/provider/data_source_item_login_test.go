@@ -64,6 +64,9 @@ func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 			},
 			// Test: search for a secure note item with a login data source should fail
 			{
+				Config: tfConfigProvider(),
+			},
+			{
 				Config: tfConfigProvider() + tfConfigResourceItemSecureNote(),
 			},
 			{
