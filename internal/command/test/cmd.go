@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -36,7 +37,7 @@ func (c *testCommand) WithStdin(data string) command.Command {
 	return c
 }
 
-func (c *testCommand) Run() ([]byte, error) {
+func (c *testCommand) Run(_ context.Context) ([]byte, error) {
 	argsStr := strings.Join(c.args, " ")
 	c.callback(argsStr, c.stdin)
 

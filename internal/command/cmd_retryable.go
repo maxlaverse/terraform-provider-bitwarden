@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"log"
 	"time"
 )
@@ -33,11 +34,11 @@ func (c *retryableCommand) WithStdin(dir string) Command {
 	return c
 }
 
-func (c *retryableCommand) Run() ([]byte, error) {
+func (c *retryableCommand) Run(ctx context.Context) ([]byte, error) {
 	attempts := 0
 	for {
 		attempts = attempts + 1
-		out, err := c.cmd.Run()
+		out, err := c.cmd.Run(ctx)
 		if err == nil || !c.retryHandler.IsRetryable(err, attempts) {
 			return out, err
 		}
