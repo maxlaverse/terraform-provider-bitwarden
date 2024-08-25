@@ -17,7 +17,7 @@ func TestAccResourceItemSecureNote(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote(),
+				Config: tfConfigProvider() + tfConfigResourceItemSecureNote(),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemGeneral(resourceName),
 					getObjectID(resourceName, &objectID),
@@ -40,7 +40,7 @@ func tfConfigResourceItemSecureNote() string {
 
 		organization_id     = "%s"
 		collection_ids		= ["%s"]
-		folder_id 			= bitwarden_folder.foo.id
+		folder_id 			= "%s"
 		name     			= "secure-bar"
 		notes 				= "notes"
 		reprompt			= true
@@ -61,5 +61,5 @@ func tfConfigResourceItemSecureNote() string {
 			hidden = "value-hidden"
 		}
 	}
-`, testOrganizationID, testCollectionID)
+`, testOrganizationID, testCollectionID, testFolderID)
 }

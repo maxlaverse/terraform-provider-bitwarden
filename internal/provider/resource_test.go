@@ -15,7 +15,7 @@ const (
 func checkObject(resourceName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
 		resource.TestMatchResourceAttr(
-			resourceName, attributeName, regexp.MustCompile("^([a-z0-9]+)-bar$"),
+			resourceName, attributeName, regexp.MustCompile("^([a-z0-9-]+)-bar$"),
 		),
 		resource.TestMatchResourceAttr(
 			resourceName, attributeID, regexp.MustCompile(regExpId),

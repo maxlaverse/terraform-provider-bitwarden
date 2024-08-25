@@ -23,7 +23,7 @@ func TestAccDataSourceOrgCollectionAttributes(t *testing.T) {
 				Config: tfConfigProvider() + tfConfigDataOrgCollection(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
-						resourceName, attributeName, regexp.MustCompile("^coll-([0-9]+)-([0-9]+)-([0-9]+)$"),
+						resourceName, attributeName, regexp.MustCompile("^coll-([0-9]{6})$"),
 					),
 					resource.TestMatchResourceAttr(
 						resourceName, attributeID, regexp.MustCompile(regExpId),

@@ -20,6 +20,7 @@ import (
 
 const (
 	// Constants used to interact with a test Vaultwarden instance
+	testUsername  = "test"
 	testEmail     = "test@laverse.net"
 	testPassword  = "test1234"
 	kdfIterations = 10000
@@ -29,6 +30,8 @@ const (
 var testServerURL string
 var testOrganizationID string
 var testCollectionID string
+var testFolderID string
+var testUniqueIdentifier string
 
 // providerFactories are used to instantiate a provider during acceptance testing.
 // The factory function will be invoked for every Terraform CLI command executed
@@ -45,6 +48,8 @@ var isUserCreated bool
 var userMu sync.Mutex
 
 func init() {
+	testUniqueIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
+
 	host := os.Getenv("VAULTWARDEN_HOST")
 	port := os.Getenv("VAULTWARDEN_PORT")
 
@@ -57,6 +62,20 @@ func init() {
 	testServerURL = fmt.Sprintf("http://%s:%s/", host, port)
 }
 
+func ensureVaultwardenConfigured(t *testing.T) {
+	testResourcesMu.Lock()
+	defer testResourcesMu.Unlock()
+
+	if areTestResourcesCreated {
+		return
+	}
+
+	ensureVaultwardenHasUser(t)
+	createTestOrganization(t)
+	createTestUserResources(t)
+	areTestResourcesCreated = true
+}
+
 func ensureVaultwardenHasUser(t *testing.T) {
 	userMu.Lock()
 	defer userMu.Unlock()
@@ -67,49 +86,57 @@ func ensureVaultwardenHasUser(t *testing.T) {
 
 	webapiClient := webapi.NewClient(testServerURL)
 
-	err := webapiClient.RegisterUser("test", testEmail, testPassword, kdfIterations)
+	err := webapiClient.RegisterUser(testUsername, testEmail, testPassword, kdfIterations)
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
 	isUserCreated = true
 }
 
-func ensureVaultwardenConfigured(t *testing.T) {
-	testResourcesMu.Lock()
-	defer testResourcesMu.Unlock()
-
-	if areTestResourcesCreated {
-		return
-	}
-
+func createTestOrganization(t *testing.T) {
 	webapiClient := webapi.NewClient(testServerURL)
-
-	userAlreadyExists := false
-	err := webapiClient.RegisterUser("test", testEmail, testPassword, kdfIterations)
-	if err != nil && strings.Contains(err.Error(), "User already exists") {
-		userAlreadyExists = true
-	}
-
-	err = webapiClient.Login(testEmail, testPassword, kdfIterations)
-	if err != nil {
-		if userAlreadyExists {
-			t.Fatalf("Unable to log into test instance, and the user was already present. Try removing it! Error: %v", err)
-		} else {
-			t.Fatal(err)
-		}
-	}
-	dateTimeStr := fmt.Sprintf("%d-%d-%d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
-	testOrganizationID, err = webapiClient.CreateOrganization(fmt.Sprintf("org-%s", dateTimeStr), fmt.Sprintf("coll-%s", dateTimeStr), testEmail)
+	err := webapiClient.Login(testEmail, testPassword, kdfIterations)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	organizationName := fmt.Sprintf("org-%s", testUniqueIdentifier)
+	organizationLabel := fmt.Sprintf("coll-%s", testUniqueIdentifier)
+	testOrganizationID, err = webapiClient.CreateOrganization(organizationName, organizationLabel, testEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Created Organization '%s' (%s)", organizationName, testOrganizationID)
 
 	testCollectionID, err = webapiClient.GetCollections(testOrganizationID)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("Retrieved Organization Collection '%s' (%s)", organizationLabel, testOrganizationID)
+}
 
-	areTestResourcesCreated = true
+func createTestUserResources(t *testing.T) {
+	testFolderName := fmt.Sprintf("folder-%s-bar", testUniqueIdentifier)
+	bwClient := bwTestClient(t)
+	folder, err := bwClient.CreateObject(context.Background(), bw.Object{
+		Object: bw.ObjectTypeFolder,
+		Name:   testFolderName,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testFolderID = folder.ID
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Created Folder '%s' (%s)", testFolderName, testFolderID)
+
+	err = bwClient.Sync(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("Synced Bitwarden client")
 }
 
 func bwTestClient(t *testing.T) bw.Client {
@@ -123,8 +150,29 @@ func bwTestClient(t *testing.T) bw.Client {
 		t.Fatal(err)
 	}
 
-	client := bw.NewClient(bwExec, bw.WithAppDataDir(vault))
-	client.Unlock(context.Background(), testPassword)
+	client := bw.NewClient(bwExec, bw.DisableRetryBackoff(), bw.WithAppDataDir(vault))
+	status, err := client.Status(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(status.ServerURL) == 0 {
+		err = client.SetServer(context.Background(), testServerURL)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if status.Status == bw.StatusUnauthenticated {
+		err = client.LoginWithPassword(context.Background(), testEmail, testPassword)
+		if err != nil {
+			t.Fatal(err)
+		}
+	} else if status.Status == bw.StatusLocked {
+		err = client.Unlock(context.Background(), testPassword)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 	return client
 }
 

@@ -15,10 +15,10 @@ func TestAccDataSourceItemLoginAttributes(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin(),
+				Config: tfConfigProvider() + tfConfigResourceItemLogin(),
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin() + tfConfigDataItemLogin(),
+				Config: tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigDataItemLogin(),
 				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},
 		},
@@ -46,10 +46,10 @@ func TestAccDataSourceItemLoginFailsOnWrongResourceType(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote(),
+				Config: tfConfigProvider() + tfConfigResourceItemSecureNote(),
 			},
 			{
-				Config:      tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote() + tfConfigDataItemLoginCrossReference(),
+				Config:      tfConfigProvider() + tfConfigResourceItemSecureNote() + tfConfigDataItemLoginCrossReference(),
 				ExpectError: regexp.MustCompile("Error: returned object type does not match requested object type"),
 			},
 		},
@@ -57,38 +57,32 @@ func TestAccDataSourceItemLoginFailsOnWrongResourceType(t *testing.T) {
 }
 
 func TestAccDataSourceItemLoginBySearch(t *testing.T) {
-	resourceName := "bitwarden_item_login.foo"
-
 	ensureVaultwardenConfigured(t)
 
 	resource.UnitTest(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin(),
-				Check:  checkItemLogin(resourceName),
-			},
-			{
-				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin() + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
+				Config: tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
 				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin() + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
+				Config: tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
 				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},
 			{
-				Config:      tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin() + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchOnly("test-username"),
+				Config:      tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchOnly("test-username"),
 				ExpectError: regexp.MustCompile("Error: too many objects found"),
 			},
 			{
-				Config:      tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemLogin() + tfConfigDataItemLoginWithSearchAndOrg("missing-item"),
+				Config:      tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigDataItemLoginWithSearchAndOrg("missing-item"),
 				ExpectError: regexp.MustCompile("Error: no object found matching the filter"),
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote(),
+				Config: tfConfigProvider() + tfConfigResourceItemSecureNote(),
 			},
 			{
-				Config:      tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote() + tfConfigDataItemLoginWithSearchAndOrg("secure-bar"),
+				Config:      tfConfigProvider() + tfConfigResourceItemSecureNote() + tfConfigDataItemLoginWithSearchAndOrg("secure-bar"),
 				ExpectError: regexp.MustCompile("Error: no object found matching the filter"),
 			},
 		},

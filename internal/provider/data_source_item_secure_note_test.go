@@ -15,10 +15,10 @@ func TestAccDataSourceItemSecureNote(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote(),
+				Config: tfConfigProvider() + tfConfigResourceItemSecureNote(),
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder() + tfConfigResourceItemSecureNote() + tfConfigDataItemSecureNote(),
+				Config: tfConfigProvider() + tfConfigResourceItemSecureNote() + tfConfigDataItemSecureNote(),
 				Check:  checkItemGeneral(resourceName),
 			},
 		},
