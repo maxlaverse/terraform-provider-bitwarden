@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"log"
 	"os/exec"
+
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type NewFn func(binary string, args ...string) Command
@@ -44,9 +45,10 @@ func (c *command) WithStdin(dir string) Command {
 }
 
 func (c *command) Run(ctx context.Context) ([]byte, error) {
-	log.Printf("[DEBUG] Running command '%v'\n", c.args)
-	var stdOut, stdErr bytes.Buffer
+	ctx = tflog.SetField(ctx, "command", c.args)
+	tflog.Debug(ctx, "Running command")
 
+	var stdOut, stdErr bytes.Buffer
 	cmd := exec.CommandContext(ctx, c.binary, c.args...)
 	cmd.Env = c.env
 	cmd.Stdin = c.stdin
@@ -55,13 +57,12 @@ func (c *command) Run(ctx context.Context) ([]byte, error) {
 
 	err := cmd.Run()
 	if err != nil {
-		log.Printf("[ERROR] Command '%v' finished with error: %v\n", c.args, err)
-		log.Printf("[ERROR] Stdout: %v\n", stdOut.String())
-		log.Printf("[ERROR] Stderr: %v\n", stdErr.String())
-
+		tflog.Error(ctx, "Command finished with error", map[string]interface{}{"error": err})
+		tflog.Trace(ctx, "Command outputs", map[string]interface{}{"stdout": stdOut.String(), "stderr": stdErr.String()})
 		return nil, NewError(err, c.args, stdOut.String(), stdErr.String())
 	}
-	log.Printf("[DEBUG] Command '%v' finished with success\n", c.args)
+	tflog.Debug(ctx, "Command finished with success")
+	tflog.Trace(ctx, "Command outputs", map[string]interface{}{"stdout": stdOut.String(), "stderr": stdErr.String()})
 
 	return stdOut.Bytes(), nil
 }

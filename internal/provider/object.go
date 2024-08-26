@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
@@ -66,10 +66,12 @@ func objectSearch(ctx context.Context, d *schema.ResourceData, meta interface{})
 	if len(objs) == 0 {
 		return fmt.Errorf("no object found matching the filter")
 	} else if len(objs) > 1 {
-		log.Print("[WARN] Too many objects found:")
+		objects := []string{}
 		for _, obj := range objs {
-			log.Printf("[WARN] * %s (%s)", obj.Name, obj.ID)
+			objects = append(objects, fmt.Sprintf("%s (%s)", obj.Name, obj.ID))
 		}
+		tflog.Warn(ctx, "Too many objects found", map[string]interface{}{"objects": objects})
+
 		return fmt.Errorf("too many objects found")
 	}
 
@@ -81,7 +83,7 @@ func objectSearch(ctx context.Context, d *schema.ResourceData, meta interface{})
 		return errors.New("object is soft deleted")
 	}
 
-	return objectDataFromStruct(d, &obj)
+	return objectDataFromStruct(ctx, d, &obj)
 }
 
 func listOptionsFromData(d *schema.ResourceData) []bw.ListObjectsOption {
@@ -116,13 +118,13 @@ func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta i
 
 	if errors.Is(err, bw.ErrObjectNotFound) {
 		d.SetId("")
-		log.Print("[WARN] Object not found, removing from state")
+		tflog.Warn(ctx, "Object not found, removing from state")
 		return diag.Diagnostics{}
 	}
 
 	if _, exists := d.GetOk(attributeDeletedDate); exists {
 		d.SetId("")
-		log.Print("[WARN] Object was soft deleted, removing from state")
+		tflog.Warn(ctx, "Object was soft deleted, removing from state")
 		return diag.Diagnostics{}
 	}
 
@@ -140,15 +142,15 @@ func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{})
 }
 
 func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(ctx context.Context, secret bw.Object) (*bw.Object, error)) error {
-	obj, err := operation(ctx, objectStructFromData(d))
+	obj, err := operation(ctx, objectStructFromData(ctx, d))
 	if err != nil {
 		return err
 	}
 
-	return objectDataFromStruct(d, obj)
+	return objectDataFromStruct(ctx, d, obj)
 }
 
-func objectDataFromStruct(d *schema.ResourceData, obj *bw.Object) error {
+func objectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *bw.Object) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil
@@ -257,7 +259,7 @@ func objectDataFromStruct(d *schema.ResourceData, obj *bw.Object) error {
 				return err
 			}
 
-			err = d.Set(attributeLoginURIs, objectLoginURIsFromStruct(obj.Login.URIs))
+			err = d.Set(attributeLoginURIs, objectLoginURIsFromStruct(ctx, obj.Login.URIs))
 			if err != nil {
 				return err
 			}
@@ -267,7 +269,7 @@ func objectDataFromStruct(d *schema.ResourceData, obj *bw.Object) error {
 	return nil
 }
 
-func objectStructFromData(d *schema.ResourceData) bw.Object {
+func objectStructFromData(ctx context.Context, d *schema.ResourceData) bw.Object {
 	var obj bw.Object
 
 	obj.ID = d.Id()
@@ -339,7 +341,7 @@ func objectStructFromData(d *schema.ResourceData) bw.Object {
 				obj.Login.Username = v
 			}
 			if vList, ok := d.Get(attributeLoginURIs).([]interface{}); ok {
-				obj.Login.URIs = objectLoginURIsFromData(vList)
+				obj.Login.URIs = objectLoginURIsFromData(ctx, vList)
 			}
 		}
 	}
@@ -424,30 +426,30 @@ func objectFieldStructFromData(vList []interface{}) []bw.Field {
 	return fields
 }
 
-func objectLoginURIsFromData(vList []interface{}) []bw.LoginURI {
+func objectLoginURIsFromData(ctx context.Context, vList []interface{}) []bw.LoginURI {
 	uris := make([]bw.LoginURI, len(vList))
 	for k, v := range vList {
 		vc := v.(map[string]interface{})
 		uris[k] = bw.LoginURI{
-			Match: strMatchToInt(vc[attributeLoginURIsMatch].(string)),
+			Match: strMatchToInt(ctx, vc[attributeLoginURIsMatch].(string)),
 			URI:   vc[attributeLoginURIsValue].(string),
 		}
 	}
 	return uris
 }
 
-func objectLoginURIsFromStruct(objUris []bw.LoginURI) []interface{} {
+func objectLoginURIsFromStruct(ctx context.Context, objUris []bw.LoginURI) []interface{} {
 	uris := make([]interface{}, len(objUris))
 	for k, f := range objUris {
 		uris[k] = map[string]interface{}{
-			attributeLoginURIsMatch: intMatchToStr(f.Match),
+			attributeLoginURIsMatch: intMatchToStr(ctx, f.Match),
 			attributeLoginURIsValue: f.URI,
 		}
 	}
 	return uris
 }
 
-func intMatchToStr(match *bw.URIMatch) URIMatchStr {
+func intMatchToStr(ctx context.Context, match *bw.URIMatch) URIMatchStr {
 	if match == nil {
 		return URIMatchDefault
 	}
@@ -466,12 +468,12 @@ func intMatchToStr(match *bw.URIMatch) URIMatchStr {
 	case bw.URIMatchNever:
 		return URIMatchNever
 	default:
-		log.Printf("unsupported integer value for URI match: '%d'. Falling back to default\n", *match)
+		tflog.Warn(ctx, "unsupported integer value for URI match - Falling back to default", map[string]interface{}{"match": *match})
 		return URIMatchDefault
 	}
 }
 
-func strMatchToInt(match string) *bw.URIMatch {
+func strMatchToInt(ctx context.Context, match string) *bw.URIMatch {
 	var v bw.URIMatch
 	switch match {
 	case string(URIMatchDefault):
@@ -489,7 +491,7 @@ func strMatchToInt(match string) *bw.URIMatch {
 	case string(URIMatchNever):
 		v = bw.URIMatchNever
 	default:
-		log.Printf("unsupported string value for URI match: '%s'. Falling back to default\n", match)
+		tflog.Warn(ctx, "unsupported string value for URI match - Falling back to default", map[string]interface{}{"match": match})
 		return nil
 	}
 	return &v
