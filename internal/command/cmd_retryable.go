@@ -2,8 +2,9 @@ package command
 
 import (
 	"context"
-	"log"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type RetryHandler interface {
@@ -43,6 +44,6 @@ func (c *retryableCommand) Run(ctx context.Context) ([]byte, error) {
 			return out, err
 		}
 		c.retryHandler.Backoff(attempts)
-		log.Printf("[ERROR] Retrying command after error: %v\n", err)
+		tflog.Error(ctx, "Retrying command after error", map[string]interface{}{"error": err})
 	}
 }

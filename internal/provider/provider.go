@@ -3,10 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
-	"log"
 	"os/exec"
 	"path/filepath"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
@@ -215,7 +215,7 @@ func logoutIfIdentityChanged(ctx context.Context, d *schema.ResourceData, bwClie
 	if (status.Status == bw.StatusLocked || status.Status == bw.StatusUnlocked) && (!status.VaultOfUser(email) || !status.VaultFromServer(serverURL)) {
 		status.Status = bw.StatusUnauthenticated
 
-		log.Printf("Logging out as the local Vault belongs to a different identity (vault: '%v' on  '%s', provider: '%v' on '%s')\n", status.UserEmail, status.ServerURL, email, status.ServerURL)
+		tflog.Warn(ctx, "Logging out as the local Vault belongs to a different identity", map[string]interface{}{"vault_email": status.UserEmail, "vault_server": status.ServerURL, "provider_email": email, "provider_server": serverURL})
 		err := bwClient.Logout(ctx)
 		if err != nil {
 			return err
