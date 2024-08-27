@@ -43,3 +43,6 @@ terraform-lock
 # Code coverage artifact
 profile.cov
 internal/provider/.bitwarden/
+
+# Terraform Workspace
+debug/
