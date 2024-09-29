@@ -407,7 +407,6 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 		return nil, models.ErrVaultLocked
 	}
 
-	fmt.Printf("Getting attachment: %s for item %s\n", attachmentId, itemId)
 	res, err := v.client.GetObjectAttachment(ctx, itemId, attachmentId)
 	if err != nil {
 		if strings.Contains(err.Error(), "Attachment doesn't exist") {
