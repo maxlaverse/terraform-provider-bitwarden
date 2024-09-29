@@ -141,8 +141,12 @@ func (c *client) EditObject(ctx context.Context, obj models.Object) (*models.Obj
 		"edit",
 		string(obj.Object),
 		obj.ID,
-		objEncoded,
 	}
+
+	if obj.Object == models.ObjectTypeOrgCollection {
+		args = append(args, "--organizationid", obj.OrganizationID)
+	}
+	args = append(args, []string{objEncoded}...)
 
 	out, err := c.cmdWithSession(args...).Run(ctx)
 	if err != nil {
@@ -247,6 +251,7 @@ func (c *client) Logout(ctx context.Context) error {
 }
 
 func (c *client) DeleteObject(ctx context.Context, obj models.Object) error {
+	// TODO: Don't fail if object is already gone
 	args := []string{
 		"delete",
 		string(obj.Object),
@@ -262,6 +267,7 @@ func (c *client) DeleteObject(ctx context.Context, obj models.Object) error {
 }
 
 func (c *client) DeleteAttachment(ctx context.Context, itemId, attachmentId string) error {
+	// TODO: Don't fail if attachment is already gone
 	_, err := c.cmdWithSession("delete", string(models.ObjectTypeAttachment), attachmentId, "--itemid", itemId).Run(ctx)
 	return err
 }

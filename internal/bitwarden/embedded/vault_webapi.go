@@ -273,6 +273,7 @@ func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, 
 }
 
 func (v *webAPIVault) DeleteAttachment(ctx context.Context, itemId, attachmentId string) error {
+	// TODO: Don't fail if attachment is already gone
 	err := v.client.DeleteObjectAttachment(ctx, itemId, attachmentId)
 	if err != nil {
 		return fmt.Errorf("error deleting attachment: %w", err)
@@ -310,6 +311,7 @@ func (v *webAPIVault) DeleteAttachment(ctx context.Context, itemId, attachmentId
 }
 
 func (v *webAPIVault) DeleteObject(ctx context.Context, obj models.Object) error {
+	// TODO: Don't fail if object is already gone
 	var err error
 	if obj.Object == models.ObjectTypeFolder {
 		err = v.client.DeleteFolder(ctx, obj.ID)

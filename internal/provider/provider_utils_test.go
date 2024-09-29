@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -13,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
@@ -32,6 +35,8 @@ var testOrganizationID string
 var testCollectionID string
 var testFolderID string
 var testUniqueIdentifier string
+var testSessionKey string
+var useEmbeddedClient bool
 
 // providerFactories are used to instantiate a provider during acceptance testing.
 // The factory function will be invoked for every Terraform CLI command executed
@@ -73,6 +78,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	ensureVaultwardenHasUser(t)
 	ctx := context.Background()
 
+	bwOfficialTestClient(t)
 	bwClient := bwTestClient(t)
 
 	var err error
@@ -153,15 +159,54 @@ func bwTestClient(t *testing.T) bitwarden.Client {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("Logged in test client")
+	t.Log("Logged in embedded test client")
 
 	return client
 }
 
+func bwOfficialTestClient(t *testing.T) bwcli.CLIClient {
+	vault, err := filepath.Abs("./.bitwarden")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bwExec, err := exec.LookPath("bw")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client := bwcli.NewClient(bwExec, bwcli.DisableRetryBackoff(), bwcli.WithAppDataDir(vault))
+
+	if len(testSessionKey) == 0 {
+		err = client.SetServer(context.Background(), testServerURL)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = client.LoginWithPassword(context.Background(), testEmail, testPassword)
+		if err != nil {
+			err = client.Unlock(context.Background(), testPassword)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		t.Log("Logged in official test client")
+
+		testSessionKey = client.GetSessionKey()
+	} else {
+		client.SetSessionKey(testSessionKey)
+	}
+	return client
+}
+
 func tfConfigProvider() string {
-	useEmbeddedClient := "false"
 	if os.Getenv("TEST_USE_EMBEDDED_CLIENT") == "1" {
-		useEmbeddedClient = "true"
+		useEmbeddedClient = true
+	}
+
+	useEmbeddedClientStr := "false"
+	if useEmbeddedClient {
+		useEmbeddedClientStr = "true"
 	}
 	return fmt.Sprintf(`
 	provider "bitwarden" {
@@ -173,7 +218,7 @@ func tfConfigProvider() string {
 			embedded_client = %s
 		}
 	}
-`, testPassword, testServerURL, testEmail, useEmbeddedClient)
+`, testPassword, testServerURL, testEmail, useEmbeddedClientStr)
 }
 
 func getObjectID(n string, objectId *string) resource.TestCheckFunc {
