@@ -97,19 +97,22 @@ jobs:
         run: go build -v ./...
 
       - name: Test with Embedded Client
-        run: go test -coverprofile=profile.cov -v ./...
+        run: go test -coverprofile=profile_embedded.cov -v ./...
         env:
           VAULTWARDEN_HOST: "127.0.0.1"
           VAULTWARDEN_PORT: "8080"
           TF_ACC: "1"
           TEST_USE_EMBEDDED_CLIENT: "true"
 
-      # - name: Test with Official Client
-      #   run: go test -failfast -v ./...
-      #   env:
-      #     VAULTWARDEN_HOST: "127.0.0.1"
-      #     VAULTWARDEN_PORT: "8080"
-      #     TF_ACC: "1"
+      - name: Test with Official Client
+        run: go test -coverprofile=profile_official.cov -failfast -v ./...
+        env:
+          VAULTWARDEN_HOST: "127.0.0.1"
+          VAULTWARDEN_PORT: "8080"
+          TF_ACC: "1"
+
+      - name: Combine Coverage
+        run: cat profile_embedded.cov profile_official.cov | sort | uniq > profile.cov
       - name: Code Coverage
         uses: shogo82148/actions-goveralls@v1
         with:
