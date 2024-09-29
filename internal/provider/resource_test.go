@@ -27,7 +27,7 @@ func checkItemGeneral(resourceName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
 		checkObject(resourceName),
 		resource.TestMatchResourceAttr(
-			resourceName, attributeNotes, regexp.MustCompile("^notes$"),
+			resourceName, attributeNotes, regexp.MustCompile("^notes([A-Za-z-]*)$"),
 		),
 		resource.TestMatchResourceAttr(
 			resourceName, attributeFolderID, regexp.MustCompile(regExpId),

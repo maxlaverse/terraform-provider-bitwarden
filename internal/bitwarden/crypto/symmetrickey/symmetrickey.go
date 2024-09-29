@@ -2,6 +2,7 @@ package symmetrickey
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 
 	"golang.org/x/crypto/hkdf"
@@ -53,7 +54,7 @@ func NewFromRawBytes(rawKey []byte) (*Key, error) {
 	return nil, fmt.Errorf("unsupported raw key len: %d", len(rawKey))
 }
 
-func (key *Key) StretchKey() (*Key, error) {
+func (key *Key) StretchKey() Key {
 	encKey := hkdf.Expand(sha256.New, key.Key, []byte("enc"))
 	macKey := hkdf.Expand(sha256.New, key.Key, []byte("mac"))
 
@@ -64,5 +65,16 @@ func (key *Key) StretchKey() (*Key, error) {
 	macKey.Read(newMacKey)
 
 	newKey := append(newEncKey, newMacKey...)
-	return NewFromRawBytes(newKey)
+	k, err := NewFromRawBytes(newKey)
+	if err != nil {
+		panic("BUG: Bad length in StretchKey()")
+	}
+	return *k
+}
+
+func (key *Key) Summary() string {
+	macKeyBase64 := base64.StdEncoding.EncodeToString(key.MacKey)
+	encKeyB64 := base64.StdEncoding.EncodeToString(key.EncryptionKey)
+	keyBase64 := base64.StdEncoding.EncodeToString(key.Key)
+	return fmt.Sprintf("Key: %s\nEncryptionKey: %s\nMacKey: %s\n", keyBase64, encKeyB64, macKeyBase64)
 }

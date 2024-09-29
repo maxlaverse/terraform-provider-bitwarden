@@ -21,9 +21,22 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemLogin(),
+				Config: tfConfigProvider() + tfConfigResourceItemLogin("reslogin"),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemLogin(resourceName),
+					resource.TestCheckResourceAttr(
+						resourceName, attributeNotes, "notes-reslogin",
+					),
+					getObjectID(resourceName, &objectID),
+				),
+			},
+			{
+				Config: tfConfigProvider() + tfConfigResourceItemLogin("resloginmodified"),
+				Check: resource.ComposeTestCheckFunc(
+					checkItemLogin(resourceName),
+					resource.TestCheckResourceAttr(
+						resourceName, attributeNotes, "notes-resloginmodified",
+					),
 					getObjectID(resourceName, &objectID),
 				),
 			},
@@ -80,7 +93,7 @@ func tfConfigResourceItemLoginSmall() string {
 `
 }
 
-func tfConfigResourceItemLogin() string {
+func tfConfigResourceItemLogin(source string) string {
 	return fmt.Sprintf(`
 	resource "bitwarden_item_login" "foo" {
 		provider 			= bitwarden
@@ -92,7 +105,7 @@ func tfConfigResourceItemLogin() string {
 		password 			= "test-password"
 		totp 				= "1234"
 		name     			= "login-bar"
-		notes 				= "notes"
+		notes 				= "notes-%s"
 		reprompt			= true
 		favorite            = true
 
@@ -150,7 +163,7 @@ func tfConfigResourceItemLogin() string {
 			value = "https://default"
 		}
 	}
-`, testOrganizationID, testCollectionID, testFolderID)
+`, testOrganizationID, testCollectionID, testFolderID, source)
 }
 
 func checkItemLogin(resourceName string) resource.TestCheckFunc {

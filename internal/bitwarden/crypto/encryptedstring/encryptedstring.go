@@ -1,12 +1,20 @@
 package encryptedstring
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
+)
+
+const (
+	BUFFER_ENC_TYPE_LENGTH = 1
+	BUFFER_IV_LENGTH       = 16
+	BUFFER_MAC_LENGTH      = 32
+	BUFFER_MIN_DATA_LENGTH = 1
 )
 
 type EncryptedString struct {
@@ -23,6 +31,62 @@ func New(iv, data, hmac []byte, key symmetrickey.Key) EncryptedString {
 		Data: data,
 		Hmac: hmac,
 	}
+}
+
+func NewFromEncryptedBuffer(encBytes []byte) (*EncryptedString, error) {
+	encType := symmetrickey.EncryptionType(encBytes[0])
+
+	encString := EncryptedString{}
+
+	switch encType {
+	case symmetrickey.AesCbc256_HmacSha256_B64:
+		const minimumLength = BUFFER_ENC_TYPE_LENGTH + BUFFER_IV_LENGTH + BUFFER_MAC_LENGTH + BUFFER_MIN_DATA_LENGTH
+		if len(encBytes) < minimumLength {
+			return nil, fmt.Errorf("bad minimum length for encrypted buffer: %d", len(encBytes))
+		}
+		encString.Key.EncryptionType = encType
+		encString.IV = encBytes[BUFFER_ENC_TYPE_LENGTH : BUFFER_ENC_TYPE_LENGTH+BUFFER_IV_LENGTH]
+		encString.Hmac = encBytes[BUFFER_ENC_TYPE_LENGTH+BUFFER_IV_LENGTH : BUFFER_ENC_TYPE_LENGTH+BUFFER_IV_LENGTH+BUFFER_MAC_LENGTH]
+		encString.Data = encBytes[BUFFER_ENC_TYPE_LENGTH+BUFFER_IV_LENGTH+BUFFER_MAC_LENGTH:]
+	default:
+		return nil, fmt.Errorf("unsupported encrypted buffer type: %d", encType)
+	}
+
+	return &encString, nil
+}
+
+func (encString *EncryptedString) ToEncryptedBuffer() ([]byte, error) {
+	if len(encString.IV) != BUFFER_IV_LENGTH {
+		return nil, fmt.Errorf("can't output encrypted buffer: bad IV length")
+	}
+	if len(encString.Hmac) != BUFFER_MAC_LENGTH {
+		return nil, fmt.Errorf("can't output encrypted buffer: bad HMAC length")
+	}
+	if len(encString.Data) < BUFFER_MIN_DATA_LENGTH {
+		return nil, fmt.Errorf("can't output encrypted buffer: bad data length")
+	}
+	encType := []byte{byte(encString.Key.EncryptionType)}
+	encBuffer := append(encType, encString.IV...)
+	encBuffer = append(encBuffer, encString.Hmac...)
+	encBuffer = append(encBuffer, encString.Data...)
+
+	return encBuffer, nil
+}
+
+func (encString *EncryptedString) Equals(otherString *EncryptedString) bool {
+	if !bytes.Equal(encString.Data, otherString.Data) {
+		return false
+	}
+	if !bytes.Equal(encString.IV, otherString.IV) {
+		return false
+	}
+	if !bytes.Equal(encString.Hmac, otherString.Hmac) {
+		return false
+	}
+	if encString.Key.EncryptionType != otherString.Key.EncryptionType {
+		return false
+	}
+	return true
 }
 
 func NewFromEncryptedValue(encryptedValue string) (*EncryptedString, error) {

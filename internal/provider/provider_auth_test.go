@@ -1,11 +1,15 @@
 package provider
 
 import (
+	"context"
 	"fmt"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 )
 
 const (
@@ -50,7 +54,30 @@ func TestAccProviderAuthUsernamePassword(t *testing.T) {
 func TestAccProviderAuthSessionKey(t *testing.T) {
 	ensureVaultwardenHasUser(t)
 
-	validProvider := sessionKeyTestProvider(testEmail, bwTestClient(t).GetSessionKey())
+	vault, err := filepath.Abs("./.bitwarden")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bwExec, err := exec.LookPath("bw")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client := bwcli.NewClient(bwExec, bwcli.DisableRetryBackoff(), bwcli.WithAppDataDir(vault))
+	err = client.SetServer(context.Background(), testServerURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = client.LoginWithPassword(context.Background(), testEmail, testPassword)
+	if err != nil {
+		err = client.Unlock(context.Background(), testPassword)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	validProvider := sessionKeyTestProvider(testEmail, client.GetSessionKey())
 	invalidProvider := sessionKeyTestProvider(testEmail, "invalid-session-key")
 
 	resource.Test(t, resource.TestCase{

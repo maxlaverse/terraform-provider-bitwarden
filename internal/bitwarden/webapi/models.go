@@ -1,5 +1,12 @@
 package webapi
 
+import (
+	"crypto/rsa"
+	"time"
+
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+)
+
 type SignupRequest struct {
 	Email              string  `json:"email"`
 	Name               string  `json:"name"`
@@ -15,6 +22,32 @@ type KeyPair struct {
 	EncryptedPrivateKey string `json:"encryptedPrivateKey"`
 }
 
+type AttachmentRequestData struct {
+	Key      string `json:"key"`
+	FileName string `json:"fileName"`
+	FileSize int    `json:"fileSize"`
+}
+
+type CreateObjectAttachmentResponse struct {
+	AttachmentId   string            `json:"attachmentId"`
+	CipherResponse models.Object     `json:"cipherResponse"`
+	FileUploadType int               `json:"fileUploadType"`
+	Object         models.ObjectType `json:"object"`
+	Url            string            `json:"url"`
+}
+
+type OrganizationUser struct {
+	Id            string `json:"id"`
+	HidePasswords bool   `json:"hidePasswords"`
+	ReadOnly      bool   `json:"readOnly"`
+}
+type OrganizationCreationRequest struct {
+	Name       string             `json:"name"`
+	Users      []OrganizationUser `json:"users"`
+	Groups     []string           `json:"groups"`
+	ExternalID string             `json:"externalId"`
+}
+
 type CreateOrganizationRequest struct {
 	Name           string  `json:"name"`
 	BillingEmail   string  `json:"billingEmail"`
@@ -27,7 +60,12 @@ type CreateOrganizationRequest struct {
 type CreateOrganizationResponse struct {
 	Id string `json:"id"`
 }
-
+type PreloginResponse struct {
+	Kdf            int `json:"kdf"`
+	KdfIterations  int `json:"kdfIterations"`
+	KdfMemory      int `json:"kdfMemory"`
+	KdfParallelism int `json:"kdfParallelism"`
+}
 type TokenResponse struct {
 	Kdf                 int    `json:"Kdf"`
 	KdfIterations       int    `json:"KdfIterations"`
@@ -40,17 +78,73 @@ type TokenResponse struct {
 	Scope               string `json:"scope"`
 	TokenType           string `json:"token_type"`
 	UnofficialServer    bool   `json:"unofficialServer"`
+	RSAPrivateKey       *rsa.PrivateKey
+}
+
+type PreloginRequest struct {
+	Email string `json:"email"`
+}
+
+type RegistrationResponse struct {
+	CaptchaBypassToken string            `json:"captchaBypassToken"`
+	Object             models.ObjectType `json:"object"`
 }
 
 type CollectionResponse struct {
-	Data   []Collection `json:"data"`
-	Object string       `json:"object"`
+	Data   []CollectionResponseItem `json:"data"`
+	Object models.ObjectType        `json:"object"`
+}
+
+type CollectionResponseItem struct {
+	Id             string            `json:"id"`
+	Name           string            `json:"name"`
+	OrganizationId int               `json:"organization_id"`
+	Object         models.ObjectType `json:"object"`
+	ExternalId     string            `json:"external_id"`
 }
 
 type Collection struct {
-	Id             string `json:"id"`
-	Name           string `json:"name"`
-	OrganizationId int    `json:"organization_id"`
-	Object         string `json:"object"`
-	ExternalId     string `json:"external_id"`
+	ExternalId     string            `json:"externalId,omitempty"`
+	Id             string            `json:"id,omitempty"`
+	HidePasswords  bool              `json:"hidePasswords,omitempty"` // Missing in get collections
+	Name           string            `json:"name,omitempty"`
+	Object         models.ObjectType `json:"object,omitempty"`
+	OrganizationId string            `json:"organizationId,omitempty"`
+	ReadOnly       bool              `json:"readOnly,omitempty"` // Missing in get collections
+}
+
+type CreateCipherRequest struct {
+	Cipher        models.Object `json:"cipher"`
+	CollectionIds []string      `json:"collectionIds"`
+}
+
+type SyncResponse struct {
+	Ciphers     []models.Object   `json:"ciphers"`
+	Collections []Collection      `json:"collections"`
+	Folders     []Folder          `json:"folders"`
+	Object      models.ObjectType `json:"object"`
+	Profile     Profile           `json:"profile"`
+}
+
+type Folder struct {
+	Id           string            `json:"id"`
+	Name         string            `json:"name"`
+	Object       models.ObjectType `json:"object"`
+	RevisionDate *time.Time        `json:"revisionDate"`
+}
+
+type Profile struct {
+	Email         string            `json:"email"`
+	Id            string            `json:"id"`
+	Key           string            `json:"key"`
+	Name          string            `json:"name"`
+	Object        models.ObjectType `json:"object"`
+	Organizations []Organization    `json:"organizations"`
+	PrivateKey    string            `json:"privateKey"`
+}
+
+type Organization struct {
+	Id   string `json:"id"`
+	Key  string `json:"key"`
+	Name string `json:"name"`
 }

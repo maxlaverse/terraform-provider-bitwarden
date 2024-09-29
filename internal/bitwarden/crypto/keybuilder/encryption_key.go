@@ -10,22 +10,23 @@ import (
 
 func GenerateEncryptionKey(key symmetrickey.Key) (*symmetrickey.Key, string, error) {
 	encryptionKey := make([]byte, 64)
-	rand.Read(encryptionKey)
+	_, err := rand.Read(encryptionKey)
+	if err != nil {
+		return nil, "", fmt.Errorf("error generating random bytes: %w", err)
+	}
+
 	return buildEncryptionKey(key, encryptionKey)
 }
 
 func buildEncryptionKey(key symmetrickey.Key, encryptionKey []byte) (newEncryptionKey *symmetrickey.Key, encryptedEncryptionKey string, err error) {
 	if len(key.Key) == 32 {
-		stretchedKey, err := key.StretchKey()
-		if err != nil {
-			return nil, "", fmt.Errorf("error stretching key: %w", err)
-		}
-		encryptedEncryptionKey, err = crypto.Encrypt(encryptionKey, *stretchedKey)
+		stretchedKey := key.StretchKey()
+		encryptedEncryptionKey, err = crypto.EncryptAsString(encryptionKey, stretchedKey)
 		if err != nil {
 			return nil, "", fmt.Errorf("error encrypting encryption key (symmetric key len: %d): %w", len(key.Key), err)
 		}
 	} else if len(key.Key) == 64 {
-		encryptedEncryptionKey, err = crypto.Encrypt(encryptionKey, key)
+		encryptedEncryptionKey, err = crypto.EncryptAsString(encryptionKey, key)
 		if err != nil {
 			return nil, "", fmt.Errorf("error encrypting encryption key (symmetric key  len: %d): %w", len(key.Key), err)
 		}
