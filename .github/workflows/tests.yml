@@ -112,7 +112,7 @@ jobs:
           TF_ACC: "1"
 
       - name: Combine Coverage
-        run: cat profile_embedded.cov profile_official.cov | sort | uniq > profile.cov
+        run: cat profile_embedded.cov profile_official.cov | sort -r | uniq > profile.cov
       - name: Code Coverage
         uses: shogo82148/actions-goveralls@v1
         with:
