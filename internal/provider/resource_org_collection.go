@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
 func resourceOrgCollection() *schema.Resource {
@@ -25,7 +25,7 @@ func resourceOrgCollection() *schema.Resource {
 }
 
 func resourceOrgCollectionCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	err := d.Set(attributeObject, bw.ObjectTypeOrgCollection)
+	err := d.Set(attributeObject, models.ObjectTypeOrgCollection)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -41,7 +41,7 @@ func importOrgCollectionResource() *schema.ResourceImporter {
 			}
 			d.SetId(split[1])
 			d.Set(attributeOrganizationID, split[0])
-			err := d.Set(attributeObject, bw.ObjectTypeOrgCollection)
+			err := d.Set(attributeObject, models.ObjectTypeOrgCollection)
 			if err != nil {
 				return nil, err
 			}

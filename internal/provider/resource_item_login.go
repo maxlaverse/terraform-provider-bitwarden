@@ -2,7 +2,7 @@ package provider
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
 func resourceItemLogin() *schema.Resource {
@@ -13,11 +13,11 @@ func resourceItemLogin() *schema.Resource {
 
 	return &schema.Resource{
 		Description:   "Manages a login item.",
-		CreateContext: createResource(bw.ObjectTypeItem, bw.ItemTypeLogin),
+		CreateContext: createResource(models.ObjectTypeItem, models.ItemTypeLogin),
 		ReadContext:   objectReadIgnoreMissing,
 		UpdateContext: objectUpdate,
 		DeleteContext: objectDelete,
-		Importer:      importItemResource(bw.ObjectTypeItem, bw.ItemTypeLogin),
+		Importer:      importItemResource(models.ObjectTypeItem, models.ItemTypeLogin),
 		Schema:        dataSourceItemSecureNoteSchema,
 	}
 }

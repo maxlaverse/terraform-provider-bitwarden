@@ -7,8 +7,8 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi/crypto"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi/crypto/symmetrickey"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
 )
 
 func GenerateKeyPair(key symmetrickey.Key) (string, string, error) {

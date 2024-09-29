@@ -1,4 +1,4 @@
-package bw
+package bwcli
 
 import (
 	"context"
@@ -7,23 +7,25 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
 )
 
-type Client interface {
-	CreateAttachment(ctx context.Context, itemId, filePath string) (*Object, error)
-	CreateObject(context.Context, Object) (*Object, error)
-	EditObject(context.Context, Object) (*Object, error)
+type CLIClient interface {
+	CreateAttachment(ctx context.Context, itemId, filePath string) (*models.Object, error)
+	CreateObject(context.Context, models.Object) (*models.Object, error)
+	EditObject(context.Context, models.Object) (*models.Object, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
-	GetObject(context.Context, Object) (*Object, error)
+	GetObject(context.Context, models.Object) (*models.Object, error)
 	GetSessionKey() string
 	HasSessionKey() bool
-	ListObjects(ctx context.Context, objType string, options ...ListObjectsOption) ([]Object, error)
+	ListObjects(ctx context.Context, objType models.ObjectType, options ...bitwarden.ListObjectsOption) ([]models.Object, error)
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
 	Logout(context.Context) error
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
-	DeleteObject(context.Context, Object) error
+	DeleteObject(context.Context, models.Object) error
 	SetServer(context.Context, string) error
 	SetSessionKey(string)
 	Status(context.Context) (*Status, error)
@@ -31,7 +33,7 @@ type Client interface {
 	Unlock(ctx context.Context, password string) error
 }
 
-func NewClient(execPath string, opts ...Options) Client {
+func NewClient(execPath string, opts ...Options) CLIClient {
 	c := &client{
 		execPath: execPath,
 	}
@@ -55,33 +57,33 @@ type client struct {
 	sessionKey          string
 }
 
-type Options func(c Client)
+type Options func(c bitwarden.Client)
 
 func WithAppDataDir(appDataDir string) Options {
-	return func(c Client) {
+	return func(c bitwarden.Client) {
 		c.(*client).appDataDir = appDataDir
 	}
 }
 
 func WithExtraCACertsPath(extraCACertsPath string) Options {
-	return func(c Client) {
+	return func(c bitwarden.Client) {
 		c.(*client).extraCACertsPath = extraCACertsPath
 	}
 }
 
 func DisableSync() Options {
-	return func(c Client) {
+	return func(c bitwarden.Client) {
 		c.(*client).disableSync = true
 	}
 }
 
 func DisableRetryBackoff() Options {
-	return func(c Client) {
+	return func(c bitwarden.Client) {
 		c.(*client).disableRetryBackoff = true
 	}
 }
 
-func (c *client) CreateObject(ctx context.Context, obj Object) (*Object, error) {
+func (c *client) CreateObject(ctx context.Context, obj models.Object) (*models.Object, error) {
 	objEncoded, err := c.encode(obj)
 	if err != nil {
 		return nil, err
@@ -93,7 +95,7 @@ func (c *client) CreateObject(ctx context.Context, obj Object) (*Object, error) 
 		objEncoded,
 	}
 
-	if obj.Object == ObjectTypeOrgCollection {
+	if obj.Object == models.ObjectTypeOrgCollection {
 		args = append(args, "--organizationid", obj.OrganizationID)
 	}
 
@@ -111,13 +113,13 @@ func (c *client) CreateObject(ctx context.Context, obj Object) (*Object, error) 
 	return &obj, nil
 }
 
-func (c *client) CreateAttachment(ctx context.Context, itemId string, filePath string) (*Object, error) {
-	out, err := c.cmdWithSession("create", string(ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).Run(ctx)
+func (c *client) CreateAttachment(ctx context.Context, itemId string, filePath string) (*models.Object, error) {
+	out, err := c.cmdWithSession("create", string(models.ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var obj Object
+	var obj models.Object
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
 		return nil, err
@@ -128,7 +130,7 @@ func (c *client) CreateAttachment(ctx context.Context, itemId string, filePath s
 	return &obj, nil
 }
 
-func (c *client) EditObject(ctx context.Context, obj Object) (*Object, error) {
+func (c *client) EditObject(ctx context.Context, obj models.Object) (*models.Object, error) {
 	objEncoded, err := c.encode(obj)
 	if err != nil {
 		return nil, err
@@ -157,14 +159,14 @@ func (c *client) EditObject(ctx context.Context, obj Object) (*Object, error) {
 	return &obj, nil
 }
 
-func (c *client) GetObject(ctx context.Context, obj Object) (*Object, error) {
+func (c *client) GetObject(ctx context.Context, obj models.Object) (*models.Object, error) {
 	args := []string{
 		"get",
 		string(obj.Object),
 		obj.ID,
 	}
 
-	if obj.Object == ObjectTypeOrgCollection {
+	if obj.Object == models.ObjectTypeOrgCollection {
 		args = append(args, "--organizationid", obj.OrganizationID)
 	}
 
@@ -182,7 +184,7 @@ func (c *client) GetObject(ctx context.Context, obj Object) (*Object, error) {
 }
 
 func (c *client) GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error) {
-	out, err := c.cmdWithSession("get", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId, "--raw").Run(ctx)
+	out, err := c.cmdWithSession("get", string(models.ObjectTypeAttachment), attachmentId, "--itemid", itemId, "--raw").Run(ctx)
 	if err != nil {
 		return nil, remapError(err)
 	}
@@ -195,22 +197,20 @@ func (c *client) GetSessionKey() string {
 }
 
 // ListObjects returns objects of a given type matching given filters.
-func (c *client) ListObjects(ctx context.Context, objType string, options ...ListObjectsOption) ([]Object, error) {
+func (c *client) ListObjects(ctx context.Context, objType models.ObjectType, options ...bitwarden.ListObjectsOption) ([]models.Object, error) {
 	args := []string{
 		"list",
-		objType,
+		string(objType),
 	}
 
-	for _, applyOption := range options {
-		applyOption(&args)
-	}
+	applyFiltersToArgs(&args, options...)
 
 	out, err := c.cmdWithSession(args...).Run(ctx)
 	if err != nil {
 		return nil, remapError(err)
 	}
 
-	var obj []Object
+	var obj []models.Object
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
 		return nil, newUnmarshallError(err, args[0:2], out)
@@ -245,14 +245,14 @@ func (c *client) Logout(ctx context.Context) error {
 	return err
 }
 
-func (c *client) DeleteObject(ctx context.Context, obj Object) error {
+func (c *client) DeleteObject(ctx context.Context, obj models.Object) error {
 	args := []string{
 		"delete",
 		string(obj.Object),
 		obj.ID,
 	}
 
-	if obj.Object == ObjectTypeOrgCollection {
+	if obj.Object == models.ObjectTypeOrgCollection {
 		args = append(args, "--organizationid", obj.OrganizationID)
 	}
 
@@ -261,7 +261,7 @@ func (c *client) DeleteObject(ctx context.Context, obj Object) error {
 }
 
 func (c *client) DeleteAttachment(ctx context.Context, itemId, attachmentId string) error {
-	_, err := c.cmdWithSession("delete", string(ObjectTypeAttachment), attachmentId, "--itemid", itemId).Run(ctx)
+	_, err := c.cmdWithSession("delete", string(models.ObjectTypeAttachment), attachmentId, "--itemid", itemId).Run(ctx)
 	return err
 }
 
@@ -331,10 +331,29 @@ func (c *client) env() []string {
 	return defaultEnv
 }
 
-func (c *client) encode(item Object) (string, error) {
+func (c *client) encode(item models.Object) (string, error) {
 	newOut, err := json.Marshal(item)
 	if err != nil {
 		return "", fmt.Errorf("marshalling error: %v, %v", err, string(newOut))
 	}
 	return base64.RawStdEncoding.EncodeToString(newOut), nil
+}
+
+func applyFiltersToArgs(args *[]string, options ...bitwarden.ListObjectsOption) {
+	filters := bitwarden.ListObjectsOptionsToFilterOptions(options...)
+	if filters.OrganizationFilter != "" {
+		*args = append(*args, "--organizationid", filters.OrganizationFilter)
+	}
+	if filters.FolderFilter != "" {
+		*args = append(*args, "--folderid", filters.FolderFilter)
+	}
+	if filters.CollectionFilter != "" {
+		*args = append(*args, "--collectionid", filters.CollectionFilter)
+	}
+	if filters.SearchFilter != "" {
+		*args = append(*args, "--search", filters.SearchFilter)
+	}
+	if filters.UrlFilter != "" {
+		*args = append(*args, "--url", filters.UrlFilter)
+	}
 }

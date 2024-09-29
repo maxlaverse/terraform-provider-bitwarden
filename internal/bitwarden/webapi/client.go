@@ -11,8 +11,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi/crypto"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi/crypto/keybuilder"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/keybuilder"
 )
 
 /*

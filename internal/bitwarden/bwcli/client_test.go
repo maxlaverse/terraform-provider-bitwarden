@@ -1,9 +1,11 @@
-package bw
+package bwcli
 
 import (
 	"context"
 	"testing"
 
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	test_command "github.com/maxlaverse/terraform-provider-bitwarden/internal/command/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,10 +17,10 @@ func TestCreateObjectEncoding(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewClient("dummy")
-	_, err := b.CreateObject(context.Background(), Object{
-		Type:   ItemTypeLogin,
-		Object: ObjectTypeItem,
-		Fields: []Field{
+	_, err := b.CreateObject(context.Background(), models.Object{
+		Type:   models.ItemTypeLogin,
+		Object: models.ObjectTypeItem,
+		Fields: []models.Field{
 			{
 				Name:  "test",
 				Value: "passed",
@@ -40,7 +42,7 @@ func TestListObjects(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewClient("dummy")
-	_, err := b.ListObjects(context.Background(), "item", WithFolderID("folder-id"), WithCollectionID("collection-id"), WithSearch("search"))
+	_, err := b.ListObjects(context.Background(), "item", bitwarden.WithFolderID("folder-id"), bitwarden.WithCollectionID("collection-id"), bitwarden.WithSearch("search"))
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
@@ -55,7 +57,7 @@ func TestGetItem(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewClient("dummy")
-	_, err := b.GetObject(context.Background(), Object{ID: "object-id", Object: ObjectTypeItem, Type: ItemTypeLogin})
+	_, err := b.GetObject(context.Background(), models.Object{ID: "object-id", Object: models.ObjectTypeItem, Type: models.ItemTypeLogin})
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
@@ -70,7 +72,7 @@ func TestGetOrgCollection(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewClient("dummy")
-	_, err := b.GetObject(context.Background(), Object{ID: "object-id", Object: ObjectTypeOrgCollection, OrganizationID: "org-id"})
+	_, err := b.GetObject(context.Background(), models.Object{ID: "object-id", Object: models.ObjectTypeOrgCollection, OrganizationID: "org-id"})
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
@@ -85,7 +87,7 @@ func TestErrorContainsCommand(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewClient("dummy")
-	_, err := b.ListObjects(context.Background(), "org-collection", WithSearch("search"))
+	_, err := b.ListObjects(context.Background(), "org-collection", bitwarden.WithSearch("search"))
 
 	if assert.Error(t, err) {
 		assert.ErrorContains(t, err, "unable to parse result of 'list org-collection', error: 'unexpected end of JSON input', output: ''")

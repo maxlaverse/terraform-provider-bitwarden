@@ -10,19 +10,20 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
 func attachmentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	itemId := d.Get(attributeAttachmentItemID).(string)
 
-	existingAttachments, err := listExistingAttachments(ctx, meta.(bw.Client), itemId)
+	existingAttachments, err := listExistingAttachments(ctx, meta.(bitwarden.Client), itemId)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	filePath := d.Get(attributeAttachmentFile).(string)
-	obj, err := meta.(bw.Client).CreateAttachment(ctx, itemId, filePath)
+	obj, err := meta.(bitwarden.Client).CreateAttachment(ctx, itemId, filePath)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -42,7 +43,7 @@ func attachmentCreate(ctx context.Context, d *schema.ResourceData, meta interfac
 func attachmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	itemId := d.Get(attributeAttachmentItemID).(string)
 
-	obj, err := meta.(bw.Client).GetObject(ctx, bw.Object{ID: itemId, Object: bw.ObjectTypeItem})
+	obj, err := meta.(bitwarden.Client).GetObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
 	if err != nil {
 		// If the item is not found, we can't simply consider the attachment as
 		// deleted, because we won't have an item to attach it to.
@@ -66,10 +67,10 @@ func attachmentRead(ctx context.Context, d *schema.ResourceData, meta interface{
 func attachmentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	itemId := d.Get(attributeAttachmentItemID).(string)
 
-	return diag.FromErr(meta.(bw.Client).DeleteAttachment(ctx, itemId, d.Id()))
+	return diag.FromErr(meta.(bitwarden.Client).DeleteAttachment(ctx, itemId, d.Id()))
 }
 
-func attachmentDataFromStruct(d *schema.ResourceData, attachment bw.Attachment) error {
+func attachmentDataFromStruct(d *schema.ResourceData, attachment models.Attachment) error {
 	d.SetId(attachment.ID)
 
 	err := d.Set(attributeAttachmentFileName, attachment.FileName)
@@ -100,7 +101,7 @@ func readDataSourceAttachment() schema.ReadContextFunc {
 
 		attachmentId := d.Get(attributeID).(string)
 
-		content, err := meta.(bw.Client).GetAttachment(ctx, itemId, attachmentId)
+		content, err := meta.(bitwarden.Client).GetAttachment(ctx, itemId, attachmentId)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -111,20 +112,20 @@ func readDataSourceAttachment() schema.ReadContextFunc {
 	}
 }
 
-func listExistingAttachments(ctx context.Context, client bw.Client, itemId string) ([]bw.Attachment, error) {
-	obj, err := client.GetObject(ctx, bw.Object{ID: itemId, Object: bw.ObjectTypeItem})
+func listExistingAttachments(ctx context.Context, client bitwarden.Client, itemId string) ([]models.Attachment, error) {
+	obj, err := client.GetObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
 	if err != nil {
 		return nil, err
 	}
 	return obj.Attachments, nil
 }
 
-func compareLists(listA []bw.Attachment, listB []bw.Attachment) ([]bw.Attachment, []bw.Attachment) {
+func compareLists(listA []models.Attachment, listB []models.Attachment) ([]models.Attachment, []models.Attachment) {
 	return itemsOnlyInSecondList(listB, listA), itemsOnlyInSecondList(listA, listB)
 }
 
-func itemsOnlyInSecondList(firstList []bw.Attachment, secondList []bw.Attachment) []bw.Attachment {
-	result := []bw.Attachment{}
+func itemsOnlyInSecondList(firstList []models.Attachment, secondList []models.Attachment) []models.Attachment {
+	result := []models.Attachment{}
 	for _, secondAttachment := range secondList {
 		found := false
 		for _, firstAttachment := range firstList {

@@ -1,8 +1,14 @@
-package bw
+package models
 
 import (
+	"errors"
 	"strings"
 	"time"
+)
+
+var (
+	ErrObjectNotFound     = errors.New("object not found")
+	ErrAttachmentNotFound = errors.New("attachment not found")
 )
 
 type ItemType int
