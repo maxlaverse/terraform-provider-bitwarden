@@ -15,15 +15,18 @@ func TestAccDataSourceItemLoginAttributes(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemLogin(),
+				Config: tfConfigProvider() + tfConfigResourceItemLogin("datalogin"),
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigDataItemLogin(),
+				Config: tfConfigProvider() + tfConfigResourceItemLogin("datalogin") + tfConfigDataItemLogin(),
 				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},
 			{
 				Config:      tfConfigProvider() + tfConfigInexistentDataItemLogin(),
 				ExpectError: regexp.MustCompile("Error: object not found"),
+			},
+			{
+				Config: tfConfigProvider() + tfConfigResourceItemLogin("datalogin"),
 			},
 		},
 	})
@@ -53,22 +56,22 @@ func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemLogin(),
+				Config: tfConfigProvider() + tfConfigResourceItemLogin("search"),
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
+				Config: tfConfigProvider() + tfConfigResourceItemLogin("search") + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
 				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
+				Config: tfConfigProvider() + tfConfigResourceItemLogin("search") + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
 				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},
 			{
-				Config:      tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchOnly("test-username"),
+				Config:      tfConfigProvider() + tfConfigResourceItemLogin("search") + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchOnly("test-username"),
 				ExpectError: regexp.MustCompile("Error: too many objects found"),
 			},
 			{
-				Config:      tfConfigProvider() + tfConfigResourceItemLogin() + tfConfigDataItemLoginWithSearchAndOrg("missing-item"),
+				Config:      tfConfigProvider() + tfConfigResourceItemLogin("search") + tfConfigDataItemLoginWithSearchAndOrg("missing-item"),
 				ExpectError: regexp.MustCompile("Error: no object found matching the filter"),
 			},
 			// Test: search for a secure note item with a login data source should fail

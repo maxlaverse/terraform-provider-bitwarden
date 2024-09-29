@@ -48,9 +48,12 @@ func TestAccProviderAuthUsernamePassword(t *testing.T) {
 }
 
 func TestAccProviderAuthSessionKey(t *testing.T) {
+	if useEmbeddedClient {
+		t.Skip("Skipping test because embedded client doesn't support session key authentication")
+	}
 	ensureVaultwardenHasUser(t)
 
-	validProvider := sessionKeyTestProvider(testEmail, bwTestClient(t).GetSessionKey())
+	validProvider := sessionKeyTestProvider(testEmail, bwOfficialTestClient(t).GetSessionKey())
 	invalidProvider := sessionKeyTestProvider(testEmail, "invalid-session-key")
 
 	resource.Test(t, resource.TestCase{

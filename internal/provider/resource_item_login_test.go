@@ -21,9 +21,22 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemLogin(),
+				Config: tfConfigProvider() + tfConfigResourceItemLogin("reslogin"),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemLogin(resourceName),
+					resource.TestCheckResourceAttr(
+						resourceName, attributeNotes, "notes-reslogin",
+					),
+					getObjectID(resourceName, &objectID),
+				),
+			},
+			{
+				Config: tfConfigProvider() + tfConfigResourceItemLogin("resloginmodified"),
+				Check: resource.ComposeTestCheckFunc(
+					checkItemLogin(resourceName),
+					resource.TestCheckResourceAttr(
+						resourceName, attributeNotes, "notes-resloginmodified",
+					),
 					getObjectID(resourceName, &objectID),
 				),
 			},
@@ -62,6 +75,14 @@ func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 					obj := models.Object{ID: objectID, Object: models.ObjectTypeItem}
 					err := bwTestClient(t).DeleteObject(context.Background(), obj)
 					assert.NoError(t, err)
+
+					if useEmbeddedClient {
+						return
+					}
+
+					// Sync when using the official client, as we removed the object using the API
+					// which means the local state is out of sync.
+					bwOfficialTestClient(t).Sync(context.Background())
 				},
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: true,
@@ -80,7 +101,7 @@ func tfConfigResourceItemLoginSmall() string {
 `
 }
 
-func tfConfigResourceItemLogin() string {
+func tfConfigResourceItemLogin(source string) string {
 	return fmt.Sprintf(`
 	resource "bitwarden_item_login" "foo" {
 		provider 			= bitwarden
@@ -92,7 +113,7 @@ func tfConfigResourceItemLogin() string {
 		password 			= "test-password"
 		totp 				= "1234"
 		name     			= "login-bar"
-		notes 				= "notes"
+		notes 				= "notes-%s"
 		reprompt			= true
 		favorite            = true
 
@@ -150,7 +171,7 @@ func tfConfigResourceItemLogin() string {
 			value = "https://default"
 		}
 	}
-`, testOrganizationID, testCollectionID, testFolderID)
+`, testOrganizationID, testCollectionID, testFolderID, source)
 }
 
 func checkItemLogin(resourceName string) resource.TestCheckFunc {

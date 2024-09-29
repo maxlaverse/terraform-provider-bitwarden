@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -17,9 +18,20 @@ func TestAccResourceFolder(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigProvider() + tfConfigResourceFolder(),
+				Config:       tfConfigProvider() + tfConfigResourceFolder("folder-bar"),
 				Check: resource.ComposeTestCheckFunc(
 					checkObject(resourceName),
+					getObjectID(resourceName, &objectID),
+				),
+			},
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigProvider() + tfConfigResourceFolder("folder-new-name-bar"),
+				Check: resource.ComposeTestCheckFunc(
+					checkObject(resourceName),
+					resource.TestCheckResourceAttr(
+						resourceName, attributeName, "folder-new-name-bar",
+					),
 					getObjectID(resourceName, &objectID),
 				),
 			},
@@ -33,12 +45,12 @@ func TestAccResourceFolder(t *testing.T) {
 	})
 }
 
-func tfConfigResourceFolder() string {
-	return `
+func tfConfigResourceFolder(name string) string {
+	return fmt.Sprintf(`
 resource "bitwarden_folder" "foo" {
 	provider = bitwarden
 
-	name     = "folder-bar"
+	name     = "%s"
 }
-`
+`, name)
 }

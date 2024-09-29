@@ -27,7 +27,7 @@ func GenerateKeyPair(key symmetrickey.Key) (string, string, error) {
 		return "", "", fmt.Errorf("error marshalling PKIX private key: %w", err)
 	}
 
-	encryptedPrivateKey, err := crypto.Encrypt(privateKeyBytes, key)
+	encryptedPrivateKey, err := crypto.EncryptAsString(privateKeyBytes, key)
 	if err != nil {
 		return "", "", fmt.Errorf("error encrypting private key: %w", err)
 	}

@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
 
 type LoginMethod int
@@ -90,6 +92,30 @@ func New(version string) func() *schema.Provider {
 					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("NODE_EXTRA_CA_CERTS", nil),
 				},
+
+				// Experimental
+				attributeExperimental: {
+					Description: descriptionExperimental,
+					Type:        schema.TypeSet,
+					Optional:    true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							attributeExperimentalEmbeddedClient: {
+								Description: descriptionExperimentalEmbeddedClient,
+								Type:        schema.TypeBool,
+								Optional:    true,
+							},
+						},
+					},
+				},
+
+				// Internal
+				attributeDeviceIdentifier: {
+					Description: descriptionInternal,
+					Type:        schema.TypeString,
+					Computed:    true,
+					Optional:    true,
+				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
 				"bitwarden_attachment":       dataSourceAttachment(),
@@ -113,8 +139,33 @@ func New(version string) func() *schema.Provider {
 	}
 }
 
+func experimentalEmbeddedClient(d *schema.ResourceData) bool {
+	experimentalFeatures, hasExperimentalFeatures := d.GetOk(attributeExperimental)
+	if hasExperimentalFeatures {
+		if experimentalFeatures.(*schema.Set).Len() > 0 {
+			embeddedClient, hasEmbeddedClient := experimentalFeatures.(*schema.Set).List()[0].(map[string]interface{})[attributeExperimentalEmbeddedClient]
+			if hasEmbeddedClient && embeddedClient.(bool) {
+				return true
+			}
+		}
+	}
+	return false
+}
 func providerConfigure(version string, _ *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+
+		if experimentalEmbeddedClient(d) {
+			bwClient, err := newBitwardenEmbeddedClient(ctx, d, version)
+			if err != nil {
+				return nil, diag.FromErr(err)
+			}
+
+			err = ensureLoggedInEmbedded(ctx, d, bwClient)
+			if err != nil {
+				return nil, diag.FromErr(err)
+			}
+			return bwClient, nil
+		}
 
 		bwClient, err := newBitwardenClient(d, version)
 		if err != nil {
@@ -247,15 +298,67 @@ func newBitwardenClient(d *schema.ResourceData, version string) (bwcli.CLIClient
 	}
 
 	if version == versionDev {
-		// During development, we disable Vault synchronization and retry backoffs to make some
-		// operations faster.
-		opts = append(opts, bwcli.DisableSync())
+		// During development, we disable retry backoffs to make some operations faster.
 		opts = append(opts, bwcli.DisableRetryBackoff())
 	}
+
 	bwExecutable, err := exec.LookPath("bw")
 	if err != nil {
 		return nil, err
 	}
 
 	return bwcli.NewClient(bwExecutable, opts...), nil
+}
+
+func newBitwardenEmbeddedClient(ctx context.Context, d *schema.ResourceData, version string) (bitwarden.Client, error) {
+	deviceId, err := getOrGenerateDeviceIdentifier(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+
+	opts := []embedded.Options{}
+	webapiOpts := []webapi.Options{webapi.WithDeviceIdentifier(deviceId)}
+	if version == versionDev {
+		// During development, we don't want to wait on any sporadic errors.
+		webapiOpts = append(webapiOpts, webapi.DisableRetries())
+	}
+
+	opts = append(opts, embedded.WithHttpOptions(webapiOpts...))
+
+	serverURL := d.Get(attributeServer).(string)
+	return embedded.NewWebAPIVault(serverURL, opts...), nil
+}
+
+func getOrGenerateDeviceIdentifier(ctx context.Context, d *schema.ResourceData) (string, error) {
+	deviceId, hasDeviceID := d.GetOk(attributeDeviceIdentifier)
+	if hasDeviceID {
+		return deviceId.(string), nil
+	}
+	deviceId = embedded.NewDeviceIdentifier()
+	err := d.Set(attributeDeviceIdentifier, embedded.NewDeviceIdentifier())
+	if err != nil {
+		return "", err
+	}
+	tflog.Info(ctx, "Generated device identifier", map[string]interface{}{"device_id": deviceId})
+	return deviceId.(string), nil
+}
+
+func ensureLoggedInEmbedded(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.Client) error {
+	masterPassword, hasMasterPassword := d.GetOk(attributeMasterPassword)
+	if !hasMasterPassword {
+		return fmt.Errorf("master password is required")
+	}
+
+	loginMethod := loginMethod(d)
+	switch loginMethod {
+	case LoginMethodPersonalAPIKey:
+		clientID := d.Get(attributeClientID)
+		clientSecret := d.Get(attributeClientSecret)
+		return bwClient.LoginWithAPIKey(ctx, masterPassword.(string), clientID.(string), clientSecret.(string))
+	case LoginMethodPassword:
+		email := d.Get(attributeEmail)
+		return bwClient.LoginWithPassword(ctx, email.(string), masterPassword.(string))
+	}
+
+	return fmt.Errorf("INTERNAL BUG: not enough parameters provided to login (status: 'BUG')")
 }

@@ -14,7 +14,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
@@ -33,6 +35,7 @@ var testOrganizationID string
 var testCollectionID string
 var testFolderID string
 var testUniqueIdentifier string
+var useEmbeddedClient bool
 
 // providerFactories are used to instantiate a provider during acceptance testing.
 // The factory function will be invoked for every Terraform CLI command executed
@@ -72,8 +75,51 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	}
 
 	ensureVaultwardenHasUser(t)
-	createTestOrganization(t)
-	createTestUserResources(t)
+	ctx := context.Background()
+
+	bwClient := bwTestClient(t)
+
+	var err error
+	testOrganizationID, err = bwClient.(embedded.WebAPIVault).CreateOrganization(ctx, "org-"+testUniqueIdentifier, "coll-"+testUniqueIdentifier, testEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	webapiClient := webapi.NewClient(testServerURL)
+	_, err = webapiClient.LoginWithPassword(ctx, testEmail, testPassword, kdfIterations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cols, err := webapiClient.GetCollections(ctx, testOrganizationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cols) == 0 {
+		t.Fatal("No collections found")
+	}
+	testCollectionID = cols[0].Id
+
+	testFolderName := fmt.Sprintf("folder-%s-bar", testUniqueIdentifier)
+	folder, err := bwClient.CreateObject(ctx, models.Object{
+		Object: models.ObjectTypeFolder,
+		Name:   testFolderName,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testFolderID = folder.ID
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Created Folder '%s' (%s)", testFolderName, testFolderID)
+
+	err = bwClient.Sync(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("Synced embedded test client")
+
 	areTestResourcesCreated = true
 }
 
@@ -90,7 +136,7 @@ func ensureVaultwardenHasUser(t *testing.T) {
 	webapiClient := webapi.NewClient(testServerURL)
 	testUsername = fmt.Sprintf("test-%s", testUniqueIdentifier)
 	testEmail = fmt.Sprintf("test-%s@laverse.net", testUniqueIdentifier)
-	err := webapiClient.RegisterUser(testUsername, testEmail, testPassword, kdfIterations)
+	err := webapiClient.RegisterUser(context.Background(), testUsername, testEmail, testPassword, kdfIterations)
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
@@ -104,54 +150,18 @@ func clearTestVault(t *testing.T) {
 	}
 }
 
-func createTestOrganization(t *testing.T) {
-	webapiClient := webapi.NewClient(testServerURL)
-	err := webapiClient.Login(testEmail, testPassword, kdfIterations)
+func bwTestClient(t *testing.T) bitwarden.Client {
+	client := embedded.NewWebAPIVault(testServerURL)
+	err := client.LoginWithPassword(context.Background(), testEmail, testPassword)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("Logged in embedded test client")
 
-	organizationName := fmt.Sprintf("org-%s", testUniqueIdentifier)
-	organizationLabel := fmt.Sprintf("coll-%s", testUniqueIdentifier)
-	testOrganizationID, err = webapiClient.CreateOrganization(organizationName, organizationLabel, testEmail)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("Created Organization '%s' (%s)", organizationName, testOrganizationID)
-
-	testCollectionID, err = webapiClient.GetCollections(testOrganizationID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("Retrieved Organization Collection '%s' (%s)", organizationLabel, testOrganizationID)
+	return client
 }
 
-func createTestUserResources(t *testing.T) {
-	testFolderName := fmt.Sprintf("folder-%s-bar", testUniqueIdentifier)
-	bwClient := bwTestClient(t)
-	t.Logf("Creating Folder")
-	folder, err := bwClient.CreateObject(context.Background(), models.Object{
-		Object: models.ObjectTypeFolder,
-		Name:   testFolderName,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testFolderID = folder.ID
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("Created Folder '%s' (%s)", testFolderName, testFolderID)
-
-	err = bwClient.Sync(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("Synced test client")
-}
-
-func bwTestClient(t *testing.T) bwcli.CLIClient {
+func bwOfficialTestClient(t *testing.T) bwcli.CLIClient {
 	vault, err := filepath.Abs("./.bitwarden")
 	if err != nil {
 		t.Fatal(err)
@@ -167,7 +177,6 @@ func bwTestClient(t *testing.T) bwcli.CLIClient {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	if len(status.ServerURL) == 0 {
 		err = client.SetServer(context.Background(), testServerURL)
 		if err != nil {
@@ -197,19 +206,31 @@ func bwTestClient(t *testing.T) bwcli.CLIClient {
 			t.Fatal(err)
 		}
 	} else {
-		t.Logf("Test client already logged-in: %s", status.Status)
+		t.Logf("Official test client already logged-in: %s", status.Status)
 	}
 	return client
 }
 
 func tfConfigProvider() string {
+	if os.Getenv("TEST_USE_EMBEDDED_CLIENT") == "1" {
+		useEmbeddedClient = true
+	}
+
+	useEmbeddedClientStr := "false"
+	if useEmbeddedClient {
+		useEmbeddedClientStr = "true"
+	}
 	return fmt.Sprintf(`
 	provider "bitwarden" {
 		master_password = "%s"
 		server          = "%s"
 		email           = "%s"
+
+		experimental {
+			embedded_client = %s
+		}
 	}
-`, testPassword, testServerURL, testEmail)
+`, testPassword, testServerURL, testEmail, useEmbeddedClientStr)
 }
 
 func getObjectID(n string, objectId *string) resource.TestCheckFunc {
