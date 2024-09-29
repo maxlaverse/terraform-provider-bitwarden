@@ -21,9 +21,9 @@ This project is not associated with the Bitwarden project nor 8bit Solutions LLC
 
 ## Supported Versions
 The plugin has been tested and built with the following components:
-- [Terraform] v1.6.1
-- [Bitwarden CLI] v2023.2.0
-- [Go] 1.22.0 (for development)
+- [Terraform] v1.6.1 / [OpenTofu] v1.8.0
+- [Bitwarden CLI] v2023.2.0 (except with the experimental `embedded_client`)
+- [Go] 1.23.1 (for development)
 - [Docker] 23.0.5 (for development)
 
 The provider likely works with older versions but those haven't been tested.
@@ -45,6 +45,13 @@ terraform {
 # Configure the Bitwarden Provider
 provider "bitwarden" {
   email = "terraform@example.com"
+
+  # If you have the opportunity, you can try out the embedded client which removes the need for a locally installed Bitwarden CLI.
+  # Please note that this feature is still considered as experimental, might not work as expected, and is not recommended for production use.
+  #
+  # experimental {
+  #   embedded_client = true
+  # }
 }
 
 # Create a Bitwarden Login item
@@ -84,7 +91,7 @@ In order to run the full suite of Acceptance tests, start a Vaultwarden server:
 ```sh
 $ docker run -ti \
   -e I_REALLY_WANT_VOLATILE_STORAGE=true \
-  -e DISABLE_ICON_DOWNLOAD=false \
+  -e DISABLE_ICON_DOWNLOAD=true \
   -e ADMIN_TOKEN=test1234 \
   -e LOGIN_RATELIMIT_SECONDS=1 \
   -e LOGIN_RATELIMIT_MAX_BURST=1000000 \
@@ -106,6 +113,7 @@ $ make testacc
 Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more information.
 
 [Terraform]: https://www.terraform.io/downloads.html
+[OpenTofu]: https://opentofu.org/
 [Go]: https://golang.org/doc/install
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
 [Docker]: https://www.docker.com/products/docker-desktop

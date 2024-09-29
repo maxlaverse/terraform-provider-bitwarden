@@ -160,7 +160,7 @@ func bwTestClient(t *testing.T) bitwarden.Client {
 
 func tfConfigProvider() string {
 	useEmbeddedClient := "false"
-	if os.Getenv("TEST_USE_EMBEDDED_CLIENT") == "true" {
+	if os.Getenv("TEST_USE_EMBEDDED_CLIENT") == "1" {
 		useEmbeddedClient = "true"
 	}
 	return fmt.Sprintf(`
