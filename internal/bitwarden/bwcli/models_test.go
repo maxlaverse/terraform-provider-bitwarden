@@ -1,4 +1,4 @@
-package bw
+package bwcli
 
 import (
 	"testing"

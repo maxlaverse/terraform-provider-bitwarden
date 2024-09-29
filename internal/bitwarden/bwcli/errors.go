@@ -1,18 +1,15 @@
-package bw
+package bwcli
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
 )
 
 var (
-	ErrObjectNotFound     = errors.New("object not found")
-	ErrAttachmentNotFound = errors.New("attachment not found")
-
 	attachmentNotFoundRegexp = regexp.MustCompile(`^Attachment .* was not found.$`)
 )
 
@@ -25,9 +22,9 @@ func remapError(err error) error {
 	if ok {
 		switch {
 		case isObjectNotFoundError(v):
-			return ErrObjectNotFound
+			return models.ErrObjectNotFound
 		case isAttachmentNotFoundError(v):
-			return ErrAttachmentNotFound
+			return models.ErrAttachmentNotFound
 		}
 	}
 	return err

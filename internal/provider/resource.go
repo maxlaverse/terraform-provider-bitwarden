@@ -5,10 +5,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
-func createResource(attrObject bw.ObjectType, attrType bw.ItemType) schema.CreateContextFunc {
+func createResource(attrObject models.ObjectType, attrType models.ItemType) schema.CreateContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 		err := d.Set(attributeObject, attrObject)
 		if err != nil {
@@ -22,7 +22,7 @@ func createResource(attrObject bw.ObjectType, attrType bw.ItemType) schema.Creat
 	}
 }
 
-func importItemResource(attrObject bw.ObjectType, attrType bw.ItemType) *schema.ResourceImporter {
+func importItemResource(attrObject models.ObjectType, attrType models.ItemType) *schema.ResourceImporter {
 	return &schema.ResourceImporter{
 		StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 			d.SetId(d.Id())

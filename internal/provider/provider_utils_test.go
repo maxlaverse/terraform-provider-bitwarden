@@ -14,7 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
 
@@ -129,8 +130,8 @@ func createTestUserResources(t *testing.T) {
 	testFolderName := fmt.Sprintf("folder-%s-bar", testUniqueIdentifier)
 	bwClient := bwTestClient(t)
 	t.Logf("Creating Folder")
-	folder, err := bwClient.CreateObject(context.Background(), bw.Object{
-		Object: bw.ObjectTypeFolder,
+	folder, err := bwClient.CreateObject(context.Background(), models.Object{
+		Object: models.ObjectTypeFolder,
 		Name:   testFolderName,
 	})
 	if err != nil {
@@ -150,7 +151,7 @@ func createTestUserResources(t *testing.T) {
 	t.Log("Synced test client")
 }
 
-func bwTestClient(t *testing.T) bw.Client {
+func bwTestClient(t *testing.T) bwcli.CLIClient {
 	vault, err := filepath.Abs("./.bitwarden")
 	if err != nil {
 		t.Fatal(err)
@@ -161,7 +162,7 @@ func bwTestClient(t *testing.T) bw.Client {
 		t.Fatal(err)
 	}
 
-	client := bw.NewClient(bwExec, bw.DisableRetryBackoff(), bw.WithAppDataDir(vault))
+	client := bwcli.NewClient(bwExec, bwcli.DisableRetryBackoff(), bwcli.WithAppDataDir(vault))
 	status, err := client.Status(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -173,7 +174,7 @@ func bwTestClient(t *testing.T) bw.Client {
 			t.Fatal(err)
 		}
 	}
-	if status.Status == bw.StatusUnauthenticated {
+	if status.Status == bwcli.StatusUnauthenticated {
 
 		retries := 0
 		for {
@@ -190,7 +191,7 @@ func bwTestClient(t *testing.T) bw.Client {
 			}
 			break
 		}
-	} else if status.Status == bw.StatusLocked {
+	} else if status.Status == bwcli.StatusLocked {
 		err = client.Unlock(context.Background(), testPassword)
 		if err != nil {
 			t.Fatal(err)

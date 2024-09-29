@@ -2,7 +2,7 @@ package provider
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
 func dataSourceItemLogin() *schema.Resource {
@@ -13,7 +13,7 @@ func dataSourceItemLogin() *schema.Resource {
 
 	return &schema.Resource{
 		Description: "Use this data source to get information on an existing login item.",
-		ReadContext: readDataSourceItem(bw.ObjectTypeItem, bw.ItemTypeLogin),
+		ReadContext: readDataSourceItem(models.ObjectTypeItem, models.ItemTypeLogin),
 		Schema:      dataSourceItemLoginSchema,
 	}
 }

@@ -3,7 +3,7 @@ package keybuilder
 import (
 	"crypto/sha256"
 
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi/crypto/symmetrickey"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
 	"golang.org/x/crypto/pbkdf2"
 )
 

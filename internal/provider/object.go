@@ -8,11 +8,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
 func objectCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return diag.FromErr(objectOperation(ctx, d, meta.(bw.Client).CreateObject))
+	return diag.FromErr(objectOperation(ctx, d, meta.(bitwarden.Client).CreateObject))
 }
 
 func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -20,8 +22,8 @@ func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 		return diag.FromErr(objectSearch(ctx, d, meta))
 	}
 
-	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret bw.Object) (*bw.Object, error) {
-		obj, err := meta.(bw.Client).GetObject(ctx, secret)
+	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
+		obj, err := meta.(bitwarden.Client).GetObject(ctx, secret)
 		if obj != nil {
 			// If the object exists but is marked as soft deleted, we return an error, because relying
 			// on an object in the 'trash' sounds like a bad idea.
@@ -48,19 +50,19 @@ func objectSearch(ctx context.Context, d *schema.ResourceData, meta interface{})
 		return fmt.Errorf("BUG: object type not set in the resource data")
 	}
 
-	objs, err := meta.(bw.Client).ListObjects(ctx, fmt.Sprintf("%ss", objType), listOptionsFromData(d)...)
+	objs, err := meta.(bitwarden.Client).ListObjects(ctx, models.ObjectType(objType.(string)), listOptionsFromData(d)...)
 	if err != nil {
 		return err
 	}
 
 	// If the object is an item, also filter by type to avoid returning a login when a secure note is expected.
-	if bw.ObjectType(objType.(string)) == bw.ObjectTypeItem {
+	if models.ObjectType(objType.(string)) == models.ObjectTypeItem {
 		itemType, ok := d.GetOk(attributeType)
 		if !ok {
 			return fmt.Errorf("BUG: item type not set in the resource data")
 		}
 
-		objs = bw.FilterObjectsByType(objs, bw.ItemType(itemType.(int)))
+		objs = bwcli.FilterObjectsByType(objs, models.ItemType(itemType.(int)))
 	}
 
 	if len(objs) == 0 {
@@ -86,16 +88,16 @@ func objectSearch(ctx context.Context, d *schema.ResourceData, meta interface{})
 	return objectDataFromStruct(ctx, d, &obj)
 }
 
-func listOptionsFromData(d *schema.ResourceData) []bw.ListObjectsOption {
-	filters := []bw.ListObjectsOption{}
+func listOptionsFromData(d *schema.ResourceData) []bitwarden.ListObjectsOption {
+	filters := []bitwarden.ListObjectsOption{}
 
-	filterMap := map[string]bw.ListObjectsOptionGenerator{
-		attributeFilterSearch:         bw.WithSearch,
-		attributeFilterCollectionId:   bw.WithCollectionID,
-		attributeOrganizationID:       bw.WithOrganizationID,
-		attributeFilterFolderID:       bw.WithFolderID,
-		attributeFilterOrganizationID: bw.WithOrganizationID,
-		attributeFilterURL:            bw.WithUrl,
+	filterMap := map[string]bitwarden.ListObjectsOptionGenerator{
+		attributeFilterSearch:         bitwarden.WithSearch,
+		attributeFilterCollectionId:   bitwarden.WithCollectionID,
+		attributeOrganizationID:       bitwarden.WithOrganizationID,
+		attributeFilterFolderID:       bitwarden.WithFolderID,
+		attributeFilterOrganizationID: bitwarden.WithOrganizationID,
+		attributeFilterURL:            bitwarden.WithUrl,
 	}
 
 	for attribute, optionFunc := range filterMap {
@@ -112,11 +114,11 @@ func listOptionsFromData(d *schema.ResourceData) []bw.ListObjectsOption {
 }
 
 func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	err := objectOperation(ctx, d, func(ctx context.Context, secret bw.Object) (*bw.Object, error) {
-		return meta.(bw.Client).GetObject(ctx, secret)
+	err := objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
+		return meta.(bitwarden.Client).GetObject(ctx, secret)
 	})
 
-	if errors.Is(err, bw.ErrObjectNotFound) {
+	if errors.Is(err, models.ErrObjectNotFound) {
 		d.SetId("")
 		tflog.Warn(ctx, "Object not found, removing from state")
 		return diag.Diagnostics{}
@@ -132,16 +134,16 @@ func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 func objectUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return diag.FromErr(objectOperation(ctx, d, meta.(bw.Client).EditObject))
+	return diag.FromErr(objectOperation(ctx, d, meta.(bitwarden.Client).EditObject))
 }
 
 func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret bw.Object) (*bw.Object, error) {
-		return nil, meta.(bw.Client).DeleteObject(ctx, secret)
+	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
+		return nil, meta.(bitwarden.Client).DeleteObject(ctx, secret)
 	}))
 }
 
-func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(ctx context.Context, secret bw.Object) (*bw.Object, error)) error {
+func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(ctx context.Context, secret models.Object) (*models.Object, error)) error {
 	obj, err := operation(ctx, objectStructFromData(ctx, d))
 	if err != nil {
 		return err
@@ -150,7 +152,7 @@ func objectOperation(ctx context.Context, d *schema.ResourceData, operation func
 	return objectDataFromStruct(ctx, d, obj)
 }
 
-func objectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *bw.Object) error {
+func objectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *models.Object) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil
@@ -170,13 +172,13 @@ func objectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *bw.O
 
 	// Object-specific fields
 	switch obj.Object {
-	case bw.ObjectTypeOrgCollection:
+	case models.ObjectTypeOrgCollection:
 		err = d.Set(attributeOrganizationID, obj.OrganizationID)
 		if err != nil {
 			return err
 		}
 
-	case bw.ObjectTypeItem:
+	case models.ObjectTypeItem:
 		err = d.Set(attributeFolderID, obj.FolderID)
 		if err != nil {
 			return err
@@ -223,27 +225,27 @@ func objectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *bw.O
 		}
 
 		if obj.RevisionDate != nil {
-			err = d.Set(attributeRevisionDate, obj.RevisionDate.Format(bw.DateLayout))
+			err = d.Set(attributeRevisionDate, obj.RevisionDate.Format(models.DateLayout))
 			if err != nil {
 				return err
 			}
 		}
 
 		if obj.CreationDate != nil {
-			err = d.Set(attributeCreationDate, obj.CreationDate.Format(bw.DateLayout))
+			err = d.Set(attributeCreationDate, obj.CreationDate.Format(models.DateLayout))
 			if err != nil {
 				return err
 			}
 		}
 
 		if obj.DeletedDate != nil {
-			err = d.Set(attributeDeletedDate, obj.DeletedDate.Format(bw.DateLayout))
+			err = d.Set(attributeDeletedDate, obj.DeletedDate.Format(models.DateLayout))
 			if err != nil {
 				return err
 			}
 		}
 
-		if obj.Type == bw.ItemTypeLogin {
+		if obj.Type == models.ItemTypeLogin {
 			err = d.Set(attributeLoginPassword, obj.Login.Password)
 			if err != nil {
 				return err
@@ -269,8 +271,8 @@ func objectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *bw.O
 	return nil
 }
 
-func objectStructFromData(ctx context.Context, d *schema.ResourceData) bw.Object {
-	var obj bw.Object
+func objectStructFromData(ctx context.Context, d *schema.ResourceData) models.Object {
+	var obj models.Object
 
 	obj.ID = d.Id()
 	if v, ok := d.Get(attributeName).(string); ok {
@@ -278,21 +280,19 @@ func objectStructFromData(ctx context.Context, d *schema.ResourceData) bw.Object
 	}
 
 	if v, ok := d.Get(attributeObject).(string); ok {
-		obj.Object = bw.ObjectType(v)
+		obj.Object = models.ObjectType(v)
 	}
 
 	// Object-specific fields
 	switch obj.Object {
-	case bw.ObjectTypeOrgCollection:
+	case models.ObjectTypeOrgCollection:
 		if v, ok := d.Get(attributeOrganizationID).(string); ok {
 			obj.OrganizationID = v
 		}
 
-		obj.Groups = []interface{}{}
-
-	case bw.ObjectTypeItem:
+	case models.ObjectTypeItem:
 		if v, ok := d.Get(attributeType).(int); ok {
-			obj.Type = bw.ItemType(v)
+			obj.Type = models.ItemType(v)
 		}
 
 		if v, ok := d.Get(attributeFolderID).(string); ok {
@@ -330,7 +330,7 @@ func objectStructFromData(ctx context.Context, d *schema.ResourceData) bw.Object
 			obj.Fields = objectFieldStructFromData(v)
 		}
 
-		if obj.Type == bw.ItemTypeLogin {
+		if obj.Type == models.ItemTypeLogin {
 			if v, ok := d.Get(attributeLoginPassword).(string); ok {
 				obj.Login.Password = v
 			}
@@ -349,19 +349,19 @@ func objectStructFromData(ctx context.Context, d *schema.ResourceData) bw.Object
 	return obj
 }
 
-func objectFieldDataFromStruct(obj *bw.Object) []interface{} {
+func objectFieldDataFromStruct(obj *models.Object) []interface{} {
 	fields := make([]interface{}, len(obj.Fields))
 	for k, f := range obj.Fields {
 		field := map[string]interface{}{
 			attributeFieldName: f.Name,
 		}
-		if f.Type == bw.FieldTypeText {
+		if f.Type == models.FieldTypeText {
 			field[attributeFieldText] = f.Value
-		} else if f.Type == bw.FieldTypeBoolean {
+		} else if f.Type == models.FieldTypeBoolean {
 			field[attributeFieldBoolean] = (f.Value == "true")
-		} else if f.Type == bw.FieldTypeHidden {
+		} else if f.Type == models.FieldTypeHidden {
 			field[attributeFieldHidden] = f.Value
-		} else if f.Type == bw.FieldTypeLinked {
+		} else if f.Type == models.FieldTypeLinked {
 			field[attributeFieldLinked] = f.Value
 		}
 		fields[k] = field
@@ -369,11 +369,11 @@ func objectFieldDataFromStruct(obj *bw.Object) []interface{} {
 	return fields
 }
 
-func objectAttachmentStructFromData(vList []interface{}) []bw.Attachment {
-	attachments := make([]bw.Attachment, len(vList))
+func objectAttachmentStructFromData(vList []interface{}) []models.Attachment {
+	attachments := make([]models.Attachment, len(vList))
 	for k, v := range vList {
 		vc := v.(map[string]interface{})
-		attachments[k] = bw.Attachment{
+		attachments[k] = models.Attachment{
 			ID:       vc[attributeID].(string),
 			FileName: vc[attributeAttachmentFileName].(string),
 			Size:     vc[attributeAttachmentSize].(string),
@@ -384,7 +384,7 @@ func objectAttachmentStructFromData(vList []interface{}) []bw.Attachment {
 	return attachments
 }
 
-func objectAttachmentsFromStruct(objAttachments []bw.Attachment) []interface{} {
+func objectAttachmentsFromStruct(objAttachments []models.Attachment) []interface{} {
 	attachments := make([]interface{}, len(objAttachments))
 	for k, f := range objAttachments {
 		attachments[k] = map[string]interface{}{
@@ -398,24 +398,24 @@ func objectAttachmentsFromStruct(objAttachments []bw.Attachment) []interface{} {
 	return attachments
 }
 
-func objectFieldStructFromData(vList []interface{}) []bw.Field {
-	fields := make([]bw.Field, len(vList))
+func objectFieldStructFromData(vList []interface{}) []models.Field {
+	fields := make([]models.Field, len(vList))
 	for k, v := range vList {
 		vc := v.(map[string]interface{})
-		fields[k] = bw.Field{
+		fields[k] = models.Field{
 			Name: vc[attributeFieldName].(string),
 		}
 		if vs, ok := vc[attributeFieldText].(string); ok && len(vs) > 0 {
-			fields[k].Type = bw.FieldTypeText
+			fields[k].Type = models.FieldTypeText
 			fields[k].Value = vs
 		} else if vs, ok := vc[attributeFieldHidden].(string); ok && len(vs) > 0 {
-			fields[k].Type = bw.FieldTypeHidden
+			fields[k].Type = models.FieldTypeHidden
 			fields[k].Value = vs
 		} else if vs, ok := vc[attributeFieldLinked].(string); ok && len(vs) > 0 {
-			fields[k].Type = bw.FieldTypeLinked
+			fields[k].Type = models.FieldTypeLinked
 			fields[k].Value = vs
 		} else if vs, ok := vc[attributeFieldBoolean].(bool); ok {
-			fields[k].Type = bw.FieldTypeBoolean
+			fields[k].Type = models.FieldTypeBoolean
 			if vs {
 				fields[k].Value = "true"
 			} else {
@@ -426,11 +426,11 @@ func objectFieldStructFromData(vList []interface{}) []bw.Field {
 	return fields
 }
 
-func objectLoginURIsFromData(ctx context.Context, vList []interface{}) []bw.LoginURI {
-	uris := make([]bw.LoginURI, len(vList))
+func objectLoginURIsFromData(ctx context.Context, vList []interface{}) []models.LoginURI {
+	uris := make([]models.LoginURI, len(vList))
 	for k, v := range vList {
 		vc := v.(map[string]interface{})
-		uris[k] = bw.LoginURI{
+		uris[k] = models.LoginURI{
 			Match: strMatchToInt(ctx, vc[attributeLoginURIsMatch].(string)),
 			URI:   vc[attributeLoginURIsValue].(string),
 		}
@@ -438,7 +438,7 @@ func objectLoginURIsFromData(ctx context.Context, vList []interface{}) []bw.Logi
 	return uris
 }
 
-func objectLoginURIsFromStruct(ctx context.Context, objUris []bw.LoginURI) []interface{} {
+func objectLoginURIsFromStruct(ctx context.Context, objUris []models.LoginURI) []interface{} {
 	uris := make([]interface{}, len(objUris))
 	for k, f := range objUris {
 		uris[k] = map[string]interface{}{
@@ -449,23 +449,23 @@ func objectLoginURIsFromStruct(ctx context.Context, objUris []bw.LoginURI) []int
 	return uris
 }
 
-func intMatchToStr(ctx context.Context, match *bw.URIMatch) URIMatchStr {
+func intMatchToStr(ctx context.Context, match *models.URIMatch) URIMatchStr {
 	if match == nil {
 		return URIMatchDefault
 	}
 
 	switch *match {
-	case bw.URIMatchBaseDomain:
+	case models.URIMatchBaseDomain:
 		return URIMatchBaseDomain
-	case bw.URIMatchHost:
+	case models.URIMatchHost:
 		return URIMatchHost
-	case bw.URIMatchStartWith:
+	case models.URIMatchStartWith:
 		return URIMatchStartWith
-	case bw.URIMatchExact:
+	case models.URIMatchExact:
 		return URIMatchExact
-	case bw.URIMatchRegExp:
+	case models.URIMatchRegExp:
 		return URIMatchRegExp
-	case bw.URIMatchNever:
+	case models.URIMatchNever:
 		return URIMatchNever
 	default:
 		tflog.Warn(ctx, "unsupported integer value for URI match - Falling back to default", map[string]interface{}{"match": *match})
@@ -473,23 +473,23 @@ func intMatchToStr(ctx context.Context, match *bw.URIMatch) URIMatchStr {
 	}
 }
 
-func strMatchToInt(ctx context.Context, match string) *bw.URIMatch {
-	var v bw.URIMatch
+func strMatchToInt(ctx context.Context, match string) *models.URIMatch {
+	var v models.URIMatch
 	switch match {
 	case string(URIMatchDefault):
 		return nil
 	case string(URIMatchBaseDomain):
-		v = bw.URIMatchBaseDomain
+		v = models.URIMatchBaseDomain
 	case string(URIMatchHost):
-		v = bw.URIMatchHost
+		v = models.URIMatchHost
 	case string(URIMatchStartWith):
-		v = bw.URIMatchStartWith
+		v = models.URIMatchStartWith
 	case string(URIMatchExact):
-		v = bw.URIMatchExact
+		v = models.URIMatchExact
 	case string(URIMatchRegExp):
-		v = bw.URIMatchRegExp
+		v = models.URIMatchRegExp
 	case string(URIMatchNever):
-		v = bw.URIMatchNever
+		v = models.URIMatchNever
 	default:
 		tflog.Warn(ctx, "unsupported string value for URI match - Falling back to default", map[string]interface{}{"match": match})
 		return nil

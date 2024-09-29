@@ -9,7 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bw"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 )
 
 type LoginMethod int
@@ -69,7 +70,7 @@ func New(version string) func() *schema.Provider {
 					Type:        schema.TypeString,
 					Description: descriptionServer,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("BW_URL", bw.DefaultBitwardenServerURL),
+					DefaultFunc: schema.EnvDefaultFunc("BW_URL", bitwarden.DefaultBitwardenServerURL),
 				},
 				attributeEmail: {
 					Type:        schema.TypeString,
@@ -134,7 +135,7 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 	}
 }
 
-func ensureLoggedIn(ctx context.Context, d *schema.ResourceData, bwClient bw.Client) error {
+func ensureLoggedIn(ctx context.Context, d *schema.ResourceData, bwClient bwcli.CLIClient) error {
 	status, err := bwClient.Status(ctx)
 	if err != nil {
 		return err
@@ -148,7 +149,7 @@ func ensureLoggedIn(ctx context.Context, d *schema.ResourceData, bwClient bw.Cli
 	// Scenario 1: The Vault is already *unlocked*, there is nothing else to
 	//             be done. This should happen when a session key is provided.
 	//             => return
-	if status.Status == bw.StatusUnlocked {
+	if status.Status == bwcli.StatusUnlocked {
 		return bwClient.Sync(ctx)
 	}
 
@@ -156,7 +157,7 @@ func ensureLoggedIn(ctx context.Context, d *schema.ResourceData, bwClient bw.Cli
 	//             happens when the Vault is already cached locally.
 	//             => unlock and return
 	masterPassword, hasMasterPassword := d.GetOk(attributeMasterPassword)
-	if hasMasterPassword && status.Status == bw.StatusLocked {
+	if hasMasterPassword && status.Status == bwcli.StatusLocked {
 		err = bwClient.Unlock(ctx, masterPassword.(string))
 		if err != nil {
 			return err
@@ -208,12 +209,12 @@ func loginMethod(d *schema.ResourceData) LoginMethod {
 	return LoginMethodNone
 }
 
-func logoutIfIdentityChanged(ctx context.Context, d *schema.ResourceData, bwClient bw.Client, status *bw.Status) error {
+func logoutIfIdentityChanged(ctx context.Context, d *schema.ResourceData, bwClient bwcli.CLIClient, status *bwcli.Status) error {
 	email := d.Get(attributeEmail).(string)
 	serverURL := d.Get(attributeServer).(string)
 
-	if (status.Status == bw.StatusLocked || status.Status == bw.StatusUnlocked) && (!status.VaultOfUser(email) || !status.VaultFromServer(serverURL)) {
-		status.Status = bw.StatusUnauthenticated
+	if (status.Status == bwcli.StatusLocked || status.Status == bwcli.StatusUnlocked) && (!status.VaultOfUser(email) || !status.VaultFromServer(serverURL)) {
+		status.Status = bwcli.StatusUnauthenticated
 
 		tflog.Warn(ctx, "Logging out as the local Vault belongs to a different identity", map[string]interface{}{"vault_email": status.UserEmail, "vault_server": status.ServerURL, "provider_email": email, "provider_server": serverURL})
 		err := bwClient.Logout(ctx)
@@ -231,30 +232,30 @@ func logoutIfIdentityChanged(ctx context.Context, d *schema.ResourceData, bwClie
 	return nil
 }
 
-func newBitwardenClient(d *schema.ResourceData, version string) (bw.Client, error) {
-	opts := []bw.Options{}
+func newBitwardenClient(d *schema.ResourceData, version string) (bwcli.CLIClient, error) {
+	opts := []bwcli.Options{}
 	if vaultPath, exists := d.GetOk(attributeVaultPath); exists {
 		abs, err := filepath.Abs(vaultPath.(string))
 		if err != nil {
 			return nil, err
 		}
-		opts = append(opts, bw.WithAppDataDir(abs))
+		opts = append(opts, bwcli.WithAppDataDir(abs))
 	}
 
 	if extraCACertsPath, exists := d.GetOk(attributeExtraCACertsPath); exists {
-		opts = append(opts, bw.WithExtraCACertsPath(extraCACertsPath.(string)))
+		opts = append(opts, bwcli.WithExtraCACertsPath(extraCACertsPath.(string)))
 	}
 
 	if version == versionDev {
 		// During development, we disable Vault synchronization and retry backoffs to make some
 		// operations faster.
-		opts = append(opts, bw.DisableSync())
-		opts = append(opts, bw.DisableRetryBackoff())
+		opts = append(opts, bwcli.DisableSync())
+		opts = append(opts, bwcli.DisableRetryBackoff())
 	}
 	bwExecutable, err := exec.LookPath("bw")
 	if err != nil {
 		return nil, err
 	}
 
-	return bw.NewClient(bwExecutable, opts...), nil
+	return bwcli.NewClient(bwExecutable, opts...), nil
 }
