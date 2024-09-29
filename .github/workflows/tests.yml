@@ -23,7 +23,7 @@ jobs:
 
     services:
       vaultwarden:
-        image: vaultwarden/server:latest
+        image: vaultwarden/server:1.32.0
         env:
           ADMIN_TOKEN: test1234
           I_REALLY_WANT_VOLATILE_STORAGE: "true"

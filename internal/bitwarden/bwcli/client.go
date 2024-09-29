@@ -84,6 +84,7 @@ func DisableRetryBackoff() Options {
 }
 
 func (c *client) CreateObject(ctx context.Context, obj models.Object) (*models.Object, error) {
+	obj.Groups = []interface{}{}
 	objEncoded, err := c.encode(obj)
 	if err != nil {
 		return nil, err
@@ -200,7 +201,7 @@ func (c *client) GetSessionKey() string {
 func (c *client) ListObjects(ctx context.Context, objType models.ObjectType, options ...bitwarden.ListObjectsOption) ([]models.Object, error) {
 	args := []string{
 		"list",
-		string(objType),
+		fmt.Sprintf("%ss", objType),
 	}
 
 	applyFiltersToArgs(&args, options...)
