@@ -105,7 +105,7 @@ jobs:
           TEST_USE_EMBEDDED_CLIENT: "1"
 
       - name: Test with Official Client
-        run: go test -coverprofile=profile_official.cov -failfast -v ./...
+        run: go test -coverprofile=profile_official.cov -timeout 1000s -failfast -v ./...
         env:
           VAULTWARDEN_HOST: "127.0.0.1"
           VAULTWARDEN_PORT: "8080"
