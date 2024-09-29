@@ -132,6 +132,7 @@ func (c *client) CreateAttachment(ctx context.Context, itemId string, filePath s
 }
 
 func (c *client) EditObject(ctx context.Context, obj models.Object) (*models.Object, error) {
+	obj.Groups = []interface{}{}
 	objEncoded, err := c.encode(obj)
 	if err != nil {
 		return nil, err

@@ -298,9 +298,7 @@ func newBitwardenClient(d *schema.ResourceData, version string) (bwcli.CLIClient
 	}
 
 	if version == versionDev {
-		// During development, we disable Vault synchronization and retry backoffs to make some
-		// operations faster.
-		opts = append(opts, bwcli.DisableSync())
+		// During development, we disable retry backoffs to make some operations faster.
 		opts = append(opts, bwcli.DisableRetryBackoff())
 	}
 

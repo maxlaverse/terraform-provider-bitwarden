@@ -35,7 +35,6 @@ var testOrganizationID string
 var testCollectionID string
 var testFolderID string
 var testUniqueIdentifier string
-var testSessionKey string
 var useEmbeddedClient bool
 
 // providerFactories are used to instantiate a provider during acceptance testing.
@@ -78,7 +77,6 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	ensureVaultwardenHasUser(t)
 	ctx := context.Background()
 
-	bwOfficialTestClient(t)
 	bwClient := bwTestClient(t)
 
 	var err error
@@ -102,7 +100,6 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	testCollectionID = cols[0].Id
 
 	testFolderName := fmt.Sprintf("folder-%s-bar", testUniqueIdentifier)
-	t.Logf("Creating Folder")
 	folder, err := bwClient.CreateObject(ctx, models.Object{
 		Object: models.ObjectTypeFolder,
 		Name:   testFolderName,
@@ -121,7 +118,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("Synced test client")
+	t.Log("Synced embedded test client")
 
 	areTestResourcesCreated = true
 }
@@ -176,25 +173,40 @@ func bwOfficialTestClient(t *testing.T) bwcli.CLIClient {
 	}
 
 	client := bwcli.NewClient(bwExec, bwcli.DisableRetryBackoff(), bwcli.WithAppDataDir(vault))
-
-	if len(testSessionKey) == 0 {
+	status, err := client.Status(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.ServerURL) == 0 {
 		err = client.SetServer(context.Background(), testServerURL)
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+	if status.Status == bwcli.StatusUnauthenticated {
 
-		err = client.LoginWithPassword(context.Background(), testEmail, testPassword)
-		if err != nil {
-			err = client.Unlock(context.Background(), testPassword)
+		retries := 0
+		for {
+			err = client.LoginWithPassword(context.Background(), testEmail, testPassword)
 			if err != nil {
+				// Retry if the user creation hasn't been fully taken into account yet
+				if retries < 3 {
+					retries++
+					t.Log("Account creation not taken into account yet, retrying...")
+					time.Sleep(time.Duration(retries) * time.Second)
+					continue
+				}
 				t.Fatal(err)
 			}
+			break
 		}
-		t.Log("Logged in official test client")
-
-		testSessionKey = client.GetSessionKey()
+	} else if status.Status == bwcli.StatusLocked {
+		err = client.Unlock(context.Background(), testPassword)
+		if err != nil {
+			t.Fatal(err)
+		}
 	} else {
-		client.SetSessionKey(testSessionKey)
+		t.Logf("Official test client already logged-in: %s", status.Status)
 	}
 	return client
 }

@@ -76,11 +76,13 @@ func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 					err := bwTestClient(t).DeleteObject(context.Background(), obj)
 					assert.NoError(t, err)
 
-					if !useEmbeddedClient {
-						// Sync when using the official client, as we removed the object using the API
-						// which means the local state is out of sync.
-						bwOfficialTestClient(t).Sync(context.Background())
+					if useEmbeddedClient {
+						return
 					}
+
+					// Sync when using the official client, as we removed the object using the API
+					// which means the local state is out of sync.
+					bwOfficialTestClient(t).Sync(context.Background())
 				},
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: true,

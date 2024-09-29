@@ -49,7 +49,7 @@ func TestAccProviderAuthUsernamePassword(t *testing.T) {
 
 func TestAccProviderAuthSessionKey(t *testing.T) {
 	if useEmbeddedClient {
-		return
+		t.Skip("Skipping test because embedded client doesn't support session key authentication")
 	}
 	ensureVaultwardenHasUser(t)
 
