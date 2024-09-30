@@ -3,8 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -107,14 +109,6 @@ func New(version string) func() *schema.Provider {
 							},
 						},
 					},
-				},
-
-				// Internal
-				attributeDeviceIdentifier: {
-					Description: descriptionInternal,
-					Type:        schema.TypeString,
-					Computed:    true,
-					Optional:    true,
 				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
@@ -315,7 +309,7 @@ func newBitwardenClient(d *schema.ResourceData, version string) (bwcli.CLIClient
 }
 
 func newBitwardenEmbeddedClient(ctx context.Context, d *schema.ResourceData, version string) (bitwarden.Client, error) {
-	deviceId, err := getOrGenerateDeviceIdentifier(ctx, d)
+	deviceId, err := getOrGenerateDeviceIdentifier(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -333,18 +327,18 @@ func newBitwardenEmbeddedClient(ctx context.Context, d *schema.ResourceData, ver
 	return embedded.NewWebAPIVault(serverURL, opts...), nil
 }
 
-func getOrGenerateDeviceIdentifier(ctx context.Context, d *schema.ResourceData) (string, error) {
-	deviceId, hasDeviceID := d.GetOk(attributeDeviceIdentifier)
-	if hasDeviceID {
-		return deviceId.(string), nil
+func getOrGenerateDeviceIdentifier(ctx context.Context) (string, error) {
+	deviceIdBytes, err := os.ReadFile(".bitwarden/device_identifier")
+	if err == nil {
+		deviceId := string(deviceIdBytes)
+		tflog.Info(ctx, "Read device identifier from disk", map[string]interface{}{"device_id": deviceId})
+		return strings.TrimSpace(deviceId), nil
 	}
-	deviceId = embedded.NewDeviceIdentifier()
-	err := d.Set(attributeDeviceIdentifier, embedded.NewDeviceIdentifier())
-	if err != nil {
-		return "", err
-	}
+
+	deviceId := embedded.NewDeviceIdentifier()
+	os.WriteFile(".bitwarden/device_identifier", []byte(deviceId), 0600)
 	tflog.Info(ctx, "Generated device identifier", map[string]interface{}{"device_id": deviceId})
-	return deviceId.(string), nil
+	return deviceId, nil
 }
 
 func ensureLoggedInEmbedded(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.Client) error {
