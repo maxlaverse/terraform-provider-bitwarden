@@ -139,7 +139,7 @@ func New(version string) func() *schema.Provider {
 	}
 }
 
-func experimentalEmbeddedClient(d *schema.ResourceData) bool {
+func useExperimentalEmbeddedClient(d *schema.ResourceData) bool {
 	experimentalFeatures, hasExperimentalFeatures := d.GetOk(attributeExperimental)
 	if hasExperimentalFeatures {
 		if experimentalFeatures.(*schema.Set).Len() > 0 {
@@ -154,7 +154,11 @@ func experimentalEmbeddedClient(d *schema.ResourceData) bool {
 func providerConfigure(version string, _ *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 
-		if experimentalEmbeddedClient(d) {
+		if useExperimentalEmbeddedClient(d) {
+			if _, hasSessionKey := d.GetOk(attributeSessionKey); hasSessionKey {
+				return nil, diag.Errorf("session key is not supported with the embedded client")
+			}
+
 			bwClient, err := newBitwardenEmbeddedClient(ctx, d, version)
 			if err != nil {
 				return nil, diag.FromErr(err)
