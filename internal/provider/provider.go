@@ -336,7 +336,17 @@ func getOrGenerateDeviceIdentifier(ctx context.Context) (string, error) {
 	}
 
 	deviceId := embedded.NewDeviceIdentifier()
-	os.WriteFile(".bitwarden/device_identifier", []byte(deviceId), 0600)
+	err = os.Mkdir(".bitwarden", 0700)
+	if err != nil {
+		tflog.Error(ctx, "Failed to create .bitwarden directory", map[string]interface{}{"error": err})
+		return "", err
+	}
+	err = os.WriteFile(".bitwarden/device_identifier", []byte(deviceId), 0600)
+	if err != nil {
+		tflog.Error(ctx, "Failed to store device identifier", map[string]interface{}{"error": err})
+		return "", err
+	}
+
 	tflog.Info(ctx, "Generated device identifier", map[string]interface{}{"device_id": deviceId})
 	return deviceId, nil
 }
