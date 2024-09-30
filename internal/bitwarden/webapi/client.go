@@ -333,6 +333,9 @@ func (c *client) LoginWithAPIKey(ctx context.Context, clientId, clientSecret str
 	}
 
 	tokenResp, err := doRequest[TokenResponse](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
 	c.sessionAccessToken = tokenResp.AccessToken
 	return tokenResp, err
 }
