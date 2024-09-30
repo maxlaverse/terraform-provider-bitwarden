@@ -92,16 +92,7 @@ To generate or update documentation, run `go generate`.
 
 In order to run the full suite of Acceptance tests, start a Vaultwarden server:
 ```sh
-$ docker run -ti \
-  -e I_REALLY_WANT_VOLATILE_STORAGE=true \
-  -e DISABLE_ICON_DOWNLOAD=true \
-  -e ADMIN_TOKEN=test1234 \
-  -e LOGIN_RATELIMIT_SECONDS=1 \
-  -e LOGIN_RATELIMIT_MAX_BURST=1000000 \
-  -e ADMIN_RATELIMIT_SECONDS=1 \
-  -e ADMIN_RATELIMIT_MAX_BURST=1000000 \
-  --mount type=tmpfs,destination=/data \
-  -p 8080:80 vaultwarden/server
+$ make server
 ```
 
 Then run `make testacc`.
