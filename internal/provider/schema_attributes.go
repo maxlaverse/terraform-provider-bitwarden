@@ -92,7 +92,6 @@ const (
 	attributeExtraCACertsPath           = "extra_ca_certs"
 	attributeExperimental               = "experimental"
 	attributeExperimentalEmbeddedClient = "embedded_client"
-	attributeDeviceIdentifier           = "device_id"
 
 	// Provider field descriptions
 	descriptionClientSecret               = "Client Secret (env: `BW_CLIENTSECRET`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment."

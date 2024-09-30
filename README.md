@@ -78,7 +78,9 @@ Currently, the Terraform SDK doesn't offer a way to remove the encrypted Vault o
 The issue [hashicorp/terraform-plugin-sdk#63] tracks discussions for adding such a feature.
 
 If you want find out more about this file, you can read [Terraform's documentation on Data Storage].
-Please note that this file is stored at `<your-project>/.bitwarden/` by default, in order to not interfer with your local Vaults.
+Please note that this file is stored at `<your-project>/.bitwarden/` by default, in order to not interfere with your local Vaults.
+
+NOTE: This whole paragraph doesn't apply to the experimental client, as nothing is stored on disk.
 
 ## Developing the Provider
 
@@ -90,16 +92,7 @@ To generate or update documentation, run `go generate`.
 
 In order to run the full suite of Acceptance tests, start a Vaultwarden server:
 ```sh
-$ docker run -ti \
-  -e I_REALLY_WANT_VOLATILE_STORAGE=true \
-  -e DISABLE_ICON_DOWNLOAD=true \
-  -e ADMIN_TOKEN=test1234 \
-  -e LOGIN_RATELIMIT_SECONDS=1 \
-  -e LOGIN_RATELIMIT_MAX_BURST=1000000 \
-  -e ADMIN_RATELIMIT_SECONDS=1 \
-  -e ADMIN_RATELIMIT_MAX_BURST=1000000 \
-  --mount type=tmpfs,destination=/data \
-  -p 8080:80 vaultwarden/server
+$ make server
 ```
 
 Then run `make testacc`.

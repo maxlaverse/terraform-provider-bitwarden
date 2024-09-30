@@ -3,8 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -108,14 +110,6 @@ func New(version string) func() *schema.Provider {
 						},
 					},
 				},
-
-				// Internal
-				attributeDeviceIdentifier: {
-					Description: descriptionInternal,
-					Type:        schema.TypeString,
-					Computed:    true,
-					Optional:    true,
-				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
 				"bitwarden_attachment":       dataSourceAttachment(),
@@ -139,7 +133,7 @@ func New(version string) func() *schema.Provider {
 	}
 }
 
-func experimentalEmbeddedClient(d *schema.ResourceData) bool {
+func useExperimentalEmbeddedClient(d *schema.ResourceData) bool {
 	experimentalFeatures, hasExperimentalFeatures := d.GetOk(attributeExperimental)
 	if hasExperimentalFeatures {
 		if experimentalFeatures.(*schema.Set).Len() > 0 {
@@ -154,7 +148,11 @@ func experimentalEmbeddedClient(d *schema.ResourceData) bool {
 func providerConfigure(version string, _ *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 
-		if experimentalEmbeddedClient(d) {
+		if useExperimentalEmbeddedClient(d) {
+			if _, hasSessionKey := d.GetOk(attributeSessionKey); hasSessionKey {
+				return nil, diag.Errorf("session key is not supported with the embedded client")
+			}
+
 			bwClient, err := newBitwardenEmbeddedClient(ctx, d, version)
 			if err != nil {
 				return nil, diag.FromErr(err)
@@ -311,7 +309,7 @@ func newBitwardenClient(d *schema.ResourceData, version string) (bwcli.CLIClient
 }
 
 func newBitwardenEmbeddedClient(ctx context.Context, d *schema.ResourceData, version string) (bitwarden.Client, error) {
-	deviceId, err := getOrGenerateDeviceIdentifier(ctx, d)
+	deviceId, err := getOrGenerateDeviceIdentifier(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -329,18 +327,28 @@ func newBitwardenEmbeddedClient(ctx context.Context, d *schema.ResourceData, ver
 	return embedded.NewWebAPIVault(serverURL, opts...), nil
 }
 
-func getOrGenerateDeviceIdentifier(ctx context.Context, d *schema.ResourceData) (string, error) {
-	deviceId, hasDeviceID := d.GetOk(attributeDeviceIdentifier)
-	if hasDeviceID {
-		return deviceId.(string), nil
+func getOrGenerateDeviceIdentifier(ctx context.Context) (string, error) {
+	deviceIdBytes, err := os.ReadFile(".bitwarden/device_identifier")
+	if err == nil {
+		deviceId := string(deviceIdBytes)
+		tflog.Info(ctx, "Read device identifier from disk", map[string]interface{}{"device_id": deviceId})
+		return strings.TrimSpace(deviceId), nil
 	}
-	deviceId = embedded.NewDeviceIdentifier()
-	err := d.Set(attributeDeviceIdentifier, embedded.NewDeviceIdentifier())
+
+	deviceId := embedded.NewDeviceIdentifier()
+	err = os.Mkdir(".bitwarden", 0700)
 	if err != nil {
+		tflog.Error(ctx, "Failed to create .bitwarden directory", map[string]interface{}{"error": err})
 		return "", err
 	}
+	err = os.WriteFile(".bitwarden/device_identifier", []byte(deviceId), 0600)
+	if err != nil {
+		tflog.Error(ctx, "Failed to store device identifier", map[string]interface{}{"error": err})
+		return "", err
+	}
+
 	tflog.Info(ctx, "Generated device identifier", map[string]interface{}{"device_id": deviceId})
-	return deviceId.(string), nil
+	return deviceId, nil
 }
 
 func ensureLoggedInEmbedded(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.Client) error {
