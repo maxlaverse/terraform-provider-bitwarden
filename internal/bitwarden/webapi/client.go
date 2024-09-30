@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	deviceName = "Terraform Provider Bitwarden"
+	deviceName = "Bitwarden Terraform Provider"
 )
 
 type Client interface {
