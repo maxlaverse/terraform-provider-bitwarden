@@ -282,6 +282,7 @@ func (c *client) LoginWithPassword(ctx context.Context, username, password strin
 		return nil, fmt.Errorf("error preparing login with password request: %w", err)
 	}
 	httpReq.Header.Add("Auth-Email", base64.StdEncoding.EncodeToString([]byte(username)))
+	httpReq.Header.Add("Device-Type", c.deviceType)
 
 	tokenResp, err := doRequest[TokenResponse](ctx, c.httpClient, httpReq)
 	if err != nil {
@@ -399,6 +400,7 @@ func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, r
 	if len(c.sessionAccessToken) > 0 {
 		httpReq.Header.Add("authorization", fmt.Sprintf("Bearer %s", c.sessionAccessToken))
 	}
+	httpReq.Header.Add("Accept", "application/json")
 
 	return httpReq, nil
 }
