@@ -133,10 +133,10 @@ func ensureVaultwardenHasUser(t *testing.T) {
 
 	clearTestVault(t)
 
-	webapiClient := webapi.NewClient(testServerURL)
+	client := embedded.NewWebAPIVault(testServerURL)
 	testUsername = fmt.Sprintf("test-%s", testUniqueIdentifier)
 	testEmail = fmt.Sprintf("test-%s@laverse.net", testUniqueIdentifier)
-	err := webapiClient.RegisterUser(context.Background(), testUsername, testEmail, testPassword, kdfIterations)
+	err := client.RegisterUser(context.Background(), testUsername, testEmail, testPassword, kdfIterations)
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
