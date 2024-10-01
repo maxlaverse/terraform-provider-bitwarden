@@ -526,7 +526,7 @@ func mockedClient() webapi.Client {
 
 func createTestAccount(t *testing.T) {
 	ctx := context.Background()
-	preloginKey, err := keybuilder.BuildPreloginKey(testPassword, testAccount.Email, testAccount.KdfIterations)
+	preloginKey, err := keybuilder.BuildPreloginKey(testPassword, testAccount.Email, testAccount.KdfConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -563,7 +563,7 @@ func createTestAccount(t *testing.T) {
 		Name:               testAccount.Email,
 		MasterPasswordHash: hashedPassword,
 		Key:                encryptedEncryptionKey,
-		KdfIterations:      testAccount.KdfIterations,
+		KdfIterations:      testAccount.KdfConfig.KdfIterations,
 		Keys: webapi.KeyPair{
 			PublicKey:           publicKey,
 			EncryptedPrivateKey: encryptedPrivateKey,

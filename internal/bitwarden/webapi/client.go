@@ -41,7 +41,7 @@ type Client interface {
 	GetContentFromURL(ctx context.Context, url string) ([]byte, error)
 	GetObjectAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
 	LoginWithAPIKey(ctx context.Context, clientId, clientSecret string) (*TokenResponse, error)
-	LoginWithPassword(ctx context.Context, username, password string, kdfIterations int) (*TokenResponse, error)
+	LoginWithPassword(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*TokenResponse, error)
 	PreLogin(context.Context, string) (*PreloginResponse, error)
 	Profile(context.Context) (*Profile, error)
 	RegisterUser(ctx context.Context, req SignupRequest) error
@@ -256,8 +256,8 @@ func (c *client) GetCollections(ctx context.Context, orgID string) ([]Collection
 	return resp.Data, nil
 }
 
-func (c *client) LoginWithPassword(ctx context.Context, username, password string, kdfIterations int) (*TokenResponse, error) {
-	preloginKey, err := keybuilder.BuildPreloginKey(password, username, kdfIterations)
+func (c *client) LoginWithPassword(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*TokenResponse, error) {
+	preloginKey, err := keybuilder.BuildPreloginKey(password, username, kdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error building prelogin key: %w", err)
 	}

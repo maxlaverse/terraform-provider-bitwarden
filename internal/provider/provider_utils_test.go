@@ -86,7 +86,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	}
 
 	webapiClient := webapi.NewClient(testServerURL)
-	_, err = webapiClient.LoginWithPassword(ctx, testEmail, testPassword, kdfIterations)
+	_, err = webapiClient.LoginWithPassword(ctx, testEmail, testPassword, models.KdfConfiguration{KdfIterations: kdfIterations})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,10 +136,29 @@ func ensureVaultwardenHasUser(t *testing.T) {
 	client := embedded.NewWebAPIVault(testServerURL)
 	testUsername = fmt.Sprintf("test-%s", testUniqueIdentifier)
 	testEmail = fmt.Sprintf("test-%s@laverse.net", testUniqueIdentifier)
-	err := client.RegisterUser(context.Background(), testUsername, testEmail, testPassword, kdfIterations)
+	kdfConfig := models.KdfConfiguration{
+		KdfType:        models.KdfTypePBKDF2_SHA256,
+		KdfIterations:  kdfIterations,
+		KdfMemory:      0,
+		KdfParallelism: 0,
+	}
+	err := client.RegisterUser(context.Background(), testUsername, testEmail, testPassword, kdfConfig)
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
+
+	testEmail2 := fmt.Sprintf("test-%s-argon2@laverse.net", testUniqueIdentifier)
+	kdfConfig = models.KdfConfiguration{
+		KdfType:        models.KdfTypeArgon2,
+		KdfIterations:  3,
+		KdfMemory:      64,
+		KdfParallelism: 4,
+	}
+	err = client.RegisterUser(context.Background(), testUsername, testEmail2, testPassword, kdfConfig)
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
+		t.Fatal(err)
+	}
+	t.Logf("Created test user (argon2) %s", testEmail2)
 	isUserCreated = true
 }
 

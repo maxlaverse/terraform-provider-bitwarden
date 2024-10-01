@@ -6,19 +6,17 @@ import (
 	"fmt"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
 type Account struct {
-	AccountUUID            string         `json:"accountUuid,omitempty"`
-	Email                  string         `json:"email,omitempty"`
-	VaultFormat            string         `json:"vaultFormat,omitempty"`
-	KdfIterations          int            `json:"kdfIterations,omitempty"`
-	KdfMemory              int            `json:"kdfMemory,omitempty"`
-	KdfParallelism         int            `json:"kdfParallelism,omitempty"`
-	KdfType                int            `json:"kdfType,omitempty"`
-	ProtectedSymmetricKey  string         `json:"protectedSymmetricKey,omitempty"`
-	ProtectedRSAPrivateKey string         `json:"protectedRSAPrivateKey,omitempty"`
-	Secrets                AccountSecrets `json:"-"`
+	AccountUUID            string                  `json:"accountUuid,omitempty"`
+	Email                  string                  `json:"email,omitempty"`
+	VaultFormat            string                  `json:"vaultFormat,omitempty"`
+	KdfConfig              models.KdfConfiguration `json:"kdfConfig,omitempty"`
+	ProtectedSymmetricKey  string                  `json:"protectedSymmetricKey,omitempty"`
+	ProtectedRSAPrivateKey string                  `json:"protectedRSAPrivateKey,omitempty"`
+	Secrets                AccountSecrets          `json:"-"`
 }
 
 func (a *Account) PrivateKeyDecrypted() bool {
