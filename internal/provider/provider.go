@@ -337,7 +337,7 @@ func getOrGenerateDeviceIdentifier(ctx context.Context) (string, error) {
 
 	deviceId := embedded.NewDeviceIdentifier()
 	err = os.Mkdir(".bitwarden", 0700)
-	if err != nil {
+	if err != nil && !os.IsExist(err) {
 		tflog.Error(ctx, "Failed to create .bitwarden directory", map[string]interface{}{"error": err})
 		return "", err
 	}

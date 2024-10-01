@@ -28,6 +28,7 @@ type WebAPIVault interface {
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
+	RegisterUser(ctx context.Context, name, username, password string, kdfIterations int) error
 	Sync(ctx context.Context) error
 	Unlock(ctx context.Context, password string) error
 }
@@ -229,6 +230,12 @@ func (v *webAPIVault) CreateObject(ctx context.Context, obj models.Object) (*mod
 			return nil, fmt.Errorf("error getting object after creation (sync-after-write): %w", err)
 		}
 
+		// NOTE: The official Bitwarden server returns dates that are a few milliseconds apart
+		//       between the object's creation call and a later retrieval. We need to ignore
+		//       these differences in the diff.
+		resObj.CreationDate = remoteObj.CreationDate
+		resObj.RevisionDate = remoteObj.RevisionDate
+
 		return remoteObj, compareObjects(*resObj, *remoteObj)
 	}
 	return resObj, nil
@@ -249,7 +256,7 @@ func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, 
 		return "", fmt.Errorf("error encryption collection label: %w", err)
 	}
 
-	publicKey, encryptedPrivateKey, err := keybuilder.GenerateKeyPair(*sharedKey)
+	publicKey, encryptedPrivateKey, err := keybuilder.GenerateRSAKeyPair(*sharedKey)
 	if err != nil {
 		return "", fmt.Errorf("error generating key pair: %w", err)
 	}
@@ -399,6 +406,11 @@ func (v *webAPIVault) EditObject(ctx context.Context, obj models.Object) (*model
 			return nil, fmt.Errorf("error getting object after edition (sync-after-write): %w", err)
 		}
 
+		// NOTE: The official Bitwarden server returns dates that are a few milliseconds apart
+		//       between the object's creation call and a later retrieval. We need to ignore
+		//       these differences in the diff.
+		resObj.RevisionDate = remoteObj.RevisionDate
+
 		return remoteObj, compareObjects(*resObj, *remoteObj)
 	}
 	return resObj, nil
@@ -474,6 +486,39 @@ func (v *webAPIVault) LoginWithPassword(ctx context.Context, username, password 
 	}
 
 	return v.continueLoginWithTokens(ctx, *tokenResp, password)
+}
+
+func (v *webAPIVault) RegisterUser(ctx context.Context, name, username, password string, kdfIterations int) error {
+	preloginKey, err := keybuilder.BuildPreloginKey(password, username, kdfIterations)
+	if err != nil {
+		return fmt.Errorf("error building prelogin key: %w", err)
+	}
+
+	hashedPassword := crypto.HashPassword(password, *preloginKey, false)
+
+	encryptionKey, encryptedEncryptionKey, err := keybuilder.GenerateEncryptionKey(*preloginKey)
+	if err != nil {
+		return fmt.Errorf("error generating encryption key: %w", err)
+	}
+
+	publicKey, encryptedPrivateKey, err := keybuilder.GenerateRSAKeyPair(*encryptionKey)
+	if err != nil {
+		return fmt.Errorf("error generating key pair: %w", err)
+	}
+
+	signupRequest := webapi.SignupRequest{
+		Email:              username,
+		Name:               name,
+		MasterPasswordHash: hashedPassword,
+		Key:                encryptedEncryptionKey,
+		KdfIterations:      kdfIterations,
+		Keys: webapi.KeyPair{
+			PublicKey:           publicKey,
+			EncryptedPrivateKey: encryptedPrivateKey,
+		},
+	}
+
+	return v.client.RegisterUser(ctx, signupRequest)
 }
 
 func (v *webAPIVault) Sync(ctx context.Context) error {

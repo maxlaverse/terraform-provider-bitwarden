@@ -43,7 +43,7 @@ type Client interface {
 	LoginWithPassword(ctx context.Context, username, password string, kdfIterations int) (*TokenResponse, error)
 	PreLogin(context.Context, string) (*PreloginResponse, error)
 	Profile(context.Context) (*Profile, error)
-	RegisterUser(ctx context.Context, name, username, password string, kdfIterations int) error
+	RegisterUser(ctx context.Context, req SignupRequest) error
 	Sync(ctx context.Context) (*SyncResponse, error)
 }
 
@@ -288,9 +288,12 @@ func (c *client) LoginWithPassword(ctx context.Context, username, password strin
 	form.Add("grant_type", "password")
 	form.Add("username", username)
 	form.Add("password", hashedPassword)
-	form.Add("device_type", c.deviceType)
-	form.Add("device_identifier", c.deviceIdentifier)
-	form.Add("device_name", c.deviceName)
+
+	// NOTE: The following fields are not documented on the Bitwarden API, but seem to be required
+	//       in order to avoid a "No device information provided." error.
+	form.Add("deviceType", c.deviceType)
+	form.Add("deviceIdentifier", c.deviceIdentifier)
+	form.Add("deviceName", c.deviceName)
 
 	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
 	if err != nil {
@@ -323,9 +326,12 @@ func (c *client) LoginWithAPIKey(ctx context.Context, clientId, clientSecret str
 	form.Add("client_id", clientId)
 	form.Add("client_secret", clientSecret)
 	form.Add("grant_type", "client_credentials")
-	form.Add("device_type", c.deviceType)
-	form.Add("device_identifier", c.deviceIdentifier)
-	form.Add("device_name", c.deviceName)
+
+	// NOTE: The following fields are not documented on the Bitwarden API, but seem to be required
+	//       in order to avoid a "No device information provided." error.
+	form.Add("deviceType", c.deviceType)
+	form.Add("deviceIdentifier", c.deviceIdentifier)
+	form.Add("deviceName", c.deviceName)
 
 	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
 	if err != nil {
@@ -358,36 +364,7 @@ func (c *client) Profile(ctx context.Context) (*Profile, error) {
 	return doRequest[Profile](ctx, c.httpClient, httpReq)
 }
 
-func (c *client) RegisterUser(ctx context.Context, name, username, password string, kdfIterations int) error {
-	preloginKey, err := keybuilder.BuildPreloginKey(password, username, kdfIterations)
-	if err != nil {
-		return fmt.Errorf("error building prelogin key: %w", err)
-	}
-
-	hashedPassword := crypto.HashPassword(password, *preloginKey, false)
-
-	encryptionKey, encryptedEncryptionKey, err := keybuilder.GenerateEncryptionKey(*preloginKey)
-	if err != nil {
-		return fmt.Errorf("error generating encryption key: %w", err)
-	}
-
-	publicKey, encryptedPrivateKey, err := keybuilder.GenerateKeyPair(*encryptionKey)
-	if err != nil {
-		return fmt.Errorf("error generating key pair: %w", err)
-	}
-
-	signupRequest := SignupRequest{
-		Email:              username,
-		Name:               name,
-		MasterPasswordHash: hashedPassword,
-		Key:                encryptedEncryptionKey,
-		KdfIterations:      kdfIterations,
-		Keys: KeyPair{
-			PublicKey:           publicKey,
-			EncryptedPrivateKey: encryptedPrivateKey,
-		},
-	}
-
+func (c *client) RegisterUser(ctx context.Context, signupRequest SignupRequest) error {
 	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/accounts/register", c.serverURL), signupRequest)
 	if err != nil {
 		return fmt.Errorf("error preparing registration request: %w", err)
@@ -410,6 +387,7 @@ func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, r
 	var httpReq *retryablehttp.Request
 	var err error
 	contentType := ""
+	debugInfo := map[string]interface{}{"url": reqUrl, "method": reqMethod}
 	if reqBody != nil {
 		var bodyBytes []byte
 		if v, ok := reqBody.(url.Values); ok {
@@ -425,7 +403,7 @@ func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, r
 			}
 		}
 		httpReq, err = retryablehttp.NewRequestWithContext(ctx, reqMethod, reqUrl, bytes.NewBuffer(bodyBytes))
-		tflog.Trace(ctx, "Request to Bitwarden server", map[string]interface{}{"url": reqUrl, "method": reqMethod, "body": string(bodyBytes)})
+		debugInfo["body"] = string(bodyBytes)
 	} else {
 		httpReq, err = retryablehttp.NewRequestWithContext(ctx, reqMethod, reqUrl, nil)
 	}
@@ -433,10 +411,15 @@ func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, r
 	if err != nil {
 		return nil, fmt.Errorf("error preparing http request: %w", err)
 	}
-	httpReq.Header.Add("authorization", fmt.Sprintf("Bearer %s", c.sessionAccessToken))
+	if len(c.sessionAccessToken) > 0 {
+		httpReq.Header.Add("authorization", fmt.Sprintf("Bearer %s", c.sessionAccessToken))
+	}
 	if len(contentType) > 0 {
 		httpReq.Header.Add("Content-Type", contentType)
 	}
+
+	debugInfo["headers"] = httpReq.Header
+	tflog.Trace(ctx, "Request to Bitwarden server", debugInfo)
 
 	return httpReq, nil
 }

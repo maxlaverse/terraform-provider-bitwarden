@@ -15,10 +15,10 @@ func GenerateEncryptionKey(key symmetrickey.Key) (*symmetrickey.Key, string, err
 		return nil, "", fmt.Errorf("error generating random bytes: %w", err)
 	}
 
-	return buildEncryptionKey(key, encryptionKey)
+	return EncryptEncryptionKey(key, encryptionKey)
 }
 
-func buildEncryptionKey(key symmetrickey.Key, encryptionKey []byte) (newEncryptionKey *symmetrickey.Key, encryptedEncryptionKey string, err error) {
+func EncryptEncryptionKey(key symmetrickey.Key, encryptionKey []byte) (newEncryptionKey *symmetrickey.Key, encryptedEncryptionKey string, err error) {
 	if len(key.Key) == 32 {
 		stretchedKey := key.StretchKey()
 		encryptedEncryptionKey, err = crypto.EncryptAsString(encryptionKey, stretchedKey)
