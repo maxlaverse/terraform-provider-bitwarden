@@ -523,7 +523,10 @@ func (v *webAPIVault) RegisterUser(ctx context.Context, name, username, password
 		Name:               name,
 		MasterPasswordHash: hashedPassword,
 		Key:                encryptedEncryptionKey,
+		Kdf:                kdfConfig.KdfType,
 		KdfIterations:      kdfConfig.KdfIterations,
+		KdfMemory:          kdfConfig.KdfMemory,
+		KdfParallelism:     kdfConfig.KdfParallelism,
 		Keys: webapi.KeyPair{
 			PublicKey:           publicKey,
 			EncryptedPrivateKey: encryptedPrivateKey,

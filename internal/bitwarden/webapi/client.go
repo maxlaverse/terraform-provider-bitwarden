@@ -436,8 +436,8 @@ func doRequest[T any](ctx context.Context, httpClient *retryablehttp.Client, htt
 		fmt.Printf("Body to unmarshall: %s\n", string(body))
 		return nil, fmt.Errorf("error unmarshalling response from '%s': %w", httpReq.URL, err)
 	}
-	tflog.Trace(ctx, "Response from Bitwarden server", map[string]interface{}{"url": httpReq.URL.RequestURI(), "body": string(body)})
-
+	debugInfo := map[string]interface{}{"url": httpReq.URL.RequestURI(), "body": string(body)}
+	tflog.Trace(ctx, "Response from Bitwarden server", debugInfo)
 	return &res, nil
 }
 

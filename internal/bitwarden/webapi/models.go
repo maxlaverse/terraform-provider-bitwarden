@@ -8,13 +8,15 @@ import (
 )
 
 type SignupRequest struct {
-	Email              string  `json:"email"`
-	Name               string  `json:"name"`
-	MasterPasswordHash string  `json:"masterPasswordHash"`
-	Key                string  `json:"key"`
-	Kdf                int     `json:"kdf"`
-	KdfIterations      int     `json:"kdfIterations"`
-	Keys               KeyPair `json:"keys"`
+	Email              string         `json:"email"`
+	Name               string         `json:"name"`
+	MasterPasswordHash string         `json:"masterPasswordHash"`
+	Key                string         `json:"key"`
+	Kdf                models.KdfType `json:"kdf"`
+	KdfIterations      int            `json:"kdfIterations"`
+	KdfMemory          int            `json:"kdfMemory"`
+	KdfParallelism     int            `json:"kdfParallelism"`
+	Keys               KeyPair        `json:"keys"`
 }
 
 type KeyPair struct {
