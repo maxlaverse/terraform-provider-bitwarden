@@ -28,7 +28,7 @@ type WebAPIVault interface {
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
-	RegisterUser(ctx context.Context, name, username, password string, kdfIterations int) error
+	RegisterUser(ctx context.Context, name, username, password string, kdfConfig models.KdfConfiguration) error
 	Sync(ctx context.Context) error
 	Unlock(ctx context.Context, password string) error
 }
@@ -471,7 +471,12 @@ func (v *webAPIVault) LoginWithAPIKey(ctx context.Context, password, clientId, c
 		return fmt.Errorf("error login with api key: %w", err)
 	}
 
-	return v.continueLoginWithTokens(ctx, *tokenResp, password)
+	kdfConfig := models.KdfConfiguration{
+		KdfType:       tokenResp.Kdf,
+		KdfIterations: tokenResp.KdfIterations,
+	}
+
+	return v.continueLoginWithTokens(ctx, *tokenResp, password, kdfConfig)
 }
 
 func (v *webAPIVault) LoginWithPassword(ctx context.Context, username, password string) error {
@@ -480,16 +485,23 @@ func (v *webAPIVault) LoginWithPassword(ctx context.Context, username, password 
 		return fmt.Errorf("error prelogin with username/password: %w", err)
 	}
 
-	tokenResp, err := v.client.LoginWithPassword(ctx, username, password, preResp.KdfIterations)
+	kdfConfig := models.KdfConfiguration{
+		KdfType:        preResp.Kdf,
+		KdfIterations:  preResp.KdfIterations,
+		KdfMemory:      preResp.KdfMemory,
+		KdfParallelism: preResp.KdfParallelism,
+	}
+
+	tokenResp, err := v.client.LoginWithPassword(ctx, username, password, kdfConfig)
 	if err != nil {
 		return fmt.Errorf("error login with username/password: %w", err)
 	}
 
-	return v.continueLoginWithTokens(ctx, *tokenResp, password)
+	return v.continueLoginWithTokens(ctx, *tokenResp, password, kdfConfig)
 }
 
-func (v *webAPIVault) RegisterUser(ctx context.Context, name, username, password string, kdfIterations int) error {
-	preloginKey, err := keybuilder.BuildPreloginKey(password, username, kdfIterations)
+func (v *webAPIVault) RegisterUser(ctx context.Context, name, username, password string, kdfConfig models.KdfConfiguration) error {
+	preloginKey, err := keybuilder.BuildPreloginKey(password, username, kdfConfig)
 	if err != nil {
 		return fmt.Errorf("error building prelogin key: %w", err)
 	}
@@ -511,7 +523,10 @@ func (v *webAPIVault) RegisterUser(ctx context.Context, name, username, password
 		Name:               name,
 		MasterPasswordHash: hashedPassword,
 		Key:                encryptedEncryptionKey,
-		KdfIterations:      kdfIterations,
+		Kdf:                kdfConfig.KdfType,
+		KdfIterations:      kdfConfig.KdfIterations,
+		KdfMemory:          kdfConfig.KdfMemory,
+		KdfParallelism:     kdfConfig.KdfParallelism,
 		Keys: webapi.KeyPair{
 			PublicKey:           publicKey,
 			EncryptedPrivateKey: encryptedPrivateKey,
@@ -567,11 +582,10 @@ func (v *webAPIVault) Unlock(ctx context.Context, password string) error {
 	return nil
 }
 
-func (v *webAPIVault) continueLoginWithTokens(ctx context.Context, tokenResp webapi.TokenResponse, password string) error {
+func (v *webAPIVault) continueLoginWithTokens(ctx context.Context, tokenResp webapi.TokenResponse, password string, kdfConfig models.KdfConfiguration) error {
 	v.loginAccount = Account{
 		VaultFormat:            "API",
-		KdfIterations:          tokenResp.KdfIterations,
-		KdfType:                tokenResp.Kdf,
+		KdfConfig:              kdfConfig,
 		ProtectedRSAPrivateKey: tokenResp.PrivateKey,
 		ProtectedSymmetricKey:  tokenResp.Key,
 	}

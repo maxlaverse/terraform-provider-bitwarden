@@ -14,9 +14,9 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
 
-func NewWebAPIVaultWithMockedTransport(t *testing.T) webAPIVault {
+func NewMockedWebAPIVault(t *testing.T, client webapi.Client) webAPIVault {
 	vault := NewWebAPIVault("http://127.0.0.1:8081/").(*webAPIVault)
-	vault.client = mockedClient()
+	vault.client = client
 	return *vault
 }
 
@@ -524,9 +524,184 @@ func mockedClient() webapi.Client {
 	return webapi.NewClient("http://127.0.0.1:8081/", webapi.WithCustomClient(client), webapi.DisableRetries())
 }
 
+func mockedClientArgon2() webapi.Client {
+	client := http.Client{Transport: httpmock.DefaultTransport}
+	httpmock.RegisterResponder("POST", "http://127.0.0.1:8081/identity/accounts/prelogin",
+		httpmock.NewStringResponder(200, `{"kdf":1,"kdfIterations":3,"kdfMemory":64,"kdfParallelism":4}`))
+
+	// Regexp match (could use httpmock.RegisterRegexpResponder instead)
+	httpmock.RegisterResponder("POST", `http://127.0.0.1:8081/identity/connect/token`,
+		httpmock.NewStringResponder(200, `{"ForcePasswordReset":false,"Kdf":1,"KdfIterations":3,"KdfMemory":64,"KdfParallelism":4,"Key":"2.VBpAJrIHYLv60UTYy5e7sA==|WWsozKnKPVvBYttXtlAzpmZPoffwlY3+8Wup9SBdGcO8T4Ybj808DubDhICTPMz9RliDSJ1OuaivBC0rh/7EcWV1s9KuRth5J3XFWJqmtXU=|l1ly+Uek1j4k2xQNT8iJ++GdwMTWRaSBP5mFvgJ+CGU=","MasterPasswordPolicy":{"object":"masterPasswordPolicy"},"PrivateKey":"2.0Xc+uV+6YVa+Zkg74C/MJA==|xTbZGy2r8/kHcXXy23YDHWDTHjasUUoHiWJ84rGEhuPD27GTF8DrFL+lbERo3+OH7MXvseAFygKArvSumlCQnMhT/dswJMH8ZEMuxQUZ8I7kg/7eNqxRndxyC8alZh3VM4FC7TsuVBe6BF4pbPQYX4etFL8yOHLpIhwkKcG7+IfQHQHwOXpsSiGpADQlk5er990snhAXwGpgROqoveO9klpNJXuEzJKMFMdoo9FCaRsJ4bB3BE/Y+8Ph7ek8mGyoUUqNFp8Z/T+XN+9kvxDFnVFtYp1p+sU8LpCSvaq3dAImQt6X7vAgfjbWVkTxB0HlBdMkjpg8BAK7qpscT5oH83SZqdNPRi9kkT9Y30xl0QvvJzXLcjqOS6je+i3vB1r4O8X3ZIj+th4cfZOfHKpzDLbGyAezxiiWwQ4xt0USQ9rLv+BU5YNDKnibmsIooKHuh8wV0qht8vr2CEVavXOmmBi/6bGIWJMOs2K52be5LJkYL+653dsKXBN4uahQDMdfs9vPUA7OoIFR9BZvQiGMDstFYVgJUulOkj2J4nieuTAmurQe6nS6U4v1swI7DIzdo8ZCJcAQfWYWk8IBwh6gQxSuPMg7+O2dntbPFkMP2KhoisUucoXNIDXmxwYAMeP01KMNSgFc6hL6WnLzyVcRlSLy7OC9qwTD6ZH6XA4D/MO9MINTTzw4+/pZvwTeuXMqB0HkcjTpWzTUi405uV6qh8CxYOaNEl6kNAMiuVNASToqYb/EBC0uGOybOzcNZOCiXmuiPVOstiz65KP1d3Dfl9al48hpxnDxFyFub5NDx8xADA3SzOlI9xMCsC/mcY0/fRlwoTDFCLzfdtPIdSn5N8/YySY10e/TXftKGV7bLvzGAlOntwoiWaLJbyHAnEXNUVFxJu5XVaVccXcxIKete42S291dCu4yk35KsIQU0jBaPB/hGXLJvvySl9/kARl0zIXJH+Pk0hlk+/IRH9HNZrru93WTgW9KjEeT2vaZ6UqULkkspIfoUrFxQfSyAxycDaqa4EHt1QJBKyC9+aWEOXNwtxkJTnhtvlqRPOGUpdkAyC5ebfdX2URZnd/2TR/PTviWaDKe/g51UWr8QepgwbJjkBeuZMSPCNHkcLdmwEZERisbZ7H50hDQhhK+qfmMOvkVrRRXKT2ICbQzchm5rDasdtMed7vIf3beS0ESIR8kZ1WmteI9dvWmagnXRlfsUZW0y0KWe9Ma/ISOa6QPb0Cc7T8LUg2lpREQpRTt119RX9Xugd2uZ+UzbGpqn9u5JY2+vddwv+zFL0g/Vu9h3kd02v+WTXeV8wLDJYkoc6XeTBzC0uQtNJt4oN7hWcMBrkYmnXxslIjGw/nE7eBnG02XWTCeTjADqXtz2j4xMFmzJod+4j4f6MQZBII9Sz5A2FfSbadUuukEYcFvkqLnjG/sMzcBQMIDP6vmy7VRnETahlNi7Pt+gRLHuhGN1BbScolW7a0YnWlI1T0MtKb4DBsjX9GfotxkG+ORg/i45YnG6KPQ6+jgXU3Xtf0tgjTqHVgc7TOCm9R2b4G24RSQXx3WaMP1slbSYsf/YmXIqdg/dVaCFrJdA1v2bDFymuPbA0P4Ey8c4ylInXGgK4yxS7nVC4qbbVtK5bWT3SRaBWw=|0r9TcWfl93tZln8+ZGrPwZTHBbrLiSuVXvoI+cQeSr0=","ResetMasterPassword":false,"UserDecryptionOptions":{"HasMasterPassword":true,"Object":"userDecryptionOptions"},"access_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJuYmYiOjE3Mjc4MDcxNDUsImV4cCI6MTcyNzgxNDM0NSwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdHxsb2dpbiIsInN1YiI6ImM2NGExZjhkLTIyM2MtNDBmZC1hZGRlLWE5MGQ1OGRiYzI2YyIsInByZW1pdW0iOnRydWUsIm5hbWUiOiJ0ZXN0LTIwMjM0MSIsImVtYWlsIjoidGVzdC0yMDIzNDEtYXJnb24yQGxhdmVyc2UubmV0IiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInNzdGFtcCI6IjZjYmY3Y2QxLWQyYTItNGM1YS05N2Q3LTkxMDQyMjg1YzQ5ZCIsImRldmljZSI6IiIsInNjb3BlIjpbImFwaSIsIm9mZmxpbmVfYWNjZXNzIl0sImFtciI6WyJBcHBsaWNhdGlvbiJdfQ.hJ5-aPuZFAovG_2q7im8xxO2GCjeHit7Hwhm-FKQsu-j7OJdY8F_2jSy7azPcrVasImboR99WvpydMYzbQLB3AlQ3OSPcqUUHJDlFqeDUIXzpi-NMb3CBkxyr8Q_fBojiWmRiwPY89oiOE6dXTvDxTEUIWpKv0xnd-iBBPwwx6vzfsSKKAIB1tbZM1Cy4aWgcbN0lC-cU-NGcIFI1UEVod9KzcuN65DouXfjB2d5NkAI-pic9pno42MF8strosezgWrbnvTk8h7CzT5BPj7ZCaqYVr_RKVciHAs3QwrFyFe_OZ4RoN_YikDApdbwQyIsJsIK_jNTraJzNMfo6bbZfA","expires_in":7200,"refresh_token":"JPxgcZSlj4KKfgZuyf8PnLF9KVXADYOYstA5hBreXGPwm7667dSeGPFtBYRWOyXRJxQryUr6BLEjXHBS_NqdIw==","scope":"api offline_access","token_type":"Bearer","unofficialServer":true}`))
+
+	httpmock.RegisterResponder("GET", `http://127.0.0.1:8081/api/sync?excludeDomains=true`,
+		httpmock.NewStringResponder(200, `{
+  "ciphers": [
+    {
+      "attachments": null,
+      "card": null,
+      "collectionIds": [],
+      "creationDate": "2024-10-01T18:25:26.092790Z",
+      "data": {
+        "autofillOnPageLoad": null,
+        "fields": [],
+        "name": "2.zD1jZaHjvJ0ZsD4OpfRHXg==|eekdaveWXtPM+Bo285ljIQ==|4pvvvQZzyX5HRCaY+jUrecLR0AlXx4oVf994NNTyHyE=",
+        "notes": null,
+        "password": null,
+        "passwordHistory": [],
+        "passwordRevisionDate": null,
+        "totp": null,
+        "uri": null,
+        "uris": [],
+        "username": null
+      },
+      "deletedDate": null,
+      "edit": true,
+      "favorite": false,
+      "fields": [],
+      "folderId": null,
+      "id": "f01e68e9-3951-40ee-80ff-c4ff4517e159",
+      "identity": null,
+      "key": null,
+      "login": {
+        "autofillOnPageLoad": null,
+        "password": null,
+        "passwordRevisionDate": null,
+        "totp": null,
+        "uri": null,
+        "uris": [],
+        "username": null
+      },
+      "name": "2.zD1jZaHjvJ0ZsD4OpfRHXg==|eekdaveWXtPM+Bo285ljIQ==|4pvvvQZzyX5HRCaY+jUrecLR0AlXx4oVf994NNTyHyE=",
+      "notes": null,
+      "object": "cipherDetails",
+      "organizationId": null,
+      "organizationUseTotp": true,
+      "passwordHistory": [],
+      "reprompt": 0,
+      "revisionDate": "2024-10-01T18:25:26.093577Z",
+      "secureNote": null,
+      "type": 1,
+      "viewPassword": true
+    }
+  ],
+  "collections": [],
+  "domains": null,
+  "folders": [],
+  "object": "sync",
+  "policies": [],
+  "profile": {
+    "_status": 0,
+    "avatarColor": null,
+    "culture": "en-US",
+    "email": "test-202341-argon2@laverse.net",
+    "emailVerified": true,
+    "forcePasswordReset": false,
+    "id": "c64a1f8d-223c-40fd-adde-a90d58dbc26c",
+    "key": "2.VBpAJrIHYLv60UTYy5e7sA==|WWsozKnKPVvBYttXtlAzpmZPoffwlY3+8Wup9SBdGcO8T4Ybj808DubDhICTPMz9RliDSJ1OuaivBC0rh/7EcWV1s9KuRth5J3XFWJqmtXU=|l1ly+Uek1j4k2xQNT8iJ++GdwMTWRaSBP5mFvgJ+CGU=",
+    "masterPasswordHint": null,
+    "name": "test-202341",
+    "object": "profile",
+    "organizations": [],
+    "premium": true,
+    "premiumFromOrganization": false,
+    "privateKey": "2.0Xc+uV+6YVa+Zkg74C/MJA==|xTbZGy2r8/kHcXXy23YDHWDTHjasUUoHiWJ84rGEhuPD27GTF8DrFL+lbERo3+OH7MXvseAFygKArvSumlCQnMhT/dswJMH8ZEMuxQUZ8I7kg/7eNqxRndxyC8alZh3VM4FC7TsuVBe6BF4pbPQYX4etFL8yOHLpIhwkKcG7+IfQHQHwOXpsSiGpADQlk5er990snhAXwGpgROqoveO9klpNJXuEzJKMFMdoo9FCaRsJ4bB3BE/Y+8Ph7ek8mGyoUUqNFp8Z/T+XN+9kvxDFnVFtYp1p+sU8LpCSvaq3dAImQt6X7vAgfjbWVkTxB0HlBdMkjpg8BAK7qpscT5oH83SZqdNPRi9kkT9Y30xl0QvvJzXLcjqOS6je+i3vB1r4O8X3ZIj+th4cfZOfHKpzDLbGyAezxiiWwQ4xt0USQ9rLv+BU5YNDKnibmsIooKHuh8wV0qht8vr2CEVavXOmmBi/6bGIWJMOs2K52be5LJkYL+653dsKXBN4uahQDMdfs9vPUA7OoIFR9BZvQiGMDstFYVgJUulOkj2J4nieuTAmurQe6nS6U4v1swI7DIzdo8ZCJcAQfWYWk8IBwh6gQxSuPMg7+O2dntbPFkMP2KhoisUucoXNIDXmxwYAMeP01KMNSgFc6hL6WnLzyVcRlSLy7OC9qwTD6ZH6XA4D/MO9MINTTzw4+/pZvwTeuXMqB0HkcjTpWzTUi405uV6qh8CxYOaNEl6kNAMiuVNASToqYb/EBC0uGOybOzcNZOCiXmuiPVOstiz65KP1d3Dfl9al48hpxnDxFyFub5NDx8xADA3SzOlI9xMCsC/mcY0/fRlwoTDFCLzfdtPIdSn5N8/YySY10e/TXftKGV7bLvzGAlOntwoiWaLJbyHAnEXNUVFxJu5XVaVccXcxIKete42S291dCu4yk35KsIQU0jBaPB/hGXLJvvySl9/kARl0zIXJH+Pk0hlk+/IRH9HNZrru93WTgW9KjEeT2vaZ6UqULkkspIfoUrFxQfSyAxycDaqa4EHt1QJBKyC9+aWEOXNwtxkJTnhtvlqRPOGUpdkAyC5ebfdX2URZnd/2TR/PTviWaDKe/g51UWr8QepgwbJjkBeuZMSPCNHkcLdmwEZERisbZ7H50hDQhhK+qfmMOvkVrRRXKT2ICbQzchm5rDasdtMed7vIf3beS0ESIR8kZ1WmteI9dvWmagnXRlfsUZW0y0KWe9Ma/ISOa6QPb0Cc7T8LUg2lpREQpRTt119RX9Xugd2uZ+UzbGpqn9u5JY2+vddwv+zFL0g/Vu9h3kd02v+WTXeV8wLDJYkoc6XeTBzC0uQtNJt4oN7hWcMBrkYmnXxslIjGw/nE7eBnG02XWTCeTjADqXtz2j4xMFmzJod+4j4f6MQZBII9Sz5A2FfSbadUuukEYcFvkqLnjG/sMzcBQMIDP6vmy7VRnETahlNi7Pt+gRLHuhGN1BbScolW7a0YnWlI1T0MtKb4DBsjX9GfotxkG+ORg/i45YnG6KPQ6+jgXU3Xtf0tgjTqHVgc7TOCm9R2b4G24RSQXx3WaMP1slbSYsf/YmXIqdg/dVaCFrJdA1v2bDFymuPbA0P4Ey8c4ylInXGgK4yxS7nVC4qbbVtK5bWT3SRaBWw=|0r9TcWfl93tZln8+ZGrPwZTHBbrLiSuVXvoI+cQeSr0=",
+    "providerOrganizations": [],
+    "providers": [],
+    "securityStamp": "6cbf7cd1-d2a2-4c5a-97d7-91042285c49d",
+    "twoFactorEnabled": false,
+    "usesKeyConnector": false
+  },
+  "sends": [],
+  "unofficialServer": true
+}
+`))
+
+	httpmock.RegisterResponder("GET", `http://127.0.0.1:8081/api/accounts/profile`,
+		httpmock.NewStringResponder(200, `{"_status":0,"avatarColor":null,"culture":"en-US","email":"test-202341-argon2@laverse.net","emailVerified":true,"forcePasswordReset":false,"id":"c64a1f8d-223c-40fd-adde-a90d58dbc26c","key":"2.VBpAJrIHYLv60UTYy5e7sA==|WWsozKnKPVvBYttXtlAzpmZPoffwlY3+8Wup9SBdGcO8T4Ybj808DubDhICTPMz9RliDSJ1OuaivBC0rh/7EcWV1s9KuRth5J3XFWJqmtXU=|l1ly+Uek1j4k2xQNT8iJ++GdwMTWRaSBP5mFvgJ+CGU=","masterPasswordHint":null,"name":"test-202341","object":"profile","organizations":[],"premium":true,"premiumFromOrganization":false,"privateKey":"2.0Xc+uV+6YVa+Zkg74C/MJA==|xTbZGy2r8/kHcXXy23YDHWDTHjasUUoHiWJ84rGEhuPD27GTF8DrFL+lbERo3+OH7MXvseAFygKArvSumlCQnMhT/dswJMH8ZEMuxQUZ8I7kg/7eNqxRndxyC8alZh3VM4FC7TsuVBe6BF4pbPQYX4etFL8yOHLpIhwkKcG7+IfQHQHwOXpsSiGpADQlk5er990snhAXwGpgROqoveO9klpNJXuEzJKMFMdoo9FCaRsJ4bB3BE/Y+8Ph7ek8mGyoUUqNFp8Z/T+XN+9kvxDFnVFtYp1p+sU8LpCSvaq3dAImQt6X7vAgfjbWVkTxB0HlBdMkjpg8BAK7qpscT5oH83SZqdNPRi9kkT9Y30xl0QvvJzXLcjqOS6je+i3vB1r4O8X3ZIj+th4cfZOfHKpzDLbGyAezxiiWwQ4xt0USQ9rLv+BU5YNDKnibmsIooKHuh8wV0qht8vr2CEVavXOmmBi/6bGIWJMOs2K52be5LJkYL+653dsKXBN4uahQDMdfs9vPUA7OoIFR9BZvQiGMDstFYVgJUulOkj2J4nieuTAmurQe6nS6U4v1swI7DIzdo8ZCJcAQfWYWk8IBwh6gQxSuPMg7+O2dntbPFkMP2KhoisUucoXNIDXmxwYAMeP01KMNSgFc6hL6WnLzyVcRlSLy7OC9qwTD6ZH6XA4D/MO9MINTTzw4+/pZvwTeuXMqB0HkcjTpWzTUi405uV6qh8CxYOaNEl6kNAMiuVNASToqYb/EBC0uGOybOzcNZOCiXmuiPVOstiz65KP1d3Dfl9al48hpxnDxFyFub5NDx8xADA3SzOlI9xMCsC/mcY0/fRlwoTDFCLzfdtPIdSn5N8/YySY10e/TXftKGV7bLvzGAlOntwoiWaLJbyHAnEXNUVFxJu5XVaVccXcxIKete42S291dCu4yk35KsIQU0jBaPB/hGXLJvvySl9/kARl0zIXJH+Pk0hlk+/IRH9HNZrru93WTgW9KjEeT2vaZ6UqULkkspIfoUrFxQfSyAxycDaqa4EHt1QJBKyC9+aWEOXNwtxkJTnhtvlqRPOGUpdkAyC5ebfdX2URZnd/2TR/PTviWaDKe/g51UWr8QepgwbJjkBeuZMSPCNHkcLdmwEZERisbZ7H50hDQhhK+qfmMOvkVrRRXKT2ICbQzchm5rDasdtMed7vIf3beS0ESIR8kZ1WmteI9dvWmagnXRlfsUZW0y0KWe9Ma/ISOa6QPb0Cc7T8LUg2lpREQpRTt119RX9Xugd2uZ+UzbGpqn9u5JY2+vddwv+zFL0g/Vu9h3kd02v+WTXeV8wLDJYkoc6XeTBzC0uQtNJt4oN7hWcMBrkYmnXxslIjGw/nE7eBnG02XWTCeTjADqXtz2j4xMFmzJod+4j4f6MQZBII9Sz5A2FfSbadUuukEYcFvkqLnjG/sMzcBQMIDP6vmy7VRnETahlNi7Pt+gRLHuhGN1BbScolW7a0YnWlI1T0MtKb4DBsjX9GfotxkG+ORg/i45YnG6KPQ6+jgXU3Xtf0tgjTqHVgc7TOCm9R2b4G24RSQXx3WaMP1slbSYsf/YmXIqdg/dVaCFrJdA1v2bDFymuPbA0P4Ey8c4ylInXGgK4yxS7nVC4qbbVtK5bWT3SRaBWw=|0r9TcWfl93tZln8+ZGrPwZTHBbrLiSuVXvoI+cQeSr0=","providerOrganizations":[],"providers":[],"securityStamp":"6cbf7cd1-d2a2-4c5a-97d7-91042285c49d","twoFactorEnabled":false,"usesKeyConnector":false}`))
+
+	// We're changing the revisionDate on purpose in the response to mimick Bitwarden official server's behavior
+	httpmock.RegisterResponder("POST", `http://127.0.0.1:8081/api/ciphers`,
+		httpmock.NewStringResponder(200, `
+		{
+      "attachments": null,
+      "card": null,
+      "collectionIds": [],
+      "creationDate": "2024-09-22T11:13:40.346903Z",
+      "data": {
+        "autofillOnPageLoad": null,
+        "fields": [
+          {
+            "linkedId": null,
+            "name": "2.svtF3aK9R1MLHt2GwH7Ykw==|PqVDa02T0Vzx6ogTNz1Xyg==|g9/Gd5OOLkVtyVAk9vkRCY2reWTZjdY1D3XsVpBfQA4=",
+            "type": 0,
+            "value": "2.K49DvcymvaQ/+V/3soCb1Q==|r+b2dz0YqFeA8BrHii5a0DIjkwxdwlY+aEEH2d2NdC0=|KEJAjqImC0Jit9oaFN2rSZHyetxuD7jEjMt07HPFLvU="
+          }
+        ],
+        "name": "2.LjR8NxRtCB1noDILxNKmPQ==|s4e2AO4I3HqmPRRsbsYl0XYSuWu7+sn2K3+jNiFjsW0=|3NQW64/3RmPxe3hhUGeMTrSy9Ruh5hYRlJxIhhWhhSI=",
+        "notes": "2.ke3IFCPe50UCM2XdJDS/VQ==|ksO+dyEuRBgrpAelfhxNhw==|JrbMU58V5QyiTpdJXyWB1g2l8jPcqyeWDMqjOnaa9UA=",
+        "password": null,
+        "passwordHistory": [],
+        "passwordRevisionDate": null,
+        "totp": "2.mScxVU7uCx3fiPXYlgzWVA==|yxqIjknG71Qdwxq1wyVufWyB1Hb6qWowPgGoZNV2d4s=|uY7hrn7Eow81A76/n4VUrJxSRtC9VDnUdaesO6y0ivY=",
+        "uri": "2.7ihoxwsJH4HBkTzjFBwFIA==|5EkQHm4IRExHH/LAU6D/jw==|Hs6YgBIFuTQNnH9M3ejgUAVzsGjxAyaVPi1pl1NU9wg=",
+        "uris": [
+          {
+            "match": null,
+            "uri": "2.7ihoxwsJH4HBkTzjFBwFIA==|5EkQHm4IRExHH/LAU6D/jw==|Hs6YgBIFuTQNnH9M3ejgUAVzsGjxAyaVPi1pl1NU9wg=",
+            "uriChecksum": "2.WfCD+h+rQ49rJDiTM7ycjw==|QgYnnlKzeymjRXmW15SC7bnWWvWaU1iki7rABdi0+RjPgRVGLluT/lQCKXkr5fXH|vaMZaBCKZySaycxVXjpDatKjrN6mBaq2ffRsygLTGzA="
+          }
+        ],
+        "username": "2.9hmypXsnAjVxJ2e5kZQLKA==|8Jif+MQgdTuAlaCn7i/xig==|xy7zJh4qXutESyC02aKSYb/79EmfbGsYlxsYfKqneLA="
+      },
+      "deletedDate": null,
+      "edit": true,
+      "favorite": false,
+      "fields": [
+        {
+          "linkedId": null,
+          "name": "2.svtF3aK9R1MLHt2GwH7Ykw==|PqVDa02T0Vzx6ogTNz1Xyg==|g9/Gd5OOLkVtyVAk9vkRCY2reWTZjdY1D3XsVpBfQA4=",
+          "type": 0,
+          "value": "2.K49DvcymvaQ/+V/3soCb1Q==|r+b2dz0YqFeA8BrHii5a0DIjkwxdwlY+aEEH2d2NdC0=|KEJAjqImC0Jit9oaFN2rSZHyetxuD7jEjMt07HPFLvU="
+        }
+      ],
+      "folderId": null,
+      "id": "24d1c150-5dfd-4008-964c-01317d1f6b23",
+      "identity": null,
+      "key": null,
+      "login": {
+        "autofillOnPageLoad": null,
+        "password": null,
+        "passwordRevisionDate": null,
+        "totp": "2.mScxVU7uCx3fiPXYlgzWVA==|yxqIjknG71Qdwxq1wyVufWyB1Hb6qWowPgGoZNV2d4s=|uY7hrn7Eow81A76/n4VUrJxSRtC9VDnUdaesO6y0ivY=",
+        "uri": "2.7ihoxwsJH4HBkTzjFBwFIA==|5EkQHm4IRExHH/LAU6D/jw==|Hs6YgBIFuTQNnH9M3ejgUAVzsGjxAyaVPi1pl1NU9wg=",
+        "uris": [
+          {
+            "match": null,
+            "uri": "2.7ihoxwsJH4HBkTzjFBwFIA==|5EkQHm4IRExHH/LAU6D/jw==|Hs6YgBIFuTQNnH9M3ejgUAVzsGjxAyaVPi1pl1NU9wg=",
+            "uriChecksum": "2.WfCD+h+rQ49rJDiTM7ycjw==|QgYnnlKzeymjRXmW15SC7bnWWvWaU1iki7rABdi0+RjPgRVGLluT/lQCKXkr5fXH|vaMZaBCKZySaycxVXjpDatKjrN6mBaq2ffRsygLTGzA="
+          }
+        ],
+        "username": "2.9hmypXsnAjVxJ2e5kZQLKA==|8Jif+MQgdTuAlaCn7i/xig==|xy7zJh4qXutESyC02aKSYb/79EmfbGsYlxsYfKqneLA="
+      },
+      "name": "2.LjR8NxRtCB1noDILxNKmPQ==|s4e2AO4I3HqmPRRsbsYl0XYSuWu7+sn2K3+jNiFjsW0=|3NQW64/3RmPxe3hhUGeMTrSy9Ruh5hYRlJxIhhWhhSI=",
+      "notes": "2.ke3IFCPe50UCM2XdJDS/VQ==|ksO+dyEuRBgrpAelfhxNhw==|JrbMU58V5QyiTpdJXyWB1g2l8jPcqyeWDMqjOnaa9UA=",
+      "object": "cipherDetails",
+      "organizationId": null,
+      "organizationUseTotp": true,
+      "passwordHistory": [],
+      "reprompt": 0,
+      "revisionDate": "2024-09-22T11:13:40.345356Z",
+      "secureNote": null,
+      "type": 1,
+      "viewPassword": true
+    }`))
+
+	return webapi.NewClient("http://127.0.0.1:8081/", webapi.WithCustomClient(client), webapi.DisableRetries())
+}
+
 func createTestAccount(t *testing.T) {
 	ctx := context.Background()
-	preloginKey, err := keybuilder.BuildPreloginKey(testPassword, testAccount.Email, testAccount.KdfIterations)
+	preloginKey, err := keybuilder.BuildPreloginKey(testPassword, testAccount.Email, testAccount.KdfConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -563,7 +738,7 @@ func createTestAccount(t *testing.T) {
 		Name:               testAccount.Email,
 		MasterPasswordHash: hashedPassword,
 		Key:                encryptedEncryptionKey,
-		KdfIterations:      testAccount.KdfIterations,
+		KdfIterations:      testAccount.KdfConfig.KdfIterations,
 		Keys: webapi.KeyPair{
 			PublicKey:           publicKey,
 			EncryptedPrivateKey: encryptedPrivateKey,

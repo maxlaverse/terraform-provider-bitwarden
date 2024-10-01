@@ -41,7 +41,7 @@ type Client interface {
 	GetContentFromURL(ctx context.Context, url string) ([]byte, error)
 	GetObjectAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
 	LoginWithAPIKey(ctx context.Context, clientId, clientSecret string) (*TokenResponse, error)
-	LoginWithPassword(ctx context.Context, username, password string, kdfIterations int) (*TokenResponse, error)
+	LoginWithPassword(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*TokenResponse, error)
 	PreLogin(context.Context, string) (*PreloginResponse, error)
 	Profile(context.Context) (*Profile, error)
 	RegisterUser(ctx context.Context, req SignupRequest) error
@@ -256,8 +256,8 @@ func (c *client) GetCollections(ctx context.Context, orgID string) ([]Collection
 	return resp.Data, nil
 }
 
-func (c *client) LoginWithPassword(ctx context.Context, username, password string, kdfIterations int) (*TokenResponse, error) {
-	preloginKey, err := keybuilder.BuildPreloginKey(password, username, kdfIterations)
+func (c *client) LoginWithPassword(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*TokenResponse, error) {
+	preloginKey, err := keybuilder.BuildPreloginKey(password, username, kdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error building prelogin key: %w", err)
 	}
@@ -436,8 +436,8 @@ func doRequest[T any](ctx context.Context, httpClient *retryablehttp.Client, htt
 		fmt.Printf("Body to unmarshall: %s\n", string(body))
 		return nil, fmt.Errorf("error unmarshalling response from '%s': %w", httpReq.URL, err)
 	}
-	tflog.Trace(ctx, "Response from Bitwarden server", map[string]interface{}{"url": httpReq.URL.RequestURI(), "body": string(body)})
-
+	debugInfo := map[string]interface{}{"url": httpReq.URL.RequestURI(), "body": string(body)}
+	tflog.Trace(ctx, "Response from Bitwarden server", debugInfo)
 	return &res, nil
 }
 
