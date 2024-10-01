@@ -78,8 +78,13 @@ func NewClient(serverURL string, opts ...Options) Client {
 		o(c)
 	}
 	c.httpClient.Logger = nil
-
+	c.httpClient.CheckRetry = CustomRetryPolicy
 	return c
+}
+
+func CustomRetryPolicy(ctx context.Context, resp *http.Response, err error) (bool, error) {
+	tflog.Trace(ctx, "retry_handler", map[string]interface{}{"status_code": resp.StatusCode, "status_message": resp.Status, "error": err})
+	return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
 }
 
 type client struct {
