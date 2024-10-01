@@ -123,10 +123,6 @@ func (v *baseVault) storeObject(ctx context.Context, obj models.Object) {
 }
 
 func decryptAccountSecrets(account Account, password string) (*AccountSecrets, error) {
-	if account.KdfConfig.KdfType != models.KdfTypePBKDF2_SHA256 && account.KdfConfig.KdfType != models.KdfTypeArgon2 {
-		return nil, fmt.Errorf("unsupported kdf type '%d'", account.KdfConfig.KdfType)
-	}
-
 	masterKey, err := keybuilder.BuildPreloginKey(password, account.Email, account.KdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error building prelogin key: %w", err)
