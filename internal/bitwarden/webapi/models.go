@@ -71,6 +71,8 @@ type PreloginResponse struct {
 type TokenResponse struct {
 	Kdf                 models.KdfType `json:"Kdf"`
 	KdfIterations       int            `json:"KdfIterations"`
+	KdfMemory           int            `json:"kdfMemory"`
+	KdfParallelism      int            `json:"kdfParallelism"`
 	Key                 string         `json:"Key"`
 	PrivateKey          string         `json:"PrivateKey"`
 	ResetMasterPassword bool           `json:"ResetMasterPassword"`

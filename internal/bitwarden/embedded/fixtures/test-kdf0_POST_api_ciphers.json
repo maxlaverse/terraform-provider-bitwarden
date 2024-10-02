@@ -1,0 +1,37 @@
+{
+    "attachments": null,
+    "card": null,
+    "collectionIds": [],
+    "creationDate": "2024-10-02T07:23:54.495716Z",
+    "data": {
+        "fields": [],
+        "name": "2.1r73Ar0+UEKhQ6/HJlgy6w==|JJ9AyivpozzvKk5fdyHirGbsDQI1kwlVr6xZoAZt6dg=|5Xy/XeqN6YdLKC4dVCECydxJbBTonMq9tq6e0/Y0bGw=",
+        "notes": null,
+        "passwordHistory": [],
+        "uri": null,
+        "username": "2.2slHKGwhT9pYZNuZJZELtQ==|2S8vFbqTdE2O5jghb5fIPg==|wUYsi6TFyOdFL1nJG16nO3FMRH4QAtVyNb1vzchcIg8="
+    },
+    "deletedDate": null,
+    "edit": true,
+    "favorite": false,
+    "fields": [],
+    "folderId": null,
+    "id": "f1d8b375-8b6a-4bb5-9659-520c2864c2e0",
+    "identity": null,
+    "key": "2.H87CevHa/yLkUvgJfpha5g==|IrEdZ2aHOG0P/xCvymr++yzWsMwupJ7Rq0mN9kqTYTc2bsBlpi7/bqva1RhhBRoMuwFnMTx/cX4bMWHZKJbpjV9CENI475Q3JgJScjY/ceQ=|jMosP2JYP9PqRhEODetF2ZNuGkEgLuIR+6jy1ILosk0=",
+    "login": {
+        "uri": null,
+        "username": "2.2slHKGwhT9pYZNuZJZELtQ==|2S8vFbqTdE2O5jghb5fIPg==|wUYsi6TFyOdFL1nJG16nO3FMRH4QAtVyNb1vzchcIg8="
+    },
+    "name": "2.1r73Ar0+UEKhQ6/HJlgy6w==|JJ9AyivpozzvKk5fdyHirGbsDQI1kwlVr6xZoAZt6dg=|5Xy/XeqN6YdLKC4dVCECydxJbBTonMq9tq6e0/Y0bGw=",
+    "notes": null,
+    "object": "cipherDetails",
+    "organizationId": null,
+    "organizationUseTotp": true,
+    "passwordHistory": [],
+    "reprompt": 0,
+    "revisionDate": "2024-10-02T07:23:54.495998Z",
+    "secureNote": null,
+    "type": 1,
+    "viewPassword": true
+}

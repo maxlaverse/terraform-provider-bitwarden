@@ -471,12 +471,7 @@ func (v *webAPIVault) LoginWithAPIKey(ctx context.Context, password, clientId, c
 		return fmt.Errorf("error login with api key: %w", err)
 	}
 
-	kdfConfig := models.KdfConfiguration{
-		KdfType:       tokenResp.Kdf,
-		KdfIterations: tokenResp.KdfIterations,
-	}
-
-	return v.continueLoginWithTokens(ctx, *tokenResp, password, kdfConfig)
+	return v.continueLoginWithTokens(ctx, *tokenResp, password)
 }
 
 func (v *webAPIVault) LoginWithPassword(ctx context.Context, username, password string) error {
@@ -497,7 +492,7 @@ func (v *webAPIVault) LoginWithPassword(ctx context.Context, username, password 
 		return fmt.Errorf("error login with username/password: %w", err)
 	}
 
-	return v.continueLoginWithTokens(ctx, *tokenResp, password, kdfConfig)
+	return v.continueLoginWithTokens(ctx, *tokenResp, password)
 }
 
 func (v *webAPIVault) RegisterUser(ctx context.Context, name, username, password string, kdfConfig models.KdfConfiguration) error {
@@ -582,10 +577,15 @@ func (v *webAPIVault) Unlock(ctx context.Context, password string) error {
 	return nil
 }
 
-func (v *webAPIVault) continueLoginWithTokens(ctx context.Context, tokenResp webapi.TokenResponse, password string, kdfConfig models.KdfConfiguration) error {
+func (v *webAPIVault) continueLoginWithTokens(ctx context.Context, tokenResp webapi.TokenResponse, password string) error {
 	v.loginAccount = Account{
-		VaultFormat:            "API",
-		KdfConfig:              kdfConfig,
+		VaultFormat: "API",
+		KdfConfig: models.KdfConfiguration{
+			KdfType:        tokenResp.Kdf,
+			KdfIterations:  tokenResp.KdfIterations,
+			KdfMemory:      tokenResp.KdfMemory,
+			KdfParallelism: tokenResp.KdfParallelism,
+		},
 		ProtectedRSAPrivateKey: tokenResp.PrivateKey,
 		ProtectedSymmetricKey:  tokenResp.Key,
 	}

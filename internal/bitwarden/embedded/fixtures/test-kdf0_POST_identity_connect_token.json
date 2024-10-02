@@ -1,0 +1,23 @@
+{
+    "ForcePasswordReset": false,
+    "Kdf": 0,
+    "KdfIterations": 600000,
+    "KdfMemory": 0,
+    "KdfParallelism": 0,
+    "Key": "2.fl6CmmK/o/THYg8Y3Z5fJw==|sEjr1DMSe+Hgg7DRU8Z2wqZiZWIySrY63E8ISwQ7Q9vpxUPDQPifTW9oW0ZjcnKE4Xl4fxP89LO5xce+y+yR1yAQpnVcm2wMBx0OXM1xaAU=|9wNu2sNXt7ECSXCYsDL1ctWw02GGT1y7Pkx2NxIyD0A=",
+    "MasterPasswordPolicy": {
+        "object": "masterPasswordPolicy"
+    },
+    "PrivateKey": "2.11j1IvphccY0UkZov7ZbmQ==|4J34a16NM+krEXyDUkHVUNL2sSA7dph4EBCLWoDkmDoljqMZh5IxA7M51yZTNB6/uqGgJZJX0uU+B4RSn2s2JoFG/VizMmgSIJkTIr6WuA7taEzyIFRi7sY980W02pnLeb8fGV8EXrZk1Bj0UzAFukNGoeS2CHWbm0bZKRvDxl5Vw40V3Lt6GzHTb6X+4k4Ovg0UKgm2mqMWzxxjmCfy+G1R0vlsAtqg14n2ax5f3Jn4ajGDvT2BQia9EFYFkie/SfqgsYbtvou4DvyCTEWh0j9Cre1QIJQ9AZ4AHAzGwIKFhpN7sWjsfw6yTGmvxAfflCMFzCdleBBiuCefaAKNe5Uf1QASC9TzIiHknl2+sK9lOFZ+XZJ41HCU2sMvNBu1EHuBPNRIHodCEHdXHyRqBaC+vgWO6RcTWU4K5ZctBKmElAYst7FFCuzM+liUcGp3I1a7wxOJTPraxeFw8z69rYFiNMOng/HkV/G/VUQXzWalC5gtjaR35dMp35Mf1lMlGnWhy/qdLr0NVdl69qUDKt+kCG9+kiXO7Eq5PTbV+tj4AxBzxE1DroAh0jTPFLb7p1205+OQqqrCEq6tzpGHKTFLoyHZCVoxdQvxgFNX6+fNi3+MfbDfLle7msQAwOuaUl6rxcb2JjdgRQQUd4/GQbvKeLjFRIr7OtcVHWm3251jqRLBgFJcQ235SFgdjLnKATqN4BRe0WLyYOMuMQEmfQXaebjzMo7L2JMJeOar9QutuV+Acle7kJZZU4N1XPiUmborUksAcrmLGXvQITn1QLmadou0jX/oov+lkrKDIFTJC5MIutVBNmExS6FqW978viF1ZNgRQxG5OULHoT5tgfyjrl2u74VFf0ttbLC/JSsi1k8me2LA2vi2Sx7DNOzd6fLx0f8+mYmz2VTRw6fnoFh99d8HktPUNyKcGNZyZpsfkkhFSFV/U88tZ9gROWayLbRXS6g801Mi0tBg0RJp/Flo9ZX9Y3qKVWLCDZT6t3l1NR2npkGmi16yqslXSs9hadIvd6lxyYqyW6cskuJjsacHPOCyvz1xZFH6txtzmb46UrKUU7Cjo/09Kmtb740rXzhH/0nPuvJUjlk0UN77LqzvnvVWAe2IJVEjsbhTspLw3Z1fmCQxMKvc3yPA36/KP2uk/wOlHmBnuX/eebQmI22PFOzskl1d0ScNItJsw5D6fkEhybxEY3oPWYG5y+Oitqj1dQy/TNKXeJHMP+MC1PxzvaE3jq/+cb0IwVBnMVblbaHCJM6JAllV/p3Z6/Ho3Ps4hDHRflKZjP2HyB5wvvTtYhX5XpDoA8s9e6TpDXYnoE+XLN4Thzu30GL3WBeI7koYuNEpRhD5++oT2CElpEqo0v/TFKGSmnV+qohWTL8I4WnHSZeKDLC5alqIMYgRkN6qUlVJLzILOFzeJcL9zeXsAeHemd3VZWe0OYiJRxVwBCYGHk6W7WA4pZ+Wq/C0JHaxNJhr9gx0kyFlMPBkwN/LEyUP+PxsqIuW+09f70qZdGE1r9bNjUSKmb53I6nqxwQhIwvpZZDGAOZjaxrfC8PE9rOOTkM3v6zsSWgjl4EJMPwJubHJb63w5hvW2DwS4h3t7lduTab9ykKInvfBsaWxLuBhJuX+fesGTM0KGXs=|BXz0QzgtArYQXICHbYvGqOeFVi9YGZRP0MASNlVwzzY=",
+    "ResetMasterPassword": false,
+    "UserDecryptionOptions": {
+        "HasMasterPassword": true,
+        "Object": "userDecryptionOptions"
+    },
+    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJuYmYiOjE3Mjc4NTM4MzQsImV4cCI6MTcyNzg2MTAzNCwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdHxsb2dpbiIsInN1YiI6ImFhZjE1YmQxLTRmNTEtNGJhMC1hZGU4LTlkYzJlYzBmZDJjMyIsInByZW1pdW0iOnRydWUsIm5hbWUiOiJ0ZXN0LWtkZjBAbGF2ZXJzZS5uZXQiLCJlbWFpbCI6InRlc3Qta2RmMEBsYXZlcnNlLm5ldCIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJzc3RhbXAiOiJhYTQ4NTQ2My1jMjU4LTQwYjUtYjJjZi1iZjIyYmY3MDUyNTgiLCJkZXZpY2UiOiIiLCJzY29wZSI6WyJhcGkiLCJvZmZsaW5lX2FjY2VzcyJdLCJhbXIiOlsiQXBwbGljYXRpb24iXX0.HBnh7fQehhK5cVslhxLLckkYhDtY4IFXTTqLMMcB5HzyQtFfFgyllxisQsqnLikGF7W4K-UN_L26h_pWKRzWdywxbNRKAs7Jc6NYeesSXJpsBrC1zqXKv5rWSyM59oqM3fp_owRqftv9ujvKqEn_c-UteVvtmL_ieS66H2tPp8zBT08FK23ra1EhvW9O6UA7Qx8YxrHCnvOIVJ16paiPSjYWBR_p7fz0sBzoz2ypGGQ6UpJJpW60UK4AAT7-DxJe68eRIwHpbLd7ZjR3x53Y9bBI7toZ3SemXP7guz6fWl_xqj7UteB3C1a9ISI7TFCkJUP7BVRNBJbYdRHEzFZxUg",
+    "expires_in": 7200,
+    "refresh_token": "q89oDzmqCjdl4cxLj9RCKjCA8oQtjxZc2vebEWIApputzfVSYjpWJ9Tq_yVNhK0Rd7RJKksg4ycfkMqyVgG2xw==",
+    "scope": "api offline_access",
+    "token_type": "Bearer",
+    "unofficialServer": true
+}
