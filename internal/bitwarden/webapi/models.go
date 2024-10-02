@@ -130,6 +130,12 @@ type SyncResponse struct {
 	Profile     Profile           `json:"profile"`
 }
 
+type ApiKey struct {
+	ApiKey       string            `json:"apiKey"`
+	Object       models.ObjectType `json:"object"`
+	RevisionDate *time.Time        `json:"revisionDate"`
+}
+
 type Folder struct {
 	Id           string            `json:"id"`
 	Name         string            `json:"name"`

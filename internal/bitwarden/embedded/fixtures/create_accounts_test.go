@@ -101,6 +101,16 @@ func createTestAccount(t *testing.T, accountEmail string, kdfConfig models.KdfCo
 		t.Fatal(err)
 	}
 
+	apiKey, err := vault.GetAPIKey(ctx, accountEmail, TestPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = vault.LoginWithAPIKey(ctx, TestPassword, apiKey.ClientID, apiKey.ClientSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_, err = vault.CreateObject(ctx, models.Object{
 		Object: models.ObjectTypeItem,
 		Type:   models.ItemTypeLogin,

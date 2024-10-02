@@ -37,6 +37,7 @@ type Client interface {
 	EditFolder(ctx context.Context, obj Folder) (*Folder, error)
 	EditObject(context.Context, models.Object) (*models.Object, error)
 	EditOrgCollection(ctx context.Context, orgId, objId string, obj OrganizationCreationRequest) (*Collection, error)
+	GetAPIKey(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*ApiKey, error)
 	GetCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error)
 	GetContentFromURL(ctx context.Context, url string) ([]byte, error)
 	GetObjectAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
@@ -241,6 +242,26 @@ func (c *client) GetContentFromURL(ctx context.Context, url string) ([]byte, err
 
 	resp, err := doRequest[[]byte](ctx, c.httpClient, httpReq)
 	return []byte(*resp), err
+}
+
+func (c *client) GetAPIKey(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*ApiKey, error) {
+	type ApiKeyRequest struct {
+		MasterPasswordHash string `json:"masterPasswordHash"`
+	}
+
+	preloginKey, err := keybuilder.BuildPreloginKey(password, username, kdfConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error building prelogin key: %w", err)
+	}
+
+	hashedPassword := crypto.HashPassword(password, *preloginKey, false)
+	obj := ApiKeyRequest{MasterPasswordHash: hashedPassword}
+	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/accounts/api-key", c.serverURL), obj)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing api key retrieval request: %w", err)
+	}
+
+	return doRequest[ApiKey](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) GetCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error) {

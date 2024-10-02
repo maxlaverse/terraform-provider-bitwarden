@@ -25,6 +25,7 @@ type WebAPIVault interface {
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteObject(ctx context.Context, obj models.Object) error
 	EditObject(ctx context.Context, obj models.Object) (*models.Object, error)
+	GetAPIKey(ctx context.Context, username, password string) (*models.ApiKey, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
@@ -414,6 +415,20 @@ func (v *webAPIVault) EditObject(ctx context.Context, obj models.Object) (*model
 		return remoteObj, compareObjects(*resObj, *remoteObj)
 	}
 	return resObj, nil
+}
+
+func (v *webAPIVault) GetAPIKey(ctx context.Context, username, password string) (*models.ApiKey, error) {
+	resp, err := v.client.GetAPIKey(ctx, username, password, v.loginAccount.KdfConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error getting API key: %w", err)
+	}
+
+	apiKey := &models.ApiKey{
+		ClientID:     fmt.Sprintf("user.%s", v.loginAccount.AccountUUID),
+		ClientSecret: resp.ApiKey,
+	}
+
+	return apiKey, nil
 }
 
 func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error) {
