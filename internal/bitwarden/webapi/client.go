@@ -52,7 +52,9 @@ type Client interface {
 func NewClient(serverURL string, opts ...Options) Client {
 	c := &client{
 		deviceName: deviceName,
-		deviceType: "10",
+
+		// Official Device List: https://github.com/bitwarden/server/blob/main/src/Core/Enums/DeviceType.cs
+		deviceType: "21", // SDK
 		serverURL:  strings.TrimSuffix(serverURL, "/"),
 		httpClient: retryablehttp.NewClient(),
 	}
