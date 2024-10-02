@@ -58,6 +58,7 @@ const (
 	ObjectTypeProfileOrganization ObjectType = "profileOrganization"   // organization under profile
 	ObjectCipherDetails           ObjectType = "cipherDetails"         // when creating attachment data
 	ObjectAttachmentFileUpload    ObjectType = "attachment-fileUpload" // when creating attachment data
+	ObjectApiKey                  ObjectType = "api-key"
 )
 
 const (
@@ -93,6 +94,11 @@ type LoginURI struct {
 
 type SecureNote struct {
 	Type int `json:"type,omitempty"`
+}
+
+type ApiKey struct {
+	ClientID     string
+	ClientSecret string
 }
 
 type Object struct {

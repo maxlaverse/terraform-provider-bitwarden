@@ -71,6 +71,8 @@ type PreloginResponse struct {
 type TokenResponse struct {
 	Kdf                 models.KdfType `json:"Kdf"`
 	KdfIterations       int            `json:"KdfIterations"`
+	KdfMemory           int            `json:"kdfMemory"`
+	KdfParallelism      int            `json:"kdfParallelism"`
 	Key                 string         `json:"Key"`
 	PrivateKey          string         `json:"PrivateKey"`
 	ResetMasterPassword bool           `json:"ResetMasterPassword"`
@@ -126,6 +128,12 @@ type SyncResponse struct {
 	Folders     []Folder          `json:"folders"`
 	Object      models.ObjectType `json:"object"`
 	Profile     Profile           `json:"profile"`
+}
+
+type ApiKey struct {
+	ApiKey       string            `json:"apiKey"`
+	Object       models.ObjectType `json:"object"`
+	RevisionDate *time.Time        `json:"revisionDate"`
 }
 
 type Folder struct {
