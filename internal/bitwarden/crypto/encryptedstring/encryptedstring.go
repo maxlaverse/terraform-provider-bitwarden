@@ -90,6 +90,9 @@ func (encString *EncryptedString) Equals(otherString *EncryptedString) bool {
 }
 
 func NewFromEncryptedValue(encryptedValue string) (*EncryptedString, error) {
+	if len(encryptedValue) == 0 {
+		return nil, fmt.Errorf("supposedly encrypted string is empty")
+	}
 	var encPieces []string
 	encString := EncryptedString{}
 
@@ -113,7 +116,7 @@ func NewFromEncryptedValue(encryptedValue string) (*EncryptedString, error) {
 	switch encString.Key.EncryptionType {
 	case symmetrickey.AesCbc128_HmacSha256_B64, symmetrickey.AesCbc256_HmacSha256_B64:
 		if len(encPieces) != 3 {
-			return nil, fmt.Errorf("bad length (expected: 3)")
+			return nil, fmt.Errorf("bad amount of pieces (expected: 3, got: %d)", len(encPieces))
 		}
 
 		encString.IV = []byte(encPieces[0])
@@ -121,14 +124,14 @@ func NewFromEncryptedValue(encryptedValue string) (*EncryptedString, error) {
 		encString.Hmac = []byte(encPieces[2])
 	case symmetrickey.AesCbc256_B64:
 		if len(encPieces) != 2 {
-			return nil, fmt.Errorf("bad length (expected: 2)")
+			return nil, fmt.Errorf("bad amount of pieces (expected: 2, got: %d)", len(encPieces))
 		}
 
 		encString.IV = []byte(encPieces[0])
 		encString.Data = []byte(encPieces[1])
 	case symmetrickey.Rsa2048_OaepSha256_B64, symmetrickey.Rsa2048_OaepSha1_B64:
 		if len(encPieces) != 1 {
-			return nil, fmt.Errorf("bad length (expected: 1)")
+			return nil, fmt.Errorf("bad amount of pieces (expected: 1, got: %d)", len(encPieces))
 		}
 
 		encString.Data = []byte(encPieces[0])
