@@ -110,7 +110,7 @@ func TestObjectCreation(t *testing.T) {
 func newMockedWebAPIVault(client webapi.Client) (webAPIVault, func()) {
 	httpmock.Activate()
 
-	vault := NewWebAPIVault(fixtures.ServerURL).(*webAPIVault)
+	vault := NewPasswordManagerClient(fixtures.ServerURL, NewDeviceIdentifier()).(*webAPIVault)
 	vault.client = client
 	return *vault, httpmock.DeactivateAndReset
 }

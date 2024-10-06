@@ -65,7 +65,7 @@ func DisableSyncAfterWrite() Options {
 // DisableRetryBackoff disables the retry backoff mechanism for API calls.
 func WithHttpOptions(opts ...webapi.Options) Options {
 	return func(c bitwarden.PasswordManager) {
-		c.(*webAPIVault).client = webapi.NewClient(c.(*webAPIVault).serverURL, opts...)
+		c.(*webAPIVault).clientOpts = opts
 	}
 }
 
@@ -76,7 +76,7 @@ func EnablePanicOnEncryptionError() Options {
 	}
 }
 
-func NewWebAPIVault(serverURL string, opts ...Options) WebAPIVault {
+func NewPasswordManagerClient(serverURL, deviceIdentifier string, opts ...Options) WebAPIVault {
 	c := &webAPIVault{
 		baseVault: baseVault{
 			objectStore:            make(map[string]models.Object),
@@ -94,9 +94,7 @@ func NewWebAPIVault(serverURL string, opts ...Options) WebAPIVault {
 		o(c)
 	}
 
-	if c.client == nil {
-		c.client = webapi.NewClient(serverURL)
-	}
+	c.client = webapi.NewClient(serverURL, deviceIdentifier, c.clientOpts...)
 
 	return c
 }
@@ -107,7 +105,8 @@ func NewDeviceIdentifier() string {
 
 type webAPIVault struct {
 	baseVault
-	client webapi.Client
+	client     webapi.Client
+	clientOpts []webapi.Options
 
 	ciphersMap     webapi.SyncResponse
 	syncAfterWrite bool
@@ -577,7 +576,7 @@ func (v *webAPIVault) Unlock(ctx context.Context, password string) error {
 	}
 	v.loginAccount.Secrets = *accountSecrets
 
-	profile, err := v.client.Profile(ctx)
+	profile, err := v.client.GetProfile(ctx)
 	if err != nil {
 		return fmt.Errorf("error loading profile: %w", err)
 	}

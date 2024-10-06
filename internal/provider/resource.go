@@ -2,14 +2,17 @@ package provider
 
 import (
 	"context"
+	"errors"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
-func createResource(attrObject models.ObjectType, attrType models.ItemType) schema.CreateContextFunc {
-	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceCreateObject(attrObject models.ObjectType, attrType models.ItemType) resourceOperation {
+	return func(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 		err := d.Set(attributeObject, attrObject)
 		if err != nil {
 			return diag.FromErr(err)
@@ -18,23 +21,58 @@ func createResource(attrObject models.ObjectType, attrType models.ItemType) sche
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		return objectCreate(ctx, d, meta)
+
+		return objectCreate(ctx, d, bwClient)
 	}
 }
 
-func importItemResource(attrObject models.ObjectType, attrType models.ItemType) *schema.ResourceImporter {
+func resourceReadObjectIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
+	err := objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
+		return bwClient.GetObject(ctx, secret)
+	})
+
+	if errors.Is(err, models.ErrObjectNotFound) {
+		d.SetId("")
+		tflog.Warn(ctx, "Object not found, removing from state")
+		return diag.Diagnostics{}
+	}
+
+	if _, exists := d.GetOk(attributeDeletedDate); exists {
+		d.SetId("")
+		tflog.Warn(ctx, "Object was soft deleted, removing from state")
+		return diag.Diagnostics{}
+	}
+
+	return diag.FromErr(err)
+}
+
+func resourceUpdateObject(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
+	return diag.FromErr(objectOperation(ctx, d, bwClient.EditObject))
+}
+
+func resourceDeleteObject(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
+	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
+		return nil, bwClient.DeleteObject(ctx, secret)
+	}))
+}
+
+func resourceImportObject(attrObject models.ObjectType, attrType models.ItemType) schema.StateContextFunc {
+	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+		d.SetId(d.Id())
+		err := d.Set(attributeObject, attrObject)
+		if err != nil {
+			return nil, err
+		}
+		err = d.Set(attributeType, attrType)
+		if err != nil {
+			return nil, err
+		}
+		return []*schema.ResourceData{d}, nil
+	}
+}
+
+func resourceImporter(stateContext schema.StateContextFunc) *schema.ResourceImporter {
 	return &schema.ResourceImporter{
-		StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-			d.SetId(d.Id())
-			err := d.Set(attributeObject, attrObject)
-			if err != nil {
-				return nil, err
-			}
-			err = d.Set(attributeType, attrType)
-			if err != nil {
-				return nil, err
-			}
-			return []*schema.ResourceData{d}, nil
-		},
+		StateContext: stateContext,
 	}
 }

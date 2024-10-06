@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	mockedServerUrl = "http://127.0.0.1:8081"
+	mockedServerUrl     = "http://127.0.0.1:8081"
+	testDeviceIdentifer = "10a00887-3451-4607-8457-fcbfdc61faaa"
 )
 
 func MockedClient(t *testing.T, name string) webapi.Client {
@@ -47,5 +48,5 @@ func MockedClient(t *testing.T, name string) webapi.Client {
 			httpmock.NewStringResponder(200, string(data)))
 	}
 
-	return webapi.NewClient(mockedServerUrl, webapi.WithCustomClient(client), webapi.DisableRetries())
+	return webapi.NewClient(mockedServerUrl, testDeviceIdentifer, webapi.WithCustomClient(client), webapi.DisableRetries())
 }

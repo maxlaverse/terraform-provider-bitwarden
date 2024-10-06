@@ -41,17 +41,18 @@ type Client interface {
 	GetCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error)
 	GetContentFromURL(ctx context.Context, url string) ([]byte, error)
 	GetObjectAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
+	GetProfile(context.Context) (*Profile, error)
 	LoginWithAPIKey(ctx context.Context, clientId, clientSecret string) (*TokenResponse, error)
 	LoginWithPassword(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*TokenResponse, error)
 	PreLogin(context.Context, string) (*PreloginResponse, error)
-	Profile(context.Context) (*Profile, error)
 	RegisterUser(ctx context.Context, req SignupRequest) error
 	Sync(ctx context.Context) (*SyncResponse, error)
 }
 
-func NewClient(serverURL string, opts ...Options) Client {
+func NewClient(serverURL, deviceIdentifier string, opts ...Options) Client {
 	c := &client{
-		deviceName: deviceName,
+		deviceName:       deviceName,
+		deviceIdentifier: deviceIdentifier,
 
 		// Official Device List: https://github.com/bitwarden/server/blob/main/src/Core/Enums/DeviceType.cs
 		deviceType: "21", // SDK
@@ -236,16 +237,6 @@ func (c *client) EditOrgCollection(ctx context.Context, orgId, objId string, obj
 	return doRequest[Collection](ctx, c.httpClient, req)
 }
 
-func (c *client) GetContentFromURL(ctx context.Context, url string) ([]byte, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error preparing raw URL retrieval request: %w", err)
-	}
-
-	resp, err := doRequest[[]byte](ctx, c.httpClient, httpReq)
-	return []byte(*resp), err
-}
-
 func (c *client) GetAPIKey(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*ApiKey, error) {
 	type ApiKeyRequest struct {
 		MasterPasswordHash string `json:"masterPasswordHash"`
@@ -266,6 +257,16 @@ func (c *client) GetAPIKey(ctx context.Context, username, password string, kdfCo
 	return doRequest[ApiKey](ctx, c.httpClient, httpReq)
 }
 
+func (c *client) GetContentFromURL(ctx context.Context, url string) ([]byte, error) {
+	httpReq, err := c.prepareRequest(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing raw URL retrieval request: %w", err)
+	}
+
+	resp, err := doRequest[[]byte](ctx, c.httpClient, httpReq)
+	return []byte(*resp), err
+}
+
 func (c *client) GetCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error) {
 	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/collections", c.serverURL, orgID), nil)
 	if err != nil {
@@ -277,6 +278,15 @@ func (c *client) GetCollections(ctx context.Context, orgID string) ([]Collection
 		return nil, err
 	}
 	return resp.Data, nil
+}
+
+func (c *client) GetProfile(ctx context.Context) (*Profile, error) {
+	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/accounts/profile", c.serverURL), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing config retrieval request: %w", err)
+	}
+
+	return doRequest[Profile](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) LoginWithPassword(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*TokenResponse, error) {
@@ -360,15 +370,6 @@ func (c *client) PreLogin(ctx context.Context, username string) (*PreloginRespon
 	}
 
 	return doRequest[PreloginResponse](ctx, c.httpClient, httpReq)
-}
-
-func (c *client) Profile(ctx context.Context) (*Profile, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/accounts/profile", c.serverURL), nil)
-	if err != nil {
-		return nil, fmt.Errorf("error preparing config retrieval request: %w", err)
-	}
-
-	return doRequest[Profile](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) RegisterUser(ctx context.Context, signupRequest SignupRequest) error {

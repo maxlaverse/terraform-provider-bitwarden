@@ -23,8 +23,9 @@ import (
 
 const (
 	// Constants used to interact with a test Vaultwarden instance
-	testPassword  = "test1234"
-	kdfIterations = 10000
+	testPassword        = "test1234"
+	testDeviceIdentifer = "10a00887-3451-4607-8457-fcbfdc61faaa"
+	kdfIterations       = 10000
 )
 
 // Generated resources used for testing
@@ -85,7 +86,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	webapiClient := webapi.NewClient(testServerURL)
+	webapiClient := webapi.NewClient(testServerURL, embedded.NewDeviceIdentifier())
 	_, err = webapiClient.LoginWithPassword(ctx, testEmail, testPassword, models.KdfConfiguration{KdfIterations: kdfIterations})
 	if err != nil {
 		t.Fatal(err)
@@ -133,7 +134,7 @@ func ensureVaultwardenHasUser(t *testing.T) {
 
 	clearTestVault(t)
 
-	client := embedded.NewWebAPIVault(testServerURL)
+	client := embedded.NewPasswordManagerClient(testServerURL, testDeviceIdentifer)
 	testUsername = fmt.Sprintf("test-%s", testUniqueIdentifier)
 	testEmail = fmt.Sprintf("test-%s@laverse.net", testUniqueIdentifier)
 	kdfConfig := models.KdfConfiguration{
@@ -170,7 +171,7 @@ func clearTestVault(t *testing.T) {
 }
 
 func bwTestClient(t *testing.T) bitwarden.PasswordManager {
-	client := embedded.NewWebAPIVault(testServerURL)
+	client := embedded.NewPasswordManagerClient(testServerURL, testDeviceIdentifer)
 	err := client.LoginWithPassword(context.Background(), testEmail, testPassword)
 	if err != nil {
 		t.Fatal(err)
@@ -180,7 +181,7 @@ func bwTestClient(t *testing.T) bitwarden.PasswordManager {
 	return client
 }
 
-func bwOfficialTestClient(t *testing.T) bwcli.CLIClient {
+func bwOfficialTestClient(t *testing.T) bwcli.PasswordManagerClient {
 	vault, err := filepath.Abs("./.bitwarden")
 	if err != nil {
 		t.Fatal(err)
@@ -191,7 +192,7 @@ func bwOfficialTestClient(t *testing.T) bwcli.CLIClient {
 		t.Fatal(err)
 	}
 
-	client := bwcli.NewClient(bwExec, bwcli.DisableRetryBackoff(), bwcli.WithAppDataDir(vault))
+	client := bwcli.NewPasswordManagerClient(bwExec, bwcli.DisableRetryBackoff(), bwcli.WithAppDataDir(vault))
 	status, err := client.Status(context.Background())
 	if err != nil {
 		t.Fatal(err)

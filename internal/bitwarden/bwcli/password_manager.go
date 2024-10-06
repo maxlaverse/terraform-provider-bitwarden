@@ -12,7 +12,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
 )
 
-type CLIClient interface {
+type PasswordManagerClient interface {
 	CreateAttachment(ctx context.Context, itemId, filePath string) (*models.Object, error)
 	CreateObject(context.Context, models.Object) (*models.Object, error)
 	EditObject(context.Context, models.Object) (*models.Object, error)
@@ -33,7 +33,7 @@ type CLIClient interface {
 	Unlock(ctx context.Context, password string) error
 }
 
-func NewClient(execPath string, opts ...Options) CLIClient {
+func NewPasswordManagerClient(execPath string, opts ...Options) PasswordManagerClient {
 	c := &client{
 		execPath: execPath,
 	}

@@ -16,7 +16,7 @@ func TestCreateObjectEncoding(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	b := NewClient("dummy")
+	b := NewPasswordManagerClient("dummy")
 	_, err := b.CreateObject(context.Background(), models.Object{
 		Type:   models.ItemTypeLogin,
 		Object: models.ObjectTypeItem,
@@ -41,7 +41,7 @@ func TestListObjects(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	b := NewClient("dummy")
+	b := NewPasswordManagerClient("dummy")
 	_, err := b.ListObjects(context.Background(), models.ObjectTypeItem, bitwarden.WithFolderID("folder-id"), bitwarden.WithCollectionID("collection-id"), bitwarden.WithSearch("search"))
 
 	assert.NoError(t, err)
@@ -56,7 +56,7 @@ func TestGetItem(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	b := NewClient("dummy")
+	b := NewPasswordManagerClient("dummy")
 	_, err := b.GetObject(context.Background(), models.Object{ID: "object-id", Object: models.ObjectTypeItem, Type: models.ItemTypeLogin})
 
 	assert.NoError(t, err)
@@ -71,7 +71,7 @@ func TestGetOrgCollection(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	b := NewClient("dummy")
+	b := NewPasswordManagerClient("dummy")
 	_, err := b.GetObject(context.Background(), models.Object{ID: "object-id", Object: models.ObjectTypeOrgCollection, OrganizationID: "org-id"})
 
 	assert.NoError(t, err)
@@ -86,7 +86,7 @@ func TestErrorContainsCommand(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	b := NewClient("dummy")
+	b := NewPasswordManagerClient("dummy")
 	_, err := b.ListObjects(context.Background(), models.ObjectTypeOrgCollection, bitwarden.WithSearch("search"))
 
 	if assert.Error(t, err) {
