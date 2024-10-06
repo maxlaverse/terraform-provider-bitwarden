@@ -34,12 +34,12 @@ type WebAPIVault interface {
 	Unlock(ctx context.Context, password string) error
 }
 
-type Options func(c bitwarden.Client)
+type Options func(c bitwarden.PasswordManager)
 
 // DisableCryptoSafeMode disables the safe mode for crypto operations, which reverses
 // crypto.Encrypt() to make sure it can decrypt the result.
 func DisableCryptoSafeMode() Options {
-	return func(c bitwarden.Client) {
+	return func(c bitwarden.PasswordManager) {
 		crypto.SafeMode = false
 	}
 }
@@ -48,7 +48,7 @@ func DisableCryptoSafeMode() Options {
 // (items, folders, collections) after they have been created or edited, to verify that the
 // encryption can be reverse.
 func DisableObjectEncryptionVerification() Options {
-	return func(c bitwarden.Client) {
+	return func(c bitwarden.PasswordManager) {
 		c.(*webAPIVault).baseVault.verifyObjectEncryption = false
 	}
 }
@@ -57,21 +57,21 @@ func DisableObjectEncryptionVerification() Options {
 // delete) to the vault. Write operations already return the object that was created or edited, so
 // Sync() is not strictly necessary.
 func DisableSyncAfterWrite() Options {
-	return func(c bitwarden.Client) {
+	return func(c bitwarden.PasswordManager) {
 		c.(*webAPIVault).syncAfterWrite = false
 	}
 }
 
 // DisableRetryBackoff disables the retry backoff mechanism for API calls.
 func WithHttpOptions(opts ...webapi.Options) Options {
-	return func(c bitwarden.Client) {
+	return func(c bitwarden.PasswordManager) {
 		c.(*webAPIVault).client = webapi.NewClient(c.(*webAPIVault).serverURL, opts...)
 	}
 }
 
 // Panic on error is useful for debugging, but should not be used in production.
 func EnablePanicOnEncryptionError() Options {
-	return func(c bitwarden.Client) {
+	return func(c bitwarden.PasswordManager) {
 		panicOnEncryptionErrors = true
 	}
 }

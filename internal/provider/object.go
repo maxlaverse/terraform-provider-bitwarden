@@ -14,7 +14,7 @@ import (
 )
 
 func objectCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return diag.FromErr(objectOperation(ctx, d, meta.(bitwarden.Client).CreateObject))
+	return diag.FromErr(objectOperation(ctx, d, meta.(bitwarden.PasswordManager).CreateObject))
 }
 
 func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -23,7 +23,7 @@ func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 	}
 
 	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
-		obj, err := meta.(bitwarden.Client).GetObject(ctx, secret)
+		obj, err := meta.(bitwarden.PasswordManager).GetObject(ctx, secret)
 		if obj != nil {
 			// If the object exists but is marked as soft deleted, we return an error, because relying
 			// on an object in the 'trash' sounds like a bad idea.
@@ -50,7 +50,7 @@ func objectSearch(ctx context.Context, d *schema.ResourceData, meta interface{})
 		return fmt.Errorf("BUG: object type not set in the resource data")
 	}
 
-	objs, err := meta.(bitwarden.Client).ListObjects(ctx, models.ObjectType(objType.(string)), listOptionsFromData(d)...)
+	objs, err := meta.(bitwarden.PasswordManager).ListObjects(ctx, models.ObjectType(objType.(string)), listOptionsFromData(d)...)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func listOptionsFromData(d *schema.ResourceData) []bitwarden.ListObjectsOption {
 
 func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
-		return meta.(bitwarden.Client).GetObject(ctx, secret)
+		return meta.(bitwarden.PasswordManager).GetObject(ctx, secret)
 	})
 
 	if errors.Is(err, models.ErrObjectNotFound) {
@@ -134,12 +134,12 @@ func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 func objectUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return diag.FromErr(objectOperation(ctx, d, meta.(bitwarden.Client).EditObject))
+	return diag.FromErr(objectOperation(ctx, d, meta.(bitwarden.PasswordManager).EditObject))
 }
 
 func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
-		return nil, meta.(bitwarden.Client).DeleteObject(ctx, secret)
+		return nil, meta.(bitwarden.PasswordManager).DeleteObject(ctx, secret)
 	}))
 }
 

@@ -169,7 +169,7 @@ func clearTestVault(t *testing.T) {
 	}
 }
 
-func bwTestClient(t *testing.T) bitwarden.Client {
+func bwTestClient(t *testing.T) bitwarden.PasswordManager {
 	client := embedded.NewWebAPIVault(testServerURL)
 	err := client.LoginWithPassword(context.Background(), testEmail, testPassword)
 	if err != nil {

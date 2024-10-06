@@ -308,7 +308,7 @@ func newBitwardenClient(d *schema.ResourceData, version string) (bwcli.CLIClient
 	return bwcli.NewClient(bwExecutable, opts...), nil
 }
 
-func newBitwardenEmbeddedClient(ctx context.Context, d *schema.ResourceData, version string) (bitwarden.Client, error) {
+func newBitwardenEmbeddedClient(ctx context.Context, d *schema.ResourceData, version string) (bitwarden.PasswordManager, error) {
 	deviceId, err := getOrGenerateDeviceIdentifier(ctx)
 	if err != nil {
 		return nil, err
@@ -351,7 +351,7 @@ func getOrGenerateDeviceIdentifier(ctx context.Context) (string, error) {
 	return deviceId, nil
 }
 
-func ensureLoggedInEmbedded(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.Client) error {
+func ensureLoggedInEmbedded(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) error {
 	masterPassword, hasMasterPassword := d.GetOk(attributeMasterPassword)
 	if !hasMasterPassword {
 		return fmt.Errorf("master password is required")
