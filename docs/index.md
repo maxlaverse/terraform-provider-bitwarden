@@ -8,7 +8,7 @@ description: |-
 # Bitwarden Provider
 
 Use the Bitwarden provider to interact with Bitwarden logins, secure notes, folders and org-collections.
-You must configure the provider with proper credentials before you can use it, and have the [Bitwarden CLI] installed.
+You must configure the provider with proper credentials before you can use it, and have the [Bitwarden CLI] installed (unless you use the experimental `embedded_client` feature).
 
 ## Example Usage
 
@@ -25,6 +25,14 @@ terraform {
 # Configure the Bitwarden Provider
 provider "bitwarden" {
   email = "terraform@example.com"
+
+  # If you have the opportunity, you can try out the embedded client which removes the need
+  # for a locally installed Bitwarden CLI. Please note that this feature is still considered
+  # as experimental, might not work as expected, and is not recommended for production use.
+  #
+  # experimental {
+  #   embedded_client = true
+  # }
 }
 
 # Create a Bitwarden Login item
