@@ -57,28 +57,28 @@ type client struct {
 	sessionKey          string
 }
 
-type Options func(c bitwarden.Client)
+type Options func(c bitwarden.PasswordManager)
 
 func WithAppDataDir(appDataDir string) Options {
-	return func(c bitwarden.Client) {
+	return func(c bitwarden.PasswordManager) {
 		c.(*client).appDataDir = appDataDir
 	}
 }
 
 func WithExtraCACertsPath(extraCACertsPath string) Options {
-	return func(c bitwarden.Client) {
+	return func(c bitwarden.PasswordManager) {
 		c.(*client).extraCACertsPath = extraCACertsPath
 	}
 }
 
 func DisableSync() Options {
-	return func(c bitwarden.Client) {
+	return func(c bitwarden.PasswordManager) {
 		c.(*client).disableSync = true
 	}
 }
 
 func DisableRetryBackoff() Options {
-	return func(c bitwarden.Client) {
+	return func(c bitwarden.PasswordManager) {
 		c.(*client).disableRetryBackoff = true
 	}
 }

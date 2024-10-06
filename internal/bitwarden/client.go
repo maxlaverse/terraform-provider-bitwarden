@@ -10,7 +10,7 @@ const (
 	DefaultBitwardenServerURL = "https://vault.bitwarden.com"
 )
 
-type Client interface {
+type PasswordManager interface {
 	CreateAttachment(ctx context.Context, itemId, filePath string) (*models.Object, error)
 	CreateObject(context.Context, models.Object) (*models.Object, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error

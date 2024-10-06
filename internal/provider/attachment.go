@@ -17,13 +17,13 @@ import (
 func attachmentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	itemId := d.Get(attributeAttachmentItemID).(string)
 
-	existingAttachments, err := listExistingAttachments(ctx, meta.(bitwarden.Client), itemId)
+	existingAttachments, err := listExistingAttachments(ctx, meta.(bitwarden.PasswordManager), itemId)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	filePath := d.Get(attributeAttachmentFile).(string)
-	obj, err := meta.(bitwarden.Client).CreateAttachment(ctx, itemId, filePath)
+	obj, err := meta.(bitwarden.PasswordManager).CreateAttachment(ctx, itemId, filePath)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -43,7 +43,7 @@ func attachmentCreate(ctx context.Context, d *schema.ResourceData, meta interfac
 func attachmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	itemId := d.Get(attributeAttachmentItemID).(string)
 
-	obj, err := meta.(bitwarden.Client).GetObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
+	obj, err := meta.(bitwarden.PasswordManager).GetObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
 	if err != nil {
 		// If the item is not found, we can't simply consider the attachment as
 		// deleted, because we won't have an item to attach it to.
@@ -67,7 +67,7 @@ func attachmentRead(ctx context.Context, d *schema.ResourceData, meta interface{
 func attachmentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	itemId := d.Get(attributeAttachmentItemID).(string)
 
-	return diag.FromErr(meta.(bitwarden.Client).DeleteAttachment(ctx, itemId, d.Id()))
+	return diag.FromErr(meta.(bitwarden.PasswordManager).DeleteAttachment(ctx, itemId, d.Id()))
 }
 
 func attachmentDataFromStruct(d *schema.ResourceData, attachment models.Attachment) error {
@@ -101,7 +101,7 @@ func readDataSourceAttachment() schema.ReadContextFunc {
 
 		attachmentId := d.Get(attributeID).(string)
 
-		content, err := meta.(bitwarden.Client).GetAttachment(ctx, itemId, attachmentId)
+		content, err := meta.(bitwarden.PasswordManager).GetAttachment(ctx, itemId, attachmentId)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -112,7 +112,7 @@ func readDataSourceAttachment() schema.ReadContextFunc {
 	}
 }
 
-func listExistingAttachments(ctx context.Context, client bitwarden.Client, itemId string) ([]models.Attachment, error) {
+func listExistingAttachments(ctx context.Context, client bitwarden.PasswordManager, itemId string) ([]models.Attachment, error) {
 	obj, err := client.GetObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
 	if err != nil {
 		return nil, err
