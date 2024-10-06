@@ -126,3 +126,39 @@ func TestProviderAuthAllMethodsMissingServerNoError(t *testing.T) {
 
 	assert.False(t, diag.HasError())
 }
+
+func TestSessionKeyWithEmbeddedClientFails(t *testing.T) {
+	raw := map[string]interface{}{
+		"email":       "test@laverse.net",
+		"session_key": "test1234",
+		"experimental": []interface{}{
+			map[string]interface{}{
+				"embedded_client": true,
+			},
+		},
+	}
+
+	diag := New(versionDev)().Validate(terraform.NewResourceConfigRaw(raw))
+
+	if assert.True(t, diag.HasError()) {
+		assert.Equal(t, "\"session_key\": conflicts with experimental.0.embedded_client", diag[0].Detail)
+	}
+}
+
+func TestExperimentBoolRaiseIfFalse(t *testing.T) {
+	raw := map[string]interface{}{
+		"email":           "test@laverse.net",
+		"master_password": "master-password-9",
+		"experimental": []interface{}{
+			map[string]interface{}{
+				"embedded_client": false,
+			},
+		},
+	}
+
+	diag := New(versionDev)().Validate(terraform.NewResourceConfigRaw(raw))
+
+	if assert.True(t, diag.HasError()) {
+		assert.Equal(t, "\"experimental.0.embedded_client\": can't be false if set", diag[0].Summary)
+	}
+}

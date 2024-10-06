@@ -49,7 +49,7 @@ func New(version string) func() *schema.Provider {
 				attributeSessionKey: {
 					Type:          schema.TypeString,
 					Description:   descriptionSessionKey,
-					ConflictsWith: []string{attributeMasterPassword},
+					ConflictsWith: []string{attributeMasterPassword, "experimental.0.embedded_client"},
 					AtLeastOneOf:  []string{attributeMasterPassword},
 					Optional:      true,
 					DefaultFunc:   schema.EnvDefaultFunc("BW_SESSION", nil),
@@ -98,14 +98,16 @@ func New(version string) func() *schema.Provider {
 				// Experimental
 				attributeExperimental: {
 					Description: descriptionExperimental,
-					Type:        schema.TypeSet,
+					Type:        schema.TypeList,
+					MaxItems:    1,
 					Optional:    true,
 					Elem: &schema.Resource{
 						Schema: map[string]*schema.Schema{
 							attributeExperimentalEmbeddedClient: {
-								Description: descriptionExperimentalEmbeddedClient,
-								Type:        schema.TypeBool,
-								Optional:    true,
+								Description:  descriptionExperimentalEmbeddedClient,
+								Type:         schema.TypeBool,
+								ValidateFunc: onlyTrue,
+								Optional:     true,
 							},
 						},
 					},
@@ -134,25 +136,35 @@ func New(version string) func() *schema.Provider {
 }
 
 func useExperimentalEmbeddedClient(d *schema.ResourceData) bool {
-	experimentalFeatures, hasExperimentalFeatures := d.GetOk(attributeExperimental)
-	if hasExperimentalFeatures {
-		if experimentalFeatures.(*schema.Set).Len() > 0 {
-			embeddedClient, hasEmbeddedClient := experimentalFeatures.(*schema.Set).List()[0].(map[string]interface{})[attributeExperimentalEmbeddedClient]
-			if hasEmbeddedClient && embeddedClient.(bool) {
-				return true
-			}
-		}
+	experimentalFeaturesRaw, hasExperimentalFeatures := d.GetOk(attributeExperimental)
+	if !hasExperimentalFeatures {
+		return false
 	}
-	return false
+
+	experimentalFeaturesList, ok := experimentalFeaturesRaw.([]interface{})
+	if !ok {
+		return false
+	}
+
+	if len(experimentalFeaturesList) != 1 {
+		return false
+	}
+
+	experimentalFeaturesMap, ok := experimentalFeaturesList[0].(map[string]interface{})
+	if !ok {
+		return false
+	}
+
+	_, hasEmbeddedClient := experimentalFeaturesMap[attributeExperimentalEmbeddedClient]
+
+	return hasEmbeddedClient
 }
+
 func providerConfigure(version string, _ *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 
 		if useExperimentalEmbeddedClient(d) {
-			if _, hasSessionKey := d.GetOk(attributeSessionKey); hasSessionKey {
-				return nil, diag.Errorf("session key is not supported with the embedded client")
-			}
-
+			tflog.Trace(ctx, "Using experimental embedded client")
 			bwClient, err := newBitwardenEmbeddedClient(ctx, d, version)
 			if err != nil {
 				return nil, diag.FromErr(err)
@@ -164,6 +176,8 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 			}
 			return bwClient, nil
 		}
+
+		tflog.Trace(ctx, "Using external CLI client")
 
 		bwClient, err := newBitwardenClient(d, version)
 		if err != nil {
@@ -369,4 +383,11 @@ func ensureLoggedInEmbedded(ctx context.Context, d *schema.ResourceData, bwClien
 	}
 
 	return fmt.Errorf("INTERNAL BUG: not enough parameters provided to login (status: 'BUG')")
+}
+
+func onlyTrue(value interface{}, fieldName string) ([]string, []error) {
+	if i, ok := value.(bool); !ok || !i {
+		return []string{}, []error{fmt.Errorf("\"%s\": can't be false if set", fieldName)}
+	}
+	return nil, nil
 }
