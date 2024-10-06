@@ -13,11 +13,11 @@ func resourceItemLogin() *schema.Resource {
 
 	return &schema.Resource{
 		Description:   "Manages a login item.",
-		CreateContext: createResource(models.ObjectTypeItem, models.ItemTypeLogin),
-		ReadContext:   objectReadIgnoreMissing,
-		UpdateContext: objectUpdate,
-		DeleteContext: objectDelete,
-		Importer:      importItemResource(models.ObjectTypeItem, models.ItemTypeLogin),
+		CreateContext: resourceCreateObject(models.ObjectTypeItem, models.ItemTypeLogin),
+		ReadContext:   resourceReadObjectIgnoreMissing,
+		UpdateContext: resourceUpdateObject,
+		DeleteContext: resourceDeleteObject,
+		Importer:      resourceImportObject(models.ObjectTypeItem, models.ItemTypeLogin),
 		Schema:        dataSourceItemSecureNoteSchema,
 	}
 }

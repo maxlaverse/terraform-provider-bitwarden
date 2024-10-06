@@ -12,25 +12,30 @@ func resourceFolder() *schema.Resource {
 	return &schema.Resource{
 		Description: "Manages a folder.",
 
-		CreateContext: resourceFolderCreate,
-		ReadContext:   objectReadIgnoreMissing,
-		UpdateContext: objectUpdate,
-		DeleteContext: objectDelete,
-		Importer:      importFolderResource(),
+		CreateContext: resourceCreateFolder,
+		ReadContext:   resourceReadObjectIgnoreMissing,
+		UpdateContext: resourceUpdateObject,
+		DeleteContext: resourceDeleteObject,
+		Importer:      resourceImportFolder(),
 
 		Schema: folderSchema(Resource),
 	}
 }
 
-func resourceFolderCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceCreateFolder(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := d.Set(attributeObject, models.ObjectTypeFolder)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	return objectCreate(ctx, d, meta)
+	bwClient, err := getPasswordManager(meta)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	return objectCreate(ctx, d, bwClient)
 }
 
-func importFolderResource() *schema.ResourceImporter {
+func resourceImportFolder() *schema.ResourceImporter {
 	return &schema.ResourceImporter{
 		StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 			d.SetId(d.Id())

@@ -8,28 +8,27 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
-func readDataSourceItem(attrObject models.ObjectType, attrType models.ItemType) schema.ReadContextFunc {
+func resourceReadDataSourceItem(attrObject models.ObjectType, attrType models.ItemType) schema.ReadContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-		d.SetId(d.Get(attributeID).(string))
-		err := d.Set(attributeObject, attrObject)
+		err := d.Set(attributeType, attrType)
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		err = d.Set(attributeType, attrType)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		return objectRead(ctx, d, meta)
+		return resourceReadDataSourceObject(attrObject)(ctx, d, meta)
 	}
 }
 
-func readDataSourceObject(objType models.ObjectType) schema.ReadContextFunc {
+func resourceReadDataSourceObject(objType models.ObjectType) schema.ReadContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 		d.SetId(d.Get(attributeID).(string))
 		err := d.Set(attributeObject, objType)
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		return objectRead(ctx, d, meta)
+		bwClient, err := getPasswordManager(meta)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		return objectRead(ctx, d, bwClient)
 	}
 }

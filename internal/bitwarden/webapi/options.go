@@ -15,9 +15,3 @@ func WithCustomClient(httpClient http.Client) Options {
 		c.(*client).httpClient.HTTPClient = &httpClient
 	}
 }
-
-func WithDeviceIdentifier(deviceIdentifier string) Options {
-	return func(c Client) {
-		c.(*client).deviceIdentifier = deviceIdentifier
-	}
-}

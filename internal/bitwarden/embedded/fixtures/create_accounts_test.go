@@ -83,7 +83,7 @@ func createTestAccount(t *testing.T, accountEmail string, kdfConfig models.KdfCo
 		},
 	}
 
-	client := webapi.NewClient(ServerURL)
+	client := webapi.NewClient(ServerURL, testDeviceIdentifer)
 	err = client.RegisterUser(ctx, signupRequest)
 	if err != nil && !strings.Contains(err.Error(), "Registration not allowed or user already exists") {
 		t.Fatal(err)
@@ -94,7 +94,7 @@ func createTestAccount(t *testing.T, accountEmail string, kdfConfig models.KdfCo
 			Prefix: mockName,
 		},
 	}
-	vault := embedded.NewWebAPIVault(ServerURL, embedded.WithHttpOptions(webapi.WithCustomClient(httpClient)))
+	vault := embedded.NewPasswordManagerClient(ServerURL, testDeviceIdentifer, embedded.WithHttpOptions(webapi.WithCustomClient(httpClient)))
 
 	err = vault.LoginWithPassword(ctx, accountEmail, TestPassword)
 	if err != nil {

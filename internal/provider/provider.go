@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -133,14 +134,18 @@ func New(version string) func() *schema.Provider {
 	}
 }
 
-func useExperimentalEmbeddedClient(d *schema.ResourceData) bool {
+func newEmbeddedSecretsManager(d *schema.ResourceData) bool {
 	experimentalFeatures, hasExperimentalFeatures := d.GetOk(attributeExperimental)
+	if !hasExperimentalFeatures {
+		return false
+	}
 	if hasExperimentalFeatures {
-		if experimentalFeatures.(*schema.Set).Len() > 0 {
-			embeddedClient, hasEmbeddedClient := experimentalFeatures.(*schema.Set).List()[0].(map[string]interface{})[attributeExperimentalEmbeddedClient]
-			if hasEmbeddedClient && embeddedClient.(bool) {
-				return true
-			}
+		if experimentalFeatures.(*schema.Set).Len() == 0 {
+			return false
+		}
+		embeddedClient, hasEmbeddedClient := experimentalFeatures.(*schema.Set).List()[0].(map[string]interface{})[attributeExperimentalEmbeddedClient]
+		if hasEmbeddedClient && embeddedClient.(bool) {
+			return true
 		}
 	}
 	return false
@@ -148,24 +153,26 @@ func useExperimentalEmbeddedClient(d *schema.ResourceData) bool {
 func providerConfigure(version string, _ *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 
-		if useExperimentalEmbeddedClient(d) {
-			if _, hasSessionKey := d.GetOk(attributeSessionKey); hasSessionKey {
-				return nil, diag.Errorf("session key is not supported with the embedded client")
-			}
+		useEmbeddedClient := newEmbeddedSecretsManager(d)
 
-			bwClient, err := newBitwardenEmbeddedClient(ctx, d, version)
+		if _, hasSessionKey := d.GetOk(attributeSessionKey); useEmbeddedClient && hasSessionKey {
+			return nil, diag.Errorf("session key is not supported with the embedded client")
+		}
+
+		if useEmbeddedClient {
+			bwClient, err := newEmbeddedPasswordManagerClient(ctx, d, version)
 			if err != nil {
 				return nil, diag.FromErr(err)
 			}
 
-			err = ensureLoggedInEmbedded(ctx, d, bwClient)
+			err = ensureLoggedInEmbeddedPasswordManager(ctx, d, bwClient)
 			if err != nil {
 				return nil, diag.FromErr(err)
 			}
 			return bwClient, nil
 		}
 
-		bwClient, err := newBitwardenClient(d, version)
+		bwClient, err := newCLIPasswordManagerClient(d, version)
 		if err != nil {
 			return nil, diag.FromErr(err)
 		}
@@ -175,7 +182,7 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 			bwClient.SetSessionKey(sessionKey.(string))
 		}
 
-		err = ensureLoggedIn(ctx, d, bwClient)
+		err = ensureLoggedInCLIPasswordManager(ctx, d, bwClient)
 		if err != nil {
 			return nil, diag.FromErr(err)
 		}
@@ -184,7 +191,7 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 	}
 }
 
-func ensureLoggedIn(ctx context.Context, d *schema.ResourceData, bwClient bwcli.CLIClient) error {
+func ensureLoggedInCLIPasswordManager(ctx context.Context, d *schema.ResourceData, bwClient bwcli.PasswordManagerClient) error {
 	status, err := bwClient.Status(ctx)
 	if err != nil {
 		return err
@@ -258,7 +265,7 @@ func loginMethod(d *schema.ResourceData) LoginMethod {
 	return LoginMethodNone
 }
 
-func logoutIfIdentityChanged(ctx context.Context, d *schema.ResourceData, bwClient bwcli.CLIClient, status *bwcli.Status) error {
+func logoutIfIdentityChanged(ctx context.Context, d *schema.ResourceData, bwClient bwcli.PasswordManagerClient, status *bwcli.Status) error {
 	email := d.Get(attributeEmail).(string)
 	serverURL := d.Get(attributeServer).(string)
 
@@ -281,7 +288,7 @@ func logoutIfIdentityChanged(ctx context.Context, d *schema.ResourceData, bwClie
 	return nil
 }
 
-func newBitwardenClient(d *schema.ResourceData, version string) (bwcli.CLIClient, error) {
+func newCLIPasswordManagerClient(d *schema.ResourceData, version string) (bwcli.PasswordManagerClient, error) {
 	opts := []bwcli.Options{}
 	if vaultPath, exists := d.GetOk(attributeVaultPath); exists {
 		abs, err := filepath.Abs(vaultPath.(string))
@@ -305,26 +312,23 @@ func newBitwardenClient(d *schema.ResourceData, version string) (bwcli.CLIClient
 		return nil, err
 	}
 
-	return bwcli.NewClient(bwExecutable, opts...), nil
+	return bwcli.NewPasswordManagerClient(bwExecutable, opts...), nil
 }
 
-func newBitwardenEmbeddedClient(ctx context.Context, d *schema.ResourceData, version string) (bitwarden.PasswordManager, error) {
+func newEmbeddedPasswordManagerClient(ctx context.Context, d *schema.ResourceData, version string) (bitwarden.PasswordManager, error) {
 	deviceId, err := getOrGenerateDeviceIdentifier(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	opts := []embedded.Options{}
-	webapiOpts := []webapi.Options{webapi.WithDeviceIdentifier(deviceId)}
+	webapiOpts := []webapi.Options{}
 	if version == versionDev {
 		// During development, we don't want to wait on any sporadic errors.
 		webapiOpts = append(webapiOpts, webapi.DisableRetries())
 	}
 
-	opts = append(opts, embedded.WithHttpOptions(webapiOpts...))
-
 	serverURL := d.Get(attributeServer).(string)
-	return embedded.NewWebAPIVault(serverURL, opts...), nil
+	return embedded.NewPasswordManagerClient(serverURL, deviceId, embedded.WithHttpOptions(webapiOpts...)), nil
 }
 
 func getOrGenerateDeviceIdentifier(ctx context.Context) (string, error) {
@@ -351,7 +355,7 @@ func getOrGenerateDeviceIdentifier(ctx context.Context) (string, error) {
 	return deviceId, nil
 }
 
-func ensureLoggedInEmbedded(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) error {
+func ensureLoggedInEmbeddedPasswordManager(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) error {
 	masterPassword, hasMasterPassword := d.GetOk(attributeMasterPassword)
 	if !hasMasterPassword {
 		return fmt.Errorf("master password is required")
@@ -369,4 +373,12 @@ func ensureLoggedInEmbedded(ctx context.Context, d *schema.ResourceData, bwClien
 	}
 
 	return fmt.Errorf("INTERNAL BUG: not enough parameters provided to login (status: 'BUG')")
+}
+
+func getPasswordManager(meta interface{}) (bitwarden.PasswordManager, error) {
+	bwClient, ok := meta.(bitwarden.PasswordManager)
+	if !ok {
+		return nil, errors.New("provider was not configured with Password Manager credentials")
+	}
+	return bwClient, nil
 }

@@ -8,7 +8,7 @@ import (
 func dataSourceFolder() *schema.Resource {
 	return &schema.Resource{
 		Description: "Use this data source to get information on an existing folder.",
-		ReadContext: readDataSourceObject(models.ObjectTypeFolder),
+		ReadContext: resourceReadDataSourceObject(models.ObjectTypeFolder),
 		Schema:      folderSchema(DataSource),
 	}
 }

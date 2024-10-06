@@ -7,7 +7,7 @@ import (
 func dataSourceAttachment() *schema.Resource {
 	return &schema.Resource{
 		Description: "Use this data source to get the content on an existing item's attachment.",
-		ReadContext: readDataSourceAttachment(),
+		ReadContext: resourceReadDataSourceAttachment(),
 		Schema: map[string]*schema.Schema{
 			attributeID: {
 				Description: descriptionIdentifier,

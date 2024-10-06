@@ -14,25 +14,29 @@ func resourceOrgCollection() *schema.Resource {
 	return &schema.Resource{
 		Description: "Manages an organization collection.",
 
-		CreateContext: resourceOrgCollectionCreate,
-		ReadContext:   objectReadIgnoreMissing,
-		UpdateContext: objectUpdate,
-		DeleteContext: objectDelete,
-		Importer:      importOrgCollectionResource(),
+		CreateContext: resourceCreateOrgCollection,
+		ReadContext:   resourceReadObjectIgnoreMissing,
+		UpdateContext: resourceUpdateObject,
+		DeleteContext: resourceDeleteObject,
+		Importer:      resourceImportOrgCollection(),
 
 		Schema: orgCollectionSchema(Resource),
 	}
 }
 
-func resourceOrgCollectionCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceCreateOrgCollection(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := d.Set(attributeObject, models.ObjectTypeOrgCollection)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	return objectCreate(ctx, d, meta)
+	bwClient, err := getPasswordManager(meta)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	return objectCreate(ctx, d, bwClient)
 }
 
-func importOrgCollectionResource() *schema.ResourceImporter {
+func resourceImportOrgCollection() *schema.ResourceImporter {
 	return &schema.ResourceImporter{
 		StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 			split := strings.Split(d.Id(), "/")

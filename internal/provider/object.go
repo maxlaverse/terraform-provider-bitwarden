@@ -13,17 +13,19 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
-func objectCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return diag.FromErr(objectOperation(ctx, d, meta.(bitwarden.PasswordManager).CreateObject))
+type objectOperationFunc func(ctx context.Context, secret models.Object) (*models.Object, error)
+
+func objectCreate(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
+	return diag.FromErr(objectOperation(ctx, d, bwClient.CreateObject))
 }
 
-func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func objectRead(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	if _, idProvided := d.GetOk(attributeID); !idProvided {
-		return diag.FromErr(objectSearch(ctx, d, meta))
+		return diag.FromErr(objectSearch(ctx, d, bwClient))
 	}
 
 	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
-		obj, err := meta.(bitwarden.PasswordManager).GetObject(ctx, secret)
+		obj, err := bwClient.GetObject(ctx, secret)
 		if obj != nil {
 			// If the object exists but is marked as soft deleted, we return an error, because relying
 			// on an object in the 'trash' sounds like a bad idea.
@@ -44,13 +46,13 @@ func objectRead(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 	}))
 }
 
-func objectSearch(ctx context.Context, d *schema.ResourceData, meta interface{}) error {
+func objectSearch(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) error {
 	objType, ok := d.GetOk(attributeObject)
 	if !ok {
 		return fmt.Errorf("BUG: object type not set in the resource data")
 	}
 
-	objs, err := meta.(bitwarden.PasswordManager).ListObjects(ctx, models.ObjectType(objType.(string)), listOptionsFromData(d)...)
+	objs, err := bwClient.ListObjects(ctx, models.ObjectType(objType.(string)), listOptionsFromData(d)...)
 	if err != nil {
 		return err
 	}
@@ -113,37 +115,7 @@ func listOptionsFromData(d *schema.ResourceData) []bitwarden.ListObjectsOption {
 	return filters
 }
 
-func objectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	err := objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
-		return meta.(bitwarden.PasswordManager).GetObject(ctx, secret)
-	})
-
-	if errors.Is(err, models.ErrObjectNotFound) {
-		d.SetId("")
-		tflog.Warn(ctx, "Object not found, removing from state")
-		return diag.Diagnostics{}
-	}
-
-	if _, exists := d.GetOk(attributeDeletedDate); exists {
-		d.SetId("")
-		tflog.Warn(ctx, "Object was soft deleted, removing from state")
-		return diag.Diagnostics{}
-	}
-
-	return diag.FromErr(err)
-}
-
-func objectUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return diag.FromErr(objectOperation(ctx, d, meta.(bitwarden.PasswordManager).EditObject))
-}
-
-func objectDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
-		return nil, meta.(bitwarden.PasswordManager).DeleteObject(ctx, secret)
-	}))
-}
-
-func objectOperation(ctx context.Context, d *schema.ResourceData, operation func(ctx context.Context, secret models.Object) (*models.Object, error)) error {
+func objectOperation(ctx context.Context, d *schema.ResourceData, operation objectOperationFunc) error {
 	obj, err := operation(ctx, objectStructFromData(ctx, d))
 	if err != nil {
 		return err

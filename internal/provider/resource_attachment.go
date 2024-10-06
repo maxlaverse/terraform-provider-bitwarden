@@ -30,16 +30,16 @@ func resourceAttachment() *schema.Resource {
 	return &schema.Resource{
 		Description: "Manages an item attachment.",
 
-		CreateContext: attachmentCreate,
-		ReadContext:   attachmentRead,
-		DeleteContext: attachmentDelete,
-		Importer:      importAttachmentResource(),
+		CreateContext: resourceCreateAttachment,
+		ReadContext:   resourceReadAttachment,
+		DeleteContext: resourceDeleteAttachment,
+		Importer:      resourceImportAttachment(),
 
 		Schema: resourceAttachmentSchema,
 	}
 }
 
-func importAttachmentResource() *schema.ResourceImporter {
+func resourceImportAttachment() *schema.ResourceImporter {
 	return &schema.ResourceImporter{
 		StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 			split := strings.Split(d.Id(), "/")

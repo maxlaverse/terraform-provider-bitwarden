@@ -8,7 +8,7 @@ import (
 func dataSourceOrganization() *schema.Resource {
 	return &schema.Resource{
 		Description: "Use this data source to get information on an existing organization.",
-		ReadContext: readDataSourceObject(models.ObjectTypeOrganization),
+		ReadContext: resourceReadDataSourceObject(models.ObjectTypeOrganization),
 		Schema:      organizationSchema(),
 	}
 }
