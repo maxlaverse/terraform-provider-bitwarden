@@ -30,27 +30,23 @@ func resourceAttachment() *schema.Resource {
 	return &schema.Resource{
 		Description: "Manages an item attachment.",
 
-		CreateContext: resourceCreateAttachment,
-		ReadContext:   resourceReadAttachment,
-		DeleteContext: resourceDeleteAttachment,
-		Importer:      resourceImportAttachment(),
+		CreateContext: withPasswordManager(resourceCreateAttachment),
+		ReadContext:   withPasswordManager(resourceReadAttachment),
+		DeleteContext: withPasswordManager(resourceDeleteAttachment),
+		Importer:      resourceImporter(resourceImportAttachment),
 
 		Schema: resourceAttachmentSchema,
 	}
 }
 
-func resourceImportAttachment() *schema.ResourceImporter {
-	return &schema.ResourceImporter{
-		StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-			split := strings.Split(d.Id(), "/")
-			if len(split) != 2 {
-				return nil, fmt.Errorf("invalid ID specified, should be in the format <item_id>/<attachment_id>: '%s'", d.Id())
-			}
-			d.SetId(split[0])
-			d.Set(attributeAttachmentItemID, split[1])
-			return []*schema.ResourceData{d}, nil
-		},
+func resourceImportAttachment(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	split := strings.Split(d.Id(), "/")
+	if len(split) != 2 {
+		return nil, fmt.Errorf("invalid ID specified, should be in the format <item_id>/<attachment_id>: '%s'", d.Id())
 	}
+	d.SetId(split[0])
+	d.Set(attributeAttachmentItemID, split[1])
+	return []*schema.ResourceData{d}, nil
 }
 
 func fileHashComputable(val interface{}, _ cty.Path) diag.Diagnostics {

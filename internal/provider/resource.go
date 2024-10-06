@@ -7,11 +7,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
-func resourceCreateObject(attrObject models.ObjectType, attrType models.ItemType) schema.CreateContextFunc {
-	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceCreateObject(attrObject models.ObjectType, attrType models.ItemType) resourceOperation {
+	return func(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 		err := d.Set(attributeObject, attrObject)
 		if err != nil {
 			return diag.FromErr(err)
@@ -21,21 +22,12 @@ func resourceCreateObject(attrObject models.ObjectType, attrType models.ItemType
 			return diag.FromErr(err)
 		}
 
-		bwClient, err := getPasswordManager(meta)
-		if err != nil {
-			return diag.FromErr(err)
-		}
 		return objectCreate(ctx, d, bwClient)
 	}
 }
 
-func resourceReadObjectIgnoreMissing(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	bwClient, err := getPasswordManager(meta)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	err = objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
+func resourceReadObjectIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
+	err := objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
 		return bwClient.GetObject(ctx, secret)
 	})
 
@@ -54,38 +46,33 @@ func resourceReadObjectIgnoreMissing(ctx context.Context, d *schema.ResourceData
 	return diag.FromErr(err)
 }
 
-func resourceUpdateObject(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	bwClient, err := getPasswordManager(meta)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
+func resourceUpdateObject(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	return diag.FromErr(objectOperation(ctx, d, bwClient.EditObject))
 }
 
-func resourceDeleteObject(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	bwClient, err := getPasswordManager(meta)
-	if err != nil {
-		return diag.FromErr(err)
-	}
+func resourceDeleteObject(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
 		return nil, bwClient.DeleteObject(ctx, secret)
 	}))
 }
 
-func resourceImportObject(attrObject models.ObjectType, attrType models.ItemType) *schema.ResourceImporter {
+func resourceImportObject(attrObject models.ObjectType, attrType models.ItemType) schema.StateContextFunc {
+	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+		d.SetId(d.Id())
+		err := d.Set(attributeObject, attrObject)
+		if err != nil {
+			return nil, err
+		}
+		err = d.Set(attributeType, attrType)
+		if err != nil {
+			return nil, err
+		}
+		return []*schema.ResourceData{d}, nil
+	}
+}
+
+func resourceImporter(stateContext schema.StateContextFunc) *schema.ResourceImporter {
 	return &schema.ResourceImporter{
-		StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-			d.SetId(d.Id())
-			err := d.Set(attributeObject, attrObject)
-			if err != nil {
-				return nil, err
-			}
-			err = d.Set(attributeType, attrType)
-			if err != nil {
-				return nil, err
-			}
-			return []*schema.ResourceData{d}, nil
-		},
+		StateContext: stateContext,
 	}
 }
