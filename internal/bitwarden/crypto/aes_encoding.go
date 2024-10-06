@@ -41,7 +41,11 @@ func aes256Encode(plainText []byte, key []byte, iv []byte, blockSize int) ([]byt
 func pkcs5Unpadding(src []byte, blockSize int) ([]byte, error) {
 	srcLen := len(src)
 	paddingLen := int(src[srcLen-1])
-	if paddingLen >= srcLen || paddingLen > blockSize {
+	if paddingLen == srcLen {
+		return []byte{}, nil
+	}
+
+	if paddingLen > blockSize {
 		return nil, fmt.Errorf("bad padding size")
 	}
 	return src[:srcLen-paddingLen], nil
