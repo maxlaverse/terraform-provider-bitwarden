@@ -25,6 +25,7 @@ const (
 	// Constants used to interact with a test Vaultwarden instance
 	testPassword        = "test1234"
 	testDeviceIdentifer = "10a00887-3451-4607-8457-fcbfdc61faaa"
+	testDeviceVersion   = "dev"
 	kdfIterations       = 10000
 )
 
@@ -35,6 +36,7 @@ var testServerURL string
 var testOrganizationID string
 var testCollectionID string
 var testFolderID string
+var testProjectId string
 var testUniqueIdentifier string
 var useEmbeddedClient bool
 
@@ -43,7 +45,7 @@ var useEmbeddedClient bool
 // to create a provider server to which the CLI can reattach.
 var providerFactories = map[string]func() (*schema.Provider, error){
 	"bitwarden": func() (*schema.Provider, error) {
-		return New(versionDev)(), nil
+		return New(versionTestDisabledRetries)(), nil
 	},
 }
 
@@ -81,12 +83,12 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	bwClient := bwTestClient(t)
 
 	var err error
-	testOrganizationID, err = bwClient.(embedded.WebAPIVault).CreateOrganization(ctx, "org-"+testUniqueIdentifier, "coll-"+testUniqueIdentifier, testEmail)
+	testOrganizationID, err = bwClient.(embedded.PasswordManagerClient).CreateOrganization(ctx, "org-"+testUniqueIdentifier, "coll-"+testUniqueIdentifier, testEmail)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	webapiClient := webapi.NewClient(testServerURL, embedded.NewDeviceIdentifier())
+	webapiClient := webapi.NewClient(testServerURL, embedded.NewDeviceIdentifier(), testDeviceVersion)
 	_, err = webapiClient.LoginWithPassword(ctx, testEmail, testPassword, models.KdfConfiguration{KdfIterations: kdfIterations})
 	if err != nil {
 		t.Fatal(err)
@@ -134,7 +136,7 @@ func ensureVaultwardenHasUser(t *testing.T) {
 
 	clearTestVault(t)
 
-	client := embedded.NewPasswordManagerClient(testServerURL, testDeviceIdentifer)
+	client := embedded.NewPasswordManagerClient(testServerURL, testDeviceIdentifer, testDeviceVersion)
 	testUsername = fmt.Sprintf("test-%s", testUniqueIdentifier)
 	testEmail = fmt.Sprintf("test-%s@laverse.net", testUniqueIdentifier)
 	kdfConfig := models.KdfConfiguration{
@@ -171,7 +173,7 @@ func clearTestVault(t *testing.T) {
 }
 
 func bwTestClient(t *testing.T) bitwarden.PasswordManager {
-	client := embedded.NewPasswordManagerClient(testServerURL, testDeviceIdentifer)
+	client := embedded.NewPasswordManagerClient(testServerURL, testDeviceIdentifer, testDeviceVersion)
 	err := client.LoginWithPassword(context.Background(), testEmail, testPassword)
 	if err != nil {
 		t.Fatal(err)
@@ -251,6 +253,20 @@ func tfConfigPasswordManagerProvider() string {
 		}
 	}
 `, testPassword, testServerURL, testEmail, useEmbeddedClientStr)
+}
+
+func tfConfigSecretsManagerProvider() string {
+	accessToken := os.Getenv("TEST_REAL_BWS_ACCESS_TOKEN")
+	testProjectId = os.Getenv("TEST_REAL_BWS_PROJECT_ID")
+	return fmt.Sprintf(`
+	provider "bitwarden" {
+		access_token = "%s"
+
+		experimental {
+			embedded_client = true
+		}
+	}
+`, accessToken)
 }
 
 func getObjectID(n string, objectId *string) resource.TestCheckFunc {

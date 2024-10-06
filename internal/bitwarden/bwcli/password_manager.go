@@ -252,7 +252,6 @@ func (c *client) Logout(ctx context.Context) error {
 }
 
 func (c *client) DeleteObject(ctx context.Context, obj models.Object) error {
-	// TODO: Don't fail if object is already gone
 	args := []string{
 		"delete",
 		string(obj.Object),

@@ -29,3 +29,13 @@ func resourceReadDataSourceObject(objType models.ObjectType) passwordManagerOper
 		return objectRead(ctx, d, bwClient)
 	}
 }
+
+func resourceReadDataSourceSecret(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
+	d.SetId(d.Get(attributeID).(string))
+	return secretRead(ctx, d, bwsClient)
+}
+
+func resourceReadDataSourceProject(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
+	d.SetId(d.Get(attributeID).(string))
+	return projectRead(ctx, d, bwsClient)
+}

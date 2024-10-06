@@ -62,6 +62,7 @@ type CreateOrganizationRequest struct {
 type CreateOrganizationResponse struct {
 	Id string `json:"id"`
 }
+
 type PreloginResponse struct {
 	Kdf            models.KdfType `json:"kdf"`
 	KdfIterations  int            `json:"kdfIterations"`
@@ -157,4 +158,76 @@ type Organization struct {
 	Id   string `json:"id"`
 	Key  string `json:"key"`
 	Name string `json:"name"`
+}
+
+type MachineTokenResponse struct {
+	AccessToken      string `json:"access_token"`
+	ExpireIn         int    `json:"expires_in"`
+	RefreshToken     string `json:"refresh_token,omitempty"`
+	Scope            string `json:"scope"`
+	TokenType        string `json:"token_type"`
+	EncryptedPayload string `json:"encrypted_payload"`
+
+	// To load profile ? Not present with access login
+	PrivateKey string `json:"private_key,omitempty"`
+	Key        string `json:"key,omitempty"`
+}
+
+type MachineTokenEncryptedPayload struct {
+	EncryptionKey string `json:"encryptionKey"`
+}
+
+type Project struct {
+	ID             string    `json:"id"`
+	OrganizationID string    `json:"organizationId"`
+	Name           string    `json:"name"`
+	CreationDate   time.Time `json:"creationDate"`
+	RevisionDate   time.Time `json:"revisionDate"`
+	Read           bool      `json:"read"`
+	Write          bool      `json:"write"`
+	Object         string    `json:"object"`
+}
+
+type Projects struct {
+	Data              []Project `json:"data"`
+	ContinuationToken *string   `json:"continuationToken"`
+	Object            string    `json:"object"`
+}
+
+type SecretSummary struct {
+	ID             string    `json:"id"`
+	OrganizationID string    `json:"organizationId"`
+	Key            string    `json:"key"`
+	CreationDate   time.Time `json:"creationDate"`
+	RevisionDate   time.Time `json:"revisionDate"`
+	Projects       []Project `json:"projects"`
+	Read           bool      `json:"read"`
+	Write          bool      `json:"write"`
+}
+
+type Secret struct {
+	SecretSummary
+	Value  string `json:"value"`
+	Note   string `json:"note"`
+	Object string `json:"object"`
+}
+
+type SecretsWithProjectsList struct {
+	Secrets  []SecretSummary `json:"secrets"`
+	Projects []Project       `json:"projects"`
+	Object   string          `json:"object"`
+}
+
+type CreateSecretRequest struct {
+	Key                    string                  `json:"key"`
+	Value                  string                  `json:"value"`
+	Note                   string                  `json:"note"`
+	ProjectIDs             []string                `json:"projectIds"`
+	AccessPoliciesRequests *AccessPoliciesRequests `json:"accessPoliciesRequests,omitempty"`
+}
+
+type AccessPoliciesRequests struct {
+	UserAccessPolicyRequests           []interface{} `json:"userAccessPolicyRequests"`
+	GroupAccessPolicyRequests          []interface{} `json:"groupAccessPolicyRequests"`
+	ServiceAccountAccessPolicyRequests []interface{} `json:"serviceAccountAccessPolicyRequests"`
 }

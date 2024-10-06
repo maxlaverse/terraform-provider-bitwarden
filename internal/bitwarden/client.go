@@ -23,3 +23,12 @@ type PasswordManager interface {
 	LoginWithPassword(ctx context.Context, username, password string) error
 	Sync(context.Context) error
 }
+
+type SecretsManager interface {
+	CreateSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
+	DeleteSecret(ctx context.Context, secret models.Secret) error
+	EditSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
+	GetProject(ctx context.Context, project models.Project) (*models.Project, error)
+	GetSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
+	LoginWithAccessToken(ctx context.Context, accessKey string) error
+}

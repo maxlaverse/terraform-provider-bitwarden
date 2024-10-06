@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
@@ -46,4 +47,9 @@ func (s *AccountSecrets) GetOrganizationKey(orgId string) (*symmetrickey.Key, er
 type OrganizationSecret struct {
 	Key              symmetrickey.Key
 	OrganizationUUID string
+}
+
+type MachineAccountClaims struct {
+	Organization string `json:"organization"`
+	jwt.RegisteredClaims
 }

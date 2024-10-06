@@ -10,6 +10,7 @@ var (
 	ErrAttachmentNotFound  = errors.New("attachment not found")
 	ErrVaultLocked         = errors.New("vault is locked")
 	ErrWrongMasterPassword = errors.New("invalid master password")
+	ErrLoggedOut           = errors.New("please login first")
 )
 
 type ItemType int
@@ -59,6 +60,7 @@ const (
 	ObjectCipherDetails           ObjectType = "cipherDetails"         // when creating attachment data
 	ObjectAttachmentFileUpload    ObjectType = "attachment-fileUpload" // when creating attachment data
 	ObjectApiKey                  ObjectType = "api-key"
+	ObjectSecret                  ObjectType = "secret"
 )
 
 const (
