@@ -20,7 +20,7 @@ func TestAccResourceOrgCollection(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigProvider() + tfConfigResourceOrgCollection("org-col-bar"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						resourceName, attributeName, "org-col-bar",
@@ -33,7 +33,7 @@ func TestAccResourceOrgCollection(t *testing.T) {
 			},
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigProvider() + tfConfigResourceOrgCollection("org-col-new-name-bar"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-new-name-bar"),
 				Check: resource.TestCheckResourceAttr(
 					resourceName, attributeName, "org-col-new-name-bar",
 				),

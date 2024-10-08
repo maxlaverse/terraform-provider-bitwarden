@@ -231,7 +231,7 @@ func bwOfficialTestClient(t *testing.T) bwcli.PasswordManagerClient {
 	return client
 }
 
-func tfConfigProvider() string {
+func tfConfigPasswordManagerProvider() string {
 	if os.Getenv("TEST_USE_EMBEDDED_CLIENT") == "1" {
 		useEmbeddedClient = true
 	}

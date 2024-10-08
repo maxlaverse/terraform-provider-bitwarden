@@ -17,7 +17,7 @@ func TestAccResourceItemSecureNote(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemSecureNote(),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemSecureNote(),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemGeneral(resourceName),
 					getObjectID(resourceName, &objectID),

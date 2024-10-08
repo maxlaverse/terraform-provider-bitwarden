@@ -14,20 +14,20 @@ func TestAccDataSourceAttachment(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt") + tfConfigDataAttachment(),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt") + tfConfigDataAttachment(),
 				Check: resource.TestMatchResourceAttr(
 					"data.bitwarden_attachment.foo_data", attributeAttachmentContent, regexp.MustCompile(`^Hello, I'm a text attachment$`),
 				),
 			},
 			{
-				Config:      tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt") + tfConfigDataAttachmentInexistent(),
+				Config:      tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt") + tfConfigDataAttachmentInexistent(),
 				ExpectError: regexp.MustCompile("Error: attachment not found"),
 			},
 			{
-				Config:      tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt") + tfConfigDataAttachmentInexistentItem(),
+				Config:      tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt") + tfConfigDataAttachmentInexistentItem(),
 				ExpectError: regexp.MustCompile("Error: object not found"),
 			},
 		},

@@ -21,12 +21,12 @@ func TestAccResourceAttachment(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigProvider() + tfConfigResourceAttachment("non-existent"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("non-existent"),
 				ExpectError:  regexp.MustCompile("no such file or directory"),
 			},
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
 						resourceName, attributeAttachmentFile, regexp.MustCompile(`^34945801b5aed4540ccfde8320ec7c395325e02d$`),
@@ -57,11 +57,11 @@ func TestAccResourceItemAttachmentFields(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 			},
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
 						resourceName, "attachments.#", regexp.MustCompile("^1$"),
@@ -83,18 +83,18 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					getAttachmentIDs("bitwarden_attachment.foo", &attachmentID, &itemID),
 				),
 			},
 			{
-				Config:             tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config:             tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: false,
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				PreConfig: func() {
 					err := bwTestClient(t).DeleteAttachment(context.Background(), itemID, attachmentID)
 					assert.NoError(t, err)
@@ -111,7 +111,7 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 				ExpectNonEmptyPlan: true,
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 			},
 		},
 	})
@@ -148,7 +148,7 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					compareIdentifier(resourceName, &ID, true),
 					resource.TestMatchResourceAttr(
@@ -159,7 +159,7 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 			{
 				// Same content, different filename
 				ResourceName: resourceName,
-				Config:       tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment2a.txt"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment2a.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					compareIdentifier(resourceName, &ID, false),
 					resource.TestMatchResourceAttr(
@@ -170,7 +170,7 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 			{
 				// Different content
 				ResourceName: resourceName,
-				Config:       tfConfigProvider() + tfConfigResourceAttachment("fixtures/attachment2b.txt"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment2b.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					compareIdentifier(resourceName, &ID, true),
 					resource.TestMatchResourceAttr(

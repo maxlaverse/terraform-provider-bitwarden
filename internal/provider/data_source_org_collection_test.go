@@ -17,7 +17,7 @@ func TestAccDataSourceOrgCollection(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigDataOrgCollection(),
+				Config: tfConfigPasswordManagerProvider() + tfConfigDataOrgCollection(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
 						resourceName, attributeName, regexp.MustCompile("^coll-([0-9]{6})$"),

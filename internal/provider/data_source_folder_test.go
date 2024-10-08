@@ -13,10 +13,10 @@ func TestAccDataSourceFolderAttributes(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder("folder-bar"),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceFolder("folder-bar"),
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceFolder("folder-bar") + tfConfigDataFolder(),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceFolder("folder-bar") + tfConfigDataFolder(),
 				Check:  checkObject("data.bitwarden_folder.foo_data"),
 			},
 		},

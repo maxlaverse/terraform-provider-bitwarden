@@ -21,7 +21,7 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemLogin("reslogin"),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemLogin("reslogin"),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemLogin(resourceName),
 					resource.TestCheckResourceAttr(
@@ -31,7 +31,7 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 				),
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemLogin("resloginmodified"),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemLogin("resloginmodified"),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemLogin(resourceName),
 					resource.TestCheckResourceAttr(
@@ -59,18 +59,18 @@ func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemLoginSmall(),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemLoginSmall(),
 				Check: resource.ComposeTestCheckFunc(
 					getObjectID("bitwarden_item_login.foo", &objectID),
 				),
 			},
 			{
-				Config:             tfConfigProvider() + tfConfigResourceItemLoginSmall(),
+				Config:             tfConfigPasswordManagerProvider() + tfConfigResourceItemLoginSmall(),
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: false,
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemLoginSmall(),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemLoginSmall(),
 				PreConfig: func() {
 					obj := models.Object{ID: objectID, Object: models.ObjectTypeItem}
 					err := bwTestClient(t).DeleteObject(context.Background(), obj)

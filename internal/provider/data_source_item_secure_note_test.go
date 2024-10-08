@@ -16,10 +16,10 @@ func TestAccDataSourceItemSecureNote(t *testing.T) {
 		PreventPostDestroyRefresh: false,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemSecureNote(),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemSecureNote(),
 			},
 			{
-				Config: tfConfigProvider() + tfConfigResourceItemSecureNote() + tfConfigDataItemSecureNote(),
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemSecureNote() + tfConfigDataItemSecureNote(),
 				Check:  checkItemGeneral(resourceName),
 			},
 		},

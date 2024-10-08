@@ -17,7 +17,7 @@ func TestAccDataSourceOrganizationAttributes(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigProvider() + tfConfigDataOrganization(),
+				Config: tfConfigPasswordManagerProvider() + tfConfigDataOrganization(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
 						resourceName, attributeName, regexp.MustCompile("^org-([0-9]{6})$"),

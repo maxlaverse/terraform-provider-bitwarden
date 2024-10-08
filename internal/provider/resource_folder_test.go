@@ -18,7 +18,7 @@ func TestAccResourceFolder(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigProvider() + tfConfigResourceFolder("folder-bar"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceFolder("folder-bar"),
 				Check: resource.ComposeTestCheckFunc(
 					checkObject(resourceName),
 					getObjectID(resourceName, &objectID),
@@ -26,7 +26,7 @@ func TestAccResourceFolder(t *testing.T) {
 			},
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigProvider() + tfConfigResourceFolder("folder-new-name-bar"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceFolder("folder-new-name-bar"),
 				Check: resource.ComposeTestCheckFunc(
 					checkObject(resourceName),
 					resource.TestCheckResourceAttr(
