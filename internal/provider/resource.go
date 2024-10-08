@@ -11,7 +11,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
-func resourceCreateObject(attrObject models.ObjectType, attrType models.ItemType) resourceOperation {
+func resourceCreateObject(attrObject models.ObjectType, attrType models.ItemType) passwordManagerOperation {
 	return func(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 		err := d.Set(attributeObject, attrObject)
 		if err != nil {

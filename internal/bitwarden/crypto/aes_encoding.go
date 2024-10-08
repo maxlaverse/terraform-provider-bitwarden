@@ -7,9 +7,8 @@ import (
 	"fmt"
 )
 
-func aes256Decode(cipherText []byte, encKey []byte, iv []byte) ([]byte, error) {
-
-	block, err := aes.NewCipher(encKey)
+func aes256Decode(cipherText []byte, key []byte, iv []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new cipher block: %w", err)
 	}
@@ -23,7 +22,7 @@ func aes256Decode(cipherText []byte, encKey []byte, iv []byte) ([]byte, error) {
 }
 
 func aes256Encode(plainText []byte, key []byte, iv []byte, blockSize int) ([]byte, error) {
-	plainTextPadded := pkcs5Padding([]byte(plainText), blockSize, len(plainText))
+	plainTextPadded := pkcs5Padding([]byte(plainText), blockSize)
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -51,7 +50,7 @@ func pkcs5Unpadding(src []byte, blockSize int) ([]byte, error) {
 	return src[:srcLen-paddingLen], nil
 }
 
-func pkcs5Padding(cipherText []byte, blockSize int, after int) []byte {
+func pkcs5Padding(cipherText []byte, blockSize int) []byte {
 	padding := (blockSize - len(cipherText)%blockSize)
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
 	return append(cipherText, padtext...)

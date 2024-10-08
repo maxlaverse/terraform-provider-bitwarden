@@ -9,7 +9,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
-func resourceReadDataSourceItem(attrObject models.ObjectType, attrType models.ItemType) resourceOperation {
+func resourceReadDataSourceItem(attrObject models.ObjectType, attrType models.ItemType) passwordManagerOperation {
 	return func(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 		err := d.Set(attributeType, attrType)
 		if err != nil {
@@ -19,7 +19,7 @@ func resourceReadDataSourceItem(attrObject models.ObjectType, attrType models.It
 	}
 }
 
-func resourceReadDataSourceObject(objType models.ObjectType) resourceOperation {
+func resourceReadDataSourceObject(objType models.ObjectType) passwordManagerOperation {
 	return func(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 		d.SetId(d.Get(attributeID).(string))
 		err := d.Set(attributeObject, objType)

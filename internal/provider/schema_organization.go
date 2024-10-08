@@ -21,7 +21,7 @@ func organizationSchema() map[string]*schema.Schema {
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		attributeFilterSearch: &schema.Schema{
+		attributeFilterSearch: {
 			Description:  descriptionFilterSearch,
 			Type:         schema.TypeString,
 			Optional:     true,

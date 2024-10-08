@@ -19,10 +19,6 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
-const (
-	deviceName = "Bitwarden Terraform Provider"
-)
-
 type Client interface {
 	CreateFolder(ctx context.Context, obj Folder) (*Folder, error)
 	CreateObject(context.Context, models.Object) (*models.Object, error)
@@ -51,11 +47,7 @@ type Client interface {
 
 func NewClient(serverURL, deviceIdentifier string, opts ...Options) Client {
 	c := &client{
-		deviceName:       deviceName,
-		deviceIdentifier: deviceIdentifier,
-
-		// Official Device List: https://github.com/bitwarden/server/blob/main/src/Core/Enums/DeviceType.cs
-		deviceType: "21", // SDK
+		device:     DeviceInformation(deviceIdentifier),
 		serverURL:  strings.TrimSuffix(serverURL, "/"),
 		httpClient: retryablehttp.NewClient(),
 	}
@@ -69,9 +61,7 @@ func NewClient(serverURL, deviceIdentifier string, opts ...Options) Client {
 }
 
 type client struct {
-	deviceIdentifier   string
-	deviceName         string
-	deviceType         string
+	device             deviceInfoWithOfficialFallback
 	httpClient         *retryablehttp.Client
 	serverURL          string
 	sessionAccessToken string
@@ -299,23 +289,30 @@ func (c *client) LoginWithPassword(ctx context.Context, username, password strin
 
 	form := url.Values{}
 	form.Add("scope", "api offline_access")
-	form.Add("client_id", "web")
+	form.Add("client_id", "cli")
 	form.Add("grant_type", "password")
 	form.Add("username", username)
 	form.Add("password", hashedPassword)
 
 	// NOTE: The following fields are not documented on the Bitwarden API, but seem to be required
 	//       in order to avoid a "No device information provided." error.
-	form.Add("deviceType", c.deviceType)
-	form.Add("deviceIdentifier", c.deviceIdentifier)
-	form.Add("deviceName", c.deviceName)
+	form.Add("deviceType", c.device.official.deviceType)
+	form.Add("deviceIdentifier", c.device.official.deviceIdentifier)
+	form.Add("deviceName", c.device.official.deviceName)
 
 	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing login with password request: %w", err)
 	}
-	httpReq.Header.Add("Auth-Email", base64.StdEncoding.EncodeToString([]byte(username)))
-	httpReq.Header.Add("Device-Type", c.deviceType)
+
+	// NOTE: There seem to be extra controls on the username/password authentication of the official
+	//       Bitwarden server. Without a valid combination of headers, the server returns a 500
+	//       after ~1 minute.
+	httpReq.Header.Set("device-type", c.device.official.deviceType)
+	httpReq.Header.Set("user-agent", c.device.official.userAgent)
+	httpReq.Header.Set("auth-email", base64.RawURLEncoding.EncodeToString([]byte(username)))
+	httpReq.Header.Set("bitwarden-client-name", "cli")
+	httpReq.Header.Set("bitwarden-client-version", c.device.official.deviceVersion)
 
 	tokenResp, err := doRequest[TokenResponse](ctx, c.httpClient, httpReq)
 	if err != nil {
@@ -346,9 +343,9 @@ func (c *client) LoginWithAPIKey(ctx context.Context, clientId, clientSecret str
 
 	// NOTE: The following fields are not documented on the Bitwarden API, but seem to be required
 	//       in order to avoid a "No device information provided." error.
-	form.Add("deviceType", c.deviceType)
-	form.Add("deviceIdentifier", c.deviceIdentifier)
-	form.Add("deviceName", c.deviceName)
+	form.Add("deviceType", c.device.deviceType)
+	form.Add("deviceIdentifier", c.device.deviceIdentifier)
+	form.Add("deviceName", c.device.deviceName)
 
 	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
 	if err != nil {
@@ -424,7 +421,12 @@ func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, r
 	if len(c.sessionAccessToken) > 0 {
 		httpReq.Header.Add("authorization", fmt.Sprintf("Bearer %s", c.sessionAccessToken))
 	}
-	httpReq.Header.Add("Accept", "application/json")
+	httpReq.Header.Set("Accept", "application/json")
+
+	if reqMethod == "GET" {
+		httpReq.Header.Set("Cache-Control", "no-store")
+		httpReq.Header.Set("Pragma", "no-cache")
+	}
 
 	return httpReq, nil
 }
@@ -461,6 +463,7 @@ func doRequest[T any](ctx context.Context, httpClient *retryablehttp.Client, htt
 		return nil, fmt.Errorf("error unmarshalling response from '%s': %w", httpReq.URL, err)
 	}
 	debugInfo := map[string]interface{}{"url": httpReq.URL.RequestURI(), "body": string(body)}
+
 	tflog.Trace(ctx, "Response from Bitwarden server", debugInfo)
 	return &res, nil
 }
