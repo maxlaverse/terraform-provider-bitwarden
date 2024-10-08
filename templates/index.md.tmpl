@@ -16,9 +16,9 @@ You must configure the provider with proper credentials before you can use it, a
 
 ## Authentication
 The Bitwarden provider can use different combinations of credentials to authenticate:
-* Email and Password (requires `email` and `master_password`)
 * API key (requires `email`, `master_password`, `client_id` and `client_secret`)
-* user-provided Session Key (requires `session_key`)
+* Email and Password (requires `email` and `master_password`) (prefer API keys instead)
+* User-provided Session Key (requires `session_key`) (only works with a pre-downloaded Vault)
 
 ### Generating a Client ID and Secret
 The recommended way to interact with your Vault using the Bitwarden Provider Terraform plugin is to generate an API key.

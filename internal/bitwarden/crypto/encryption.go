@@ -2,15 +2,14 @@ package crypto
 
 import (
 	"bytes"
-	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"fmt"
-	"hash"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/encryptedstring"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/helpers"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
 )
 
@@ -48,7 +47,7 @@ func Encrypt(plainValue []byte, key symmetrickey.Key) (*encryptedstring.Encrypte
 		return nil, fmt.Errorf("error to aes256encoding data: %w", err)
 	}
 
-	hmac := hmacSum(append(randomIV, data...), key.MacKey, sha256.New)
+	hmac := helpers.HMACSum(append(randomIV, data...), key.MacKey, sha256.New)
 
 	res := encryptedstring.New(randomIV, data, hmac, key)
 
@@ -129,7 +128,7 @@ func Decrypt(encString *encryptedstring.EncryptedString, key *symmetrickey.Key) 
 		return nil, fmt.Errorf("hmac lengths differ: %d!=%d", len(encString.Hmac), len(key.MacKey))
 	}
 
-	computedHmac := hmacSum(append(append([]byte{}, encString.IV...), encString.Data...), key.MacKey, sha256.New)
+	computedHmac := helpers.HMACSum(append(append([]byte{}, encString.IV...), encString.Data...), key.MacKey, sha256.New)
 	if !bytes.Equal(computedHmac, encString.Hmac) {
 		return nil, fmt.Errorf("hmac comparison failed: %v != %v", computedHmac, encString.Hmac)
 	}
@@ -138,10 +137,4 @@ func Decrypt(encString *encryptedstring.EncryptedString, key *symmetrickey.Key) 
 		return nil, fmt.Errorf("error aes256Decoding: %w", err)
 	}
 	return decData, nil
-}
-
-func hmacSum(value, key []byte, algo func() hash.Hash) []byte {
-	mac := hmac.New(algo, key)
-	mac.Write(value)
-	return mac.Sum(nil)
 }

@@ -34,11 +34,11 @@ type WebAPIVault interface {
 	Unlock(ctx context.Context, password string) error
 }
 
-type Options func(c bitwarden.PasswordManager)
+type PasswordManagerOptions func(c bitwarden.PasswordManager)
 
 // DisableCryptoSafeMode disables the safe mode for crypto operations, which reverses
 // crypto.Encrypt() to make sure it can decrypt the result.
-func DisableCryptoSafeMode() Options {
+func DisableCryptoSafeMode() PasswordManagerOptions {
 	return func(c bitwarden.PasswordManager) {
 		crypto.SafeMode = false
 	}
@@ -47,7 +47,7 @@ func DisableCryptoSafeMode() Options {
 // DisableObjectEncryptionVerification disables the systematic attempts to decrypt objects
 // (items, folders, collections) after they have been created or edited, to verify that the
 // encryption can be reverse.
-func DisableObjectEncryptionVerification() Options {
+func DisableObjectEncryptionVerification() PasswordManagerOptions {
 	return func(c bitwarden.PasswordManager) {
 		c.(*webAPIVault).baseVault.verifyObjectEncryption = false
 	}
@@ -56,27 +56,26 @@ func DisableObjectEncryptionVerification() Options {
 // DisableSyncAfterWrite disables the systematic Sync() after a write operation (create, edit,
 // delete) to the vault. Write operations already return the object that was created or edited, so
 // Sync() is not strictly necessary.
-func DisableSyncAfterWrite() Options {
+func DisableSyncAfterWrite() PasswordManagerOptions {
 	return func(c bitwarden.PasswordManager) {
 		c.(*webAPIVault).syncAfterWrite = false
 	}
 }
 
-// DisableRetryBackoff disables the retry backoff mechanism for API calls.
-func WithHttpOptions(opts ...webapi.Options) Options {
+func WithPasswordManagerHttpOptions(opts ...webapi.Options) PasswordManagerOptions {
 	return func(c bitwarden.PasswordManager) {
 		c.(*webAPIVault).clientOpts = opts
 	}
 }
 
 // Panic on error is useful for debugging, but should not be used in production.
-func EnablePanicOnEncryptionError() Options {
+func EnablePanicOnEncryptionError() PasswordManagerOptions {
 	return func(c bitwarden.PasswordManager) {
 		panicOnEncryptionErrors = true
 	}
 }
 
-func NewPasswordManagerClient(serverURL, deviceIdentifier string, opts ...Options) WebAPIVault {
+func NewPasswordManagerClient(serverURL, deviceIdentifier string, opts ...PasswordManagerOptions) WebAPIVault {
 	c := &webAPIVault{
 		baseVault: baseVault{
 			objectStore:            make(map[string]models.Object),

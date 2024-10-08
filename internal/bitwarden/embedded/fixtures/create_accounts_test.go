@@ -94,7 +94,7 @@ func createTestAccount(t *testing.T, accountEmail string, kdfConfig models.KdfCo
 			Prefix: mockName,
 		},
 	}
-	vault := embedded.NewPasswordManagerClient(ServerURL, testDeviceIdentifer, embedded.WithHttpOptions(webapi.WithCustomClient(httpClient)))
+	vault := embedded.NewPasswordManagerClient(ServerURL, testDeviceIdentifer, embedded.WithPasswordManagerHttpOptions(webapi.WithCustomClient(httpClient)))
 
 	err = vault.LoginWithPassword(ctx, accountEmail, TestPassword)
 	if err != nil {

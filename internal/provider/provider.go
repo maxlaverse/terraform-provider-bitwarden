@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -134,26 +133,10 @@ func New(version string) func() *schema.Provider {
 	}
 }
 
-func newEmbeddedSecretsManager(d *schema.ResourceData) bool {
-	experimentalFeatures, hasExperimentalFeatures := d.GetOk(attributeExperimental)
-	if !hasExperimentalFeatures {
-		return false
-	}
-	if hasExperimentalFeatures {
-		if experimentalFeatures.(*schema.Set).Len() == 0 {
-			return false
-		}
-		embeddedClient, hasEmbeddedClient := experimentalFeatures.(*schema.Set).List()[0].(map[string]interface{})[attributeExperimentalEmbeddedClient]
-		if hasEmbeddedClient && embeddedClient.(bool) {
-			return true
-		}
-	}
-	return false
-}
 func providerConfigure(version string, _ *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 
-		useEmbeddedClient := newEmbeddedSecretsManager(d)
+		useEmbeddedClient := useExperimentalEmbeddedClient(d)
 
 		if _, hasSessionKey := d.GetOk(attributeSessionKey); useEmbeddedClient && hasSessionKey {
 			return nil, diag.Errorf("session key is not supported with the embedded client")
@@ -189,6 +172,23 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 
 		return bwClient, nil
 	}
+}
+
+func useExperimentalEmbeddedClient(d *schema.ResourceData) bool {
+	experimentalFeatures, hasExperimentalFeatures := d.GetOk(attributeExperimental)
+	if !hasExperimentalFeatures {
+		return false
+	}
+	if hasExperimentalFeatures {
+		if experimentalFeatures.(*schema.Set).Len() == 0 {
+			return false
+		}
+		embeddedClient, hasEmbeddedClient := experimentalFeatures.(*schema.Set).List()[0].(map[string]interface{})[attributeExperimentalEmbeddedClient]
+		if hasEmbeddedClient && embeddedClient.(bool) {
+			return true
+		}
+	}
+	return false
 }
 
 func ensureLoggedInCLIPasswordManager(ctx context.Context, d *schema.ResourceData, bwClient bwcli.PasswordManagerClient) error {
@@ -328,7 +328,7 @@ func newEmbeddedPasswordManagerClient(ctx context.Context, d *schema.ResourceDat
 	}
 
 	serverURL := d.Get(attributeServer).(string)
-	return embedded.NewPasswordManagerClient(serverURL, deviceId, embedded.WithHttpOptions(webapiOpts...)), nil
+	return embedded.NewPasswordManagerClient(serverURL, deviceId, embedded.WithPasswordManagerHttpOptions(webapiOpts...)), nil
 }
 
 func getOrGenerateDeviceIdentifier(ctx context.Context) (string, error) {
@@ -373,12 +373,4 @@ func ensureLoggedInEmbeddedPasswordManager(ctx context.Context, d *schema.Resour
 	}
 
 	return fmt.Errorf("INTERNAL BUG: not enough parameters provided to login (status: 'BUG')")
-}
-
-func getPasswordManager(meta interface{}) (bitwarden.PasswordManager, error) {
-	bwClient, ok := meta.(bitwarden.PasswordManager)
-	if !ok {
-		return nil, errors.New("provider was not configured with Password Manager credentials")
-	}
-	return bwClient, nil
 }

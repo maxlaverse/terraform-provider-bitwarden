@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"golang.org/x/crypto/hkdf"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/helpers"
 )
 
 type Key struct {
@@ -55,16 +55,10 @@ func NewFromRawBytes(rawKey []byte) (*Key, error) {
 }
 
 func (key *Key) StretchKey() Key {
-	encKey := hkdf.Expand(sha256.New, key.Key, []byte("enc"))
-	macKey := hkdf.Expand(sha256.New, key.Key, []byte("mac"))
+	encKey := helpers.HKDFExpand(key.Key, []byte("enc"), sha256.New, 32)
+	macKey := helpers.HKDFExpand(key.Key, []byte("mac"), sha256.New, 32)
 
-	newEncKey := make([]byte, 32)
-	encKey.Read(newEncKey)
-
-	newMacKey := make([]byte, 32)
-	macKey.Read(newMacKey)
-
-	newKey := append(newEncKey, newMacKey...)
+	newKey := append(encKey, macKey...)
 	k, err := NewFromRawBytes(newKey)
 	if err != nil {
 		panic("BUG: Bad length in StretchKey()")
