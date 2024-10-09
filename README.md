@@ -6,7 +6,7 @@
 ![Releases](https://img.shields.io/github/v/release/maxlaverse/terraform-provider-bitwarden?include_prereleases)
 ![Downloads](https://img.shields.io/badge/dynamic/json?color=7b42bc&label=Downloads&labelColor=black&logo=terraform&query=data.attributes.total&url=https%3A%2F%2Fregistry.terraform.io%2Fv2%2Fproviders%2F2657%2Fdownloads%2Fsummary&style=flat-square)
 
-The Terraform Bitwarden provider is a plugin for Terraform that allows to manage different kind of Bitwarden resources.
+The Terraform Bitwarden provider is a plugin for Terraform that allows to manage different kind of Bitwarden resources from their [Password Manager] and [Secrets Manager] products.
 This project is not associated with the Bitwarden project nor 8bit Solutions LLC.
 
 **[Explore the docs »][Terraform Registry docs]**
@@ -22,7 +22,7 @@ This project is not associated with the Bitwarden project nor 8bit Solutions LLC
 ## Supported Versions
 The plugin has been tested and built with the following components:
 - [Terraform] v1.6.1 / [OpenTofu] v1.8.0
-- [Bitwarden CLI] v2023.2.0 (except with the experimental `embedded_client`)
+- [Bitwarden CLI] v2023.2.0 (if not using the experimental `embedded_client`)
 - [Go] 1.23.1 (for development)
 - [Docker] 23.0.5 (for development)
 
@@ -37,7 +37,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.9.0"
+      version = ">= 0.10.0"
     }
   }
 }
@@ -114,3 +114,5 @@ Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more informa
 [Terraform Registry docs]: https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs
 [hashicorp/terraform-plugin-sdk#63]: https://github.com/hashicorp/terraform-plugin-sdk/issues/63
 [Terraform's documentation on Data Storage]: https://bitwarden.com/help/data-storage/#on-your-local-machine
+[Password Manager]: https://bitwarden.com/products/personal/
+[Secrets Manager]: https://bitwarden.com/products/secrets-manager/

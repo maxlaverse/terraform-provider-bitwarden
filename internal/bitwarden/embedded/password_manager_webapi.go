@@ -17,7 +17,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
 
-type WebAPIVault interface {
+type PasswordManagerClient interface {
 	BaseVault
 	CreateObject(ctx context.Context, obj models.Object) (*models.Object, error)
 	CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error)
@@ -75,7 +75,7 @@ func EnablePanicOnEncryptionError() PasswordManagerOptions {
 	}
 }
 
-func NewPasswordManagerClient(serverURL, deviceIdentifier string, opts ...PasswordManagerOptions) WebAPIVault {
+func NewPasswordManagerClient(serverURL, deviceIdentifier, providerVersion string, opts ...PasswordManagerOptions) PasswordManagerClient {
 	c := &webAPIVault{
 		baseVault: baseVault{
 			objectStore:            make(map[string]models.Object),
@@ -93,7 +93,7 @@ func NewPasswordManagerClient(serverURL, deviceIdentifier string, opts ...Passwo
 		o(c)
 	}
 
-	c.client = webapi.NewClient(serverURL, deviceIdentifier, c.clientOpts...)
+	c.client = webapi.NewClient(serverURL, deviceIdentifier, providerVersion, c.clientOpts...)
 
 	return c
 }

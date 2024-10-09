@@ -2,13 +2,14 @@
 layout: ""
 page_title: "Bitwarden Provider"
 description: |-
-  Use the Bitwarden provider to read, create, or update logins, secure notes and folders in your Bitwarden Vaults.
+  Use the Bitwarden provider to manage your Logins, Secure Notes, and Secrets.
 ---
 
 # Bitwarden Provider
 
-Use the Bitwarden provider to interact with Bitwarden logins, secure notes, folders and org-collections.
-You must configure the provider with proper credentials before you can use it, and have the [Bitwarden CLI] installed (unless you use the experimental `embedded_client` feature).
+Use the Bitwarden provider to manage your [Password Manager] Logins and Secure Notes, and [Secrets Manager] Secrets.
+You must configure the provider with proper credentials before you can use it.
+If you're not trying out the experimental `embedded_client` feature, you also need a [Bitwarden CLI] installed locally.
 
 ## Example Usage
 
@@ -17,7 +18,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.9.0"
+      version = ">= 0.10.0"
     }
   }
 }
@@ -49,13 +50,17 @@ data "bitwarden_item_login" "example" {
 ```
 
 ## Authentication
-The Bitwarden provider can use different combinations of credentials to authenticate:
-* API key (requires `email`, `master_password`, `client_id` and `client_secret`)
-* Email and Password (requires `email` and `master_password`) (prefer API keys instead)
-* User-provided Session Key (requires `session_key`) (only works with a pre-downloaded Vault)
+Depending on the type of credentials you use, you'll be able to connect either with a Password Manager or Secret Manager.
+If you want your workspace to interact with both, have a look at [provider aliases].
 
-### Generating a Client ID and Secret
-The recommended way to interact with your Vault using the Bitwarden Provider Terraform plugin is to generate an API key.
+### Password Manager
+The Password Manager accepts different combinations of credentials to authenticate:
+* _[Personal API Key]_ (requires `email`, `master_password`, `client_id` and `client_secret` to be set).
+* _Email and Password_ (requires `email` and `master_password` to be set) (prefer _Personal API keys_ instead).
+* User-provided _Session Key_ (requires `session_key` to be set), which only works with a pre-downloaded Vault (See _Generating a Session Key_).
+
+#### Generating a Client ID and Secret
+The recommended way to interact with your Password Manager Vault using the Bitwarden Provider Terraform plugin is to generate an API key.
 This allows you to easily revoke access to your Vault without having to change your master password.
 
 In order to generate a pair of Client ID and Secret, you need to:
@@ -65,7 +70,7 @@ In order to generate a pair of Client ID and Secret, you need to:
 4. Click on _View API Key_ (or maybe another label if it's the first time)
 5. Save the API credentials somewhere safe
 
-### Generating a Session Key
+#### Generating a Session Key
 
 If you don't want to use an API key, you can use a Session Key instead.
 When doing so, it's your responsibility to:
@@ -81,13 +86,28 @@ BITWARDENCLI_APPDATA_DIR=.bitwarden bw login
 BITWARDENCLI_APPDATA_DIR=<vault_path> bw login
 ```
 
+A Session Key is bound to a local copy of a Vault. It's therefore important that you set the right `BITWARDENCLI_APPDATA_DIR` to the path where your Vault is stored.
+
+### Secrets Manager
+The Secrets Manager only accepts [Access Tokens] (requires `access_token` to be set).
+
+In order to generate an Access Token you need to:
+1. Connect to your Vault on https://vault.bitwarden.com
+2. Ensure the _Secrets Manager_ section is selected (bottom left)
+3. Click on _Machine accounts_
+4. Click on _New_
+5. Click on your generated Machine Account
+6. Select the _Access Tokens_ tab
+7. Created a new Access Token and save it somewhere safe
+
+
 ## Configuration
 Configuration for the Bitwarden Provider can be derived from two sources:
 * Parameters in the provider configuration
 * Environment variables
 
 ### Parameters
-Credentials can be provided by adding a combination of `email`, `master_password`, `client_id`, `client_secret` or `session_key` to the bitwarden provider block.
+Credentials can be provided by adding a combination of `email`, `master_password`, `client_id`, `client_secret`, `access_token` or `session_key` to the bitwarden provider block.
 ```terraform
 provider "bitwarden" {
   email           = "terraform@example.com"
@@ -106,7 +126,7 @@ provider "bitwarden" {
 ```
 
 ### Environment variables
-Credentials can be provided by using a combination of `BW_EMAIL`, `BW_PASSWORD`, `BW_CLIENTID`, `BW_CLIENTSECRET` or `BW_SESSION` environment variables. 
+Credentials can be provided by using a combination of `BW_EMAIL`, `BW_PASSWORD`, `BW_CLIENTID`, `BW_CLIENTSECRET`, `BWS_ACCESS_TOKEN` or `BW_SESSION` environment variables.
 
 For example:
 ```bitwarden
@@ -123,14 +143,12 @@ export BW_CLIENTSECRET="my-client-secret"
 <!-- schema generated by tfplugindocs -->
 ## Schema
 
-### Required
-
-- `email` (String) Login Email of the Vault (env: `BW_EMAIL`).
-
 ### Optional
 
+- `access_token` (String) Machine Account Access Token (env: `BWS_ACCESS_TOKEN`)).
 - `client_id` (String) Client ID (env: `BW_CLIENTID`)
 - `client_secret` (String) Client Secret (env: `BW_CLIENTSECRET`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.
+- `email` (String) Login Email of the Vault (env: `BW_EMAIL`).
 - `experimental` (Block Set) Enable experimental features. (see [below for nested schema](#nestedblock--experimental))
 - `extra_ca_certs` (String) Extends the well known 'root' CAs (like VeriSign) with the extra certificates in file (env: `NODE_EXTRA_CA_CERTS`).
 - `master_password` (String) Master password of the Vault (env: `BW_PASSWORD`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.
@@ -145,10 +163,9 @@ Optional:
 
 - `embedded_client` (Boolean) Use the embedded client instead of an external binary.
 
-[Bitwarden]: https://bitwarden.com/help/article/managing-items/
+[Password Manager]: https://bitwarden.com/products/personal/
+[Secrets Manager]: https://bitwarden.com/products/secrets-manager/
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
-
-## Known issues
-
-There is an open issue with the Bitwarden CLI that prevents it from creating attachments in recent version (see [bitwarden/clients#5618](https://github.com/bitwarden/clients/issues/5618)).
-The only workaround is to use an older version of the Bitwarden CLI, e.g. 2023.02.
+[Access Tokens]: https://bitwarden.com/help/access-tokens/
+[Personal API Key]: https://bitwarden.com/help/personal-api-key/
+[provider aliases]: https://developer.hashicorp.com/terraform/language/providers/configuration#alias-multiple-provider-configurations

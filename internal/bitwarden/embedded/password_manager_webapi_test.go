@@ -12,7 +12,7 @@ import (
 )
 
 func TestLoginAsPasswordLoadsAccountInformationForPbkdf2(t *testing.T) {
-	vault, reset := newMockedWebAPIVault(fixtures.MockedClient(t, fixtures.Pdkdf2Mocks))
+	vault, reset := newMockedPasswordManager(fixtures.MockedClient(t, fixtures.Pdkdf2Mocks))
 	defer reset()
 
 	ctx := context.Background()
@@ -30,7 +30,7 @@ func TestLoginAsPasswordLoadsAccountInformationForPbkdf2(t *testing.T) {
 }
 
 func TestLoginAsAPILoadsAccountInformationForPbkdf2(t *testing.T) {
-	vault, reset := newMockedWebAPIVault(fixtures.MockedClient(t, fixtures.Pdkdf2Mocks))
+	vault, reset := newMockedPasswordManager(fixtures.MockedClient(t, fixtures.Pdkdf2Mocks))
 	defer reset()
 
 	ctx := context.Background()
@@ -48,7 +48,7 @@ func TestLoginAsAPILoadsAccountInformationForPbkdf2(t *testing.T) {
 }
 
 func TestLoginAsPasswordLoadsAccountInformationForArgon2(t *testing.T) {
-	vault, reset := newMockedWebAPIVault(fixtures.MockedClient(t, fixtures.Argon2Mocks))
+	vault, reset := newMockedPasswordManager(fixtures.MockedClient(t, fixtures.Argon2Mocks))
 	defer reset()
 
 	ctx := context.Background()
@@ -66,7 +66,7 @@ func TestLoginAsPasswordLoadsAccountInformationForArgon2(t *testing.T) {
 }
 
 func TestLoginAsAPILoadsAccountInformationForArgon2(t *testing.T) {
-	vault, reset := newMockedWebAPIVault(fixtures.MockedClient(t, fixtures.Argon2Mocks))
+	vault, reset := newMockedPasswordManager(fixtures.MockedClient(t, fixtures.Argon2Mocks))
 	defer reset()
 
 	ctx := context.Background()
@@ -84,7 +84,7 @@ func TestLoginAsAPILoadsAccountInformationForArgon2(t *testing.T) {
 }
 
 func TestObjectCreation(t *testing.T) {
-	vault, reset := newMockedWebAPIVault(fixtures.MockedClient(t, fixtures.Pdkdf2Mocks))
+	vault, reset := newMockedPasswordManager(fixtures.MockedClient(t, fixtures.Pdkdf2Mocks))
 	defer reset()
 
 	ctx := context.Background()
@@ -107,10 +107,11 @@ func TestObjectCreation(t *testing.T) {
 	assert.Equal(t, "my-username", obj.Login.Username)
 }
 
-func newMockedWebAPIVault(client webapi.Client) (webAPIVault, func()) {
+func newMockedPasswordManager(client webapi.Client) (webAPIVault, func()) {
 	httpmock.Activate()
 
-	vault := NewPasswordManagerClient(fixtures.ServerURL, NewDeviceIdentifier()).(*webAPIVault)
-	vault.client = client
-	return *vault, httpmock.DeactivateAndReset
+	return webAPIVault{
+		serverURL: fixtures.ServerURL,
+		client:    client,
+	}, httpmock.DeactivateAndReset
 }

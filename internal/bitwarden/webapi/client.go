@@ -26,18 +26,26 @@ type Client interface {
 	CreateObjectAttachmentData(ctx context.Context, itemId, attachmentId string, data []byte) error
 	CreateOrganization(ctx context.Context, req CreateOrganizationRequest) (*CreateOrganizationResponse, error)
 	CreateOrgCollection(ctx context.Context, orgId string, req OrganizationCreationRequest) (*Collection, error)
+	CreateSecret(ctx context.Context, secret models.Secret) (*Secret, error)
 	DeleteFolder(ctx context.Context, objID string) error
 	DeleteObject(ctx context.Context, objID string) error
 	DeleteObjectAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteOrgCollection(ctx context.Context, orgID, collectionID string) error
+	DeleteSecret(ctx context.Context, secretId string) error
 	EditFolder(ctx context.Context, obj Folder) (*Folder, error)
 	EditObject(context.Context, models.Object) (*models.Object, error)
 	EditOrgCollection(ctx context.Context, orgId, objId string, obj OrganizationCreationRequest) (*Collection, error)
+	EditSecret(ctx context.Context, secret models.Secret) (*Secret, error)
 	GetAPIKey(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*ApiKey, error)
 	GetCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error)
 	GetContentFromURL(ctx context.Context, url string) ([]byte, error)
 	GetObjectAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
 	GetProfile(context.Context) (*Profile, error)
+	GetProject(ctx context.Context, projectId string) (*Project, error)
+	GetProjects(ctx context.Context, orgId string) ([]Project, error)
+	GetSecret(ctx context.Context, secretId string) (*Secret, error)
+	GetSecrets(ctx context.Context, orgId string) ([]SecretSummary, error)
+	LoginWithAccessToken(ctx context.Context, clientId, clientSecret string) (*MachineTokenResponse, error)
 	LoginWithAPIKey(ctx context.Context, clientId, clientSecret string) (*TokenResponse, error)
 	LoginWithPassword(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*TokenResponse, error)
 	PreLogin(context.Context, string) (*PreloginResponse, error)
@@ -45,9 +53,9 @@ type Client interface {
 	Sync(ctx context.Context) (*SyncResponse, error)
 }
 
-func NewClient(serverURL, deviceIdentifier string, opts ...Options) Client {
+func NewClient(serverURL, deviceIdentifier, providerVersion string, opts ...Options) Client {
 	c := &client{
-		device:     DeviceInformation(deviceIdentifier),
+		device:     DeviceInformation(deviceIdentifier, providerVersion),
 		serverURL:  strings.TrimSuffix(serverURL, "/"),
 		httpClient: retryablehttp.NewClient(),
 	}
@@ -152,6 +160,21 @@ func (c *client) CreateOrgCollection(ctx context.Context, orgId string, req Orga
 	return doRequest[Collection](ctx, c.httpClient, httpReq)
 }
 
+func (c *client) CreateSecret(ctx context.Context, secret models.Secret) (*Secret, error) {
+	cipherCreationRequest := CreateSecretRequest{
+		Key:        secret.Key,
+		Value:      secret.Value,
+		Note:       secret.Note,
+		ProjectIDs: []string{secret.ProjectID},
+	}
+	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/secrets", c.serverURL, secret.OrganizationID), cipherCreationRequest)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing secret creation request: %w", err)
+	}
+
+	return doRequest[Secret](ctx, c.httpClient, httpReq)
+}
+
 func (c *client) DeleteFolder(ctx context.Context, objID string) error {
 	httpReq, err := c.prepareRequest(ctx, "DELETE", fmt.Sprintf("%s/api/folders/%s", c.serverURL, objID), nil)
 	if err != nil {
@@ -192,6 +215,17 @@ func (c *client) DeleteOrgCollection(ctx context.Context, orgID, collectionID st
 	return err
 }
 
+func (c *client) DeleteSecret(ctx context.Context, secretId string) error {
+	IDs := []string{secretId}
+	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/secrets/delete", c.serverURL), IDs)
+	if err != nil {
+		return fmt.Errorf("error preparing secret deletion request: %w", err)
+	}
+
+	_, err = doRequest[[]byte](ctx, c.httpClient, httpReq)
+	return err
+}
+
 func (c *client) GetObjectAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error) {
 	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/ciphers/%s/attachment/%s", c.serverURL, itemId, attachmentId), nil)
 	if err != nil {
@@ -225,6 +259,21 @@ func (c *client) EditOrgCollection(ctx context.Context, orgId, objId string, obj
 	}
 
 	return doRequest[Collection](ctx, c.httpClient, req)
+}
+
+func (c *client) EditSecret(ctx context.Context, secret models.Secret) (*Secret, error) {
+	cipherCreationRequest := CreateSecretRequest{
+		Key:        secret.Key,
+		Value:      secret.Value,
+		Note:       secret.Note,
+		ProjectIDs: []string{secret.ProjectID},
+	}
+	httpReq, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/secrets/%s", c.serverURL, secret.ID), cipherCreationRequest)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing secret edition request: %w", err)
+	}
+
+	return doRequest[Secret](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) GetAPIKey(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*ApiKey, error) {
@@ -277,6 +326,75 @@ func (c *client) GetProfile(ctx context.Context) (*Profile, error) {
 	}
 
 	return doRequest[Profile](ctx, c.httpClient, httpReq)
+}
+
+func (c *client) GetProject(ctx context.Context, projectId string) (*Project, error) {
+	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/projects/%s", c.serverURL, projectId), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing project retrieval request: %w", err)
+	}
+
+	return doRequest[Project](ctx, c.httpClient, httpReq)
+}
+
+func (c *client) GetProjects(ctx context.Context, orgId string) ([]Project, error) {
+	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/projects", c.serverURL, orgId), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing projects retrieval request: %w", err)
+	}
+
+	projects, err := doRequest[Projects](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+	if projects.ContinuationToken != nil && len(*projects.ContinuationToken) > 0 {
+		return nil, fmt.Errorf("pagination not supported")
+	}
+	return projects.Data, nil
+}
+
+func (c *client) GetSecret(ctx context.Context, secretId string) (*Secret, error) {
+	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/secrets/%s", c.serverURL, secretId), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing secret retrieval request: %w", err)
+	}
+
+	return doRequest[Secret](ctx, c.httpClient, httpReq)
+}
+
+func (c *client) GetSecrets(ctx context.Context, orgId string) ([]SecretSummary, error) {
+	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/secrets", c.serverURL, orgId), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing secrets retrieval request: %w", err)
+	}
+
+	secrets, err := doRequest[SecretsWithProjectsList](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+	return secrets.Secrets, nil
+}
+
+func (c *client) LoginWithAccessToken(ctx context.Context, clientId, clientSecret string) (*MachineTokenResponse, error) {
+	form := url.Values{}
+	form.Add("scope", "api.secrets")
+	form.Add("client_id", clientId)
+	form.Add("client_secret", clientSecret)
+	form.Add("grant_type", "client_credentials")
+
+	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing login with access token request: %w", err)
+	}
+
+	tokenResp, err := doRequest[MachineTokenResponse](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+
+	c.sessionAccessToken = tokenResp.AccessToken
+
+	return tokenResp, err
 }
 
 func (c *client) LoginWithPassword(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*TokenResponse, error) {
@@ -408,7 +526,7 @@ func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, r
 			}
 		}
 		httpReq, err = retryablehttp.NewRequestWithContext(ctx, reqMethod, reqUrl, bytes.NewBuffer(bodyBytes))
-		if len(contentType) > 0 {
+		if httpReq != nil && len(contentType) > 0 {
 			httpReq.Header.Add("Content-Type", contentType)
 		}
 	} else {

@@ -1,7 +1,7 @@
 package provider
 
 const (
-	// Datasource and Resource field attributes
+	// Data-source and Resource field attributes
 	attributeAttachments          = "attachments"
 	attributeCollectionIDs        = "collection_ids"
 	attributeCreationDate         = "creation_date"
@@ -42,7 +42,13 @@ const (
 	attributeRevisionDate         = "revision_date"
 	attributeType                 = "type"
 
-	// Datasource and Resource field descriptions
+	// Secret specific attributes
+	attributeKey       = "key"
+	attributeNote      = "note"
+	attributeProjectID = "project_id"
+	attributeValue     = "value"
+
+	// Data-source and Resource field descriptions
 	descriptionAttachments            = "List of item attachments."
 	descriptionCollectionIDs          = "Identifier of the collections the item belongs to."
 	descriptionCreationDate           = "Date the item was created."
@@ -61,7 +67,7 @@ const (
 	descriptionFilterURL              = "Filter search results by URL."
 	descriptionFolderID               = "Identifier of the folder."
 	descriptionIdentifier             = "Identifier."
-	descriptionInternal               = "INTERNAL USE" // TODO: Manage to hide this from the users
+	descriptionInternal               = "INTERNAL USE"
 	descriptionItemIdentifier         = "Identifier of the item the attachment belongs to"
 	descriptionItemAttachmentContent  = "Content of the attachment"
 	descriptionItemAttachmentFile     = "Path to the content of the attachment."
@@ -81,7 +87,13 @@ const (
 	descriptionReprompt               = "Require master password “re-prompt” when displaying secret in the UI."
 	descriptionRevisionDate           = "Last time the item was updated."
 
+	// Secret specific attributes
+	descriptionValue     = "Value."
+	descriptionNote      = "Note."
+	descriptionProjectID = "Identifier of the project."
+
 	// Provider field attributes
+	attributeAccessToken                = "access_token"
 	attributeClientID                   = "client_id"
 	attributeClientSecret               = "client_secret"
 	attributeEmail                      = "email"
@@ -94,6 +106,7 @@ const (
 	attributeExperimentalEmbeddedClient = "embedded_client"
 
 	// Provider field descriptions
+	descriptionAccessToken                = "Machine Account Access Token (env: `BWS_ACCESS_TOKEN`))."
 	descriptionClientSecret               = "Client Secret (env: `BW_CLIENTSECRET`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment."
 	descriptionClientID                   = "Client ID (env: `BW_CLIENTID`)"
 	descriptionEmail                      = "Login Email of the Vault (env: `BW_EMAIL`)."

@@ -24,7 +24,7 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedOnDifferentServer(t *t
 		"master_password": "master-password-9",
 	}
 
-	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
+	diag := New(versionTestDisabledRetries)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
 
 	if !assert.False(t, diag.HasError()) {
 		t.Fatalf("unexpected error: %v", diag[0])
@@ -52,7 +52,7 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedWithDifferentUser(t *t
 		"master_password": "master-password-9",
 	}
 
-	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
+	diag := New(versionTestDisabledRetries)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
 
 	if !assert.False(t, diag.HasError()) {
 		t.Fatalf("unexpected error: %v", diag[0])
@@ -78,7 +78,7 @@ func TestProviderDoesntLogoutFirstIfUnauthenticated(t *testing.T) {
 		"master_password": "master-password-9",
 	}
 
-	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
+	diag := New(versionTestDisabledRetries)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
 
 	if !assert.False(t, diag.HasError()) {
 		t.Fatalf("unexpected error: %v", diag[0])
@@ -108,7 +108,7 @@ func TestProviderReauthenticateWithAPIIfAuthenticatedWithDifferentUser(t *testin
 		"master_password": "master-password-9",
 	}
 
-	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
+	diag := New(versionTestDisabledRetries)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
 
 	if !assert.False(t, diag.HasError()) {
 		t.Fatalf("unexpected error: %v", diag[0])
@@ -135,7 +135,7 @@ func TestProviderWithSessionKeySync(t *testing.T) {
 		"session_key": "abcd1234",
 	}
 
-	// We specifically set the provider's version to something else than 'versionDev'
+	// We specifically set the provider's version to something else than 'versionTestDisabledRetries'
 	// in order to capture 'sync' calls.
 	diag := New("not-dev")().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
 	if !assert.False(t, diag.HasError()) {
@@ -160,7 +160,7 @@ func TestProviderRetryOnRateLimitExceeded(t *testing.T) {
 		"session_key": "abcd1234",
 	}
 
-	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
+	diag := New(versionTestDisabledRetries)().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
 
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, diag[0].Summary, "failing command 'status' for test purposes: Rate limit exceeded. Try again later.")
@@ -184,7 +184,7 @@ func TestProviderReturnUnhandledError(t *testing.T) {
 		"session_key": "abcd1234",
 	}
 
-	diag := New(versionDev)().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
+	diag := New(versionTestDisabledRetries)().Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
 
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, diag[0].Summary, "failing command 'status' for test purposes: Something unknown and bad happened.")

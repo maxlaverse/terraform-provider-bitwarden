@@ -19,11 +19,7 @@ type deviceInfoWithOfficialFallback struct {
 	official deviceInfo
 }
 
-var (
-	Version = "0.0.1"
-)
-
-func DeviceInformation(deviceId string) deviceInfoWithOfficialFallback {
+func DeviceInformation(deviceId, providerVersion string) deviceInfoWithOfficialFallback {
 	// Bitwarden has a hard-coded list of device types which can be found at:
 	//   => https://github.com/bitwarden/server/blob/main/src/Core/Enums/DeviceType.cs
 	//
@@ -53,8 +49,8 @@ func DeviceInformation(deviceId string) deviceInfoWithOfficialFallback {
 			deviceType:       "21", // SDK
 			deviceName:       "Bitwarden_Terraform_Provider",
 			deviceIdentifier: deviceId,
-			deviceVersion:    Version,
-			userAgent:        fmt.Sprintf("Bitwarden_Terraform_Provider/%s (%s)", Version, strings.ToUpper(runtime.GOOS)),
+			deviceVersion:    providerVersion,
+			userAgent:        fmt.Sprintf("Bitwarden_Terraform_Provider/%s (%s)", providerVersion, strings.ToUpper(runtime.GOOS)),
 		},
 		official: deviceInfo{
 			deviceType:       correspondingOfficialDeviceType,

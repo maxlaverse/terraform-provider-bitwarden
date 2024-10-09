@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/provider"
 )
 
@@ -21,7 +20,6 @@ var (
 )
 
 func main() {
-	webapi.Version = version
 	opts := &plugin.ServeOpts{ProviderFunc: provider.New(version)}
 
 	plugin.Serve(opts)
