@@ -30,5 +30,6 @@ type SecretsManager interface {
 	EditSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
 	GetProject(ctx context.Context, project models.Project) (*models.Project, error)
 	GetSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
+	GetSecretByKey(ctx context.Context, secretKey string) (*models.Secret, error)
 	LoginWithAccessToken(ctx context.Context, accessKey string) error
 }

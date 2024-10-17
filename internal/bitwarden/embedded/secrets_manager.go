@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/keybuilder"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
@@ -21,9 +22,14 @@ type SecretsManager interface {
 	EditSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
 	GetProject(ctx context.Context, project models.Project) (*models.Project, error)
 	GetSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
+	GetSecretByKey(ctx context.Context, secretKey string) (*models.Secret, error)
 	LoginWithAccessToken(ctx context.Context, accessToken string) error
 }
 type SecretsManagerOptions func(c bitwarden.SecretsManager)
+
+type SecretType interface {
+	webapi.SecretSummary | webapi.Secret
+}
 
 func WithSecretsManagerHttpOptions(opts ...webapi.Options) SecretsManagerOptions {
 	return func(c bitwarden.SecretsManager) {
@@ -159,6 +165,44 @@ func (v *secretsManager) GetSecret(ctx context.Context, secret models.Secret) (*
 	return decSecret, nil
 }
 
+func (v *secretsManager) GetSecretByKey(ctx context.Context, secretKey string) (*models.Secret, error) {
+	if v.mainEncryptionKey == nil {
+		return nil, models.ErrLoggedOut
+	}
+
+	secretSummaries, err := v.client.GetSecrets(ctx, v.mainOrganizationId)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets: %w", err)
+	}
+
+	secretIDsFound := []models.Secret{}
+	for _, secret := range secretSummaries {
+		decSecret, err := decryptSecret(secret, *v.mainEncryptionKey)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting secret summary '%s': %w", secret.ID, err)
+		}
+		if decSecret.Key == secretKey {
+			secretIDsFound = append(secretIDsFound, *decSecret)
+		}
+	}
+
+	if len(secretIDsFound) == 0 {
+		return nil, models.ErrObjectNotFound
+	}
+	if len(secretIDsFound) > 1 {
+		objects := []string{}
+		for _, obj := range secretIDsFound {
+			objects = append(objects, fmt.Sprintf("%s (%s)", obj.Key, obj.ID))
+		}
+		tflog.Warn(ctx, "Too many objects found", map[string]interface{}{"objects": objects})
+		return nil, fmt.Errorf("too many objects found")
+	}
+
+	return v.GetSecret(ctx, models.Secret{
+		ID: secretIDsFound[0].ID,
+	})
+}
+
 func (v *secretsManager) LoginWithAccessToken(ctx context.Context, accessToken string) error {
 	clientId, clientSecret, accessKeyEncryptionKey, err := parseAccessToken(accessToken)
 	if err != nil {
@@ -210,35 +254,50 @@ func (v *secretsManager) LoginWithAccessToken(ctx context.Context, accessToken s
 	return nil
 }
 
-func decryptSecret(webapiSecret webapi.Secret, mainEncryptionKey symmetrickey.Key) (*models.Secret, error) {
-	secretKey, err := decryptStringIfNotEmpty(webapiSecret.Key, mainEncryptionKey)
-	if err != nil {
-		return nil, fmt.Errorf("error decrypting secret name: %w", err)
-	}
+func decryptSecret[T SecretType](webapiSecret T, mainEncryptionKey symmetrickey.Key) (*models.Secret, error) {
+	var summary webapi.SecretSummary
+	var secretNote, secretValue string
 
-	secretNote, err := decryptStringIfNotEmpty(webapiSecret.Note, mainEncryptionKey)
-	if err != nil {
-		return nil, fmt.Errorf("error decrypting secret note: %w", err)
-	}
+	switch secret := any(webapiSecret).(type) {
+	case webapi.SecretSummary:
+		summary = secret
 
-	secretValue, err := decryptStringIfNotEmpty(webapiSecret.Value, mainEncryptionKey)
-	if err != nil {
-		return nil, fmt.Errorf("error decrypting secret value: %w", err)
+	case webapi.Secret:
+		var err error
+
+		summary = secret.SecretSummary
+		secretNote, err = decryptStringIfNotEmpty(secret.Note, mainEncryptionKey)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting secret note: %w", err)
+		}
+
+		secretValue, err = decryptStringIfNotEmpty(secret.Value, mainEncryptionKey)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting secret value: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported type")
 	}
 
 	projectId := ""
-	if len(webapiSecret.Projects) > 0 {
-		projectId = webapiSecret.Projects[0].ID
+	if len(summary.Projects) > 0 {
+		projectId = summary.Projects[0].ID
 	}
+
+	secretKey, err := decryptStringIfNotEmpty(summary.Key, mainEncryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting secret key: %w", err)
+	}
+
 	return &models.Secret{
-		CreationDate:   webapiSecret.CreationDate,
-		ID:             webapiSecret.ID,
+		CreationDate:   summary.CreationDate,
+		ID:             summary.ID,
 		Key:            secretKey,
 		Note:           secretNote,
-		RevisionDate:   webapiSecret.RevisionDate,
-		Value:          secretValue,
+		OrganizationID: summary.OrganizationID,
 		ProjectID:      projectId,
-		OrganizationID: webapiSecret.OrganizationID,
+		RevisionDate:   summary.RevisionDate,
+		Value:          secretValue,
 	}, nil
 }
 
