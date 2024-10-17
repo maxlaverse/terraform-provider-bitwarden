@@ -8,15 +8,21 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/keybuilder"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+)
+
+const (
+	defaultRequestTimeout = 10 * time.Second
+	maxConcurrentRequests = 4
+	maxRetryAttempts      = 3
 )
 
 type Client interface {
@@ -55,22 +61,22 @@ type Client interface {
 
 func NewClient(serverURL, deviceIdentifier, providerVersion string, opts ...Options) Client {
 	c := &client{
-		device:     DeviceInformation(deviceIdentifier, providerVersion),
-		serverURL:  strings.TrimSuffix(serverURL, "/"),
-		httpClient: retryablehttp.NewClient(),
+		device:    DeviceInformation(deviceIdentifier, providerVersion),
+		serverURL: strings.TrimSuffix(serverURL, "/"),
+		httpClient: &http.Client{
+			Transport: NewRetryRoundTripper(maxConcurrentRequests, maxRetryAttempts, defaultRequestTimeout),
+		},
 	}
 	for _, o := range opts {
 		o(c)
 	}
-	c.httpClient.Logger = nil
-	c.httpClient.CheckRetry = CustomRetryPolicy
-	c.httpClient.HTTPClient.Timeout = 10 * time.Second
+
 	return c
 }
 
 type client struct {
 	device             deviceInfoWithOfficialFallback
-	httpClient         *retryablehttp.Client
+	httpClient         *http.Client
 	serverURL          string
 	sessionAccessToken string
 }
@@ -86,7 +92,7 @@ func (c *client) CreateFolder(ctx context.Context, obj Folder) (*Folder, error) 
 
 func (c *client) CreateObject(ctx context.Context, obj models.Object) (*models.Object, error) {
 	var err error
-	var httpReq *retryablehttp.Request
+	var httpReq *http.Request
 	if len(obj.CollectionIds) != 0 {
 		cipherCreationRequest := CreateCipherRequest{
 			Cipher:        obj,
@@ -506,8 +512,8 @@ func (c *client) Sync(ctx context.Context) (*SyncResponse, error) {
 	return doRequest[SyncResponse](ctx, c.httpClient, httpReq)
 }
 
-func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, reqBody interface{}) (*retryablehttp.Request, error) {
-	var httpReq *retryablehttp.Request
+func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, reqBody interface{}) (*http.Request, error) {
+	var httpReq *http.Request
 	var err error
 
 	if reqBody != nil {
@@ -525,12 +531,12 @@ func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, r
 				return nil, fmt.Errorf("unable to marshall request body: %w", err)
 			}
 		}
-		httpReq, err = retryablehttp.NewRequestWithContext(ctx, reqMethod, reqUrl, bytes.NewBuffer(bodyBytes))
+		httpReq, err = http.NewRequestWithContext(ctx, reqMethod, reqUrl, bytes.NewBuffer(bodyBytes))
 		if httpReq != nil && len(contentType) > 0 {
 			httpReq.Header.Add("Content-Type", contentType)
 		}
 	} else {
-		httpReq, err = retryablehttp.NewRequestWithContext(ctx, reqMethod, reqUrl, nil)
+		httpReq, err = http.NewRequestWithContext(ctx, reqMethod, reqUrl, nil)
 	}
 
 	if err != nil {
@@ -549,7 +555,7 @@ func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, r
 	return httpReq, nil
 }
 
-func doRequest[T any](ctx context.Context, httpClient *retryablehttp.Client, httpReq *retryablehttp.Request) (*T, error) {
+func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *http.Request) (*T, error) {
 	logRequest(ctx, httpReq)
 
 	resp, err := httpClient.Do(httpReq)
@@ -560,8 +566,11 @@ func doRequest[T any](ctx context.Context, httpClient *retryablehttp.Client, htt
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response body from to '%s': %w", httpReq.URL, err)
+		return nil, fmt.Errorf("error reading response body from '%s %s': %w", httpReq.Method, httpReq.URL, err)
 	}
+
+	debugInfo := map[string]interface{}{"status_code": resp.StatusCode, "url": httpReq.URL.RequestURI(), "body": string(body), "headers": resp.Header}
+	tflog.Trace(ctx, "Response from Bitwarden server", debugInfo)
 
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("bad response status code for '%s': %d!=200, body:%s", httpReq.URL, resp.StatusCode, string(body))
@@ -580,23 +589,37 @@ func doRequest[T any](ctx context.Context, httpClient *retryablehttp.Client, htt
 		fmt.Printf("Body to unmarshall: %s\n", string(body))
 		return nil, fmt.Errorf("error unmarshalling response from '%s': %w", httpReq.URL, err)
 	}
-	debugInfo := map[string]interface{}{"url": httpReq.URL.RequestURI(), "body": string(body)}
 
-	tflog.Trace(ctx, "Response from Bitwarden server", debugInfo)
 	return &res, nil
 }
 
-func logRequest(ctx context.Context, httpReq *retryablehttp.Request) {
-	bodyCopy, err := httpReq.BodyBytes()
-	if err != nil {
-		tflog.Trace(ctx, "Unable to re-read request body", map[string]interface{}{"error": err})
-	}
+func logRequest(ctx context.Context, httpReq *http.Request) {
 	debugInfo := map[string]interface{}{
 		"url":     httpReq.URL.RequestURI(),
 		"method":  httpReq.Method,
 		"headers": httpReq.Header,
-		"body":    string(bodyCopy),
+	}
+
+	if httpReq.Body != nil {
+		bodyCopy, newBody, err := readAndRestoreBody(httpReq.Body)
+		if err != nil {
+			tflog.Trace(ctx, "Unable to re-read request body", map[string]interface{}{"error": err})
+		}
+		httpReq.Body = newBody
+		debugInfo["body"] = string(bodyCopy)
 	}
 
 	tflog.Trace(ctx, "Request to Bitwarden server ", debugInfo)
+}
+
+func readAndRestoreBody(rc io.ReadCloser) ([]byte, io.ReadCloser, error) {
+	var buf bytes.Buffer
+
+	tee := io.TeeReader(rc, &buf)
+
+	body, err := io.ReadAll(tee)
+	if err != nil {
+		return nil, nil, err
+	}
+	return body, io.NopCloser(bytes.NewReader(buf.Bytes())), nil
 }
