@@ -34,11 +34,11 @@ resource "kubernetes_secret" "vpn_credentials" {
 ### Optional
 
 - `id` (String) Identifier.
+- `key` (String) Name.
 - `organization_id` (String) Identifier of the organization.
 
 ### Read-Only
 
-- `key` (String) Name.
 - `note` (String) Note.
 - `project_id` (String) Identifier of the project.
 - `value` (String) Value.

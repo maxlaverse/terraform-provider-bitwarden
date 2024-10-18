@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -48,6 +49,10 @@ func secretCreate(ctx context.Context, d *schema.ResourceData, bwsClient bitward
 }
 
 func secretRead(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
+	if _, idProvided := d.GetOk(attributeID); !idProvided {
+		return diag.FromErr(secretSearch(ctx, d, bwsClient))
+	}
+
 	return diag.FromErr(secretOperation(ctx, d, func(ctx context.Context, secretReq models.Secret) (*models.Secret, error) {
 		secret, err := bwsClient.GetSecret(ctx, secretReq)
 		if secret != nil {
@@ -58,6 +63,20 @@ func secretRead(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden
 
 		return secret, err
 	}))
+}
+
+func secretSearch(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) error {
+	secretKey, ok := d.GetOk(attributeKey)
+	if !ok {
+		return fmt.Errorf("BUG: secret key not set in the resource data")
+	}
+
+	secret, err := bwsClient.GetSecretByKey(ctx, secretKey.(string))
+	if err != nil {
+		return err
+	}
+
+	return secretDataFromStruct(ctx, d, secret)
 }
 
 func secretOperation(ctx context.Context, d *schema.ResourceData, operation secretOperationFunc) error {
