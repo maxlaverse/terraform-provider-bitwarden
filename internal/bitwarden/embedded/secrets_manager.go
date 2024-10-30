@@ -349,7 +349,7 @@ func parseAccessToken(accessToken string) (string, string, *symmetrickey.Key, er
 	}
 
 	credentialsPart := accessTokenParts1[0]
-	encryptionPart := accessTokenParts1[1]
+	base64EncodedEncryptionKey := accessTokenParts1[1]
 
 	accessTokenParts := strings.Split(credentialsPart, ".")
 	if len(accessTokenParts) != 3 {
@@ -363,7 +363,12 @@ func parseAccessToken(accessToken string) (string, string, *symmetrickey.Key, er
 	clientId := accessTokenParts[1]
 	clientSecret := accessTokenParts[2]
 
-	userEncryptionKey, err := keybuilder.DeriveFromAccessTokenEncryptionKey(encryptionPart)
+	accessTokenEncryptionKey, err := base64.StdEncoding.DecodeString(base64EncodedEncryptionKey)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("error base64 decoding access token encryption key: %w", err)
+	}
+
+	userEncryptionKey, err := keybuilder.DeriveFromAccessTokenEncryptionKey(accessTokenEncryptionKey)
 	if err != nil {
 		return "", "", nil, fmt.Errorf("error creating symmetric key: %w", err)
 	}
