@@ -573,7 +573,7 @@ func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *htt
 	tflog.Trace(ctx, "Response from Bitwarden server", debugInfo)
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("bad response status code for '%s': %d!=200, body:%s", httpReq.URL, resp.StatusCode, string(body))
+		return nil, fmt.Errorf("bad response status code for '%s %s': %d!=200, body:%s", httpReq.Method, httpReq.URL, resp.StatusCode, string(body))
 	}
 
 	var res T
