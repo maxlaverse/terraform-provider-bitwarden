@@ -97,7 +97,7 @@ jobs:
         run: go build -v ./...
 
       - name: Test with Embedded Client
-        run: go test -coverprofile=profile.cov -v ./...
+        run: go test -coverprofile=profile.cov -v -coverpkg=./... ./...
         env:
           VAULTWARDEN_HOST: "127.0.0.1"
           VAULTWARDEN_PORT: "8080"
@@ -111,7 +111,7 @@ jobs:
           parallel: true
 
       - name: Test with Official Client
-        run: go test -coverprofile=profile.cov -timeout 1000s -failfast -v ./...
+        run: go test -coverprofile=profile.cov -timeout 1000s -failfast -v -coverpkg=./... ./...
         env:
           VAULTWARDEN_HOST: "127.0.0.1"
           VAULTWARDEN_PORT: "8080"
