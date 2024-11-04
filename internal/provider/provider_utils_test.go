@@ -18,6 +18,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/test"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
 
@@ -36,7 +37,6 @@ var testServerURL string
 var testOrganizationID string
 var testCollectionID string
 var testFolderID string
-var testProjectId string
 var testUniqueIdentifier string
 var useEmbeddedClient bool
 
@@ -255,9 +255,47 @@ func tfConfigPasswordManagerProvider() string {
 `, testPassword, testServerURL, testEmail, useEmbeddedClientStr)
 }
 
-func tfConfigSecretsManagerProvider() string {
+func testOrRealSecretsManagerProvider(t *testing.T) (string, string, func()) {
+	tfProvider, testProjectId := tfConfigSecretsManagerProvider()
+	if len(testProjectId) > 0 {
+		stop := func() {}
+		return tfProvider, testProjectId, stop
+	} else {
+		return spawnTestSecretsManager(t)
+	}
+}
+
+func spawnTestSecretsManager(t *testing.T) (string, string, func()) {
+	testSecretsManager := test.NewTestSecretsManager()
+	ctx, stop := context.WithCancel(context.Background())
+	go testSecretsManager.Run(ctx, 8081)
+
+	orgId, testProjectId, err := testSecretsManager.ClientCreateNewOrganization()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	accessToken, err := testSecretsManager.ClientCreateAccessToken(orgId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	providerConfiguration := fmt.Sprintf(`
+	provider "bitwarden" {
+		access_token = "%s"
+		server = "http://localhost:8081"
+
+		experimental {
+			embedded_client = true
+		}
+	}
+		`, accessToken)
+	return providerConfiguration, testProjectId, stop
+}
+
+func tfConfigSecretsManagerProvider() (string, string) {
 	accessToken := os.Getenv("TEST_REAL_BWS_ACCESS_TOKEN")
-	testProjectId = os.Getenv("TEST_REAL_BWS_PROJECT_ID")
+	testProjectId := os.Getenv("TEST_REAL_BWS_PROJECT_ID")
 	return fmt.Sprintf(`
 	provider "bitwarden" {
 		access_token = "%s"
@@ -266,7 +304,7 @@ func tfConfigSecretsManagerProvider() string {
 			embedded_client = true
 		}
 	}
-`, accessToken)
+`, accessToken), testProjectId
 }
 
 func getObjectID(n string, objectId *string) resource.TestCheckFunc {
