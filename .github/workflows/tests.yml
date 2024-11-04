@@ -56,26 +56,26 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: '>=1.22.0'
 
       # Cache go build cache, used to speedup go test
       - name: Go Build Cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.go-cache-paths.outputs.GOCACHE }}
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
 
       # Cache go mod cache, used to speedup builds
       - name: Go Mod Cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.go-cache-paths.outputs.GOMODCACHE }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Binaries Cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.binaries.outputs.LOCAL_BINARIES }}
           key: ${{ steps.binaries.outputs.BWCLI_VERSION }}
@@ -97,24 +97,36 @@ jobs:
         run: go build -v ./...
 
       - name: Test with Embedded Client
-        run: go test -coverprofile=profile_embedded.cov -v ./...
+        run: go test -coverprofile=profile.cov -v -coverpkg=./... ./...
         env:
           VAULTWARDEN_HOST: "127.0.0.1"
           VAULTWARDEN_PORT: "8080"
           TF_ACC: "1"
           TEST_USE_EMBEDDED_CLIENT: "1"
-
-      - name: Test with Official Client
-        run: go test -coverprofile=profile_official.cov -timeout 1000s -failfast -v ./...
-        env:
-          VAULTWARDEN_HOST: "127.0.0.1"
-          VAULTWARDEN_PORT: "8080"
-          TF_ACC: "1"
-
-      - name: Combine Coverage
-        run: cat profile_embedded.cov profile_official.cov | sort -r | uniq > profile.cov
-      - name: Code Coverage
+      - name: Code Coverage for Embedded Client
         continue-on-error: true
         uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: profile.cov
+          parallel: true
+
+      - name: Test with Official Client
+        run: go test -coverprofile=profile.cov -timeout 1000s -failfast -v -coverpkg=./... ./...
+        env:
+          VAULTWARDEN_HOST: "127.0.0.1"
+          VAULTWARDEN_PORT: "8080"
+          TF_ACC: "1"
+      - name: Code Coverage for Official Client
+        continue-on-error: true
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: profile.cov
+          parallel: true
+
+  finish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: shogo82148/actions-goveralls@v1
+        with:
+          parallel-finished: true
