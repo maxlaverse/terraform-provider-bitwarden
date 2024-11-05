@@ -1,4 +1,4 @@
-package fixtures
+package embedded
 
 import (
 	"bytes"

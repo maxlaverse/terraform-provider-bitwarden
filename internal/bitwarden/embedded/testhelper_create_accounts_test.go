@@ -1,4 +1,4 @@
-package fixtures
+package embedded
 
 import (
 	"context"
@@ -18,7 +18,6 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/helpers"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/keybuilder"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
@@ -61,7 +60,7 @@ func TestCreateAccessTokenLoginMock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	jwtToken := jwt.NewWithClaims(jwt.SigningMethodNone, &embedded.MachineAccountClaims{
+	jwtToken := jwt.NewWithClaims(jwt.SigningMethodNone, &MachineAccountClaims{
 		Organization: "b1a4b97f-c75e-4901-b831-00912f3549a7",
 	})
 
@@ -152,7 +151,7 @@ func createTestAccount(t *testing.T, accountEmail string, kdfConfig models.KdfCo
 			Prefix: mockName,
 		},
 	}
-	vault := embedded.NewPasswordManagerClient(ServerURL, testDeviceIdentifer, "dev", embedded.WithPasswordManagerHttpOptions(webapi.WithCustomClient(httpClient)))
+	vault := NewPasswordManagerClient(ServerURL, testDeviceIdentifer, "dev", WithPasswordManagerHttpOptions(webapi.WithCustomClient(httpClient)))
 
 	err = vault.LoginWithPassword(ctx, accountEmail, TestPassword)
 	if err != nil {
