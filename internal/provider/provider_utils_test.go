@@ -18,7 +18,6 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/test"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
 
@@ -266,7 +265,7 @@ func testOrRealSecretsManagerProvider(t *testing.T) (string, string, func()) {
 }
 
 func spawnTestSecretsManager(t *testing.T) (string, string, func()) {
-	testSecretsManager := test.NewTestSecretsManager()
+	testSecretsManager := NewTestSecretsManager()
 	ctx, stop := context.WithCancel(context.Background())
 	go testSecretsManager.Run(ctx, 8081)
 
