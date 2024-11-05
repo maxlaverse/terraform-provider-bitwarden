@@ -32,23 +32,26 @@ type Client interface {
 	CreateObjectAttachmentData(ctx context.Context, itemId, attachmentId string, data []byte) error
 	CreateOrganization(ctx context.Context, req CreateOrganizationRequest) (*CreateOrganizationResponse, error)
 	CreateOrgCollection(ctx context.Context, orgId string, req OrganizationCreationRequest) (*Collection, error)
+	CreateProject(ctx context.Context, project models.Project) (*models.Project, error)
 	CreateSecret(ctx context.Context, secret models.Secret) (*Secret, error)
 	DeleteFolder(ctx context.Context, objID string) error
 	DeleteObject(ctx context.Context, objID string) error
 	DeleteObjectAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteOrgCollection(ctx context.Context, orgID, collectionID string) error
+	DeleteProject(ctx context.Context, projectId string) error
 	DeleteSecret(ctx context.Context, secretId string) error
 	EditFolder(ctx context.Context, obj Folder) (*Folder, error)
 	EditObject(context.Context, models.Object) (*models.Object, error)
 	EditOrgCollection(ctx context.Context, orgId, objId string, obj OrganizationCreationRequest) (*Collection, error)
+	EditProject(context.Context, models.Project) (*models.Project, error)
 	EditSecret(ctx context.Context, secret models.Secret) (*Secret, error)
 	GetAPIKey(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*ApiKey, error)
 	GetCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error)
 	GetContentFromURL(ctx context.Context, url string) ([]byte, error)
 	GetObjectAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
 	GetProfile(context.Context) (*Profile, error)
-	GetProject(ctx context.Context, projectId string) (*Project, error)
-	GetProjects(ctx context.Context, orgId string) ([]Project, error)
+	GetProject(ctx context.Context, projectId string) (*models.Project, error)
+	GetProjects(ctx context.Context, orgId string) ([]models.Project, error)
 	GetSecret(ctx context.Context, secretId string) (*Secret, error)
 	GetSecrets(ctx context.Context, orgId string) ([]SecretSummary, error)
 	LoginWithAccessToken(ctx context.Context, clientId, clientSecret string) (*MachineTokenResponse, error)
@@ -166,6 +169,18 @@ func (c *client) CreateOrgCollection(ctx context.Context, orgId string, req Orga
 	return doRequest[Collection](ctx, c.httpClient, httpReq)
 }
 
+func (c *client) CreateProject(ctx context.Context, project models.Project) (*models.Project, error) {
+	projectCreationRequest := CreateProjectRequest{
+		Name: project.Name,
+	}
+	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/projects", c.serverURL, project.OrganizationID), projectCreationRequest)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing secret creation request: %w", err)
+	}
+
+	return doRequest[models.Project](ctx, c.httpClient, httpReq)
+}
+
 func (c *client) CreateSecret(ctx context.Context, secret models.Secret) (*Secret, error) {
 	cipherCreationRequest := CreateSecretRequest{
 		Key:        secret.Key,
@@ -221,6 +236,17 @@ func (c *client) DeleteOrgCollection(ctx context.Context, orgID, collectionID st
 	return err
 }
 
+func (c *client) DeleteProject(ctx context.Context, projectId string) error {
+	IDs := []string{projectId}
+	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/projects/delete", c.serverURL), IDs)
+	if err != nil {
+		return fmt.Errorf("error preparing project deletion request: %w", err)
+	}
+
+	_, err = doRequest[[]byte](ctx, c.httpClient, httpReq)
+	return err
+}
+
 func (c *client) DeleteSecret(ctx context.Context, secretId string) error {
 	IDs := []string{secretId}
 	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/secrets/delete", c.serverURL), IDs)
@@ -265,6 +291,18 @@ func (c *client) EditOrgCollection(ctx context.Context, orgId, objId string, obj
 	}
 
 	return doRequest[Collection](ctx, c.httpClient, req)
+}
+
+func (c *client) EditProject(ctx context.Context, project models.Project) (*models.Project, error) {
+	projectEditionRequest := CreateProjectRequest{
+		Name: project.Name,
+	}
+	httpReq, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/projects/%s", c.serverURL, project.ID), projectEditionRequest)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing secret edition request: %w", err)
+	}
+
+	return doRequest[models.Project](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) EditSecret(ctx context.Context, secret models.Secret) (*Secret, error) {
@@ -334,16 +372,16 @@ func (c *client) GetProfile(ctx context.Context) (*Profile, error) {
 	return doRequest[Profile](ctx, c.httpClient, httpReq)
 }
 
-func (c *client) GetProject(ctx context.Context, projectId string) (*Project, error) {
+func (c *client) GetProject(ctx context.Context, projectId string) (*models.Project, error) {
 	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/projects/%s", c.serverURL, projectId), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing project retrieval request: %w", err)
 	}
 
-	return doRequest[Project](ctx, c.httpClient, httpReq)
+	return doRequest[models.Project](ctx, c.httpClient, httpReq)
 }
 
-func (c *client) GetProjects(ctx context.Context, orgId string) ([]Project, error) {
+func (c *client) GetProjects(ctx context.Context, orgId string) ([]models.Project, error) {
 	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/projects", c.serverURL, orgId), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing projects retrieval request: %w", err)

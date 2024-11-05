@@ -17,8 +17,11 @@ import (
 )
 
 type SecretsManager interface {
+	CreateProject(ctx context.Context, project models.Project) (*models.Project, error)
 	CreateSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
+	DeleteProject(ctx context.Context, project models.Project) error
 	DeleteSecret(ctx context.Context, secret models.Secret) error
+	EditProject(ctx context.Context, project models.Project) (*models.Project, error)
 	EditSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
 	GetProject(ctx context.Context, project models.Project) (*models.Project, error)
 	GetSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
@@ -60,6 +63,33 @@ type secretsManager struct {
 	serverURL          string
 }
 
+func (v *secretsManager) CreateProject(ctx context.Context, project models.Project) (*models.Project, error) {
+	if v.mainEncryptionKey == nil {
+		return nil, models.ErrLoggedOut
+	}
+
+	var resProject *models.Project
+
+	encProject, err := encryptProject(project, *v.mainEncryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting project for creation: %w", err)
+	}
+	encProject.OrganizationID = v.mainOrganizationId
+
+	resEncProject, err := v.client.CreateProject(ctx, *encProject)
+
+	if err != nil {
+		return nil, fmt.Errorf("error creating project: %w", err)
+	}
+
+	resProject, err = decryptProject(*resEncProject, *v.mainEncryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting project after creation: %w", err)
+	}
+
+	return resProject, nil
+}
+
 func (v *secretsManager) CreateSecret(ctx context.Context, secret models.Secret) (*models.Secret, error) {
 	if v.mainEncryptionKey == nil {
 		return nil, models.ErrLoggedOut
@@ -87,6 +117,15 @@ func (v *secretsManager) CreateSecret(ctx context.Context, secret models.Secret)
 	return resSecret, nil
 }
 
+func (v *secretsManager) DeleteProject(ctx context.Context, project models.Project) error {
+	err := v.client.DeleteProject(ctx, project.ID)
+	if err != nil {
+		return fmt.Errorf("error deleting project: %w", err)
+	}
+
+	return nil
+}
+
 func (v *secretsManager) DeleteSecret(ctx context.Context, secret models.Secret) error {
 	err := v.client.DeleteSecret(ctx, secret.ID)
 	if err != nil {
@@ -94,6 +133,32 @@ func (v *secretsManager) DeleteSecret(ctx context.Context, secret models.Secret)
 	}
 
 	return nil
+}
+
+func (v *secretsManager) EditProject(ctx context.Context, project models.Project) (*models.Project, error) {
+	if v.mainEncryptionKey == nil {
+		return nil, models.ErrLoggedOut
+	}
+
+	var resProject *models.Project
+
+	encProject, err := encryptProject(project, *v.mainEncryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting project for edition: %w", err)
+	}
+
+	resEncProject, err := v.client.EditProject(ctx, *encProject)
+
+	if err != nil {
+		return nil, fmt.Errorf("error editing project: %w", err)
+	}
+
+	resProject, err = decryptProject(*resEncProject, *v.mainEncryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting project after edition: %w", err)
+	}
+
+	return resProject, nil
 }
 
 func (v *secretsManager) EditSecret(ctx context.Context, secret models.Secret) (*models.Secret, error) {
@@ -301,18 +366,31 @@ func decryptSecret[T SecretType](webapiSecret T, mainEncryptionKey symmetrickey.
 	}, nil
 }
 
-func decryptProject(webapiProject webapi.Project, mainEncryptionKey symmetrickey.Key) (*models.Project, error) {
-	projectName, err := decryptStringIfNotEmpty(webapiProject.Name, mainEncryptionKey)
+func decryptProject(project models.Project, mainEncryptionKey symmetrickey.Key) (*models.Project, error) {
+	projectName, err := decryptStringIfNotEmpty(project.Name, mainEncryptionKey)
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting project name: %w", err)
 	}
 
 	return &models.Project{
-		CreationDate:   webapiProject.CreationDate,
-		ID:             webapiProject.ID,
+		CreationDate:   project.CreationDate,
+		ID:             project.ID,
 		Name:           projectName,
-		OrganizationID: webapiProject.OrganizationID,
-		RevisionDate:   webapiProject.RevisionDate,
+		OrganizationID: project.OrganizationID,
+		RevisionDate:   project.RevisionDate,
+	}, nil
+}
+
+func encryptProject(project models.Project, mainEncryptionKey symmetrickey.Key) (*models.Project, error) {
+	projectName, err := encryptAsStringIfNotEmpty(project.Name, mainEncryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypt project name: %w", err)
+	}
+
+	return &models.Project{
+		ID:             project.ID,
+		Name:           projectName,
+		OrganizationID: project.OrganizationID,
 	}, nil
 }
 

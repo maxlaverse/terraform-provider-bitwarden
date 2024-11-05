@@ -15,9 +15,12 @@ type Secret struct {
 }
 
 type Project struct {
-	ID             string    `json:"id"`
-	OrganizationID string    `json:"organizationId"`
-	Name           string    `json:"name"`
-	CreationDate   time.Time `json:"creationDate"`
-	RevisionDate   time.Time `json:"revisionDate"`
+	ID             string    `json:"id,omitempty"`
+	OrganizationID string    `json:"organizationId,omitempty"`
+	Name           string    `json:"name,omitempty"`
+	CreationDate   time.Time `json:"creationDate,omitempty"`
+	RevisionDate   time.Time `json:"revisionDate,omitempty"`
+	Read           bool      `json:"read,omitempty"`
+	Write          bool      `json:"write,omitempty"`
+	Object         string    `json:"object,omitempty"`
 }

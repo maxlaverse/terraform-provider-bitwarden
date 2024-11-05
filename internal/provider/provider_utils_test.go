@@ -255,22 +255,24 @@ func tfConfigPasswordManagerProvider() string {
 `, testPassword, testServerURL, testEmail, useEmbeddedClientStr)
 }
 
-func testOrRealSecretsManagerProvider(t *testing.T) (string, string, func()) {
-	tfProvider, testProjectId := tfConfigSecretsManagerProvider()
-	if len(testProjectId) > 0 {
+func testOrRealSecretsManagerProvider(t *testing.T) (string, func()) {
+	tfProvider, defined := tfConfigSecretsManagerProvider()
+	if defined {
+		t.Logf("Using real Bitwarden Secrets Manager")
 		stop := func() {}
-		return tfProvider, testProjectId, stop
+		return tfProvider, stop
 	} else {
+		t.Logf("Spawning test Bitwarden Secrets Manager")
 		return spawnTestSecretsManager(t)
 	}
 }
 
-func spawnTestSecretsManager(t *testing.T) (string, string, func()) {
+func spawnTestSecretsManager(t *testing.T) (string, func()) {
 	testSecretsManager := test.NewTestSecretsManager()
 	ctx, stop := context.WithCancel(context.Background())
 	go testSecretsManager.Run(ctx, 8081)
 
-	orgId, testProjectId, err := testSecretsManager.ClientCreateNewOrganization()
+	orgId, err := testSecretsManager.ClientCreateNewOrganization()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,12 +292,11 @@ func spawnTestSecretsManager(t *testing.T) (string, string, func()) {
 		}
 	}
 		`, accessToken)
-	return providerConfiguration, testProjectId, stop
+	return providerConfiguration, stop
 }
 
-func tfConfigSecretsManagerProvider() (string, string) {
+func tfConfigSecretsManagerProvider() (string, bool) {
 	accessToken := os.Getenv("TEST_REAL_BWS_ACCESS_TOKEN")
-	testProjectId := os.Getenv("TEST_REAL_BWS_PROJECT_ID")
 	return fmt.Sprintf(`
 	provider "bitwarden" {
 		access_token = "%s"
@@ -304,7 +305,7 @@ func tfConfigSecretsManagerProvider() (string, string) {
 			embedded_client = true
 		}
 	}
-`, accessToken), testProjectId
+`, accessToken), len(accessToken) > 0
 }
 
 func getObjectID(n string, objectId *string) resource.TestCheckFunc {

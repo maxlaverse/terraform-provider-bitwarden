@@ -60,6 +60,7 @@ const (
 	ObjectCipherDetails           ObjectType = "cipherDetails"         // when creating attachment data
 	ObjectAttachmentFileUpload    ObjectType = "attachment-fileUpload" // when creating attachment data
 	ObjectApiKey                  ObjectType = "api-key"
+	ObjectProject                 ObjectType = "project"
 	ObjectSecret                  ObjectType = "secret"
 )
 
