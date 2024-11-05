@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded/fixtures"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,19 +21,19 @@ const (
 var (
 	testAccountPbkdf2 = Account{
 		AccountUUID: "e8dababd-242e-4900-becf-e88bc021dda8",
-		Email:       fixtures.Pdkdf2Email,
+		Email:       Pdkdf2Email,
 		VaultFormat: "API",
 		KdfConfig: models.KdfConfiguration{
 			KdfType:       models.KdfTypePBKDF2_SHA256,
 			KdfIterations: 600000,
 		},
-		ProtectedSymmetricKey:  fixtures.Pdkdf2ProtectedSymmetricKey,
-		ProtectedRSAPrivateKey: fixtures.Pdkdf2ProtectedRSAPrivateKey,
+		ProtectedSymmetricKey:  Pdkdf2ProtectedSymmetricKey,
+		ProtectedRSAPrivateKey: Pdkdf2ProtectedRSAPrivateKey,
 	}
 
 	testAccountArgon2 = Account{
 		AccountUUID: "e8dababd-242e-4900-becf-e88bc021dda8",
-		Email:       fixtures.Argon2Email,
+		Email:       Argon2Email,
 		VaultFormat: "API",
 		KdfConfig: models.KdfConfiguration{
 			KdfType:        models.KdfTypeArgon2,
@@ -42,13 +41,13 @@ var (
 			KdfMemory:      64,
 			KdfParallelism: 4,
 		},
-		ProtectedSymmetricKey:  fixtures.Argon2ProtectedSymmetricKey,
-		ProtectedRSAPrivateKey: fixtures.Argon2ProtectedRSAPrivateKey,
+		ProtectedSymmetricKey:  Argon2ProtectedSymmetricKey,
+		ProtectedRSAPrivateKey: Argon2ProtectedRSAPrivateKey,
 	}
 )
 
 func TestDecryptAccountSecretPbkdf2(t *testing.T) {
-	accountSecrets, err := decryptAccountSecrets(testAccountPbkdf2, fixtures.TestPassword)
+	accountSecrets, err := decryptAccountSecrets(testAccountPbkdf2, TestPassword)
 	assert.NoError(t, err)
 	assert.Equal(t, "jHZYmFOOr0KGorSsmWeuGMHWJDqRrz7uwZNBJkZaupM=", accountSecrets.MasterPasswordHash)
 
@@ -59,12 +58,12 @@ func TestDecryptAccountSecretPbkdf2(t *testing.T) {
 		},
 	)
 
-	assert.Equal(t, fixtures.RsaPrivateKey, strings.Replace(string(pemdata), "\\n", "\n", -1))
-	assert.Contains(t, accountSecrets.MainKey.Summary(), fixtures.EncryptionKey)
+	assert.Equal(t, RsaPrivateKey, strings.Replace(string(pemdata), "\\n", "\n", -1))
+	assert.Contains(t, accountSecrets.MainKey.Summary(), EncryptionKey)
 }
 
 func TestDecryptAccountSecretArgon2(t *testing.T) {
-	accountSecrets, err := decryptAccountSecrets(testAccountArgon2, fixtures.TestPassword)
+	accountSecrets, err := decryptAccountSecrets(testAccountArgon2, TestPassword)
 	assert.NoError(t, err)
 	assert.Equal(t, "3fBImY0XFvRrUSP/fe6mqUc1bjhWBuvHYJvlwnxS0i4=", accountSecrets.MasterPasswordHash)
 
@@ -75,8 +74,8 @@ func TestDecryptAccountSecretArgon2(t *testing.T) {
 		},
 	)
 
-	assert.Equal(t, fixtures.RsaPrivateKey, strings.Replace(string(pemdata), "\\n", "\n", -1))
-	assert.Contains(t, accountSecrets.MainKey.Summary(), fixtures.EncryptionKey)
+	assert.Equal(t, RsaPrivateKey, strings.Replace(string(pemdata), "\\n", "\n", -1))
+	assert.Contains(t, accountSecrets.MainKey.Summary(), EncryptionKey)
 }
 
 func TestDecryptAccountSecretWrongPassword(t *testing.T) {
@@ -337,7 +336,7 @@ func testFullyFilledLogin() models.Login {
 }
 
 func computeTestAccountSecrets(t *testing.T) *AccountSecrets {
-	accountSecrets, err := decryptAccountSecrets(testAccountPbkdf2, fixtures.TestPassword)
+	accountSecrets, err := decryptAccountSecrets(testAccountPbkdf2, TestPassword)
 	if err != nil {
 		t.Fatal(err)
 	}

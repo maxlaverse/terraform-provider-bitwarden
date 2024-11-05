@@ -1,9 +1,10 @@
-package fixtures
+package embedded
 
 import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -19,11 +20,12 @@ const (
 	testDeviceVersion   = "dev"
 )
 
-func MockedClient(t *testing.T, name string) webapi.Client {
+func MockedClient(t testing.TB, name string) webapi.Client {
 	return webapi.NewClient(mockedServerUrl, testDeviceIdentifer, testDeviceVersion, webapi.WithCustomClient(MockedHTTPClient(t, mockedServerUrl, name)), webapi.DisableRetries())
 }
 
-func MockedHTTPClient(t *testing.T, serverUrl string, name string) http.Client {
+func MockedHTTPClient(t testing.TB, serverUrl string, name string) http.Client {
+	t.Helper()
 	client := http.Client{Transport: httpmock.DefaultTransport}
 
 	_, file, _, ok := runtime.Caller(0)
@@ -31,7 +33,7 @@ func MockedHTTPClient(t *testing.T, serverUrl string, name string) http.Client {
 		t.Fatal("unable to get caller information")
 	}
 	dir := filepath.Dir(file)
-
+	dir = path.Join(dir, "fixtures")
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatal(err)
