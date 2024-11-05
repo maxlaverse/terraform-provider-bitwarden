@@ -25,8 +25,11 @@ type PasswordManager interface {
 }
 
 type SecretsManager interface {
+	CreateProject(ctx context.Context, project models.Project) (*models.Project, error)
 	CreateSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
+	DeleteProject(ctx context.Context, project models.Project) error
 	DeleteSecret(ctx context.Context, secret models.Secret) error
+	EditProject(ctx context.Context, project models.Project) (*models.Project, error)
 	EditSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
 	GetProject(ctx context.Context, project models.Project) (*models.Project, error)
 	GetSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)

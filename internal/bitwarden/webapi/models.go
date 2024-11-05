@@ -177,32 +177,21 @@ type MachineTokenEncryptedPayload struct {
 	EncryptionKey string `json:"encryptionKey"`
 }
 
-type Project struct {
-	ID             string    `json:"id"`
-	OrganizationID string    `json:"organizationId"`
-	Name           string    `json:"name"`
-	CreationDate   time.Time `json:"creationDate"`
-	RevisionDate   time.Time `json:"revisionDate"`
-	Read           bool      `json:"read"`
-	Write          bool      `json:"write"`
-	Object         string    `json:"object"`
-}
-
 type Projects struct {
-	Data              []Project `json:"data"`
-	ContinuationToken *string   `json:"continuationToken"`
-	Object            string    `json:"object"`
+	Data              []models.Project `json:"data"`
+	ContinuationToken *string          `json:"continuationToken"`
+	Object            string           `json:"object"`
 }
 
 type SecretSummary struct {
-	ID             string    `json:"id"`
-	OrganizationID string    `json:"organizationId"`
-	Key            string    `json:"key"`
-	CreationDate   time.Time `json:"creationDate"`
-	RevisionDate   time.Time `json:"revisionDate"`
-	Projects       []Project `json:"projects"`
-	Read           bool      `json:"read"`
-	Write          bool      `json:"write"`
+	ID             string           `json:"id"`
+	OrganizationID string           `json:"organizationId"`
+	Key            string           `json:"key"`
+	CreationDate   time.Time        `json:"creationDate"`
+	RevisionDate   time.Time        `json:"revisionDate"`
+	Projects       []models.Project `json:"projects"`
+	Read           bool             `json:"read"`
+	Write          bool             `json:"write"`
 }
 
 type Secret struct {
@@ -213,9 +202,9 @@ type Secret struct {
 }
 
 type SecretsWithProjectsList struct {
-	Secrets  []SecretSummary `json:"secrets"`
-	Projects []Project       `json:"projects"`
-	Object   string          `json:"object"`
+	Secrets  []SecretSummary  `json:"secrets"`
+	Projects []models.Project `json:"projects"`
+	Object   string           `json:"object"`
 }
 
 type CreateSecretRequest struct {
@@ -224,6 +213,10 @@ type CreateSecretRequest struct {
 	Note                   string                  `json:"note"`
 	ProjectIDs             []string                `json:"projectIds"`
 	AccessPoliciesRequests *AccessPoliciesRequests `json:"accessPoliciesRequests,omitempty"`
+}
+
+type CreateProjectRequest struct {
+	Name string `json:"name"`
 }
 
 type AccessPoliciesRequests struct {

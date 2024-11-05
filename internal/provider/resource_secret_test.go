@@ -27,8 +27,10 @@ func TestResourceSecretSchema(t *testing.T) {
 }
 
 func TestResourceSecret(t *testing.T) {
-	tfProvider, testProjectId, stop := testOrRealSecretsManagerProvider(t)
+	tfProvider, stop := testOrRealSecretsManagerProvider(t)
 	defer stop()
+
+	projectResourceId := "bitwarden_project.foo.id"
 
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
@@ -42,40 +44,45 @@ func TestResourceSecret(t *testing.T) {
 				ExpectError: regexp.MustCompile(": conflicts"),
 			},
 			{
-				Config: tfProvider + tfConfigResourceSecret("foo", testProjectId),
-				Check:  checkSecret("bitwarden_secret.foo", testProjectId),
+				Config:      tfProvider + tfConfigResourceSecret("foo", "\"fake-project-id\""),
+				ExpectError: regexp.MustCompile("400!=200"),
+			},
+			// Test Creating Secret with INEXISTENT Project
+			{
+				Config: tfProvider + tfConfigResourceProject("foo", "project-foo") + tfConfigResourceSecret("foo", projectResourceId),
+				Check:  checkSecret("bitwarden_secret.foo"),
 			},
 			// Test Sourcing Secret by ID
 			{
-				Config: tfProvider + tfConfigResourceSecret("foo", testProjectId) + tfConfigDataSecretByID("bitwarden_secret.foo.id"),
-				Check:  checkSecret("data.bitwarden_secret.foo_data", testProjectId),
+				Config: tfProvider + tfConfigResourceProject("foo", "project-foo") + tfConfigResourceSecret("foo", projectResourceId) + tfConfigDataSecretByID("bitwarden_secret.foo.id"),
+				Check:  checkSecret("data.bitwarden_secret.foo_data"),
 			},
 			// Test Sourcing Secret by ID with NO MATCH
 			{
-				Config:      tfProvider + tfConfigResourceSecret("foo", testProjectId) + tfConfigDataSecretByID("\"27a0007a-a517-4f25-8c2e-baf31ca3b034\""),
+				Config:      tfProvider + tfConfigResourceProject("foo", "project-foo") + tfConfigResourceSecret("foo", projectResourceId) + tfConfigDataSecretByID("\"27a0007a-a517-4f25-8c2e-baf31ca3b034\""),
 				ExpectError: regexp.MustCompile("Error: object not found"),
 			},
 			// Test Sourcing Secret by KEY
 			{
-				Config: tfProvider + tfConfigResourceSecret("foo", testProjectId) + tfConfigDataSecretByKey(),
-				Check:  checkSecret("data.bitwarden_secret.foo_data", testProjectId),
+				Config: tfProvider + tfConfigResourceProject("foo", "project-foo") + tfConfigResourceSecret("foo", projectResourceId) + tfConfigDataSecretByKey(),
+				Check:  checkSecret("data.bitwarden_secret.foo_data"),
 			},
 			// Test Sourcing Secret with MULTIPLE MATCHES
 			{
-				Config:      tfProvider + tfConfigResourceSecret("foo", testProjectId) + tfConfigResourceSecret("foo2", testProjectId) + tfConfigDataSecretByKey(),
+				Config:      tfProvider + tfConfigResourceProject("foo", "project-foo") + tfConfigResourceSecret("foo", projectResourceId) + tfConfigResourceSecret("foo2", projectResourceId) + tfConfigDataSecretByKey(),
 				ExpectError: regexp.MustCompile("Error: too many objects found"),
 			},
 		},
 	})
 }
 
-func checkSecret(fullRessourceName, testProjectId string) resource.TestCheckFunc {
+func checkSecret(fullRessourceName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
 		resource.TestMatchResourceAttr(fullRessourceName, attributeID, regexp.MustCompile("^([a-z0-9-]+)$")),
 		resource.TestCheckResourceAttr(fullRessourceName, attributeKey, "login-bar"),
 		resource.TestCheckResourceAttr(fullRessourceName, attributeValue, "value-bar"),
 		resource.TestCheckResourceAttr(fullRessourceName, attributeNote, "note-bar"),
-		resource.TestCheckResourceAttr(fullRessourceName, attributeProjectID, testProjectId),
+		resource.TestMatchResourceAttr(fullRessourceName, attributeProjectID, regexp.MustCompile("^([a-z0-9-]+)$")),
 	)
 }
 func tfConfigDataSecretByID(id string) string {
@@ -117,7 +124,7 @@ data "bitwarden_secret" "foo_data" {
 `
 }
 
-func tfConfigResourceSecret(resourceName, testProjectId string) string {
+func tfConfigResourceSecret(resourceName, projectResourceId string) string {
 	return fmt.Sprintf(`
 	resource "bitwarden_secret" "%s" {
 		provider = bitwarden
@@ -125,7 +132,7 @@ func tfConfigResourceSecret(resourceName, testProjectId string) string {
 		key = "login-bar"
 		value = "value-bar"
 		note = "note-bar"
-		project_id ="%s"
+		project_id = %s
 	}
-`, resourceName, testProjectId)
+`, resourceName, projectResourceId)
 }
