@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -45,6 +46,7 @@ type testSecretsManager struct {
 	knownOrganizations    map[string]struct{}
 	projectsStore         map[string]models.Project
 	secretsStore          map[string]webapi.Secret
+	mutex                 sync.RWMutex
 }
 
 type Clients struct {
@@ -97,6 +99,9 @@ func (tsm *testSecretsManager) Run(ctx context.Context, serverPort int) {
 }
 
 func (tsm *testSecretsManager) ClientCreateNewOrganization() (string, error) {
+	tsm.mutex.Lock()
+	defer tsm.mutex.Unlock()
+
 	encryptionKey, err := generateOrganizationKey()
 	if err != nil {
 		return "", err
@@ -110,6 +115,9 @@ func (tsm *testSecretsManager) ClientCreateNewOrganization() (string, error) {
 }
 
 func (tsm *testSecretsManager) ClientCreateAccessToken(orgId string) (string, error) {
+	tsm.mutex.Lock()
+	defer tsm.mutex.Unlock()
+
 	orgKey, v := tsm.clientSideInformation.orgEncryptionKeys[orgId]
 	if !v {
 		return "", fmt.Errorf("organization not found")
@@ -158,6 +166,9 @@ func (tsm *testSecretsManager) createAccessToken(orgId string, request CreateAcc
 }
 
 func (tsm *testSecretsManager) handlerLogin(w http.ResponseWriter, r *http.Request) {
+	tsm.mutex.Lock()
+	defer tsm.mutex.Unlock()
+
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
@@ -215,6 +226,9 @@ func (tsm *testSecretsManager) handlerCreateGetSecret(w http.ResponseWriter, r *
 }
 
 func (tsm *testSecretsManager) handlerCreateProject(w http.ResponseWriter, r *http.Request) {
+	tsm.mutex.Lock()
+	defer tsm.mutex.Unlock()
+
 	orgId := mux.Vars(r)["orgId"]
 
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
@@ -253,6 +267,9 @@ func (tsm *testSecretsManager) handlerCreateProject(w http.ResponseWriter, r *ht
 }
 
 func (tsm *testSecretsManager) handlerCreateSecret(w http.ResponseWriter, r *http.Request) {
+	tsm.mutex.Lock()
+	defer tsm.mutex.Unlock()
+
 	orgId := mux.Vars(r)["orgId"]
 	_, v := tsm.knownOrganizations[orgId]
 	if !v {
@@ -313,6 +330,9 @@ func (tsm *testSecretsManager) handlerCreateSecret(w http.ResponseWriter, r *htt
 }
 
 func (tsm *testSecretsManager) handlerGetSecrets(w http.ResponseWriter, r *http.Request) {
+	tsm.mutex.RLock()
+	defer tsm.mutex.RUnlock()
+
 	orgId := mux.Vars(r)["orgId"]
 
 	secretList := webapi.SecretsWithProjectsList{}
@@ -341,6 +361,9 @@ func (tsm *testSecretsManager) handlerGetSecrets(w http.ResponseWriter, r *http.
 }
 
 func (tsm *testSecretsManager) handlerGetProject(w http.ResponseWriter, r *http.Request) {
+	tsm.mutex.RLock()
+	defer tsm.mutex.RUnlock()
+
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -360,6 +383,9 @@ func (tsm *testSecretsManager) handlerGetProject(w http.ResponseWriter, r *http.
 }
 
 func (tsm *testSecretsManager) handlerGetSecret(w http.ResponseWriter, r *http.Request) {
+	tsm.mutex.RLock()
+	defer tsm.mutex.RUnlock()
+
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -379,6 +405,9 @@ func (tsm *testSecretsManager) handlerGetSecret(w http.ResponseWriter, r *http.R
 }
 
 func (tsm *testSecretsManager) handlerEditProject(w http.ResponseWriter, r *http.Request) {
+	tsm.mutex.Lock()
+	defer tsm.mutex.Unlock()
+
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -416,6 +445,9 @@ func (tsm *testSecretsManager) handlerEditProject(w http.ResponseWriter, r *http
 }
 
 func (tsm *testSecretsManager) handlerEditSecret(w http.ResponseWriter, r *http.Request) {
+	tsm.mutex.Lock()
+	defer tsm.mutex.Unlock()
+
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -455,6 +487,9 @@ func (tsm *testSecretsManager) handlerEditSecret(w http.ResponseWriter, r *http.
 }
 
 func (tsm *testSecretsManager) handlerDeleteProject(w http.ResponseWriter, r *http.Request) {
+	tsm.mutex.Lock()
+	defer tsm.mutex.Unlock()
+
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -481,6 +516,9 @@ func (tsm *testSecretsManager) handlerDeleteProject(w http.ResponseWriter, r *ht
 }
 
 func (tsm *testSecretsManager) handlerDeleteSecret(w http.ResponseWriter, r *http.Request) {
+	tsm.mutex.Lock()
+	defer tsm.mutex.Unlock()
+
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
