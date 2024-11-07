@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/encryptedstring"
@@ -79,7 +78,6 @@ func NewPasswordManagerClient(serverURL, deviceIdentifier, providerVersion strin
 	c := &webAPIVault{
 		baseVault: baseVault{
 			objectStore:            make(map[string]models.Object),
-			locked:                 true,
 			verifyObjectEncryption: true,
 		},
 		serverURL: serverURL,
@@ -107,13 +105,15 @@ type webAPIVault struct {
 	client     webapi.Client
 	clientOpts []webapi.Options
 
-	ciphersMap     webapi.SyncResponse
 	syncAfterWrite bool
 	serverURL      string
 }
 
 func (v *webAPIVault) CreateAttachment(ctx context.Context, itemId, filePath string) (*models.Object, error) {
-	if v.locked {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if !v.objectsLoaded() {
 		return nil, models.ErrVaultLocked
 	}
 
@@ -140,12 +140,12 @@ func (v *webAPIVault) CreateAttachment(ctx context.Context, itemId, filePath str
 	v.storeObject(ctx, *resObj)
 
 	if v.syncAfterWrite {
-		err = v.Sync(ctx)
+		err = v.sync(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("sync-after-write error: %w", err)
 		}
 
-		remoteObj, err := v.GetObject(ctx, *resObj)
+		remoteObj, err := v.getObject(ctx, *resObj)
 		if err != nil {
 			return nil, fmt.Errorf("error getting object after attachment upload (sync-after-write): %w", err)
 		}
@@ -162,7 +162,10 @@ func (v *webAPIVault) CreateAttachment(ctx context.Context, itemId, filePath str
 }
 
 func (v *webAPIVault) CreateObject(ctx context.Context, obj models.Object) (*models.Object, error) {
-	if v.locked {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if !v.objectsLoaded() {
 		return nil, models.ErrVaultLocked
 	}
 
@@ -218,13 +221,14 @@ func (v *webAPIVault) CreateObject(ctx context.Context, obj models.Object) (*mod
 	}
 
 	v.storeObject(ctx, *resObj)
+
 	if v.syncAfterWrite {
-		err := v.Sync(ctx)
+		err := v.sync(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("sync-after-write error: %w", err)
 		}
 
-		remoteObj, err := v.GetObject(ctx, *resObj)
+		remoteObj, err := v.getObject(ctx, *resObj)
 		if err != nil {
 			return nil, fmt.Errorf("error getting object after creation (sync-after-write): %w", err)
 		}
@@ -241,7 +245,10 @@ func (v *webAPIVault) CreateObject(ctx context.Context, obj models.Object) (*mod
 }
 
 func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error) {
-	if v.locked {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if !v.objectsLoaded() {
 		return "", models.ErrVaultLocked
 	}
 
@@ -279,13 +286,20 @@ func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, 
 }
 
 func (v *webAPIVault) DeleteAttachment(ctx context.Context, itemId, attachmentId string) error {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if !v.objectsLoaded() {
+		return models.ErrVaultLocked
+	}
+
 	// TODO: Don't fail if attachment is already gone
 	err := v.client.DeleteObjectAttachment(ctx, itemId, attachmentId)
 	if err != nil {
 		return fmt.Errorf("error deleting attachment: %w", err)
 	}
 
-	resObj, err := v.GetObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
+	resObj, err := v.getObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
 	if err != nil {
 		return fmt.Errorf("error getting object after attachment deletion: %w", err)
 	}
@@ -300,12 +314,12 @@ func (v *webAPIVault) DeleteAttachment(ctx context.Context, itemId, attachmentId
 	v.storeObject(ctx, *resObj)
 
 	if v.syncAfterWrite {
-		err := v.Sync(ctx)
+		err := v.sync(ctx)
 		if err != nil {
 			return fmt.Errorf("sync-after-write error: %w", err)
 		}
 
-		remoteObj, err := v.GetObject(ctx, *resObj)
+		remoteObj, err := v.getObject(ctx, *resObj)
 		if err != nil {
 			return fmt.Errorf("error getting object after attachment deletion (syncAfterWrite): %w", err)
 		}
@@ -317,6 +331,13 @@ func (v *webAPIVault) DeleteAttachment(ctx context.Context, itemId, attachmentId
 }
 
 func (v *webAPIVault) DeleteObject(ctx context.Context, obj models.Object) error {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if !v.objectsLoaded() {
+		return models.ErrVaultLocked
+	}
+
 	// TODO: Don't fail if object is already gone
 	var err error
 	if obj.Object == models.ObjectTypeFolder {
@@ -334,13 +355,16 @@ func (v *webAPIVault) DeleteObject(ctx context.Context, obj models.Object) error
 	v.deleteObjectFromStore(ctx, obj)
 
 	if v.syncAfterWrite {
-		return v.Sync(ctx)
+		return v.sync(ctx)
 	}
 	return nil
 }
 
 func (v *webAPIVault) EditObject(ctx context.Context, obj models.Object) (*models.Object, error) {
-	if v.locked {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if !v.objectsLoaded() {
 		return nil, models.ErrVaultLocked
 	}
 
@@ -395,12 +419,12 @@ func (v *webAPIVault) EditObject(ctx context.Context, obj models.Object) (*model
 	v.storeObject(ctx, *resObj)
 
 	if v.syncAfterWrite {
-		err := v.Sync(ctx)
+		err := v.sync(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("sync-after-write error: %w", err)
 		}
 
-		remoteObj, err := v.GetObject(ctx, *resObj)
+		remoteObj, err := v.getObject(ctx, *resObj)
 		if err != nil {
 			return nil, fmt.Errorf("error getting object after edition (sync-after-write): %w", err)
 		}
@@ -430,7 +454,10 @@ func (v *webAPIVault) GetAPIKey(ctx context.Context, username, password string) 
 }
 
 func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error) {
-	if v.locked {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if !v.objectsLoaded() {
 		return nil, models.ErrVaultLocked
 	}
 
@@ -450,7 +477,7 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 		return nil, fmt.Errorf("error fetching attachment body: %w", err)
 	}
 
-	originalObj, err := v.GetObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
+	originalObj, err := v.getObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
 	if err != nil {
 		return nil, fmt.Errorf("error getting original object: %w", err)
 	}
@@ -479,6 +506,13 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 }
 
 func (v *webAPIVault) LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if v.loginAccount.LoggedIn() {
+		return models.ErrAlreadyLoggedIn
+	}
+
 	tokenResp, err := v.client.LoginWithAPIKey(ctx, clientId, clientSecret)
 	if err != nil {
 		return fmt.Errorf("error login with api key: %w", err)
@@ -488,6 +522,13 @@ func (v *webAPIVault) LoginWithAPIKey(ctx context.Context, password, clientId, c
 }
 
 func (v *webAPIVault) LoginWithPassword(ctx context.Context, username, password string) error {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if v.loginAccount.LoggedIn() {
+		return models.ErrAlreadyLoggedIn
+	}
+
 	preResp, err := v.client.PreLogin(ctx, username)
 	if err != nil {
 		return fmt.Errorf("error prelogin with username/password: %w", err)
@@ -545,47 +586,61 @@ func (v *webAPIVault) RegisterUser(ctx context.Context, name, username, password
 }
 
 func (v *webAPIVault) Sync(ctx context.Context) error {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	return v.sync(ctx)
+}
+
+func (v *webAPIVault) sync(ctx context.Context) error {
+	if !v.loginAccount.LoggedIn() {
+		return models.ErrLoggedOut
+	} else if !v.loginAccount.SecretsLoaded() {
+		return models.ErrVaultLocked
+	}
+
 	ciphersRaw, err := v.client.Sync(ctx)
 	if err != nil {
 		return fmt.Errorf("error syncing: %w", err)
 	}
-	if len(v.loginAccount.Email) > 0 && v.loginAccount.Email != ciphersRaw.Profile.Email || len(v.loginAccount.AccountUUID) > 0 && v.loginAccount.AccountUUID != ciphersRaw.Profile.Id {
+
+	if v.loginAccount.Email != ciphersRaw.Profile.Email || v.loginAccount.AccountUUID != ciphersRaw.Profile.Id {
 		return fmt.Errorf("BUG: account UUID or email changed during sync")
 	}
 
-	v.ciphersMap = *ciphersRaw
-	v.loginAccount.Email = v.ciphersMap.Profile.Email
-	v.loginAccount.AccountUUID = v.ciphersMap.Profile.Id
-
-	if !v.loginAccount.PrivateKeyDecrypted() {
-		return nil
+	err = loadOrganizationSecrets(v.loginAccount.Secrets, ciphersRaw.Profile.Organizations)
+	if err != nil {
+		return fmt.Errorf("error loading organization secrets: %w", err)
 	}
 
-	return v.loadObjectMap(ctx)
+	return v.loadObjectMap(ctx, *ciphersRaw)
 }
 
 func (v *webAPIVault) Unlock(ctx context.Context, password string) error {
-	if len(v.loginAccount.Email) == 0 {
-		return fmt.Errorf("please login first")
-	}
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
 
-	accountSecrets, err := decryptAccountSecrets(v.loginAccount, password)
-	if err != nil {
-		return fmt.Errorf("error decrypting account secrets: %w", err)
+	return v.unlock(ctx, password)
+}
+
+func (v *webAPIVault) unlock(ctx context.Context, password string) error {
+	if !v.loginAccount.LoggedIn() {
+		return models.ErrLoggedOut
 	}
-	v.loginAccount.Secrets = *accountSecrets
 
 	profile, err := v.client.GetProfile(ctx)
 	if err != nil {
 		return fmt.Errorf("error loading profile: %w", err)
 	}
 
-	v.ciphersMap.Profile = *profile
+	v.loginAccount.Email = profile.Email
+	v.loginAccount.AccountUUID = profile.Id
 
-	err = v.loadObjectMap(ctx)
+	accountSecrets, err := decryptAccountSecrets(v.loginAccount, password)
 	if err != nil {
-		return fmt.Errorf("error loading cipher map: %w", err)
+		return fmt.Errorf("error decrypting account secrets: %w", err)
 	}
+	v.loginAccount.Secrets = *accountSecrets
 
 	return nil
 }
@@ -603,101 +658,18 @@ func (v *webAPIVault) continueLoginWithTokens(ctx context.Context, tokenResp web
 		ProtectedSymmetricKey:  tokenResp.Key,
 	}
 
-	err := v.Sync(ctx)
+	err := v.unlock(ctx, password)
 	if err != nil {
-		return fmt.Errorf("error syncing after login: %w", err)
+		return fmt.Errorf("error unlocking after login: %w", err)
 	}
 
-	return v.Unlock(ctx, password)
-}
-
-func (v *webAPIVault) loadCollectionsFromObjectMap(ctx context.Context) error {
-	for _, collection := range v.ciphersMap.Collections {
-		obj, err := decryptCollection(collection, v.loginAccount.Secrets)
-		if err != nil {
-			return fmt.Errorf("error decrypting collection: %w", err)
-		}
-		v.storeObject(ctx, *obj)
-	}
-	return nil
-}
-
-func (v *webAPIVault) loadFoldersFromObjectMap(ctx context.Context) error {
-	for _, folder := range v.ciphersMap.Folders {
-		obj, err := decryptFolder(folder, v.loginAccount.Secrets)
-		if err != nil {
-			return fmt.Errorf("error decrypting folder: %w", err)
-		}
-		v.storeObject(ctx, *obj)
-	}
-	return nil
-}
-
-func (v *webAPIVault) loadObjectsFromObjectMap(ctx context.Context) error {
-	for _, value := range v.ciphersMap.Ciphers {
-		obj, err := decryptItem(value, v.loginAccount.Secrets)
-		if err != nil {
-			return fmt.Errorf("error decrypting object: %w", err)
-		}
-		v.storeObject(ctx, *obj)
-	}
-	return nil
-}
-
-func (v *webAPIVault) loadObjectMap(ctx context.Context) error {
-	v.clearObjectStore(ctx)
-
-	err := v.loadOrganizationSecretsFromObjectMap(ctx)
-	if err != nil {
-		return fmt.Errorf("error updating organization secrets: %w", err)
-	}
-	err = v.loadObjectsFromObjectMap(ctx)
-	if err != nil {
-		return fmt.Errorf("error updating object in store: %w", err)
-	}
-
-	err = v.loadFoldersFromObjectMap(ctx)
-	if err != nil {
-		return fmt.Errorf("error updating folder in store: %w", err)
-	}
-
-	err = v.loadCollectionsFromObjectMap(ctx)
-	if err != nil {
-		return fmt.Errorf("error updating collections in store: %w", err)
-	}
-
-	tflog.Debug(ctx, "Vault is unlocked")
-	v.locked = false
-	return nil
-}
-
-func (v *webAPIVault) loadOrganizationSecretsFromObjectMap(ctx context.Context) error {
-	for _, organization := range v.ciphersMap.Profile.Organizations {
-		key, err := decryptOrganizationKey(organization.Key, v.loginAccount.Secrets.RSAPrivateKey)
-		if err != nil {
-			return fmt.Errorf("error loading organization key: %w", err)
-		}
-
-		orgSecret := OrganizationSecret{
-			OrganizationUUID: organization.Id,
-			Key:              *key,
-		}
-		v.loginAccount.Secrets.OrganizationSecrets[orgSecret.OrganizationUUID] = orgSecret
-
-		obj := models.Object{
-			ID:     organization.Id,
-			Object: models.ObjectTypeOrganization,
-			Name:   organization.Name,
-		}
-		v.storeObject(ctx, obj)
-	}
-	return nil
+	return v.sync(ctx)
 }
 
 func (v *webAPIVault) prepareAttachmentCreationRequest(ctx context.Context, itemId, filePath string) (*webapi.AttachmentRequestData, []byte, error) {
 	// NOTE: We don't Sync() to get the latest version of Object before adding an attachment to it, because we
 	//       assume the Object's key can't change.
-	originalObj, err := v.GetObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
+	originalObj, err := v.getObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting original object: %w", err)
 	}
@@ -743,4 +715,75 @@ func (v *webAPIVault) prepareAttachmentCreationRequest(ctx context.Context, item
 		Key:      dataKeyEncrypted,
 	}
 	return &req, encDataBuffer, nil
+}
+
+func (v *webAPIVault) loadObjectMap(ctx context.Context, cipherMap webapi.SyncResponse) error {
+	v.clearObjectStore(ctx)
+
+	for _, orgSecret := range v.loginAccount.Secrets.OrganizationSecrets {
+		v.storeObject(ctx, models.Object{
+			ID:     orgSecret.OrganizationUUID,
+			Object: models.ObjectTypeOrganization,
+			Name:   orgSecret.Name,
+		})
+	}
+
+	res, err := ciphersToObjects(v.loginAccount.Secrets, cipherMap.Ciphers)
+	if err != nil {
+		return fmt.Errorf("error updating object in store: %w", err)
+	}
+	v.storeObjects(ctx, res)
+
+	res, err = ciphersToObjects(v.loginAccount.Secrets, cipherMap.Folders)
+	if err != nil {
+		return fmt.Errorf("error updating folder in store: %w", err)
+	}
+	v.storeObjects(ctx, res)
+
+	res, err = ciphersToObjects(v.loginAccount.Secrets, cipherMap.Collections)
+	if err != nil {
+		return fmt.Errorf("error updating collections in store: %w", err)
+	}
+	v.storeObjects(ctx, res)
+
+	return nil
+}
+
+func ciphersToObjects[T any](accountSecrets AccountSecrets, ciphers []T) ([]models.Object, error) {
+	objects := make([]models.Object, len(ciphers))
+	for k, value := range ciphers {
+		var obj *models.Object
+		var err error
+		switch secret := any(value).(type) {
+		case models.Object:
+			obj, err = decryptItem(secret, accountSecrets)
+		case webapi.Folder:
+			obj, err = decryptFolder(secret, accountSecrets)
+		case webapi.Collection:
+			obj, err = decryptCollection(secret, accountSecrets)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting cipher: %w", err)
+		}
+		objects[k] = *obj
+	}
+	return objects, nil
+}
+
+func loadOrganizationSecrets(accountSecrets AccountSecrets, organizations []webapi.Organization) error {
+	for _, organization := range organizations {
+		key, err := decryptOrganizationKey(organization.Key, accountSecrets.RSAPrivateKey)
+		if err != nil {
+			return fmt.Errorf("error loading organization key: %w", err)
+		}
+
+		orgSecret := OrganizationSecret{
+			OrganizationUUID: organization.Id,
+			Key:              *key,
+			Name:             organization.Name,
+		}
+		accountSecrets.OrganizationSecrets[orgSecret.OrganizationUUID] = orgSecret
+
+	}
+	return nil
 }

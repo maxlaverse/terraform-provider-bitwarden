@@ -50,6 +50,22 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 	})
 }
 
+func TestAccResourceItemLoginMany(t *testing.T) {
+	if !useEmbeddedClient {
+		t.Skip("Skipping test because using the official client to create many items is too slow")
+	}
+	ensureVaultwardenConfigured(t)
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemManyLogins(),
+			},
+		},
+	})
+}
+
 func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 	ensureVaultwardenConfigured(t)
 
@@ -97,6 +113,17 @@ func tfConfigResourceItemLoginSmall() string {
 		provider 			= bitwarden
 
 		name     			= "login-bar"
+	}
+`
+}
+
+func tfConfigResourceItemManyLogins() string {
+	return `
+	resource "bitwarden_item_login" "foo" {
+		provider 			= bitwarden
+
+		count    = 100
+		name     = "Login Item ${count.index + 1}"
 	}
 `
 }

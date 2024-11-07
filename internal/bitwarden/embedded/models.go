@@ -20,7 +20,11 @@ type Account struct {
 	Secrets                AccountSecrets          `json:"-"`
 }
 
-func (a *Account) PrivateKeyDecrypted() bool {
+func (a *Account) LoggedIn() bool {
+	return len(a.ProtectedRSAPrivateKey) > 0
+}
+
+func (a *Account) SecretsLoaded() bool {
 	return len(a.Secrets.MainKey.Key) > 0
 }
 
@@ -47,6 +51,7 @@ func (s *AccountSecrets) GetOrganizationKey(orgId string) (*symmetrickey.Key, er
 type OrganizationSecret struct {
 	Key              symmetrickey.Key
 	OrganizationUUID string
+	Name             string
 }
 
 type MachineAccountClaims struct {
