@@ -440,13 +440,6 @@ func (v *webAPIVault) EditObject(ctx context.Context, obj models.Object) (*model
 }
 
 func (v *webAPIVault) GetAPIKey(ctx context.Context, username, password string) (*models.ApiKey, error) {
-	v.vaultOperationMutex.Lock()
-	defer v.vaultOperationMutex.Unlock()
-
-	if !v.objectsLoaded() {
-		return nil, models.ErrVaultLocked
-	}
-
 	resp, err := v.client.GetAPIKey(ctx, username, password, v.loginAccount.KdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error getting API key: %w", err)
