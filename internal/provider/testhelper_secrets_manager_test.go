@@ -84,7 +84,7 @@ func (tsm *testSecretsManager) Run(ctx context.Context, serverPort int) {
 
 	server := &http.Server{
 		Handler: handler,
-		Addr:    fmt.Sprintf(":%d", serverPort),
+		Addr:    fmt.Sprintf("127.0.0.1:%d", serverPort),
 	}
 
 	go func() {
