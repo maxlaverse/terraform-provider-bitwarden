@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -27,14 +28,30 @@ type BaseVault interface {
 }
 
 type baseVault struct {
-	locked                 bool
-	loginAccount           Account
-	objectStore            map[string]models.Object
+	loginAccount Account
+	objectStore  map[string]models.Object
+
+	// vaultOperationMutex protects the objectStore and loginAccount fields
+	// from concurrent access. Read operations are allowed to run concurrently,
+	// but write operations are serialized. In theory we could protect the two
+	// fields individually, but it's just much more easier to have a single
+	// mutex for both.
+	vaultOperationMutex sync.RWMutex
+
+	// verifyObjectEncryption is a flag that can be set to true to verify that
+	// every object that is encrypted can be decrypted back to its original.
 	verifyObjectEncryption bool
 }
 
-func (v *baseVault) GetObject(_ context.Context, obj models.Object) (*models.Object, error) {
-	if v.locked {
+func (v *baseVault) GetObject(ctx context.Context, obj models.Object) (*models.Object, error) {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	return v.getObject(ctx, obj)
+}
+
+func (v *baseVault) getObject(_ context.Context, obj models.Object) (*models.Object, error) {
+	if v.objectStore == nil {
 		return nil, models.ErrVaultLocked
 	}
 
@@ -47,7 +64,10 @@ func (v *baseVault) GetObject(_ context.Context, obj models.Object) (*models.Obj
 }
 
 func (v *baseVault) ListObjects(ctx context.Context, objType models.ObjectType, options ...bitwarden.ListObjectsOption) ([]models.Object, error) {
-	if v.locked {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	if v.objectStore == nil {
 		return nil, models.ErrVaultLocked
 	}
 
@@ -117,12 +137,28 @@ func (v *baseVault) encryptFolder(_ context.Context, obj models.Object, secret A
 	return &encFolder, nil
 }
 
+func (v *baseVault) objectsLoaded() bool {
+	return v.objectStore != nil
+}
+
 func (v *baseVault) storeObject(ctx context.Context, obj models.Object) {
 	tflog.Trace(ctx, "Storing new object", map[string]interface{}{"object_id": obj.ID, "object_name": obj.Name, "object_folder_id": obj.FolderID})
 	v.objectStore[objKey(obj)] = obj
 }
 
+func (v *baseVault) storeObjects(ctx context.Context, objs []models.Object) {
+	for _, obj := range objs {
+		v.storeObject(ctx, obj)
+	}
+}
+
 func decryptAccountSecrets(account Account, password string) (*AccountSecrets, error) {
+	if len(account.Email) == 0 {
+		// A common mistake is trying to decrypt account secrets without an
+		// email, the content of an Account comes from two different API calls.
+		return nil, fmt.Errorf("BUG: email required to decrypt account secrets")
+	}
+
 	masterKey, err := keybuilder.BuildPreloginKey(password, account.Email, account.KdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error building prelogin key: %w", err)
