@@ -589,16 +589,14 @@ func (v *webAPIVault) Sync(ctx context.Context) error {
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
-	if !v.objectsLoaded() {
-		return models.ErrVaultLocked
-	}
-
 	return v.sync(ctx)
 }
 
 func (v *webAPIVault) sync(ctx context.Context) error {
 	if !v.loginAccount.LoggedIn() {
 		return models.ErrLoggedOut
+	} else if !v.loginAccount.SecretsLoaded() {
+		return models.ErrVaultLocked
 	}
 
 	ciphersRaw, err := v.client.Sync(ctx)

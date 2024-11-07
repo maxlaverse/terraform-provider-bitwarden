@@ -24,6 +24,10 @@ func (a *Account) LoggedIn() bool {
 	return len(a.ProtectedRSAPrivateKey) > 0
 }
 
+func (a *Account) SecretsLoaded() bool {
+	return len(a.Secrets.MainKey.Key) > 0
+}
+
 func (a *Account) ToJSON() string {
 	out, _ := json.Marshal(a)
 	return string(out)
