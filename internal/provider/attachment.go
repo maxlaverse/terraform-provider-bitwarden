@@ -22,8 +22,17 @@ func resourceCreateAttachment(ctx context.Context, d *schema.ResourceData, bwCli
 		return diag.FromErr(err)
 	}
 
-	filePath := d.Get(attributeAttachmentFile).(string)
-	obj, err := bwClient.CreateAttachment(ctx, itemId, filePath)
+	var obj *models.Object
+	filePath, fileSpecified := d.GetOk(attributeAttachmentFile)
+	content, contentSpecified := d.GetOk(attributeAttachmentContent)
+	fileName, fileNameSpecified := d.GetOk(attributeAttachmentFileName)
+	if fileSpecified {
+		obj, err = bwClient.CreateAttachmentFromFile(ctx, itemId, filePath.(string))
+	} else if contentSpecified && fileNameSpecified {
+		obj, err = bwClient.CreateAttachmentFromContent(ctx, itemId, fileName.(string), []byte(content.(string)))
+	} else {
+		err = errors.New("BUG: either file or content&file_name should be specified")
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -148,6 +157,17 @@ func fileSha1Sum(filepath string) (string, error) {
 
 	hash := sha1.New()
 	_, err = io.Copy(hash, file)
+	if err != nil {
+		return "", err
+	}
+	outputChecksum := hash.Sum(nil)
+
+	return hex.EncodeToString(outputChecksum[:]), nil
+}
+
+func contentSha1Sum(content string) (string, error) {
+	hash := sha1.New()
+	_, err := hash.Write([]byte(content))
 	if err != nil {
 		return "", err
 	}

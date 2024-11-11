@@ -18,7 +18,20 @@ resource "bitwarden_item_login" "vpn_credentials" {
   username = "admin"
 }
 
-resource "bitwarden_attachment" "vpn_config" {
+resource "bitwarden_attachment" "vpn_config_from_content" {
+  // NOTE: Only works when the experimental embedded client support is enabled
+  file_name = "vpn-config.txt"
+  content = jsonencode({
+    domain : "laverse.net",
+    persistence : {
+      enabled : true,
+    }
+  })
+
+  item_id = bitwarden_item_login.vpn_credentials.id
+}
+
+resource "bitwarden_attachment" "vpn_config_from_file" {
   file    = "vpn-config.txt"
   item_id = bitwarden_item_login.vpn_credentials.id
 }
@@ -29,12 +42,16 @@ resource "bitwarden_attachment" "vpn_config" {
 
 ### Required
 
-- `file` (String) Path to the content of the attachment.
 - `item_id` (String) Identifier of the item the attachment belongs to
+
+### Optional
+
+- `content` (String) Path to the content of the attachment.
+- `file` (String) Path to the content of the attachment.
+- `file_name` (String) File name
 
 ### Read-Only
 
-- `file_name` (String) File name
 - `id` (String) Identifier.
 - `size` (String) Size in bytes
 - `size_name` (String) Size as string

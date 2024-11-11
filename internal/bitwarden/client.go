@@ -11,7 +11,8 @@ const (
 )
 
 type PasswordManager interface {
-	CreateAttachment(ctx context.Context, itemId, filePath string) (*models.Object, error)
+	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error)
+	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Object, error)
 	CreateObject(context.Context, models.Object) (*models.Object, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteObject(context.Context, models.Object) error

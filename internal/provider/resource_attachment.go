@@ -15,11 +15,35 @@ func resourceAttachment() *schema.Resource {
 	resourceAttachmentSchema[attributeAttachmentFile] = &schema.Schema{
 		Description:      descriptionItemAttachmentFile,
 		Type:             schema.TypeString,
-		Required:         true,
+		Optional:         true,
+		ConflictsWith:    []string{attributeAttachmentContent},
+		AtLeastOneOf:     []string{attributeAttachmentContent},
 		ForceNew:         true,
 		ValidateDiagFunc: fileHashComputable,
 		StateFunc:        fileHash,
 	}
+	resourceAttachmentSchema[attributeAttachmentContent] = &schema.Schema{
+		Description:   descriptionItemAttachmentFile,
+		Type:          schema.TypeString,
+		Optional:      true,
+		RequiredWith:  []string{attributeAttachmentContent},
+		ConflictsWith: []string{attributeAttachmentFile},
+		AtLeastOneOf:  []string{attributeAttachmentFile},
+		ForceNew:      true,
+		StateFunc:     contentHash,
+	}
+	resourceAttachmentSchema[attributeAttachmentFileName] = &schema.Schema{
+		Description:   descriptionItemAttachmentFileName,
+		Type:          schema.TypeString,
+		RequiredWith:  []string{attributeAttachmentContent},
+		ConflictsWith: []string{attributeAttachmentFile},
+		ComputedWhen:  []string{attributeAttachmentFile},
+		AtLeastOneOf:  []string{attributeAttachmentFile},
+		ForceNew:      true,
+		Optional:      true,
+		Computed:      true,
+	}
+
 	resourceAttachmentSchema[attributeAttachmentItemID] = &schema.Schema{
 		Description: descriptionItemIdentifier,
 		Type:        schema.TypeString,
@@ -47,6 +71,11 @@ func resourceImportAttachment(ctx context.Context, d *schema.ResourceData, meta 
 	d.SetId(split[0])
 	d.Set(attributeAttachmentItemID, split[1])
 	return []*schema.ResourceData{d}, nil
+}
+
+func contentHash(val interface{}) string {
+	hash, _ := contentSha1Sum(val.(string))
+	return hash
 }
 
 func fileHashComputable(val interface{}, _ cty.Path) diag.Diagnostics {
