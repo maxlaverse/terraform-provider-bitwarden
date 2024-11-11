@@ -6,7 +6,7 @@
 ![Releases](https://img.shields.io/github/v/release/maxlaverse/terraform-provider-bitwarden?include_prereleases)
 ![Downloads](https://img.shields.io/badge/dynamic/json?color=7b42bc&label=Downloads&labelColor=black&logo=terraform&query=data.attributes.total&url=https%3A%2F%2Fregistry.terraform.io%2Fv2%2Fproviders%2F2657%2Fdownloads%2Fsummary&style=flat-square)
 
-The Terraform Bitwarden provider is a plugin for Terraform that allows to manage different kind of Bitwarden resources from their [Password Manager] and [Secrets Manager] products.
+The Terraform Bitwarden provider is a plugin for Terraform/OpenTofu that allows to manage different kind of Bitwarden resources from their [Password Manager] and [Secrets Manager] products.
 This project is not associated with the Bitwarden project nor 8bit Solutions LLC.
 
 **[Explore the docs »][Terraform Registry docs]**
@@ -21,10 +21,10 @@ This project is not associated with the Bitwarden project nor 8bit Solutions LLC
 
 ## Supported Versions
 The plugin has been tested and built with the following components:
-- [Terraform] v1.6.1 / [OpenTofu] v1.8.0
-- [Bitwarden CLI] v2023.2.0 (if not using the experimental `embedded_client`)
+- [Terraform] v1.9.8 / [OpenTofu] v1.8.0
+- [Bitwarden CLI] v2023.2.0 (when not enabling the experimental `embedded_client` feature)
 - [Go] 1.23.1 (for development)
-- [Docker] 23.0.5 (for development)
+- [Docker] 24.0.6 (for development)
 
 The provider likely works with older versions but those haven't been tested.
 
@@ -37,7 +37,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.10.0"
+      version = ">= 0.11.1"
     }
   }
 }
@@ -46,9 +46,10 @@ terraform {
 provider "bitwarden" {
   email = "terraform@example.com"
 
-  # If you have the opportunity, you can try out the embedded client which removes the need
-  # for a locally installed Bitwarden CLI. Please note that this feature is still considered
-  # as experimental, might not work as expected, and is not recommended for production use.
+  # If you have the opportunity, you can try out the embedded client which
+  # removes the need for a locally installed Bitwarden CLI. Please note that
+  # this feature is still considered experimental and not recommended for
+  # production use.
   #
   # experimental {
   #   embedded_client = true

@@ -11,9 +11,10 @@ terraform {
 provider "bitwarden" {
   email = "terraform@example.com"
 
-  # If you have the opportunity, you can try out the embedded client which removes the need
-  # for a locally installed Bitwarden CLI. Please note that this feature is still considered
-  # as experimental, might not work as expected, and is not recommended for production use.
+  # If you have the opportunity, you can try out the embedded client which
+  # removes the need for a locally installed Bitwarden CLI. Please note that
+  # this feature is still considered experimental and not recommended for
+  # production use.
   #
   # experimental {
   #   embedded_client = true
