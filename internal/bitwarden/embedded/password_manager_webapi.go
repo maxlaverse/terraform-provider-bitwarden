@@ -20,7 +20,8 @@ type PasswordManagerClient interface {
 	BaseVault
 	CreateObject(ctx context.Context, obj models.Object) (*models.Object, error)
 	CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error)
-	CreateAttachment(ctx context.Context, itemId, filePath string) (*models.Object, error)
+	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error)
+	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Object, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteObject(ctx context.Context, obj models.Object) error
 	EditObject(ctx context.Context, obj models.Object) (*models.Object, error)
@@ -109,15 +110,32 @@ type webAPIVault struct {
 	serverURL      string
 }
 
-func (v *webAPIVault) CreateAttachment(ctx context.Context, itemId, filePath string) (*models.Object, error) {
+func (v *webAPIVault) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error) {
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
+	return v.createAttachment(ctx, itemId, filename, content)
+}
+
+func (v *webAPIVault) CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Object, error) {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	filename := filepath.Base(filePath)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading attachment file: %w", err)
+	}
+
+	return v.createAttachment(ctx, itemId, filename, data)
+}
+
+func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error) {
 	if !v.objectsLoaded() {
 		return nil, models.ErrVaultLocked
 	}
 
-	req, data, err := v.prepareAttachmentCreationRequest(ctx, itemId, filePath)
+	req, data, err := v.prepareAttachmentCreationRequest(ctx, itemId, filename, content)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing attachment creation request: %w", err)
 	}
@@ -666,7 +684,7 @@ func (v *webAPIVault) continueLoginWithTokens(ctx context.Context, tokenResp web
 	return v.sync(ctx)
 }
 
-func (v *webAPIVault) prepareAttachmentCreationRequest(ctx context.Context, itemId, filePath string) (*webapi.AttachmentRequestData, []byte, error) {
+func (v *webAPIVault) prepareAttachmentCreationRequest(ctx context.Context, itemId, filename string, content []byte) (*webapi.AttachmentRequestData, []byte, error) {
 	// NOTE: We don't Sync() to get the latest version of Object before adding an attachment to it, because we
 	//       assume the Object's key can't change.
 	originalObj, err := v.getObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
@@ -679,17 +697,12 @@ func (v *webAPIVault) prepareAttachmentCreationRequest(ctx context.Context, item
 		return nil, nil, fmt.Errorf("error get cipher key while creating attachment: %w", err)
 	}
 
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error reading file: %w", err)
-	}
-
 	attachmentKey, err := keybuilder.CreateObjectKey()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	encData, err := crypto.Encrypt(data, *attachmentKey)
+	encData, err := crypto.Encrypt(content, *attachmentKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error encrypting data: %w", err)
 	}
@@ -699,7 +712,7 @@ func (v *webAPIVault) prepareAttachmentCreationRequest(ctx context.Context, item
 		return nil, nil, fmt.Errorf("error getting encrypted buffer: %w", err)
 	}
 
-	filename, err := crypto.EncryptAsString([]byte(filepath.Base(filePath)), *objectKey)
+	encFilename, err := crypto.EncryptAsString([]byte(filename), *objectKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error encrypting filename: %w", err)
 	}
@@ -710,7 +723,7 @@ func (v *webAPIVault) prepareAttachmentCreationRequest(ctx context.Context, item
 	}
 
 	req := webapi.AttachmentRequestData{
-		FileName: filename,
+		FileName: encFilename,
 		FileSize: len(encDataBuffer),
 		Key:      dataKeyEncrypted,
 	}

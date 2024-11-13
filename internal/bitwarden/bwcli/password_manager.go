@@ -13,7 +13,8 @@ import (
 )
 
 type PasswordManagerClient interface {
-	CreateAttachment(ctx context.Context, itemId, filePath string) (*models.Object, error)
+	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Object, error)
+	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error)
 	CreateObject(context.Context, models.Object) (*models.Object, error)
 	EditObject(context.Context, models.Object) (*models.Object, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
@@ -114,7 +115,11 @@ func (c *client) CreateObject(ctx context.Context, obj models.Object) (*models.O
 	return &obj, nil
 }
 
-func (c *client) CreateAttachment(ctx context.Context, itemId string, filePath string) (*models.Object, error) {
+func (c *client) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error) {
+	return nil, fmt.Errorf("creating attachments from content is only supported by the embedded client")
+}
+
+func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, filePath string) (*models.Object, error) {
 	out, err := c.cmdWithSession("create", string(models.ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).Run(ctx)
 	if err != nil {
 		return nil, err

@@ -24,6 +24,7 @@ func TestAccResourceAttachment(t *testing.T) {
 				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("non-existent"),
 				ExpectError:  regexp.MustCompile("no such file or directory"),
 			},
+			// Attachments created from File
 			{
 				ResourceName: resourceName,
 				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
@@ -35,6 +36,40 @@ func TestAccResourceAttachment(t *testing.T) {
 						resourceName, attributeAttachmentItemID, regexp.MustCompile(regExpId),
 					),
 					checkAttachmentMatches(resourceName, ""),
+				),
+			},
+			// Attachments created from Content
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigPasswordManagerProvider(),
+				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
+			},
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachmentFromContentWithFilename(),
+				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
+				ExpectError:  regexp.MustCompile("\"file_name\": one of"),
+			},
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachmentFromContent("Hello, I'm a text attachment"),
+				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						resourceName, attributeAttachmentContent, contentHash("Hello, I'm a text attachment"),
+					),
+					resource.TestMatchResourceAttr(
+						resourceName, attributeAttachmentItemID, regexp.MustCompile(regExpId),
+					),
+					checkAttachmentMatches(resourceName, ""),
+				),
+			},
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachmentFromContent("Hello, I'm a text attachment") + tfConfigDataAttachment(),
+				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
+				Check: resource.TestMatchResourceAttr(
+					"data.bitwarden_attachment.foo_data", attributeAttachmentContent, regexp.MustCompile(`^Hello, I'm a text attachment$`),
 				),
 			},
 			{
@@ -228,6 +263,41 @@ resource "bitwarden_attachment" "foo" {
 	provider  = bitwarden
 
 	file      = "` + filepath + `"
+	item_id   = bitwarden_item_login.foo.id
+}
+`
+}
+
+func tfConfigResourceAttachmentFromContent(content string) string {
+	return `
+resource "bitwarden_item_login" "foo" {
+	provider = bitwarden
+
+	name     = "foo"
+}
+
+resource "bitwarden_attachment" "foo" {
+	provider  = bitwarden
+
+	content      = "` + content + `"
+	file_name	 = "attachment1.txt"
+	item_id   = bitwarden_item_login.foo.id
+}
+`
+}
+
+func tfConfigResourceAttachmentFromContentWithFilename() string {
+	return `
+resource "bitwarden_item_login" "foo" {
+	provider = bitwarden
+
+	name     = "foo"
+}
+
+resource "bitwarden_attachment" "foo" {
+	provider  = bitwarden
+
+	content      = "not-used"
 	item_id   = bitwarden_item_login.foo.id
 }
 `
