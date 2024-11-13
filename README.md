@@ -6,8 +6,8 @@
 ![Releases](https://img.shields.io/github/v/release/maxlaverse/terraform-provider-bitwarden?include_prereleases)
 ![Downloads](https://img.shields.io/badge/dynamic/json?color=7b42bc&label=Downloads&labelColor=black&logo=terraform&query=data.attributes.total&url=https%3A%2F%2Fregistry.terraform.io%2Fv2%2Fproviders%2F2657%2Fdownloads%2Fsummary&style=flat-square)
 
-The Terraform Bitwarden provider is a plugin for Terraform/OpenTofu that allows to manage different kind of Bitwarden resources from their [Password Manager] and [Secrets Manager] products.
-This project is not associated with the Bitwarden project nor 8bit Solutions LLC.
+A provider for Terraform/OpenTofu to manage Bitwarden [Password Manager] and [Secrets Manager] resource.
+This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 
 **[Explore the docs »][Terraform Registry docs]**
 
@@ -16,17 +16,20 @@ This project is not associated with the Bitwarden project nor 8bit Solutions LLC
 ## Table of Contents
 - [Supported Versions](#supported-versions)
 - [Usage](#usage)
+- [Embedded Client](#embedded-client)
+- [Security Considerations](#secutiry-considerations)
 - [Developing the Provider](#developing-the-provider)
 - [License](#license)
 
 ## Supported Versions
 The plugin has been tested and built with the following components:
 - [Terraform] v1.9.8 / [OpenTofu] v1.8.0
-- [Bitwarden CLI] v2023.2.0 (when not enabling the experimental `embedded_client` feature)
+- [Bitwarden CLI] v2023.2.0 (when not using the [Embedded Client](#embedded-client))
 - [Go] 1.23.1 (for development)
 - [Docker] 24.0.6 (for development)
 
-The provider likely works with older versions but those haven't been tested.
+The provider is likely to work with older versions, but those haven't been tested.
+If you encounter issues with recent versions of the Bitwarden CLI, consider trying out the [Embedded Client](#embedded-client).
 
 ## Usage
 
@@ -37,7 +40,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.11.1"
+      version = ">= 0.12.0"
     }
   }
 }
@@ -49,7 +52,7 @@ provider "bitwarden" {
   # If you have the opportunity, you can try out the embedded client which
   # removes the need for a locally installed Bitwarden CLI. Please note that
   # this feature is still considered experimental and not recommended for
-  # production use.
+  # production use yet.
   #
   # experimental {
   #   embedded_client = true
@@ -71,20 +74,20 @@ data "bitwarden_item_login" "example" {
 
 See the [examples](./examples/) directory for more examples.
 
-## Security Considerations
+## Embedded Client
+Since version 0.9.0, the provider contains an embedded client that can directly interact with Bitwarden's API, removing the need for a locally installed Bitwarden CLI.
+The embedded client makes the provider faster, easier to use, but it still requires more testing.
+For now, a feature flag needs to be set in order to use it (`experimental.embedded_client`), with the goal of having it the default in v1.0.0.
 
-The Terraform Bitwarden provider entirely relies on the [Bitwarden CLI] to interact with Vaults.
-When you ask Terraform to *plan* or *apply* changes, the provider downloads the encrypted Vault locally as if you would use the Bitwarden CLI directly.
+## Security Considerations
+When not using the [Embedded Client](#embedded-client), the provider downloads the encrypted Vault locally during *plan* or *apply* operations as would the Bitwarden CLI if you used it directly.
 Currently, the Terraform SDK doesn't offer a way to remove the encrypted Vault once changes have been applied.
 The issue [hashicorp/terraform-plugin-sdk#63] tracks discussions for adding such a feature.
 
 If you want find out more about this file, you can read [Terraform's documentation on Data Storage].
 Please note that this file is stored at `<your-project>/.bitwarden/` by default, in order to not interfere with your local Vaults.
 
-NOTE: This whole paragraph doesn't apply to the experimental client, as nothing is stored on disk.
-
 ## Developing the Provider
-
 If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
 
 To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
@@ -104,16 +107,15 @@ $ make testacc
 
 
 ## License
-
 Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more information.
 
-[Terraform]: https://www.terraform.io/downloads.html
-[OpenTofu]: https://opentofu.org/
-[Go]: https://golang.org/doc/install
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
 [Docker]: https://www.docker.com/products/docker-desktop
-[Terraform Registry docs]: https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs
+[Go]: https://golang.org/doc/install
 [hashicorp/terraform-plugin-sdk#63]: https://github.com/hashicorp/terraform-plugin-sdk/issues/63
-[Terraform's documentation on Data Storage]: https://bitwarden.com/help/data-storage/#on-your-local-machine
+[OpenTofu]: https://opentofu.org/
 [Password Manager]: https://bitwarden.com/products/personal/
 [Secrets Manager]: https://bitwarden.com/products/secrets-manager/
+[Terraform]: https://www.terraform.io/downloads.html
+[Terraform Registry docs]: https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs
+[Terraform's documentation on Data Storage]: https://bitwarden.com/help/data-storage/#on-your-local-machine
