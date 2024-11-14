@@ -1,5 +1,14 @@
 package embedded
 
+import (
+	"encoding/json"
+	"log"
+	"os"
+
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
+)
+
 const (
 	ServerURL = "http://127.0.0.1:8080"
 
@@ -35,13 +44,56 @@ GqwE00g9gizQ6CmsaNNJh7y6gNg0TBU2EGqTaQMz37fheAEt3NSt
 	EncryptionKey = "Vr+KA/il3QX4z7EqFnhQ3U8TtETlQPKkXHCE2PiR75wwzDVRutR4rib/jMtgZ1S/gPyOEXbwKFju2oJq3njVLg=="
 	TestPassword  = "test12341234"
 
-	Pdkdf2Email                  = "test-kdf0@laverse.net"
-	Pdkdf2Mocks                  = "test-kdf0"
-	Pdkdf2ProtectedSymmetricKey  = "2.fl6CmmK/o/THYg8Y3Z5fJw==|sEjr1DMSe+Hgg7DRU8Z2wqZiZWIySrY63E8ISwQ7Q9vpxUPDQPifTW9oW0ZjcnKE4Xl4fxP89LO5xce+y+yR1yAQpnVcm2wMBx0OXM1xaAU=|9wNu2sNXt7ECSXCYsDL1ctWw02GGT1y7Pkx2NxIyD0A="
-	Pdkdf2ProtectedRSAPrivateKey = "2.11j1IvphccY0UkZov7ZbmQ==|4J34a16NM+krEXyDUkHVUNL2sSA7dph4EBCLWoDkmDoljqMZh5IxA7M51yZTNB6/uqGgJZJX0uU+B4RSn2s2JoFG/VizMmgSIJkTIr6WuA7taEzyIFRi7sY980W02pnLeb8fGV8EXrZk1Bj0UzAFukNGoeS2CHWbm0bZKRvDxl5Vw40V3Lt6GzHTb6X+4k4Ovg0UKgm2mqMWzxxjmCfy+G1R0vlsAtqg14n2ax5f3Jn4ajGDvT2BQia9EFYFkie/SfqgsYbtvou4DvyCTEWh0j9Cre1QIJQ9AZ4AHAzGwIKFhpN7sWjsfw6yTGmvxAfflCMFzCdleBBiuCefaAKNe5Uf1QASC9TzIiHknl2+sK9lOFZ+XZJ41HCU2sMvNBu1EHuBPNRIHodCEHdXHyRqBaC+vgWO6RcTWU4K5ZctBKmElAYst7FFCuzM+liUcGp3I1a7wxOJTPraxeFw8z69rYFiNMOng/HkV/G/VUQXzWalC5gtjaR35dMp35Mf1lMlGnWhy/qdLr0NVdl69qUDKt+kCG9+kiXO7Eq5PTbV+tj4AxBzxE1DroAh0jTPFLb7p1205+OQqqrCEq6tzpGHKTFLoyHZCVoxdQvxgFNX6+fNi3+MfbDfLle7msQAwOuaUl6rxcb2JjdgRQQUd4/GQbvKeLjFRIr7OtcVHWm3251jqRLBgFJcQ235SFgdjLnKATqN4BRe0WLyYOMuMQEmfQXaebjzMo7L2JMJeOar9QutuV+Acle7kJZZU4N1XPiUmborUksAcrmLGXvQITn1QLmadou0jX/oov+lkrKDIFTJC5MIutVBNmExS6FqW978viF1ZNgRQxG5OULHoT5tgfyjrl2u74VFf0ttbLC/JSsi1k8me2LA2vi2Sx7DNOzd6fLx0f8+mYmz2VTRw6fnoFh99d8HktPUNyKcGNZyZpsfkkhFSFV/U88tZ9gROWayLbRXS6g801Mi0tBg0RJp/Flo9ZX9Y3qKVWLCDZT6t3l1NR2npkGmi16yqslXSs9hadIvd6lxyYqyW6cskuJjsacHPOCyvz1xZFH6txtzmb46UrKUU7Cjo/09Kmtb740rXzhH/0nPuvJUjlk0UN77LqzvnvVWAe2IJVEjsbhTspLw3Z1fmCQxMKvc3yPA36/KP2uk/wOlHmBnuX/eebQmI22PFOzskl1d0ScNItJsw5D6fkEhybxEY3oPWYG5y+Oitqj1dQy/TNKXeJHMP+MC1PxzvaE3jq/+cb0IwVBnMVblbaHCJM6JAllV/p3Z6/Ho3Ps4hDHRflKZjP2HyB5wvvTtYhX5XpDoA8s9e6TpDXYnoE+XLN4Thzu30GL3WBeI7koYuNEpRhD5++oT2CElpEqo0v/TFKGSmnV+qohWTL8I4WnHSZeKDLC5alqIMYgRkN6qUlVJLzILOFzeJcL9zeXsAeHemd3VZWe0OYiJRxVwBCYGHk6W7WA4pZ+Wq/C0JHaxNJhr9gx0kyFlMPBkwN/LEyUP+PxsqIuW+09f70qZdGE1r9bNjUSKmb53I6nqxwQhIwvpZZDGAOZjaxrfC8PE9rOOTkM3v6zsSWgjl4EJMPwJubHJb63w5hvW2DwS4h3t7lduTab9ykKInvfBsaWxLuBhJuX+fesGTM0KGXs=|BXz0QzgtArYQXICHbYvGqOeFVi9YGZRP0MASNlVwzzY="
-
-	Argon2Email                  = "test-kdf1@laverse.net"
-	Argon2Mocks                  = "test-kdf1"
-	Argon2ProtectedSymmetricKey  = "2.Q+HxT8fkXKmM+irKC+1D6g==|hxmjLJ2RZUPM2uWk0gmPmNe0/OQrCbB49hKUIoqvXWbUaxricj62fATs81UZaKQoC5Re1LPyFsioRImDl1L+sv+EcBEhOx/0wqZ+JPNxXms=|t0G4kLfldPtNCg3wzXU81olAxgbe6sZHAMlQkjjJLck="
-	Argon2ProtectedRSAPrivateKey = "2.fRqWht1SVjfmdTOYbLxbvw==|6nMLdGVZmXlnSjmDyJC94ljd/OYtCTflhVew0+uB4smS2YfFdmkfely/ZMU5UyDyuTCMp5ynw0ERTm3whVmwNGZkYHYT1iuU8I+N5zSQyuNPqnTREGFVslwcMSqkgINYUNoTnJYr/YkLjqzBLt4R5AvFY9Pxq20c+u+3obGcXVW2I11cxF47HVQde9pks72EvOw8KAQs6nQxx8CS/hWLmpZCh/f9yZ0PtNoeik+NxsnSI9veaLvr9yUwqWyhpF1+EI+PMpYZzUopyue8c0aihEUe5Pthz5z1KU+JXMWAAvtg/6eYFi8fQqT8Y6BOZh07makHPYIePQ2O/vgAETldiSlWwmjczZCQ5OXE4wromnzxKBYu1/K2uFUuQ0CD+xsleZImAyYR1W2zVslLFb/ILUX0RSKuqA2MlZizRldTY4nZ7quOWfHP0YD6iRK3oGFf7FfYPAPlcPOPDKl1tEhel3a3M8R0mkyb2e2S6IoW0hfYE4V4J0+VEmdNu7LQqFleqpEPl7icG0Z0EpP3KIJ4OcnO3gbUyo83MOyq4TQMIl46BQt42R4NcoA4hedV/YblUwnri58ugKfURH4+iSjv/r+F2uoSzJu2vdVHka3lF30bwhemyEUhsOZtHaEXpasKHesMknTv4/e+FhAdE9hjplWQyXO7rATXH6F0nEbyCDfOkghZAiAboTjBcE1FoqXBdCSkn4uVzmeWIGJp7izqzM/8zLK2VPUAMtxJGh9+rcv27bLYsbHfcnvEhCyXEsxa0b3DSGijyeSQC2yBNqJen9/SHbsCGNDOLNNyzYUzfIepQ52Oy2LgJEZ57ODTUybPfX4tyW8b+NriSzkUsx9Lp6hh/UaF6f+hBcQ7/dWVoHTJFyUHB1eni0PfFot0dXusg4n7usaG4e4ZSDQprgPHCyg+c3IxauHQmh9/oq1C4/5KuXIB/vOtMq98xjwnZTRdiJxOS82UyqpnwYcGQ9W2RIqKt1GXo/R5rgPXXtgmssqClu7QKI4sHA5lzTs1ef5BHFW1zAYPmsFvovTdX8ckrSdAoeQHJlIb4WyCNB4swNhmMFeQpdgCAZsBAjr+GG6Ak0JxXa2eQBF3zs0f37ly0t3BV7cCuDYKKSol5q14zTQkSQNg+/7TmhtmJo9ducSNS8orQT5IYA+OJa28wGfXjKKaSu0WSH/Tr83984nOQfUdlUZ2rqiskzW7/KUK2nlUceBty+0npuvrzqKk4eDIlJvh6uqwbU0C6SU9MFa0u4nXzfDvDHOgzuz4mNyCYe9tWzU2qArH9dzYMdc1UVj8qlmrPm2WkuXeEEYO+4MBAEHIuQxs21EshpE+2kePRpE5XHn/NbuZhbZ3j7ZD8w7Pyp4PC+hVAg83P+fvWU5CRuA8Ee2wNE6TORtqjnzW40Uh4JcQCaGwOt7dnDVygOsD9NGQrcrY8rLnK1kFMLJmfJtJ8BAn4A18RscI8OuwBkpfoOe9QldDXYsSAJ40K/yE3Nk25Csb3sgoHttfy43CpIIYvNzrqajZA0IvP22eWiF/FeZKO7zm0Myw33ARyHFw2yiBLNys4xxVuL3YmpolHRzOaUqtWA3bNJTmKWiBXxlJvL8+OvbfY+TYXJdVBUVzaATG4CL546j5hduhZfDxJQk=|1kt/ukROVrAIqC47wt8TLQYVh9jeZaCUE3/hHo8hCNA="
+	Pdkdf2Mocks = "test-kdf0"
+	Argon2Mocks = "test-kdf1"
 )
+
+var (
+	OrganizationID string
+	AccountPbkdf2  Account
+	AccountArgon2  Account
+)
+
+func init() {
+	data, err := os.ReadFile("fixtures/test-kdf0_GET_api_sync.json")
+	if err != nil {
+		log.Fatalf("Error reading file: %v", err)
+	}
+
+	var resp webapi.SyncResponse
+	json.Unmarshal(data, &resp)
+
+	OrganizationID = resp.Profile.Organizations[0].Id
+	AccountPbkdf2 = Account{
+		AccountUUID: resp.Profile.Id,
+		Email:       resp.Profile.Email,
+		VaultFormat: "API",
+		KdfConfig: models.KdfConfiguration{
+			KdfType:       models.KdfTypePBKDF2_SHA256,
+			KdfIterations: 600000,
+		},
+		ProtectedSymmetricKey:  resp.Profile.Key,
+		ProtectedRSAPrivateKey: resp.Profile.PrivateKey,
+	}
+
+	data, err = os.ReadFile("fixtures/test-kdf1_GET_api_sync.json")
+	if err != nil {
+		log.Fatalf("Error reading file: %v", err)
+	}
+
+	json.Unmarshal(data, &resp)
+
+	AccountArgon2 = Account{
+		AccountUUID: resp.Profile.Id,
+		Email:       resp.Profile.Email,
+		VaultFormat: "API",
+		KdfConfig: models.KdfConfiguration{
+			KdfType:        models.KdfTypeArgon2,
+			KdfIterations:  3,
+			KdfMemory:      64,
+			KdfParallelism: 4,
+		},
+		ProtectedSymmetricKey:  resp.Profile.Key,
+		ProtectedRSAPrivateKey: resp.Profile.PrivateKey,
+	}
+}
