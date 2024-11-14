@@ -19,6 +19,20 @@ const (
 	orgUuid = "81cc1652-dc80-472d-909f-9539d057068b"
 )
 
+func TestCompareObjects(t *testing.T) {
+	obj1 := models.Object{
+		Name: "test",
+	}
+	obj2 := models.Object{
+		Name: "test",
+	}
+	obj3 := models.Object{
+		Name: "test1",
+	}
+	assert.NoError(t, compareObjects(obj1, obj2))
+	assert.Error(t, compareObjects(obj1, obj3))
+}
+
 func TestDecryptAccountSecretPbkdf2(t *testing.T) {
 	accountSecrets, err := decryptAccountSecrets(AccountPbkdf2, TestPassword)
 	if !assert.NoError(t, err) {
