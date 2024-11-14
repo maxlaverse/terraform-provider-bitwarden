@@ -151,6 +151,15 @@ func (v *baseVault) storeObjects(ctx context.Context, objs []models.Object) {
 		v.storeObject(ctx, obj)
 	}
 }
+func (v *baseVault) storeOrganizationSecrets(ctx context.Context) {
+	for _, orgSecret := range v.loginAccount.Secrets.OrganizationSecrets {
+		v.storeObject(ctx, models.Object{
+			ID:     orgSecret.OrganizationUUID,
+			Object: models.ObjectTypeOrganization,
+			Name:   orgSecret.Name,
+		})
+	}
+}
 
 func decryptAccountSecrets(account Account, password string) (*AccountSecrets, error) {
 	if len(account.Email) == 0 {
@@ -664,7 +673,7 @@ func objMatchFilter(obj models.Object, filters bitwarden.ListObjectsFilterOption
 	return len(filters.SearchFilter) > 0
 }
 
-func compareObjects(obj1, obj2 models.Object) error {
+func compareObjects[T any](obj1, obj2 T) error {
 	out1, err := json.Marshal(obj1)
 	if err != nil {
 		err := fmt.Errorf("error marshalling obj1 while comparing: %w", err)

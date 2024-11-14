@@ -11,7 +11,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
 )
 
-func GenerateRSAKeyPair(key symmetrickey.Key) (string, string, error) {
+func GenerateEncryptedRSAKeyPair(key symmetrickey.Key) (string, string, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return "", "", fmt.Errorf("error generating rsa key: %w", err)

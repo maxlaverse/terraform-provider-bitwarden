@@ -29,6 +29,7 @@ type PasswordManagerClient interface {
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
+	Logout(ctx context.Context) error
 	RegisterUser(ctx context.Context, name, username, password string, kdfConfig models.KdfConfiguration) error
 	Sync(ctx context.Context) error
 	Unlock(ctx context.Context, password string) error
@@ -280,7 +281,7 @@ func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, 
 		return "", fmt.Errorf("error encryption collection label: %w", err)
 	}
 
-	publicKey, encryptedPrivateKey, err := keybuilder.GenerateRSAKeyPair(*sharedKey)
+	publicKey, encryptedPrivateKey, err := keybuilder.GenerateEncryptedRSAKeyPair(*sharedKey)
 	if err != nil {
 		return "", fmt.Errorf("error generating key pair: %w", err)
 	}
@@ -300,6 +301,25 @@ func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, 
 	if err != nil {
 		return "", fmt.Errorf("error creating organization: %w", err)
 	}
+
+	v.baseVault.loginAccount.Secrets.OrganizationSecrets[res.Id] = OrganizationSecret{
+		OrganizationUUID: res.Id,
+		Name:             organizationName,
+		Key:              *sharedKey,
+	}
+
+	v.storeOrganizationSecrets(ctx)
+
+	if v.syncAfterWrite {
+		orgSecretBeforeSync := v.baseVault.loginAccount.Secrets.OrganizationSecrets[res.Id]
+		err := v.sync(ctx)
+		if err != nil {
+			return "", fmt.Errorf("sync-after-write error: %w", err)
+		}
+
+		return res.Id, compareObjects(orgSecretBeforeSync, v.baseVault.loginAccount.Secrets.OrganizationSecrets[res.Id])
+	}
+
 	return res.Id, nil
 }
 
@@ -567,6 +587,13 @@ func (v *webAPIVault) LoginWithPassword(ctx context.Context, username, password 
 	return v.continueLoginWithTokens(ctx, *tokenResp, password)
 }
 
+func (v *webAPIVault) Logout(ctx context.Context) error {
+	v.client.ClearSession()
+	v.clearObjectStore(ctx)
+	v.loginAccount = Account{}
+	return nil
+}
+
 func (v *webAPIVault) RegisterUser(ctx context.Context, name, username, password string, kdfConfig models.KdfConfiguration) error {
 	preloginKey, err := keybuilder.BuildPreloginKey(password, username, kdfConfig)
 	if err != nil {
@@ -580,7 +607,7 @@ func (v *webAPIVault) RegisterUser(ctx context.Context, name, username, password
 		return fmt.Errorf("error generating encryption key: %w", err)
 	}
 
-	publicKey, encryptedPrivateKey, err := keybuilder.GenerateRSAKeyPair(*encryptionKey)
+	publicKey, encryptedPrivateKey, err := keybuilder.GenerateEncryptedRSAKeyPair(*encryptionKey)
 	if err != nil {
 		return fmt.Errorf("error generating key pair: %w", err)
 	}
@@ -733,13 +760,7 @@ func (v *webAPIVault) prepareAttachmentCreationRequest(ctx context.Context, item
 func (v *webAPIVault) loadObjectMap(ctx context.Context, cipherMap webapi.SyncResponse) error {
 	v.clearObjectStore(ctx)
 
-	for _, orgSecret := range v.loginAccount.Secrets.OrganizationSecrets {
-		v.storeObject(ctx, models.Object{
-			ID:     orgSecret.OrganizationUUID,
-			Object: models.ObjectTypeOrganization,
-			Name:   orgSecret.Name,
-		})
-	}
+	v.storeOrganizationSecrets(ctx)
 
 	res, err := ciphersToObjects(v.loginAccount.Secrets, cipherMap.Ciphers)
 	if err != nil {
