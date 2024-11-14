@@ -26,6 +26,7 @@ const (
 )
 
 type Client interface {
+	ClearSession()
 	CreateFolder(ctx context.Context, obj Folder) (*Folder, error)
 	CreateObject(context.Context, models.Object) (*models.Object, error)
 	CreateObjectAttachment(ctx context.Context, itemId string, data []byte, req AttachmentRequestData) (*CreateObjectAttachmentResponse, error)
@@ -82,6 +83,10 @@ type client struct {
 	httpClient         *http.Client
 	serverURL          string
 	sessionAccessToken string
+}
+
+func (c *client) ClearSession() {
+	c.sessionAccessToken = ""
 }
 
 func (c *client) CreateFolder(ctx context.Context, obj Folder) (*Folder, error) {
