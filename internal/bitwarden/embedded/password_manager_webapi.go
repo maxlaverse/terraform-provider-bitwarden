@@ -190,7 +190,7 @@ func (v *webAPIVault) CreateObject(ctx context.Context, obj models.Object) (*mod
 
 	var resObj *models.Object
 	if obj.Object == models.ObjectTypeFolder {
-		encObj, err := v.encryptFolder(ctx, obj, v.loginAccount.Secrets)
+		encObj, err := encryptFolder(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 		if err != nil {
 			return nil, fmt.Errorf("error encrypting folder for creation: %w", err)
 		}
@@ -205,7 +205,7 @@ func (v *webAPIVault) CreateObject(ctx context.Context, obj models.Object) (*mod
 			return nil, fmt.Errorf("error decrypting folder after creation: %w", err)
 		}
 	} else if obj.Object == models.ObjectTypeOrgCollection {
-		encObj, err := encryptCollection(obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
+		encObj, err := encryptCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 		if err != nil {
 			return nil, fmt.Errorf("error encrypting collection for creation: %w", err)
 		}
@@ -408,7 +408,7 @@ func (v *webAPIVault) EditObject(ctx context.Context, obj models.Object) (*model
 
 	var resObj *models.Object
 	if obj.Object == models.ObjectTypeFolder {
-		encObj, err := v.encryptFolder(ctx, obj, v.loginAccount.Secrets)
+		encObj, err := encryptFolder(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 		if err != nil {
 			return nil, fmt.Errorf("error encrypting folder for edition: %w", err)
 		}
@@ -423,7 +423,7 @@ func (v *webAPIVault) EditObject(ctx context.Context, obj models.Object) (*model
 			return nil, fmt.Errorf("error decrypting folder after creation: %w", err)
 		}
 	} else if obj.Object == models.ObjectTypeOrgCollection {
-		encObj, err := encryptCollection(obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
+		encObj, err := encryptCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 		if err != nil {
 			return nil, fmt.Errorf("error encrypting collection for creation: %w", err)
 		}

@@ -3,6 +3,7 @@ package embedded
 import (
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"strings"
 	"testing"
@@ -84,13 +85,52 @@ func TestDecryptAccountSecretWrongPassword(t *testing.T) {
 	assert.ErrorIs(t, err, models.ErrWrongMasterPassword)
 }
 
+func TestEncryptCollection(t *testing.T) {
+	accountSecrets := computeTestAccountSecrets(t)
+
+	orgToEncrypt := testFullyFilledCollection()
+	newFolder, err := encryptCollection(context.Background(), orgToEncrypt, *accountSecrets, true)
+	if !assert.Nil(t, err) {
+		return
+	}
+
+	assert.Equal(t, "sensitive-name", orgToEncrypt.Name)
+	assertEncryptedValueOf(t, "sensitive-name", newFolder.Name, accountSecrets.OrganizationSecrets[orgUuid].Key)
+
+	newOut, err := json.Marshal(newFolder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NotContains(t, string(newOut), "sensitive")
+}
+
+func TestEncryptFolder(t *testing.T) {
+	accountSecrets := computeTestAccountSecrets(t)
+
+	folderToEncrypt := testFullyFilledFolder()
+	newFolder, err := encryptFolder(context.Background(), folderToEncrypt, *accountSecrets, true)
+	if !assert.Nil(t, err) {
+		return
+	}
+
+	assert.Equal(t, "sensitive-name", folderToEncrypt.Name)
+	assertEncryptedValueOf(t, "sensitive-name", newFolder.Name, accountSecrets.MainKey)
+
+	newOut, err := json.Marshal(newFolder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NotContains(t, string(newOut), "sensitive")
+}
+
 func TestEncryptItem(t *testing.T) {
 	accountSecrets := computeTestAccountSecrets(t)
 
 	objectToEncrypt := testFullyFilledObject()
-	objectToEncrypt.OrganizationID = "81cc1652-dc80-472d-909f-9539d057068b"
 	newObj, err := encryptItem(context.Background(), objectToEncrypt, *accountSecrets, true)
-	assert.Nil(t, err)
+	if !assert.Nil(t, err) {
+		return
+	}
 
 	r, e := getObjectKey(*newObj, *accountSecrets)
 	assert.Nil(t, e)
@@ -114,32 +154,52 @@ func TestEncryptItem(t *testing.T) {
 	assert.Equal(t, true, objectToEncrypt.Favorite)
 	assert.Equal(t, true, newObj.Favorite)
 
+	if assert.Len(t, newObj.Attachments, 1) {
+		assert.Equal(t, "public-id", objectToEncrypt.Attachments[0].ID)
+		assert.Equal(t, "public-id", newObj.Attachments[0].ID)
+
+		assert.Equal(t, "sensitive-filename", objectToEncrypt.Attachments[0].FileName)
+		assertEncryptedValueOf(t, "sensitive-filename", newObj.Attachments[0].FileName, *r)
+
+		assert.Equal(t, "public-size", objectToEncrypt.Attachments[0].Size)
+		assert.Equal(t, "public-size", newObj.Attachments[0].Size)
+
+		assert.Equal(t, "public-size-name", objectToEncrypt.Attachments[0].SizeName)
+		assert.Equal(t, "public-size-name", newObj.Attachments[0].SizeName)
+
+		assert.Equal(t, "public-url", objectToEncrypt.Attachments[0].Url)
+		assert.Equal(t, "public-url", newObj.Attachments[0].Url)
+
+		assert.Equal(t, "already-encrypted-key", objectToEncrypt.Attachments[0].Key)
+		assert.Equal(t, "already-encrypted-key", newObj.Attachments[0].Key)
+	}
+
 	if assert.Len(t, newObj.Fields, 4) {
-		assert.Equal(t, "test-boolfield-name", objectToEncrypt.Fields[0].Name)
-		assertEncryptedValueOf(t, "test-boolfield-name", newObj.Fields[0].Name, *r)
-		assert.Equal(t, "true", objectToEncrypt.Fields[0].Value)
-		assertEncryptedValueOf(t, "true", newObj.Fields[0].Value, *r)
+		assert.Equal(t, "sensitive-boolfield-name", objectToEncrypt.Fields[0].Name)
+		assertEncryptedValueOf(t, "sensitive-boolfield-name", newObj.Fields[0].Name, *r)
+		assert.Equal(t, "sensitive-true", objectToEncrypt.Fields[0].Value)
+		assertEncryptedValueOf(t, "sensitive-true", newObj.Fields[0].Value, *r)
 		assert.Equal(t, models.FieldTypeBoolean, objectToEncrypt.Fields[0].Type)
 		assert.Equal(t, models.FieldTypeBoolean, newObj.Fields[0].Type)
 
-		assert.Equal(t, "test-hiddenfield-name", objectToEncrypt.Fields[1].Name)
-		assertEncryptedValueOf(t, "test-hiddenfield-name", newObj.Fields[1].Name, *r)
-		assert.Equal(t, "test-hiddenfield-value", objectToEncrypt.Fields[1].Value)
-		assertEncryptedValueOf(t, "test-hiddenfield-value", newObj.Fields[1].Value, *r)
+		assert.Equal(t, "sensitive-hiddenfield-name", objectToEncrypt.Fields[1].Name)
+		assertEncryptedValueOf(t, "sensitive-hiddenfield-name", newObj.Fields[1].Name, *r)
+		assert.Equal(t, "sensitive-hiddenfield-value", objectToEncrypt.Fields[1].Value)
+		assertEncryptedValueOf(t, "sensitive-hiddenfield-value", newObj.Fields[1].Value, *r)
 		assert.Equal(t, models.FieldTypeHidden, objectToEncrypt.Fields[1].Type)
 		assert.Equal(t, models.FieldTypeHidden, newObj.Fields[1].Type)
 
-		assert.Equal(t, "test-linkedfield-name", objectToEncrypt.Fields[2].Name)
-		assertEncryptedValueOf(t, "test-linkedfield-name", newObj.Fields[2].Name, *r)
-		assert.Equal(t, "test-linkedfield-value", objectToEncrypt.Fields[2].Value)
-		assertEncryptedValueOf(t, "test-linkedfield-value", newObj.Fields[2].Value, *r)
+		assert.Equal(t, "sensitive-linkedfield-name", objectToEncrypt.Fields[2].Name)
+		assertEncryptedValueOf(t, "sensitive-linkedfield-name", newObj.Fields[2].Name, *r)
+		assert.Equal(t, "sensitive-linkedfield-value", objectToEncrypt.Fields[2].Value)
+		assertEncryptedValueOf(t, "sensitive-linkedfield-value", newObj.Fields[2].Value, *r)
 		assert.Equal(t, models.FieldTypeLinked, objectToEncrypt.Fields[2].Type)
 		assert.Equal(t, models.FieldTypeLinked, newObj.Fields[2].Type)
 
-		assert.Equal(t, "test-textfield-name", objectToEncrypt.Fields[3].Name)
-		assertEncryptedValueOf(t, "test-textfield-name", newObj.Fields[3].Name, *r)
-		assert.Equal(t, "test-textfield-value", objectToEncrypt.Fields[3].Value)
-		assertEncryptedValueOf(t, "test-textfield-value", newObj.Fields[3].Value, *r)
+		assert.Equal(t, "sensitive-textfield-name", objectToEncrypt.Fields[3].Name)
+		assertEncryptedValueOf(t, "sensitive-textfield-name", newObj.Fields[3].Name, *r)
+		assert.Equal(t, "sensitive-textfield-value", objectToEncrypt.Fields[3].Value)
+		assertEncryptedValueOf(t, "sensitive-textfield-value", newObj.Fields[3].Value, *r)
 		assert.Equal(t, models.FieldTypeText, objectToEncrypt.Fields[3].Type)
 		assert.Equal(t, models.FieldTypeText, newObj.Fields[3].Type)
 	}
@@ -150,57 +210,57 @@ func TestEncryptItem(t *testing.T) {
 	assert.Equal(t, "test-id", objectToEncrypt.ID)
 	assert.Equal(t, "test-id", newObj.ID)
 
-	assert.Equal(t, "test-username", objectToEncrypt.Login.Username)
-	assertEncryptedValueOf(t, "test-username", newObj.Login.Username, *r)
+	assert.Equal(t, "sensitive-username", objectToEncrypt.Login.Username)
+	assertEncryptedValueOf(t, "sensitive-username", newObj.Login.Username, *r)
 
-	assert.Equal(t, "test-password", objectToEncrypt.Login.Password)
-	assertEncryptedValueOf(t, "test-password", newObj.Login.Password, *r)
+	assert.Equal(t, "sensitive-password", objectToEncrypt.Login.Password)
+	assertEncryptedValueOf(t, "sensitive-password", newObj.Login.Password, *r)
 
-	assert.Equal(t, "test-totp", objectToEncrypt.Login.Totp)
-	assertEncryptedValueOf(t, "test-totp", newObj.Login.Totp, *r)
+	assert.Equal(t, "sensitive-totp", objectToEncrypt.Login.Totp)
+	assertEncryptedValueOf(t, "sensitive-totp", newObj.Login.Totp, *r)
 
 	if assert.Len(t, newObj.Login.URIs, 5) {
-		assert.Equal(t, "test-uri-basedomain", objectToEncrypt.Login.URIs[0].URI)
-		assertEncryptedValueOf(t, "test-uri-basedomain", newObj.Login.URIs[0].URI, *r)
+		assert.Equal(t, "sensitive-uri-basedomain", objectToEncrypt.Login.URIs[0].URI)
+		assertEncryptedValueOf(t, "sensitive-uri-basedomain", newObj.Login.URIs[0].URI, *r)
 		if assert.NotNil(t, objectToEncrypt.Login.URIs[0].Match) {
 			assert.Equal(t, models.URIMatchBaseDomain, *objectToEncrypt.Login.URIs[0].Match)
 			assert.Equal(t, models.URIMatchBaseDomain, *newObj.Login.URIs[0].Match)
 		}
 
-		assert.Equal(t, "test-uri-exact", objectToEncrypt.Login.URIs[1].URI)
-		assertEncryptedValueOf(t, "test-uri-exact", newObj.Login.URIs[1].URI, *r)
+		assert.Equal(t, "sensitive-uri-exact", objectToEncrypt.Login.URIs[1].URI)
+		assertEncryptedValueOf(t, "sensitive-uri-exact", newObj.Login.URIs[1].URI, *r)
 		if assert.NotNil(t, objectToEncrypt.Login.URIs[1].Match) {
 			assert.Equal(t, models.URIMatchExact, *objectToEncrypt.Login.URIs[1].Match)
 			assert.Equal(t, models.URIMatchExact, *newObj.Login.URIs[1].Match)
 		}
 
-		assert.Equal(t, "test-uri-never", objectToEncrypt.Login.URIs[2].URI)
-		assertEncryptedValueOf(t, "test-uri-never", newObj.Login.URIs[2].URI, *r)
+		assert.Equal(t, "sensitive-uri-never", objectToEncrypt.Login.URIs[2].URI)
+		assertEncryptedValueOf(t, "sensitive-uri-never", newObj.Login.URIs[2].URI, *r)
 		if assert.NotNil(t, objectToEncrypt.Login.URIs[2].Match) {
 			assert.Equal(t, models.URIMatchNever, *objectToEncrypt.Login.URIs[2].Match)
 			assert.Equal(t, models.URIMatchNever, *newObj.Login.URIs[2].Match)
 		}
 
-		assert.Equal(t, "test-uri-regexp", objectToEncrypt.Login.URIs[3].URI)
-		assertEncryptedValueOf(t, "test-uri-regexp", newObj.Login.URIs[3].URI, *r)
+		assert.Equal(t, "sensitive-uri-regexp", objectToEncrypt.Login.URIs[3].URI)
+		assertEncryptedValueOf(t, "sensitive-uri-regexp", newObj.Login.URIs[3].URI, *r)
 		if assert.NotNil(t, objectToEncrypt.Login.URIs[3].Match) {
 			assert.Equal(t, models.URIMatchRegExp, *objectToEncrypt.Login.URIs[3].Match)
 			assert.Equal(t, models.URIMatchRegExp, *newObj.Login.URIs[3].Match)
 		}
 
-		assert.Equal(t, "test-uri-startwith", objectToEncrypt.Login.URIs[4].URI)
-		assertEncryptedValueOf(t, "test-uri-startwith", newObj.Login.URIs[4].URI, *r)
+		assert.Equal(t, "sensitive-uri-startwith", objectToEncrypt.Login.URIs[4].URI)
+		assertEncryptedValueOf(t, "sensitive-uri-startwith", newObj.Login.URIs[4].URI, *r)
 		if assert.NotNil(t, objectToEncrypt.Login.URIs[4].Match) {
 			assert.Equal(t, models.URIMatchStartWith, *objectToEncrypt.Login.URIs[4].Match)
 			assert.Equal(t, models.URIMatchStartWith, *newObj.Login.URIs[4].Match)
 		}
 	}
 
-	assert.Equal(t, "test-name", objectToEncrypt.Name)
-	assertEncryptedValueOf(t, "test-name", newObj.Name, *r)
+	assert.Equal(t, "sensitive-name", objectToEncrypt.Name)
+	assertEncryptedValueOf(t, "sensitive-name", newObj.Name, *r)
 
-	assert.Equal(t, "test-notes", objectToEncrypt.Notes)
-	assertEncryptedValueOf(t, "test-notes", newObj.Notes, *r)
+	assert.Equal(t, "sensitive-notes", objectToEncrypt.Notes)
+	assertEncryptedValueOf(t, "sensitive-notes", newObj.Notes, *r)
 
 	assert.Equal(t, models.ObjectTypeItem, objectToEncrypt.Object)
 	assert.Equal(t, models.ObjectTypeItem, newObj.Object)
@@ -212,8 +272,8 @@ func TestEncryptItem(t *testing.T) {
 	assert.Equal(t, true, newObj.OrganizationUseTotp)
 
 	if assert.Len(t, newObj.PasswordHistory, 1) {
-		assert.Equal(t, "test-password", objectToEncrypt.PasswordHistory[0].Password)
-		assertEncryptedValueOf(t, "test-password", newObj.PasswordHistory[0].Password, *r)
+		assert.Equal(t, "sensitive-password", objectToEncrypt.PasswordHistory[0].Password)
+		assertEncryptedValueOf(t, "sensitive-password", newObj.PasswordHistory[0].Password, *r)
 
 		if assert.NotNil(t, newObj.PasswordHistory[0].LastUsedDate) {
 			assert.Equal(t, time.Date(2021, time.February, 1, 0, 0, 0, 0, time.UTC), *objectToEncrypt.PasswordHistory[0].LastUsedDate)
@@ -238,101 +298,17 @@ func TestEncryptItem(t *testing.T) {
 	assert.Equal(t, true, objectToEncrypt.ViewPassword)
 	assert.Equal(t, true, newObj.ViewPassword)
 
+	newOut, err := json.Marshal(newObj)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NotContains(t, string(newOut), "sensitive")
 }
 
 func assertEncryptedValueOf(t *testing.T, expected, value string, k symmetrickey.Key) {
 	out, err := decryptStringAsBytes(value, k)
 	assert.Nil(t, err)
 	assert.Equal(t, expected, string(out))
-}
-
-func testFullyFilledObject() models.Object {
-	createdDate := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-	deletedDate := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
-	revisionDate := time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
-	lastPasswordUsedDate := time.Date(2021, 2, 1, 0, 0, 0, 0, time.UTC)
-
-	obj := models.Object{
-		CreationDate:  &createdDate,
-		CollectionIds: []string{"test-collection-id"},
-		DeletedDate:   &deletedDate,
-		Edit:          true,
-		Favorite:      true,
-		Fields: []models.Field{
-			{
-				Name:  "test-boolfield-name",
-				Value: "true",
-				Type:  models.FieldTypeBoolean,
-			},
-			{
-				Name:  "test-hiddenfield-name",
-				Value: "test-hiddenfield-value",
-				Type:  models.FieldTypeHidden,
-			},
-			{
-				Name:  "test-linkedfield-name",
-				Value: "test-linkedfield-value",
-				Type:  models.FieldTypeLinked,
-			},
-			{
-				Name:  "test-textfield-name",
-				Value: "test-textfield-value",
-				Type:  models.FieldTypeText,
-			},
-		},
-		FolderID:            "test-folder-id",
-		ID:                  "test-id",
-		Login:               testFullyFilledLogin(),
-		Name:                "test-name",
-		Notes:               "test-notes",
-		Object:              models.ObjectTypeItem,
-		OrganizationID:      "81cc1652-dc80-472d-909f-9539d057068b",
-		OrganizationUseTotp: true,
-		PasswordHistory: []models.PasswordHistoryItem{
-			{
-				LastUsedDate: &lastPasswordUsedDate,
-				Password:     "test-password",
-			},
-		},
-		Reprompt:     1,
-		RevisionDate: &revisionDate,
-		SecureNote: models.SecureNote{
-			Type: 3,
-		},
-		Type:         models.ItemTypeLogin,
-		ViewPassword: true,
-	}
-	return obj
-}
-
-func testFullyFilledLogin() models.Login {
-	return models.Login{
-		Username: "test-username",
-		Password: "test-password",
-		Totp:     "test-totp",
-		URIs: []models.LoginURI{
-			{
-				URI:   "test-uri-basedomain",
-				Match: models.URIMatchBaseDomain.ToPointer(),
-			},
-			{
-				URI:   "test-uri-exact",
-				Match: models.URIMatchExact.ToPointer(),
-			},
-			{
-				URI:   "test-uri-never",
-				Match: models.URIMatchNever.ToPointer(),
-			},
-			{
-				URI:   "test-uri-regexp",
-				Match: models.URIMatchRegExp.ToPointer(),
-			},
-			{
-				URI:   "test-uri-startwith",
-				Match: models.URIMatchStartWith.ToPointer(),
-			},
-		},
-	}
 }
 
 func computeTestAccountSecrets(t *testing.T) *AccountSecrets {
@@ -353,4 +329,125 @@ func computeTestAccountSecrets(t *testing.T) *AccountSecrets {
 		},
 	}
 	return accountSecrets
+}
+
+/*
+ * Test data: all fields meant to be encrypted are prefixed with "sensitive-"
+ *            in order to detect eventual leaks while testing.
+ */
+func testFullyFilledCollection() models.Object {
+	obj := models.Object{
+		Name:           "sensitive-name",
+		Object:         models.ObjectTypeOrgCollection,
+		OrganizationID: orgUuid,
+	}
+	return obj
+}
+
+func testFullyFilledFolder() models.Object {
+	obj := models.Object{
+		Name:   "sensitive-name",
+		Object: models.ObjectTypeFolder,
+	}
+	return obj
+}
+
+func testFullyFilledObject() models.Object {
+	createdDate := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	deletedDate := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
+	revisionDate := time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
+	lastPasswordUsedDate := time.Date(2021, 2, 1, 0, 0, 0, 0, time.UTC)
+
+	obj := models.Object{
+		Attachments: []models.Attachment{
+			{
+				ID:       "public-id",
+				FileName: "sensitive-filename",
+				Size:     "public-size",
+				SizeName: "public-size-name",
+				Url:      "public-url",
+				Key:      "already-encrypted-key",
+				Object:   models.ObjectTypeAttachment,
+			},
+		},
+		CreationDate:  &createdDate,
+		CollectionIds: []string{"test-collection-id"},
+		DeletedDate:   &deletedDate,
+		Edit:          true,
+		Favorite:      true,
+		Fields: []models.Field{
+			{
+				Name:  "sensitive-boolfield-name",
+				Value: "sensitive-true",
+				Type:  models.FieldTypeBoolean,
+			},
+			{
+				Name:  "sensitive-hiddenfield-name",
+				Value: "sensitive-hiddenfield-value",
+				Type:  models.FieldTypeHidden,
+			},
+			{
+				Name:  "sensitive-linkedfield-name",
+				Value: "sensitive-linkedfield-value",
+				Type:  models.FieldTypeLinked,
+			},
+			{
+				Name:  "sensitive-textfield-name",
+				Value: "sensitive-textfield-value",
+				Type:  models.FieldTypeText,
+			},
+		},
+		FolderID:            "test-folder-id",
+		ID:                  "test-id",
+		Login:               testFullyFilledLogin(),
+		Name:                "sensitive-name",
+		Notes:               "sensitive-notes",
+		Object:              models.ObjectTypeItem,
+		OrganizationID:      orgUuid,
+		OrganizationUseTotp: true,
+		PasswordHistory: []models.PasswordHistoryItem{
+			{
+				LastUsedDate: &lastPasswordUsedDate,
+				Password:     "sensitive-password",
+			},
+		},
+		Reprompt:     1,
+		RevisionDate: &revisionDate,
+		SecureNote: models.SecureNote{
+			Type: 3,
+		},
+		Type:         models.ItemTypeLogin,
+		ViewPassword: true,
+	}
+	return obj
+}
+
+func testFullyFilledLogin() models.Login {
+	return models.Login{
+		Username: "sensitive-username",
+		Password: "sensitive-password",
+		Totp:     "sensitive-totp",
+		URIs: []models.LoginURI{
+			{
+				URI:   "sensitive-uri-basedomain",
+				Match: models.URIMatchBaseDomain.ToPointer(),
+			},
+			{
+				URI:   "sensitive-uri-exact",
+				Match: models.URIMatchExact.ToPointer(),
+			},
+			{
+				URI:   "sensitive-uri-never",
+				Match: models.URIMatchNever.ToPointer(),
+			},
+			{
+				URI:   "sensitive-uri-regexp",
+				Match: models.URIMatchRegExp.ToPointer(),
+			},
+			{
+				URI:   "sensitive-uri-startwith",
+				Match: models.URIMatchStartWith.ToPointer(),
+			},
+		},
+	}
 }

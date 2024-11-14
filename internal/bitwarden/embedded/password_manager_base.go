@@ -109,34 +109,6 @@ func (v *baseVault) deleteObjectFromStore(ctx context.Context, obj models.Object
 	delete(v.objectStore, objKey(obj))
 }
 
-func (v *baseVault) encryptFolder(_ context.Context, obj models.Object, secret AccountSecrets) (*webapi.Folder, error) {
-	encFolderName, err := encryptAsStringIfNotEmpty(obj.Name, secret.MainKey)
-	if err != nil {
-		return nil, fmt.Errorf("error encrypting folder's name: %w", err)
-	}
-
-	encFolder := webapi.Folder{
-		Id:           obj.ID,
-		Object:       obj.Object,
-		RevisionDate: obj.RevisionDate,
-		Name:         encFolderName,
-	}
-
-	if v.verifyObjectEncryption {
-		objForVerification, err := decryptFolder(encFolder, secret)
-		if err != nil {
-			return nil, fmt.Errorf("error decrypting folder for verification: %w", err)
-		}
-
-		err = compareObjects(obj, *objForVerification)
-		if err != nil {
-			return nil, fmt.Errorf("error verifying folder after encryption: %w", err)
-		}
-	}
-
-	return &encFolder, nil
-}
-
 func (v *baseVault) objectsLoaded() bool {
 	return v.objectStore != nil
 }
@@ -372,7 +344,7 @@ func decryptItemLogin(objLogin models.Login, objectKey symmetrickey.Key) (*model
 	}, nil
 }
 
-func encryptCollection(obj models.Object, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.OrganizationCreationRequest, error) {
+func encryptCollection(_ context.Context, obj models.Object, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.OrganizationCreationRequest, error) {
 	orgKey, err := secret.GetOrganizationKey(obj.OrganizationID)
 	if err != nil {
 		return nil, err
@@ -414,6 +386,34 @@ func encryptCollection(obj models.Object, secret AccountSecrets, verifyObjectEnc
 
 	return &encObj, nil
 
+}
+
+func encryptFolder(_ context.Context, obj models.Object, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.Folder, error) {
+	encFolderName, err := encryptAsStringIfNotEmpty(obj.Name, secret.MainKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting folder's name: %w", err)
+	}
+
+	encFolder := webapi.Folder{
+		Id:           obj.ID,
+		Object:       obj.Object,
+		RevisionDate: obj.RevisionDate,
+		Name:         encFolderName,
+	}
+
+	if verifyObjectEncryption {
+		objForVerification, err := decryptFolder(encFolder, secret)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting folder for verification: %w", err)
+		}
+
+		err = compareObjects(obj, *objForVerification)
+		if err != nil {
+			return nil, fmt.Errorf("error verifying folder after encryption: %w", err)
+		}
+	}
+
+	return &encFolder, nil
 }
 
 func encryptItem(_ context.Context, obj models.Object, secret AccountSecrets, verifyObjectEncryption bool) (*models.Object, error) {
