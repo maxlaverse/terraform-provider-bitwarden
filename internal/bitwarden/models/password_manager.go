@@ -107,7 +107,6 @@ type ApiKey struct {
 
 type Object struct {
 	Attachments         []Attachment          `json:"attachments,omitempty"`
-	Card                []byte                `json:"-"`
 	CollectionIds       []string              `json:"collectionIds,omitempty"`
 	CreationDate        *time.Time            `json:"creationDate,omitempty"`
 	DeletedDate         *time.Time            `json:"deletedDate,omitempty"`
@@ -117,7 +116,6 @@ type Object struct {
 	FolderID            string                `json:"folderId,omitempty"`
 	Groups              []interface{}         `json:"groups"` // To be kept for the CLI when creating org-collections
 	ID                  string                `json:"id,omitempty"`
-	Identity            string                `json:"-"`
 	Key                 string                `json:"key,omitempty"`
 	Login               Login                 `json:"login,omitempty"`
 	Name                string                `json:"name,omitempty"`
