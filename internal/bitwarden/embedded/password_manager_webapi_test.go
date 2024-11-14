@@ -15,17 +15,17 @@ func TestLoginAsPasswordLoadsAccountInformationForPbkdf2(t *testing.T) {
 	defer reset()
 
 	ctx := context.Background()
-	err := vault.LoginWithPassword(ctx, Pdkdf2Email, TestPassword)
+	err := vault.LoginWithPassword(ctx, AccountPbkdf2.Email, TestPassword)
 	if err != nil {
 		t.Fatalf("vault unlock failed: %v", err)
 	}
 
 	assert.Equal(t, "API", vault.loginAccount.VaultFormat)
-	assert.Equal(t, Pdkdf2Email, vault.loginAccount.Email)
+	assert.Equal(t, AccountPbkdf2.Email, vault.loginAccount.Email)
 	assert.Equal(t, models.KdfTypePBKDF2_SHA256, vault.loginAccount.KdfConfig.KdfType)
 	assert.Equal(t, 600000, vault.loginAccount.KdfConfig.KdfIterations)
-	assert.Equal(t, Pdkdf2ProtectedRSAPrivateKey, vault.loginAccount.ProtectedRSAPrivateKey)
-	assert.Equal(t, Pdkdf2ProtectedSymmetricKey, vault.loginAccount.ProtectedSymmetricKey)
+	assert.Equal(t, AccountPbkdf2.ProtectedRSAPrivateKey, vault.loginAccount.ProtectedRSAPrivateKey)
+	assert.Equal(t, AccountPbkdf2.ProtectedSymmetricKey, vault.loginAccount.ProtectedSymmetricKey)
 }
 
 func TestLoginAsAPILoadsAccountInformationForPbkdf2(t *testing.T) {
@@ -39,11 +39,11 @@ func TestLoginAsAPILoadsAccountInformationForPbkdf2(t *testing.T) {
 	}
 
 	assert.Equal(t, "API", vault.loginAccount.VaultFormat)
-	assert.Equal(t, Pdkdf2Email, vault.loginAccount.Email)
+	assert.Equal(t, AccountPbkdf2.Email, vault.loginAccount.Email)
 	assert.Equal(t, models.KdfTypePBKDF2_SHA256, vault.loginAccount.KdfConfig.KdfType)
 	assert.Equal(t, 600000, vault.loginAccount.KdfConfig.KdfIterations)
-	assert.Equal(t, Pdkdf2ProtectedRSAPrivateKey, vault.loginAccount.ProtectedRSAPrivateKey)
-	assert.Equal(t, Pdkdf2ProtectedSymmetricKey, vault.loginAccount.ProtectedSymmetricKey)
+	assert.Equal(t, AccountPbkdf2.ProtectedRSAPrivateKey, vault.loginAccount.ProtectedRSAPrivateKey)
+	assert.Equal(t, AccountPbkdf2.ProtectedSymmetricKey, vault.loginAccount.ProtectedSymmetricKey)
 }
 
 func TestLoginAsPasswordLoadsAccountInformationForArgon2(t *testing.T) {
@@ -51,17 +51,17 @@ func TestLoginAsPasswordLoadsAccountInformationForArgon2(t *testing.T) {
 	defer reset()
 
 	ctx := context.Background()
-	err := vault.LoginWithPassword(ctx, Argon2Email, TestPassword)
+	err := vault.LoginWithPassword(ctx, AccountArgon2.Email, TestPassword)
 	if err != nil {
 		t.Fatalf("vault unlock failed: %v", err)
 	}
 
 	assert.Equal(t, "API", vault.loginAccount.VaultFormat)
-	assert.Equal(t, Argon2Email, vault.loginAccount.Email)
+	assert.Equal(t, AccountArgon2.Email, vault.loginAccount.Email)
 	assert.Equal(t, models.KdfTypeArgon2, vault.loginAccount.KdfConfig.KdfType)
 	assert.Equal(t, 3, vault.loginAccount.KdfConfig.KdfIterations)
-	assert.Equal(t, Argon2ProtectedRSAPrivateKey, vault.loginAccount.ProtectedRSAPrivateKey)
-	assert.Equal(t, Argon2ProtectedSymmetricKey, vault.loginAccount.ProtectedSymmetricKey)
+	assert.Equal(t, AccountArgon2.ProtectedRSAPrivateKey, vault.loginAccount.ProtectedRSAPrivateKey)
+	assert.Equal(t, AccountArgon2.ProtectedSymmetricKey, vault.loginAccount.ProtectedSymmetricKey)
 }
 
 func TestLoginAsAPILoadsAccountInformationForArgon2(t *testing.T) {
@@ -75,28 +75,55 @@ func TestLoginAsAPILoadsAccountInformationForArgon2(t *testing.T) {
 	}
 
 	assert.Equal(t, "API", vault.loginAccount.VaultFormat)
-	assert.Equal(t, Argon2Email, vault.loginAccount.Email)
+	assert.Equal(t, AccountArgon2.Email, vault.loginAccount.Email)
 	assert.Equal(t, models.KdfTypeArgon2, vault.loginAccount.KdfConfig.KdfType)
 	assert.Equal(t, 3, vault.loginAccount.KdfConfig.KdfIterations)
-	assert.Equal(t, Argon2ProtectedRSAPrivateKey, vault.loginAccount.ProtectedRSAPrivateKey)
-	assert.Equal(t, Argon2ProtectedSymmetricKey, vault.loginAccount.ProtectedSymmetricKey)
+	assert.Equal(t, AccountArgon2.ProtectedRSAPrivateKey, vault.loginAccount.ProtectedRSAPrivateKey)
+	assert.Equal(t, AccountArgon2.ProtectedSymmetricKey, vault.loginAccount.ProtectedSymmetricKey)
 }
 
-func TestObjectCreation(t *testing.T) {
+func TestFolderCreation(t *testing.T) {
+	// Goal is to test end-to-end creation but most importantly to have another
+	// layer of detection for sensitive information not being encrypted.
 	vault, reset := newMockedPasswordManager(MockedClient(t, Pdkdf2Mocks))
 	defer reset()
 
 	ctx := context.Background()
-	err := vault.LoginWithPassword(ctx, Pdkdf2Email, TestPassword)
+	err := vault.LoginWithPassword(ctx, AccountPbkdf2.Email, TestPassword)
 	if err != nil {
 		t.Fatalf("vault unlock failed: %v", err)
 	}
 
-	obj, err := vault.CreateObject(ctx, models.Object{
-		Object: models.ObjectTypeItem,
-		Type:   models.ItemTypeLogin,
-		Name:   "test",
-	})
+	newObj := testFullyFilledFolder()
+	newObj.OrganizationID = ""
+	newObj.CollectionIds = nil
+
+	obj, err := vault.CreateObject(ctx, newObj)
+	assert.NoError(t, err)
+	if !assert.NotNil(t, obj) {
+		return
+	}
+
+	assert.Equal(t, "Folder in own Vault", obj.Name)
+}
+
+func TestItemCreation(t *testing.T) {
+	// Goal is to test end-to-end creation but most importantly to have another
+	// layer of detection for sensitive information not being encrypted.
+	vault, reset := newMockedPasswordManager(MockedClient(t, Pdkdf2Mocks))
+	defer reset()
+
+	ctx := context.Background()
+	err := vault.LoginWithPassword(ctx, AccountPbkdf2.Email, TestPassword)
+	if err != nil {
+		t.Fatalf("vault unlock failed: %v", err)
+	}
+
+	newObj := testFullyFilledObject()
+	newObj.OrganizationID = ""
+	newObj.CollectionIds = nil
+
+	obj, err := vault.CreateObject(ctx, newObj)
 	assert.NoError(t, err)
 	if !assert.NotNil(t, obj) {
 		return
@@ -104,6 +131,33 @@ func TestObjectCreation(t *testing.T) {
 
 	assert.Equal(t, "Item in own Vault", obj.Name)
 	assert.Equal(t, "my-username", obj.Login.Username)
+}
+
+func TestItemCreationInOrganization(t *testing.T) {
+	// Goal is to test end-to-end creation but most importantly to have another
+	// layer of detection for sensitive information not being encrypted.
+	vault, reset := newMockedPasswordManager(MockedClient(t, Pdkdf2Mocks))
+	defer reset()
+
+	ctx := context.Background()
+	err := vault.LoginWithPassword(ctx, AccountPbkdf2.Email, TestPassword)
+	if err != nil {
+		t.Fatalf("vault unlock failed: %v", err)
+	}
+
+	vault.Sync(ctx)
+	newObj := testFullyFilledObject()
+	newObj.OrganizationID = OrganizationID
+	newObj.CollectionIds = []string{"simply-not-empty"}
+
+	obj, err := vault.CreateObject(ctx, newObj)
+	assert.NoError(t, err)
+	if !assert.NotNil(t, obj) {
+		return
+	}
+
+	assert.Equal(t, "Item in org Vault", obj.Name)
+	assert.Equal(t, "my-org-username", obj.Login.Username)
 }
 
 func newMockedPasswordManager(client webapi.Client) (webAPIVault, func()) {

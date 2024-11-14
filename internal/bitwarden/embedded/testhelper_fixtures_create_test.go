@@ -26,16 +26,16 @@ import (
 // This is only used to generate test data
 func TestCreateTestAccounts(t *testing.T) {
 	t.Skip()
-	createTestAccount(t, AccountPbkdf2.Email, models.KdfConfiguration{
+	createTestAccount(t, Pdkdf2Mocks, models.KdfConfiguration{
 		KdfType:       models.KdfTypePBKDF2_SHA256,
 		KdfIterations: 600000,
-	})
-	createTestAccount(t, AccountArgon2.Email, models.KdfConfiguration{
+	}, true)
+	createTestAccount(t, Argon2Mocks, models.KdfConfiguration{
 		KdfType:        models.KdfTypeArgon2,
 		KdfIterations:  3,
 		KdfMemory:      64,
 		KdfParallelism: 4,
-	})
+	}, false)
 }
 
 func TestCreateAccessTokenLoginMock(t *testing.T) {
@@ -89,10 +89,10 @@ func TestCreateAccessTokenLoginMock(t *testing.T) {
 	}
 }
 
-func createTestAccount(t *testing.T, accountEmail string, kdfConfig models.KdfConfiguration) {
+func createTestAccount(t *testing.T, mockName string, kdfConfig models.KdfConfiguration, withResources bool) {
 	ctx := context.Background()
 
-	mockName := strings.Split(accountEmail, "@")[0]
+	accountEmail := fmt.Sprintf("%s@laverse.net", mockName)
 
 	preloginKey, err := keybuilder.BuildPreloginKey(TestPassword, accountEmail, kdfConfig)
 	if err != nil {
@@ -174,6 +174,10 @@ func createTestAccount(t *testing.T, accountEmail string, kdfConfig models.KdfCo
 		t.Fatal(err)
 	}
 
+	if !withResources {
+		return
+	}
+
 	_, err = vault.CreateObject(ctx, models.Object{
 		Object: models.ObjectTypeItem,
 		Type:   models.ItemTypeLogin,
@@ -181,6 +185,14 @@ func createTestAccount(t *testing.T, accountEmail string, kdfConfig models.KdfCo
 		Login: models.Login{
 			Username: "my-username",
 		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = vault.CreateObject(ctx, models.Object{
+		Object: models.ObjectTypeFolder,
+		Name:   "Folder in own Vault",
 	})
 	if err != nil {
 		t.Fatal(err)

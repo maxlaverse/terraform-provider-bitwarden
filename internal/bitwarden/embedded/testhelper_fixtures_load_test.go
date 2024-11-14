@@ -44,8 +44,8 @@ GqwE00g9gizQ6CmsaNNJh7y6gNg0TBU2EGqTaQMz37fheAEt3NSt
 	EncryptionKey = "Vr+KA/il3QX4z7EqFnhQ3U8TtETlQPKkXHCE2PiR75wwzDVRutR4rib/jMtgZ1S/gPyOEXbwKFju2oJq3njVLg=="
 	TestPassword  = "test12341234"
 
-	Pdkdf2Mocks = "test-kdf0"
-	Argon2Mocks = "test-kdf1"
+	Pdkdf2Mocks = "test-pbkdf"
+	Argon2Mocks = "test-argon2"
 )
 
 var (
@@ -55,13 +55,18 @@ var (
 )
 
 func init() {
-	data, err := os.ReadFile("fixtures/test-kdf0_GET_api_sync.json")
+	data, err := os.ReadFile("fixtures/test-pbkdf_GET_api_sync.json")
 	if err != nil {
-		log.Fatalf("Error reading file: %v", err)
+		log.Printf("Error reading file: %v", err)
+		return
 	}
 
 	var resp webapi.SyncResponse
-	json.Unmarshal(data, &resp)
+	err = json.Unmarshal(data, &resp)
+	if err != nil {
+		log.Printf("Error unmarshalling data: %v", err)
+		return
+	}
 
 	OrganizationID = resp.Profile.Organizations[0].Id
 	AccountPbkdf2 = Account{
@@ -76,12 +81,17 @@ func init() {
 		ProtectedRSAPrivateKey: resp.Profile.PrivateKey,
 	}
 
-	data, err = os.ReadFile("fixtures/test-kdf1_GET_api_sync.json")
+	data, err = os.ReadFile("fixtures/test-argon2_GET_api_sync.json")
 	if err != nil {
-		log.Fatalf("Error reading file: %v", err)
+		log.Printf("Error reading file: %v", err)
+		return
 	}
 
-	json.Unmarshal(data, &resp)
+	err = json.Unmarshal(data, &resp)
+	if err != nil {
+		log.Printf("Error unmarshalling data: %v", err)
+		return
+	}
 
 	AccountArgon2 = Account{
 		AccountUUID: resp.Profile.Id,

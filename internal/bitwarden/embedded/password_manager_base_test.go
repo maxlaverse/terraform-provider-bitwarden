@@ -19,38 +19,12 @@ const (
 	orgUuid = "81cc1652-dc80-472d-909f-9539d057068b"
 )
 
-var (
-	testAccountPbkdf2 = Account{
-		AccountUUID: "e8dababd-242e-4900-becf-e88bc021dda8",
-		Email:       Pdkdf2Email,
-		VaultFormat: "API",
-		KdfConfig: models.KdfConfiguration{
-			KdfType:       models.KdfTypePBKDF2_SHA256,
-			KdfIterations: 600000,
-		},
-		ProtectedSymmetricKey:  Pdkdf2ProtectedSymmetricKey,
-		ProtectedRSAPrivateKey: Pdkdf2ProtectedRSAPrivateKey,
-	}
-
-	testAccountArgon2 = Account{
-		AccountUUID: "e8dababd-242e-4900-becf-e88bc021dda8",
-		Email:       Argon2Email,
-		VaultFormat: "API",
-		KdfConfig: models.KdfConfiguration{
-			KdfType:        models.KdfTypeArgon2,
-			KdfIterations:  3,
-			KdfMemory:      64,
-			KdfParallelism: 4,
-		},
-		ProtectedSymmetricKey:  Argon2ProtectedSymmetricKey,
-		ProtectedRSAPrivateKey: Argon2ProtectedRSAPrivateKey,
-	}
-)
-
 func TestDecryptAccountSecretPbkdf2(t *testing.T) {
-	accountSecrets, err := decryptAccountSecrets(testAccountPbkdf2, TestPassword)
-	assert.NoError(t, err)
-	assert.Equal(t, "jHZYmFOOr0KGorSsmWeuGMHWJDqRrz7uwZNBJkZaupM=", accountSecrets.MasterPasswordHash)
+	accountSecrets, err := decryptAccountSecrets(AccountPbkdf2, TestPassword)
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, "3XHNi037vjxf96adt5vA49ZAf3H6bHuekgemmTGEC0s=", accountSecrets.MasterPasswordHash)
 
 	pemdata := pem.EncodeToMemory(
 		&pem.Block{
@@ -64,9 +38,11 @@ func TestDecryptAccountSecretPbkdf2(t *testing.T) {
 }
 
 func TestDecryptAccountSecretArgon2(t *testing.T) {
-	accountSecrets, err := decryptAccountSecrets(testAccountArgon2, TestPassword)
-	assert.NoError(t, err)
-	assert.Equal(t, "3fBImY0XFvRrUSP/fe6mqUc1bjhWBuvHYJvlwnxS0i4=", accountSecrets.MasterPasswordHash)
+	accountSecrets, err := decryptAccountSecrets(AccountArgon2, TestPassword)
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, "RMnX3/HmNS18BK54HrfBB4EFglSesU5Z7+fV6v8FaKY=", accountSecrets.MasterPasswordHash)
 
 	pemdata := pem.EncodeToMemory(
 		&pem.Block{
@@ -80,7 +56,7 @@ func TestDecryptAccountSecretArgon2(t *testing.T) {
 }
 
 func TestDecryptAccountSecretWrongPassword(t *testing.T) {
-	_, err := decryptAccountSecrets(testAccountPbkdf2, "wrong-password")
+	_, err := decryptAccountSecrets(AccountPbkdf2, "wrong-password")
 	assert.Error(t, err, "decryption should fail with wrong password")
 	assert.ErrorIs(t, err, models.ErrWrongMasterPassword)
 }
@@ -312,7 +288,7 @@ func assertEncryptedValueOf(t *testing.T, expected, value string, k symmetrickey
 }
 
 func computeTestAccountSecrets(t *testing.T) *AccountSecrets {
-	accountSecrets, err := decryptAccountSecrets(testAccountPbkdf2, TestPassword)
+	accountSecrets, err := decryptAccountSecrets(AccountPbkdf2, TestPassword)
 	if err != nil {
 		t.Fatal(err)
 	}
