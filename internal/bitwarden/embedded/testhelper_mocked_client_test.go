@@ -2,6 +2,7 @@ package embedded
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path"
@@ -21,20 +22,18 @@ const (
 )
 
 func MockedClient(t testing.TB, name string) webapi.Client {
+	t.Helper()
+
 	return webapi.NewClient(mockedServerUrl, testDeviceIdentifer, testDeviceVersion, webapi.WithCustomClient(MockedHTTPClient(t, mockedServerUrl, name)), webapi.DisableRetries())
 }
 
 func MockedHTTPClient(t testing.TB, serverUrl string, name string) http.Client {
 	t.Helper()
+
 	client := http.Client{Transport: httpmock.DefaultTransport}
 
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("unable to get caller information")
-	}
-	dir := filepath.Dir(file)
-	dir = path.Join(dir, "fixtures")
-	files, err := os.ReadDir(dir)
+	fixturesDir := fixturesDir(t)
+	files, err := os.ReadDir(fixturesDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +43,7 @@ func MockedHTTPClient(t testing.TB, serverUrl string, name string) http.Client {
 			continue
 		}
 
-		data, err := os.ReadFile(fmt.Sprintf("%s/%s", dir, file.Name()))
+		data, err := os.ReadFile(path.Join(fixturesDir, file.Name()))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -56,9 +55,32 @@ func MockedHTTPClient(t testing.TB, serverUrl string, name string) http.Client {
 
 		mockUrl, _ = strings.CutSuffix(mockUrl, ".json")
 		mockUrl = fmt.Sprintf("%s/%s", serverUrl, mockUrl)
+
 		httpmock.RegisterResponder(method, mockUrl,
-			httpmock.NewStringResponder(200, string(data)))
+			func(req *http.Request) (*http.Response, error) {
+				if req.Body != nil {
+					body, err := io.ReadAll(req.Body)
+					if err != nil {
+						return nil, fmt.Errorf("error reading request body '%s %s': %w", method, mockUrl, err)
+					}
+					if strings.Contains(string(body), "sensitive-") {
+						t.Fatalf("Request body contains sensitive information: %s", body)
+					}
+				}
+				return httpmock.NewStringResponse(200, string(data)), nil
+			},
+		)
 	}
 
 	return client
+}
+
+func fixturesDir(t testing.TB) string {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("unable to get caller information")
+	}
+	dir := filepath.Dir(file)
+	dir = path.Join(dir, "fixtures")
+	return dir
 }

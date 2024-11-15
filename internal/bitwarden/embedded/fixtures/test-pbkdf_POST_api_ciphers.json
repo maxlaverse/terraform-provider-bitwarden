@@ -1,0 +1,37 @@
+{
+    "attachments": null,
+    "card": null,
+    "collectionIds": [],
+    "creationDate": "2024-11-14T08:08:41.108758Z",
+    "data": {
+        "fields": [],
+        "name": "2.w6SyB4UQFPUbIm6aaEL7zw==|5SQ25b43ol/UN80yzf6+UZMlluEtfIK4GNA5X86+P+I=|wQsGEnLxJc2f36jgv/O91YhcWIZyDMB5kqMi+RXNvw4=",
+        "notes": null,
+        "passwordHistory": [],
+        "uri": null,
+        "username": "2.C0ulk2MT2cJnX+FVe3aemw==|GtHL+1dx/9LsrzRZRjG65w==|qzX9PKZT71n4SO56Zb2U8WkKppRMF2VsDM2wIBGQMP0="
+    },
+    "deletedDate": null,
+    "edit": true,
+    "favorite": false,
+    "fields": [],
+    "folderId": null,
+    "id": "449c5009-f3bd-4903-a334-a28840b9b75c",
+    "identity": null,
+    "key": "2.6jk5cbrwxBB5AAHQgc4kkg==|5dsiCD/VSmMsOWSySCkTFM22FtgtjkRV4l14KYfWaYw20i0uAWvHJ6qbTSzRrjoLs9gP4h/ZNTZ32NZP5RBH8SHgvXEgwtLuv7NyM7S2WFI=|AciWaJ5dVsaNXCVDU6wR9bb5XSb+NIyBfiKpe7fJXag=",
+    "login": {
+        "uri": null,
+        "username": "2.C0ulk2MT2cJnX+FVe3aemw==|GtHL+1dx/9LsrzRZRjG65w==|qzX9PKZT71n4SO56Zb2U8WkKppRMF2VsDM2wIBGQMP0="
+    },
+    "name": "2.w6SyB4UQFPUbIm6aaEL7zw==|5SQ25b43ol/UN80yzf6+UZMlluEtfIK4GNA5X86+P+I=|wQsGEnLxJc2f36jgv/O91YhcWIZyDMB5kqMi+RXNvw4=",
+    "notes": null,
+    "object": "cipherDetails",
+    "organizationId": null,
+    "organizationUseTotp": true,
+    "passwordHistory": [],
+    "reprompt": 0,
+    "revisionDate": "2024-11-14T08:08:41.108868Z",
+    "secureNote": null,
+    "type": 1,
+    "viewPassword": true
+}

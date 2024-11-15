@@ -29,6 +29,7 @@ type PasswordManagerClient interface {
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
+	Logout(ctx context.Context) error
 	RegisterUser(ctx context.Context, name, username, password string, kdfConfig models.KdfConfiguration) error
 	Sync(ctx context.Context) error
 	Unlock(ctx context.Context, password string) error
@@ -189,7 +190,7 @@ func (v *webAPIVault) CreateObject(ctx context.Context, obj models.Object) (*mod
 
 	var resObj *models.Object
 	if obj.Object == models.ObjectTypeFolder {
-		encObj, err := v.encryptFolder(ctx, obj, v.loginAccount.Secrets)
+		encObj, err := encryptFolder(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 		if err != nil {
 			return nil, fmt.Errorf("error encrypting folder for creation: %w", err)
 		}
@@ -204,7 +205,7 @@ func (v *webAPIVault) CreateObject(ctx context.Context, obj models.Object) (*mod
 			return nil, fmt.Errorf("error decrypting folder after creation: %w", err)
 		}
 	} else if obj.Object == models.ObjectTypeOrgCollection {
-		encObj, err := encryptCollection(obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
+		encObj, err := encryptCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 		if err != nil {
 			return nil, fmt.Errorf("error encrypting collection for creation: %w", err)
 		}
@@ -280,7 +281,7 @@ func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, 
 		return "", fmt.Errorf("error encryption collection label: %w", err)
 	}
 
-	publicKey, encryptedPrivateKey, err := keybuilder.GenerateRSAKeyPair(*sharedKey)
+	publicKey, encryptedPrivateKey, err := keybuilder.GenerateEncryptedRSAKeyPair(*sharedKey)
 	if err != nil {
 		return "", fmt.Errorf("error generating key pair: %w", err)
 	}
@@ -300,6 +301,25 @@ func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, 
 	if err != nil {
 		return "", fmt.Errorf("error creating organization: %w", err)
 	}
+
+	v.baseVault.loginAccount.Secrets.OrganizationSecrets[res.Id] = OrganizationSecret{
+		OrganizationUUID: res.Id,
+		Name:             organizationName,
+		Key:              *sharedKey,
+	}
+
+	v.storeOrganizationSecrets(ctx)
+
+	if v.syncAfterWrite {
+		orgSecretBeforeSync := v.baseVault.loginAccount.Secrets.OrganizationSecrets[res.Id]
+		err := v.sync(ctx)
+		if err != nil {
+			return "", fmt.Errorf("sync-after-write error: %w", err)
+		}
+
+		return res.Id, compareObjects(orgSecretBeforeSync, v.baseVault.loginAccount.Secrets.OrganizationSecrets[res.Id])
+	}
+
 	return res.Id, nil
 }
 
@@ -388,7 +408,7 @@ func (v *webAPIVault) EditObject(ctx context.Context, obj models.Object) (*model
 
 	var resObj *models.Object
 	if obj.Object == models.ObjectTypeFolder {
-		encObj, err := v.encryptFolder(ctx, obj, v.loginAccount.Secrets)
+		encObj, err := encryptFolder(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 		if err != nil {
 			return nil, fmt.Errorf("error encrypting folder for edition: %w", err)
 		}
@@ -403,7 +423,7 @@ func (v *webAPIVault) EditObject(ctx context.Context, obj models.Object) (*model
 			return nil, fmt.Errorf("error decrypting folder after creation: %w", err)
 		}
 	} else if obj.Object == models.ObjectTypeOrgCollection {
-		encObj, err := encryptCollection(obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
+		encObj, err := encryptCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 		if err != nil {
 			return nil, fmt.Errorf("error encrypting collection for creation: %w", err)
 		}
@@ -567,6 +587,13 @@ func (v *webAPIVault) LoginWithPassword(ctx context.Context, username, password 
 	return v.continueLoginWithTokens(ctx, *tokenResp, password)
 }
 
+func (v *webAPIVault) Logout(ctx context.Context) error {
+	v.client.ClearSession()
+	v.clearObjectStore(ctx)
+	v.loginAccount = Account{}
+	return nil
+}
+
 func (v *webAPIVault) RegisterUser(ctx context.Context, name, username, password string, kdfConfig models.KdfConfiguration) error {
 	preloginKey, err := keybuilder.BuildPreloginKey(password, username, kdfConfig)
 	if err != nil {
@@ -580,7 +607,7 @@ func (v *webAPIVault) RegisterUser(ctx context.Context, name, username, password
 		return fmt.Errorf("error generating encryption key: %w", err)
 	}
 
-	publicKey, encryptedPrivateKey, err := keybuilder.GenerateRSAKeyPair(*encryptionKey)
+	publicKey, encryptedPrivateKey, err := keybuilder.GenerateEncryptedRSAKeyPair(*encryptionKey)
 	if err != nil {
 		return fmt.Errorf("error generating key pair: %w", err)
 	}
@@ -733,13 +760,7 @@ func (v *webAPIVault) prepareAttachmentCreationRequest(ctx context.Context, item
 func (v *webAPIVault) loadObjectMap(ctx context.Context, cipherMap webapi.SyncResponse) error {
 	v.clearObjectStore(ctx)
 
-	for _, orgSecret := range v.loginAccount.Secrets.OrganizationSecrets {
-		v.storeObject(ctx, models.Object{
-			ID:     orgSecret.OrganizationUUID,
-			Object: models.ObjectTypeOrganization,
-			Name:   orgSecret.Name,
-		})
-	}
+	v.storeOrganizationSecrets(ctx)
 
 	res, err := ciphersToObjects(v.loginAccount.Secrets, cipherMap.Ciphers)
 	if err != nil {

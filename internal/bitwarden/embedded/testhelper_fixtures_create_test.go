@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"testing"
 
@@ -25,16 +26,16 @@ import (
 // This is only used to generate test data
 func TestCreateTestAccounts(t *testing.T) {
 	t.Skip()
-	createTestAccount(t, Pdkdf2Email, models.KdfConfiguration{
+	createTestAccount(t, Pdkdf2Mocks, models.KdfConfiguration{
 		KdfType:       models.KdfTypePBKDF2_SHA256,
 		KdfIterations: 600000,
-	})
-	createTestAccount(t, Argon2Email, models.KdfConfiguration{
+	}, true)
+	createTestAccount(t, Argon2Mocks, models.KdfConfiguration{
 		KdfType:        models.KdfTypeArgon2,
 		KdfIterations:  3,
 		KdfMemory:      64,
 		KdfParallelism: 4,
-	})
+	}, false)
 }
 
 func TestCreateAccessTokenLoginMock(t *testing.T) {
@@ -88,10 +89,10 @@ func TestCreateAccessTokenLoginMock(t *testing.T) {
 	}
 }
 
-func createTestAccount(t *testing.T, accountEmail string, kdfConfig models.KdfConfiguration) {
+func createTestAccount(t *testing.T, mockName string, kdfConfig models.KdfConfiguration, withResources bool) {
 	ctx := context.Background()
 
-	mockName := strings.Split(accountEmail, "@")[0]
+	accountEmail := fmt.Sprintf("%s@laverse.net", mockName)
 
 	preloginKey, err := keybuilder.BuildPreloginKey(TestPassword, accountEmail, kdfConfig)
 	if err != nil {
@@ -148,7 +149,7 @@ func createTestAccount(t *testing.T, accountEmail string, kdfConfig models.KdfCo
 
 	httpClient := http.Client{
 		Transport: &diskTransport{
-			Prefix: mockName,
+			Prefix: path.Join(fixturesDir(t), mockName),
 		},
 	}
 	vault := NewPasswordManagerClient(ServerURL, testDeviceIdentifer, "dev", WithPasswordManagerHttpOptions(webapi.WithCustomClient(httpClient)))
@@ -163,9 +164,18 @@ func createTestAccount(t *testing.T, accountEmail string, kdfConfig models.KdfCo
 		t.Fatal(err)
 	}
 
+	err = vault.Logout(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	err = vault.LoginWithAPIKey(ctx, TestPassword, apiKey.ClientID, apiKey.ClientSecret)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if !withResources {
+		return
 	}
 
 	_, err = vault.CreateObject(ctx, models.Object{
@@ -176,6 +186,43 @@ func createTestAccount(t *testing.T, accountEmail string, kdfConfig models.KdfCo
 			Username: "my-username",
 		},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = vault.CreateObject(ctx, models.Object{
+		Object: models.ObjectTypeFolder,
+		Name:   "Folder in own Vault",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	orgId, err := vault.CreateOrganization(ctx, "test-organization", "test-organization-label", "test@laverse.net")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	orgCol, err := vault.CreateObject(ctx, models.Object{
+		Object:         models.ObjectTypeOrgCollection,
+		Name:           "org-collection",
+		OrganizationID: orgId,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = vault.CreateObject(ctx, models.Object{
+		Object:         models.ObjectTypeItem,
+		Type:           models.ItemTypeLogin,
+		Name:           "Item in org Vault",
+		OrganizationID: orgCol.OrganizationID,
+		CollectionIds:  []string{orgCol.ID},
+		Login: models.Login{
+			Username: "my-org-username",
+		},
+	})
+
 	if err != nil {
 		t.Fatal(err)
 	}
