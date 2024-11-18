@@ -90,5 +90,4 @@ func TestVaultOfUser(t *testing.T) {
 			assert.Equal(t, test.expectedResult, match)
 		})
 	}
-
 }

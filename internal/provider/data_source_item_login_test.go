@@ -74,6 +74,11 @@ func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 				Config:      tfConfigPasswordManagerProvider() + tfConfigResourceItemLogin("search") + tfConfigDataItemLoginWithSearchAndOrg("missing-item"),
 				ExpectError: regexp.MustCompile("Error: no object found matching the filter"),
 			},
+			// Test: differentiate between items with the same username based on URL
+			{
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemLogin("search") + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchAndUrl("test-username", "https://host"),
+				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
+			},
 			// Test: search for a secure note item with a login data source should fail
 			{
 				Config: tfConfigPasswordManagerProvider(),
@@ -98,6 +103,17 @@ data "bitwarden_item_login" "foo_data" {
 	filter_organization_id = "%s"
 }
 `, search, testOrganizationID)
+}
+
+func tfConfigDataItemLoginWithSearchAndUrl(search, url string) string {
+	return fmt.Sprintf(`
+data "bitwarden_item_login" "foo_data" {
+	provider	= bitwarden
+
+	search = "%s"
+	filter_url = "%s"
+}
+`, search, url)
 }
 
 func tfConfigDataItemLoginWithSearchOnly(search string) string {
