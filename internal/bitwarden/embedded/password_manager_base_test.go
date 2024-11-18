@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -31,6 +32,61 @@ func TestCompareObjects(t *testing.T) {
 	}
 	assert.NoError(t, compareObjects(obj1, obj2))
 	assert.Error(t, compareObjects(obj1, obj3))
+}
+
+func TestMatchUrl(t *testing.T) {
+	testCases := []struct {
+		loginUri        models.LoginURI
+		matchingUrls    []string
+		notMatchingUrls []string
+	}{
+		{
+			loginUri:        models.LoginURI{URI: "https://sub.mydomain1.com", Match: models.URIMatchBaseDomain.ToPointer()},
+			matchingUrls:    []string{"https://mydomain1.com", "https://else.mydomain1.com"},
+			notMatchingUrls: []string{"https://mydomain1bis.com"},
+		},
+		{
+			loginUri:        models.LoginURI{URI: "https://mydomain2.com", Match: models.URIMatchHost.ToPointer()},
+			matchingUrls:    []string{"https://mydomain2.com"},
+			notMatchingUrls: []string{"https://mydomain2bis.com", "https://test.mydomain2.com"},
+		},
+		{
+			loginUri:        models.LoginURI{URI: "https://mydomain3.com/product", Match: models.URIMatchStartWith.ToPointer()},
+			matchingUrls:    []string{"https://mydomain3.com/product/page"},
+			notMatchingUrls: []string{"https://mydomain3.com/otherproduct/product"},
+		},
+		{
+			loginUri:        models.LoginURI{URI: "https://mydomain4.com/page", Match: models.URIMatchExact.ToPointer()},
+			matchingUrls:    []string{"https://mydomain4.com/page"},
+			notMatchingUrls: []string{"https://mydomain4.com/page-other"},
+		},
+		{
+			loginUri:        models.LoginURI{URI: "https://mydomain5.com/([a-z]+)/test", Match: models.URIMatchRegExp.ToPointer()},
+			matchingUrls:    []string{"https://mydomain5.com/mypage/test"},
+			notMatchingUrls: []string{"https://mydomain5.com/mypage2/test"},
+		},
+		{
+			loginUri:        models.LoginURI{URI: "https://mydomain6.com", Match: models.URIMatchNever.ToPointer()},
+			notMatchingUrls: []string{"https://mydomain6.com"},
+		},
+	}
+
+	for _, test := range testCases {
+		for _, m := range test.matchingUrls {
+			t.Run(fmt.Sprintf("%s ? %s", test.loginUri.URI, m), func(t *testing.T) {
+				match, err := urlsMatch(test.loginUri, m)
+				assert.NoError(t, err)
+				assert.Equal(t, true, match)
+			})
+		}
+		for _, m := range test.notMatchingUrls {
+			t.Run(fmt.Sprintf("%s ? %s", test.loginUri.URI, m), func(t *testing.T) {
+				match, err := urlsMatch(test.loginUri, m)
+				assert.NoError(t, err)
+				assert.Equal(t, false, match)
+			})
+		}
+	}
 }
 
 func TestDecryptAccountSecretPbkdf2(t *testing.T) {

@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +18,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
+	"golang.org/x/net/publicsuffix"
 )
 
 var (
@@ -87,7 +90,7 @@ func (v *baseVault) ListObjects(ctx context.Context, objType models.ObjectType, 
 			continue
 		}
 
-		if !objMatchFilter(obj, filter) {
+		if !objMatchFilter(ctx, obj, filter) {
 			continue
 		}
 
@@ -634,7 +637,7 @@ func objKey(obj models.Object) string {
 	return fmt.Sprintf("%s___%s", obj.Object, obj.ID)
 }
 
-func objMatchFilter(obj models.Object, filters bitwarden.ListObjectsFilterOptions) bool {
+func objMatchFilter(ctx context.Context, obj models.Object, filters bitwarden.ListObjectsFilterOptions) bool {
 	if len(filters.OrganizationFilter) > 0 && obj.OrganizationID != filters.OrganizationFilter {
 		return false
 	}
@@ -655,6 +658,29 @@ func objMatchFilter(obj models.Object, filters bitwarden.ListObjectsFilterOption
 		}
 	}
 
+	if len(filters.UrlFilter) > 0 {
+		matchUrl := false
+		for _, u := range obj.Login.URIs {
+			if u.Match == nil {
+				// When selecting 'default' match in the CLI, it results in a
+				// 'nil' match which we default to 'base_domain' here.
+				u.Match = models.URIMatchBaseDomain.ToPointer()
+			}
+
+			matched, err := urlsMatch(u, filters.UrlFilter)
+			if err != nil {
+				tflog.Trace(ctx, "Error matching URL", map[string]interface{}{"object_id": obj.ID, "url": u.URI, "error": err})
+				continue
+			}
+			if matched {
+				matchUrl = true
+			}
+		}
+		if !matchUrl {
+			return false
+		}
+	}
+
 	if len(filters.SearchFilter) > 0 {
 		foundSomething := false
 		if strings.Contains(obj.Name, filters.SearchFilter) {
@@ -666,11 +692,77 @@ func objMatchFilter(obj models.Object, filters bitwarden.ListObjectsFilterOption
 		if strings.Contains(obj.Notes, filters.SearchFilter) {
 			foundSomething = true
 		}
+
 		if !foundSomething {
 			return false
 		}
 	}
 	return len(filters.SearchFilter) > 0
+}
+
+func urlsMatch(u models.LoginURI, searchedUrl string) (bool, error) {
+	if u.Match == nil {
+		return false, nil
+	}
+
+	switch *u.Match {
+	case models.URIMatchBaseDomain:
+		// TODO: Support equivalent domains
+		return domainsMatch(u.URI, searchedUrl)
+	case models.URIMatchHost:
+		return matchHost(u.URI, searchedUrl)
+	case models.URIMatchStartWith:
+		return strings.HasPrefix(searchedUrl, u.URI), nil
+	case models.URIMatchExact:
+		return searchedUrl == u.URI, nil
+	case models.URIMatchRegExp:
+		matched, err := regexp.MatchString(u.URI, searchedUrl)
+		if err != nil {
+			return false, fmt.Errorf("error matching regex: %w", err)
+		}
+		return matched, nil
+	case models.URIMatchNever:
+		return false, nil
+	default:
+		return false, fmt.Errorf("unsupported URIMatch: %d", *u.Match)
+	}
+}
+
+func domainsMatch(url1, url2 string) (bool, error) {
+	parsedUrl1, err := url.Parse(url1)
+	if err != nil {
+		return false, fmt.Errorf("error parsing url1: %w", err)
+	}
+
+	parsedUrl1Domain, err := publicsuffix.EffectiveTLDPlusOne(parsedUrl1.Host)
+	if err != nil {
+		return false, fmt.Errorf("error getting url1 TLD+1: %w", err)
+	}
+
+	parsedUrl2, err := url.Parse(url2)
+	if err != nil {
+		return false, fmt.Errorf("error parsing url2: %w", err)
+	}
+
+	parsedUrl2Domain, err := publicsuffix.EffectiveTLDPlusOne(parsedUrl2.Host)
+	if err != nil {
+		return false, fmt.Errorf("error getting url2 TLD+1: %w", err)
+	}
+
+	return len(parsedUrl1Domain) > 0 && parsedUrl1Domain == parsedUrl2Domain, nil
+}
+
+func matchHost(url1, url2 string) (bool, error) {
+	parsedUrl1, err := url.Parse(url1)
+	if err != nil {
+		return false, fmt.Errorf("error parsing url1: %w", err)
+	}
+
+	parsedUrl2, err := url.Parse(url2)
+	if err != nil {
+		return false, fmt.Errorf("error parsing url2: %w", err)
+	}
+	return len(parsedUrl1.Host) > 0 && parsedUrl1.Host == parsedUrl2.Host, nil
 }
 
 func compareObjects[T any](obj1, obj2 T) error {
