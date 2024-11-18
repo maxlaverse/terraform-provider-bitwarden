@@ -79,6 +79,14 @@ func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemLogin("search") + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchAndUrl("test-username", "https://host"),
 				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},
+			// Test: soft-deleting objects are not returned
+			{
+				Config: tfConfigPasswordManagerProvider(),
+			},
+			{
+				Config:      tfConfigPasswordManagerProvider() + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
+				ExpectError: regexp.MustCompile("Error: no object found matching the filter"),
+			},
 			// Test: search for a secure note item with a login data source should fail
 			{
 				Config: tfConfigPasswordManagerProvider(),
