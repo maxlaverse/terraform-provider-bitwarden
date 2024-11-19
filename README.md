@@ -40,7 +40,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.12.0"
+      version = ">= 0.12.1"
     }
   }
 }
@@ -48,6 +48,11 @@ terraform {
 # Configure the Bitwarden Provider
 provider "bitwarden" {
   email = "terraform@example.com"
+
+  # Specify a server url when using a self-hosted version of Bitwarden
+  # or similar (e.g. Vaultwarden).
+  #
+  # server = "https://vault.myserver.org"
 
   # If you have the opportunity, you can try out the embedded client which
   # removes the need for a locally installed Bitwarden CLI. Please note that
