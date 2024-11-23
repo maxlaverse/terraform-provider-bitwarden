@@ -2,6 +2,9 @@ package embedded
 
 import (
 	"context"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,6 +21,7 @@ import (
 
 type PasswordManagerClient interface {
 	BaseVault
+	ConfirmInvite(ctx context.Context, orgId, userEmail string) error
 	CreateObject(ctx context.Context, obj models.Object) (*models.Object, error)
 	CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error)
 	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error)
@@ -27,6 +31,7 @@ type PasswordManagerClient interface {
 	EditObject(ctx context.Context, obj models.Object) (*models.Object, error)
 	GetAPIKey(ctx context.Context, username, password string) (*models.ApiKey, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
+	InviteUser(ctx context.Context, orgId, userEmail string) error
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
 	Logout(ctx context.Context) error
@@ -109,6 +114,28 @@ type webAPIVault struct {
 
 	syncAfterWrite bool
 	serverURL      string
+}
+
+func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string) error {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	orgUser, err := v.findOrganizationUser(ctx, orgId, userEmail)
+	if err != nil {
+		return fmt.Errorf("error getting organization user : %w", err)
+	}
+
+	publicKey, err := v.getUserPublicKey(ctx, orgUser.UserId)
+	if err != nil {
+		return fmt.Errorf("error getting user public key: %w", err)
+	}
+
+	orgKey, err := keybuilder.RSAEncrypt(v.loginAccount.Secrets.OrganizationSecrets[orgId].Key.Key, publicKey)
+	if err != nil {
+		return fmt.Errorf("error rsa encrypting organization key: %w", err)
+	}
+
+	return v.client.ConfirmOrganizationUser(ctx, orgId, orgUser.Id, string(orgKey))
 }
 
 func (v *webAPIVault) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error) {
@@ -543,6 +570,22 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 	return []byte(decryptedBody), nil
 }
 
+func (v *webAPIVault) InviteUser(ctx context.Context, orgId, userEmail string) error {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	req := webapi.InviteUserRequest{
+		Emails:               []string{userEmail},
+		Type:                 0, // 0:Owner, 2:User
+		AccessAll:            true,
+		AccessSecretsManager: false,
+		Groups:               []string{},
+		Collections:          []string{},
+	}
+
+	return v.client.InviteUser(ctx, orgId, req)
+}
+
 func (v *webAPIVault) LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error {
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
@@ -709,6 +752,38 @@ func (v *webAPIVault) continueLoginWithTokens(ctx context.Context, tokenResp web
 	}
 
 	return v.sync(ctx)
+}
+
+func (v *webAPIVault) findOrganizationUser(ctx context.Context, orgId, userEmail string) (*webapi.OrganizationUserDetails, error) {
+	orgUsers, err := v.client.GetOrganizationUsers(ctx, orgId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting users: %w", err)
+	}
+
+	for _, user := range orgUsers {
+		if user.Email == userEmail {
+			return &user, nil
+		}
+	}
+	return nil, nil
+}
+
+func (v *webAPIVault) getUserPublicKey(ctx context.Context, userId string) (*rsa.PublicKey, error) {
+	userPublicKey, err := v.client.GetUserPublicKey(ctx, userId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting user's public key: %w", err)
+	}
+
+	decodedKey, err := base64.StdEncoding.DecodeString(string(userPublicKey))
+	if err != nil {
+		return nil, fmt.Errorf("error decoding public key: %w", err)
+	}
+
+	pubKey, err := x509.ParsePKIXPublicKey(decodedKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse public key: %v", err)
+	}
+	return pubKey.(*rsa.PublicKey), nil
 }
 
 func (v *webAPIVault) prepareAttachmentCreationRequest(ctx context.Context, itemId, filename string, content []byte) (*webapi.AttachmentRequestData, []byte, error) {

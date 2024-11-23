@@ -63,6 +63,8 @@ const (
 	ObjectApiKey                  ObjectType = "api-key"
 	ObjectProject                 ObjectType = "project"
 	ObjectSecret                  ObjectType = "secret"
+	ObjectUserKey                 ObjectType = "userKey"
+	ObjectOrgMember               ObjectType = "org-member"
 )
 
 const (
@@ -151,4 +153,15 @@ type Attachment struct {
 	Url      string     `json:"url,omitempty"`
 	Key      string     `json:"key"`
 	Object   ObjectType `json:"object"`
+}
+
+// TODO: Use or drop
+type OrgMember struct {
+	Email            string     `json:"email,omitempty"`
+	Name             string     `json:"name,omitempty"`
+	ID               string     `json:"id,omitempty"`
+	Status           int        `json:"status,omitempty"`
+	Type             int        `json:"type,omitempty"`
+	TwoFactorEnabled bool       `json:"twoFactorEnabled,omitempty"`
+	Object           ObjectType `json:"object,omitempty"`
 }
