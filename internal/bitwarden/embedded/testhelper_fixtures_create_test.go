@@ -37,7 +37,8 @@ func TestCreateTestAccounts(t *testing.T) {
 		KdfParallelism: 4,
 	}, false)
 
-	createOrganizationResources(t, Pdkdf2Mocks, Argon2Mocks)
+	createOrganization(t, Pdkdf2Mocks, Argon2Mocks)
+	createOrganizationResources(t, Pdkdf2Mocks, OrganizationID)
 }
 
 func TestCreateAccessTokenLoginMock(t *testing.T) {
@@ -91,7 +92,7 @@ func TestCreateAccessTokenLoginMock(t *testing.T) {
 	}
 }
 
-func createOrganizationResources(t *testing.T, account1 string, account2 string) {
+func createOrganization(t *testing.T, account1 string, account2 string) {
 	ctx := context.Background()
 
 	accountEmail1 := fmt.Sprintf("%s@laverse.net", account1)
@@ -107,7 +108,39 @@ func createOrganizationResources(t *testing.T, account1 string, account2 string)
 		t.Fatal(err)
 	}
 
-	orgId, err := vault.CreateOrganization(ctx, "test-organization", "test-organization-default", accountEmail1)
+	OrganizationID, err = vault.CreateOrganization(ctx, "test-organization", "test-organization-default", accountEmail1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	accountEmail2 := fmt.Sprintf("%s@laverse.net", account2)
+	err = vault.InviteUser(ctx, OrganizationID, accountEmail2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = vault.ConfirmInvite(ctx, OrganizationID, accountEmail2)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func createOrganizationResources(t *testing.T, account1 string, orgId string) {
+	ctx := context.Background()
+
+	accountEmail1 := fmt.Sprintf("%s@laverse.net", account1)
+	httpClient := http.Client{
+		Transport: &diskTransport{
+			Prefix: path.Join(fixturesDir(t), account1),
+		},
+	}
+	vault := NewPasswordManagerClient(ServerURL, testDeviceIdentifer, "dev", WithPasswordManagerHttpOptions(webapi.WithCustomClient(httpClient)))
+
+	err := vault.LoginWithPassword(ctx, accountEmail1, TestPassword)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,28 +165,6 @@ func createOrganizationResources(t *testing.T, account1 string, account2 string)
 		},
 	})
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	accountEmail2 := fmt.Sprintf("%s@laverse.net", account2)
-	err = vault.InviteUser(ctx, orgId, accountEmail2)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = vault.ConfirmInvite(ctx, orgId, accountEmail2)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Logout and Login again to make sure the invitation worked
-	err = vault.Logout(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = vault.LoginWithPassword(ctx, accountEmail2, TestPassword)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,33 +278,4 @@ func createTestAccount(t *testing.T, mockName string, kdfConfig models.KdfConfig
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// orgId, err := vault.CreateOrganization(ctx, "test-organization", "test-organization-label", "test@laverse.net")
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-
-	// orgCol, err := vault.CreateObject(ctx, models.Object{
-	// 	Object:         models.ObjectTypeOrgCollection,
-	// 	Name:           "org-collection",
-	// 	OrganizationID: orgId,
-	// })
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-
-	// _, err = vault.CreateObject(ctx, models.Object{
-	// 	Object:         models.ObjectTypeItem,
-	// 	Type:           models.ItemTypeLogin,
-	// 	Name:           "Item in org Vault",
-	// 	OrganizationID: orgCol.OrganizationID,
-	// 	CollectionIds:  []string{orgCol.ID},
-	// 	Login: models.Login{
-	// 		Username: "my-org-username",
-	// 	},
-	// })
-
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
 }
