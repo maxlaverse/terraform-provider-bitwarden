@@ -2,37 +2,37 @@
     "attachments": null,
     "card": null,
     "collectionIds": [
-        "2896c624-f13e-479b-a482-f3eda4d67a3c"
+        "86ef0c2f-249d-48bb-9c4b-8e0561797033"
     ],
-    "creationDate": "2024-11-14T08:08:41.431256Z",
+    "creationDate": "2024-11-23T11:03:43.457927Z",
     "data": {
         "fields": [],
-        "name": "2.W56k7Xg457UBuuYHtzA4jQ==|4UE2Ve0lM/50ndnLzgEyCbTu9E/sMPEwbWSrt2OcF0I=|jRPTo5WqejdmI5/bymCBRLFAOQZGhZl3drQfgtm7lNg=",
+        "name": "2.0jswLhF2pAQ3IUqfk5wNoA==|ZpWuqRGoFHq/JAkWLugVqTRhYRn3q6RuHlBX+K/S51o=|fBcHAyzJT0wmqINm7LF2l6Y9f+jHzbQptuVDlDWiaeY=",
         "notes": null,
         "passwordHistory": [],
         "uri": null,
-        "username": "2.nFyA1XTvrCgtujbCc+gsaA==|LQbL4eLktLyebvnyWbIAcA==|a14GrjoD1Jb2koTkm6+ZoNP4dqBnyNCZMJojv/fdQGQ="
+        "username": "2.esF2o9kZZQ3EF6mmwWF2oQ==|9nO5AMSHnS+NwMaVus1zIA==|F0/mnnOYHL1dFAMFxgSZ3+6dF6vv/EG4tl7tphsgsNU="
     },
     "deletedDate": null,
     "edit": true,
     "favorite": false,
     "fields": [],
     "folderId": null,
-    "id": "f2db56ee-665f-4700-b133-8aa40b14d9c2",
+    "id": "c75c9f0d-0802-4535-b69a-02af4a9b4d04",
     "identity": null,
-    "key": "2.icUBIoTdJk8HNUPhzCr+fg==|UqIJ3Pkvp2b1iMgMgTY9P3wP5+mLrGGPYVz9d6gEAu2ZHy+5D6+EFlwv1Hd3AvyfzLECvRAHVf4tH1f1ki3DoFREdz7J7E6/35+f1jCiolY=|yty6EEUDX/PUmIWBl1PmKOZ0GnphFuYXzJCj+DuY2R8=",
+    "key": "2.5YFR7CseaT0mSetP3SIO1w==|0VwWBsUteBOne75vFA2KtJlgwxxdjbpkV3MrnHuEKcnxFPFEpaO7u8GzxmHIiByafeLPnZHIB2PzECGSBllSCMnJZ0VbZcgQEEqbKdU7FS4=|fUBCezDC4+oVhJ5Kqbss/DcfUO6f1ImouUXbVC0CNOA=",
     "login": {
         "uri": null,
-        "username": "2.nFyA1XTvrCgtujbCc+gsaA==|LQbL4eLktLyebvnyWbIAcA==|a14GrjoD1Jb2koTkm6+ZoNP4dqBnyNCZMJojv/fdQGQ="
+        "username": "2.esF2o9kZZQ3EF6mmwWF2oQ==|9nO5AMSHnS+NwMaVus1zIA==|F0/mnnOYHL1dFAMFxgSZ3+6dF6vv/EG4tl7tphsgsNU="
     },
-    "name": "2.W56k7Xg457UBuuYHtzA4jQ==|4UE2Ve0lM/50ndnLzgEyCbTu9E/sMPEwbWSrt2OcF0I=|jRPTo5WqejdmI5/bymCBRLFAOQZGhZl3drQfgtm7lNg=",
+    "name": "2.0jswLhF2pAQ3IUqfk5wNoA==|ZpWuqRGoFHq/JAkWLugVqTRhYRn3q6RuHlBX+K/S51o=|fBcHAyzJT0wmqINm7LF2l6Y9f+jHzbQptuVDlDWiaeY=",
     "notes": null,
     "object": "cipherDetails",
-    "organizationId": "4ce457fe-b3ed-4fdf-afc8-e95f94f69952",
+    "organizationId": "d273e12f-ef37-42e3-93cc-0ca6774a8494",
     "organizationUseTotp": true,
     "passwordHistory": [],
     "reprompt": 0,
-    "revisionDate": "2024-11-14T08:08:41.431692Z",
+    "revisionDate": "2024-11-23T11:03:43.458276Z",
     "secureNote": null,
     "type": 1,
     "viewPassword": true

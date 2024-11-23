@@ -1,0 +1,20 @@
+{
+    "continuationToken": null,
+    "data": [
+        {
+            "externalId": null,
+            "id": "b82b7baf-cedd-4f68-b7a8-48616413cd37",
+            "name": "2.lgwq1hBHrLFR5kUdS4iZow==|m2pf5+Y6B7sTQQU3FInVT8h+8gvGy9amW6bAmlasqTQ=|tz0axWf1xgcLWW75Pch1ql0zAiHhz4gHvi3iA5vogQI=",
+            "object": "collection",
+            "organizationId": "d273e12f-ef37-42e3-93cc-0ca6774a8494"
+        },
+        {
+            "externalId": null,
+            "id": "86ef0c2f-249d-48bb-9c4b-8e0561797033",
+            "name": "2.6zDv0moGT/EbPcdLFbEH5Q==|H56Ctl+XXsZJoCGVhgXOaA==|AnJSHXI1y9jIHxeZf0yaEz2YspdD0E66uoKN/tP0qkE=",
+            "object": "collection",
+            "organizationId": "d273e12f-ef37-42e3-93cc-0ca6774a8494"
+        }
+    ],
+    "object": "list"
+}
