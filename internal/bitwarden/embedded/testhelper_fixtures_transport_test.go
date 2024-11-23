@@ -26,8 +26,10 @@ func (d *diskTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	if err := d.saveResponseToFile(req, resp); err != nil {
-		return nil, fmt.Errorf("error saving response to file: %w", err)
+	if resp.ContentLength > 0 {
+		if err := d.saveResponseToFile(req, resp); err != nil {
+			return nil, fmt.Errorf("error saving response to file: %w", err)
+		}
 	}
 
 	return resp, nil
