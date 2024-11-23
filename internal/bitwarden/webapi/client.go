@@ -27,6 +27,7 @@ const (
 
 type Client interface {
 	ClearSession()
+	ConfirmOrganizationUser(ctx context.Context, orgID, orgUserID, key string) error
 	CreateFolder(ctx context.Context, obj Folder) (*Folder, error)
 	CreateObject(context.Context, models.Object) (*models.Object, error)
 	CreateObjectAttachment(ctx context.Context, itemId string, data []byte, req AttachmentRequestData) (*CreateObjectAttachmentResponse, error)
@@ -50,11 +51,14 @@ type Client interface {
 	GetCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error)
 	GetContentFromURL(ctx context.Context, url string) ([]byte, error)
 	GetObjectAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
+	GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error)
 	GetProfile(context.Context) (*Profile, error)
 	GetProject(ctx context.Context, projectId string) (*models.Project, error)
 	GetProjects(ctx context.Context, orgId string) ([]models.Project, error)
 	GetSecret(ctx context.Context, secretId string) (*Secret, error)
 	GetSecrets(ctx context.Context, orgId string) ([]SecretSummary, error)
+	GetUserPublicKey(ctx context.Context, userId string) ([]byte, error)
+	InviteUser(ctx context.Context, orgId string, user InviteUserRequest) error
 	LoginWithAccessToken(ctx context.Context, clientId, clientSecret string) (*MachineTokenResponse, error)
 	LoginWithAPIKey(ctx context.Context, clientId, clientSecret string) (*TokenResponse, error)
 	LoginWithPassword(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*TokenResponse, error)
@@ -87,6 +91,16 @@ type client struct {
 
 func (c *client) ClearSession() {
 	c.sessionAccessToken = ""
+}
+
+func (c *client) ConfirmOrganizationUser(ctx context.Context, orgID, orgUserId, key string) error {
+	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/users/%s/confirm", c.serverURL, orgID, orgUserId), ConfirmUserRequest{Key: key})
+	if err != nil {
+		return fmt.Errorf("error preparing organization user confirmation request: %w", err)
+	}
+
+	_, err = doRequest[[]byte](ctx, c.httpClient, httpReq)
+	return err
 }
 
 func (c *client) CreateFolder(ctx context.Context, obj Folder) (*Folder, error) {
@@ -422,6 +436,42 @@ func (c *client) GetSecrets(ctx context.Context, orgId string) ([]SecretSummary,
 		return nil, err
 	}
 	return secrets.Secrets, nil
+}
+
+func (c *client) GetUserPublicKey(ctx context.Context, userId string) ([]byte, error) {
+	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/users/%s/public-key", c.serverURL, userId), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing user public key retrieval request: %w", err)
+	}
+
+	resp, err := doRequest[UserPublicKeyResponse](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(resp.PublicKey), nil
+}
+
+func (c *client) GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error) {
+	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/users", c.serverURL, orgId), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing organization user list retrieval request: %w", err)
+	}
+
+	resp, err := doRequest[OrganizationUserList](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
+}
+
+func (c *client) InviteUser(ctx context.Context, orgId string, inviteRequest InviteUserRequest) error {
+	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/users/invite", c.serverURL, orgId), inviteRequest)
+	if err != nil {
+		return fmt.Errorf("error preparing user invitation request: %w", err)
+	}
+
+	_, err = doRequest[[]byte](ctx, c.httpClient, httpReq)
+	return err
 }
 
 func (c *client) LoginWithAccessToken(ctx context.Context, clientId, clientSecret string) (*MachineTokenResponse, error) {
