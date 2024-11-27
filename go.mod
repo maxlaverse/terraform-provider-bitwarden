@@ -13,7 +13,7 @@ require (
 	github.com/jarcoal/httpmock v1.3.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.29.0
-	golang.org/x/net v0.28.0
+	golang.org/x/net v0.31.0
 	golang.org/x/sync v0.9.0
 )
 
