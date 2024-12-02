@@ -34,6 +34,7 @@ const (
 	attributeLoginURIsMatch       = "match"
 	attributeLoginURIsValue       = "value"
 	attributeLoginTotp            = "totp"
+	attributeMember               = "member"
 	attributeName                 = "name"
 	attributeNotes                = "notes"
 	attributeObject               = "object"

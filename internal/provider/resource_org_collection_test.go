@@ -39,6 +39,13 @@ func TestAccResourceOrgCollection(t *testing.T) {
 				),
 			},
 			{
+				ResourceName: resourceName,
+				Config:       tfConfigPasswordManagerProvider() + tfProviderOrgOwner(testAccountEmailOrgOwner) + tfConfigResourceOrgCollection("org-col-new-name-bar"),
+				Check: resource.TestCheckResourceAttr(
+					resourceName, attributeName, "org-col-new-name-bar",
+				),
+			},
+			{
 				ResourceName:      resourceName,
 				ImportStateIdFunc: orgCollectionImportID(resourceName),
 				ImportState:       true,
@@ -67,6 +74,25 @@ func tfConfigResourceOrgCollection(name string) string {
 	organization_id = "%s"
 
 	name     = "%s"
+	
+	member {
+		org_user_id = "%s"
+	}
 }
-`, testOrganizationID, name)
+`, testOrganizationID, name, testAccountEmailOrgOwner)
+}
+
+func tfProviderOrgOwner(accountEmail string) string {
+	return fmt.Sprintf(`
+	provider "bitwarden" {
+		alias = "org_owner"
+		master_password = "%s"
+		server          = "%s"
+		email           = "%s"
+
+		experimental {
+			embedded_client = true
+		}
+	}
+`, testPassword, testServerURL, accountEmail)
 }

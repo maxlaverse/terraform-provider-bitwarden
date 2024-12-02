@@ -49,9 +49,10 @@ func (s *AccountSecrets) GetOrganizationKey(orgId string) (*symmetrickey.Key, er
 }
 
 type OrganizationSecret struct {
-	Key              symmetrickey.Key
-	OrganizationUUID string
-	Name             string
+	Key                symmetrickey.Key
+	OrganizationUUID   string
+	Name               string
+	OrganizationUserId string // own user id in organization
 }
 
 type MachineAccountClaims struct {

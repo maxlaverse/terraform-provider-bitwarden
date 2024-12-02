@@ -364,8 +364,13 @@ func encryptCollection(_ context.Context, obj models.Object, secret AccountSecre
 	}
 
 	encObj := webapi.OrganizationCreationRequest{
-		Name:   collectionName,
-		Users:  []webapi.OrganizationUser{},
+		Name:  collectionName,
+		Users: []webapi.OrganizationUser{},
+		// Users: []webapi.OrganizationUser{
+		// 	{
+		// 		Id: secret.OrganizationSecrets[obj.OrganizationID].OrganizationUserId,
+		// 	},
+		// },
 		Groups: []string{},
 	}
 	if verifyObjectEncryption {

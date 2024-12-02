@@ -57,9 +57,9 @@ type InviteUserRequest struct {
 	Permissions struct {
 		Response interface{} `json:"response"`
 	} `json:"permissions"`
-	Type                 int      `json:"type"`
-	Groups               []string `json:"groups"`
-	AccessSecretsManager bool     `json:"accessSecretsManager"`
+	Type                 models.OrgMemberRoleType `json:"type"`
+	Groups               []string                 `json:"groups"`
+	AccessSecretsManager bool                     `json:"accessSecretsManager"`
 }
 
 type ConfirmUserRequest struct {
@@ -219,9 +219,10 @@ type Profile struct {
 }
 
 type Organization struct {
-	Id   string `json:"id"`
-	Key  string `json:"key"`
-	Name string `json:"name"`
+	Id                 string `json:"id"`
+	Key                string `json:"key"`
+	Name               string `json:"name"`
+	OrganizationUserId string `json:"organizationUserId"`
 }
 
 type MachineTokenResponse struct {

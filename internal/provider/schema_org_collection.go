@@ -28,6 +28,14 @@ func orgCollectionSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Type:        schema.TypeString,
 			Required:    true,
 		},
+		attributeMember: {
+			Description: "TODO: Fix description",
+			Type:        schema.TypeList,
+			Elem:        membershipElem(),
+			Computed:    schemaType == DataSource,
+			Optional:    schemaType == Resource,
+			Sensitive:   false,
+		},
 	}
 
 	if schemaType == DataSource {
@@ -40,4 +48,25 @@ func orgCollectionSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 	}
 
 	return base
+}
+
+func membershipElem() *schema.Resource {
+	// validMatchStr := []string{"default", "base_domain", "host", "start_with", "exact", "regexp", "never"}
+
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"org_user_id": {
+				Description: "descriptionLoginUriMatch",
+				Type:        schema.TypeString,
+				// Default:          validMatchStr[0],
+				// ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(validMatchStr, false)),
+				Required: true,
+			},
+			"read_only": {
+				Description: "descriptionLoginUriValue",
+				Type:        schema.TypeBool,
+				Optional:    true,
+			},
+		},
+	}
 }

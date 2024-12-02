@@ -44,6 +44,15 @@ const (
 	FieldTypeLinked  FieldType = 3
 )
 
+type OrgMemberRoleType int
+
+const (
+	OrgMemberRoleTypeOwner   OrgMemberRoleType = 0
+	OrgMemberRoleTypeAdmin   OrgMemberRoleType = 1
+	OrgMemberRoleTypeUser    OrgMemberRoleType = 2
+	OrgMemberRoleTypeManager OrgMemberRoleType = 3
+)
+
 type ObjectType string
 
 const (

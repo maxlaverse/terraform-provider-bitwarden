@@ -21,7 +21,7 @@ import (
 
 type PasswordManagerClient interface {
 	BaseVault
-	ConfirmInvite(ctx context.Context, orgId, userEmail string) error
+	ConfirmInvite(ctx context.Context, orgId, userEmail string) (string, error)
 	CreateObject(ctx context.Context, obj models.Object) (*models.Object, error)
 	CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error)
 	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error)
@@ -31,7 +31,7 @@ type PasswordManagerClient interface {
 	EditObject(ctx context.Context, obj models.Object) (*models.Object, error)
 	GetAPIKey(ctx context.Context, username, password string) (*models.ApiKey, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
-	InviteUser(ctx context.Context, orgId, userEmail string) error
+	InviteUser(ctx context.Context, orgId, userEmail string, memberRoleType models.OrgMemberRoleType) error
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
 	Logout(ctx context.Context) error
@@ -116,26 +116,26 @@ type webAPIVault struct {
 	serverURL      string
 }
 
-func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string) error {
+func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string) (string, error) {
 	v.vaultOperationMutex.RLock()
 	defer v.vaultOperationMutex.RUnlock()
 
 	orgUser, err := v.findOrganizationUser(ctx, orgId, userEmail)
 	if err != nil {
-		return fmt.Errorf("error getting organization user : %w", err)
+		return "", fmt.Errorf("error getting organization user : %w", err)
 	}
 
 	publicKey, err := v.getUserPublicKey(ctx, orgUser.UserId)
 	if err != nil {
-		return fmt.Errorf("error getting user public key: %w", err)
+		return "", fmt.Errorf("error getting user public key: %w", err)
 	}
 
 	orgKey, err := keybuilder.RSAEncrypt(v.loginAccount.Secrets.OrganizationSecrets[orgId].Key.Key, publicKey)
 	if err != nil {
-		return fmt.Errorf("error rsa encrypting organization key: %w", err)
+		return "", fmt.Errorf("error rsa encrypting organization key: %w", err)
 	}
 
-	return v.client.ConfirmOrganizationUser(ctx, orgId, orgUser.Id, string(orgKey))
+	return orgUser.Id, v.client.ConfirmOrganizationUser(ctx, orgId, orgUser.Id, string(orgKey))
 }
 
 func (v *webAPIVault) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error) {
@@ -329,6 +329,12 @@ func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, 
 		return "", fmt.Errorf("error creating organization: %w", err)
 	}
 
+	// TODO: We need to get our user id within this organization
+	// after the creaetion. This is currently done through a full
+	// sync in the UI.
+	return res.Id, v.sync(ctx)
+
+	// TODO: Clean this up
 	v.baseVault.loginAccount.Secrets.OrganizationSecrets[res.Id] = OrganizationSecret{
 		OrganizationUUID: res.Id,
 		Name:             organizationName,
@@ -570,14 +576,14 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 	return []byte(decryptedBody), nil
 }
 
-func (v *webAPIVault) InviteUser(ctx context.Context, orgId, userEmail string) error {
+func (v *webAPIVault) InviteUser(ctx context.Context, orgId, userEmail string, memberRoleType models.OrgMemberRoleType) error {
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
 	req := webapi.InviteUserRequest{
 		Emails:               []string{userEmail},
-		Type:                 0, // 0:Owner, 2:User
-		AccessAll:            true,
+		Type:                 memberRoleType,
+		AccessAll:            false, // TODO: Make this configurable
 		AccessSecretsManager: false,
 		Groups:               []string{},
 		Collections:          []string{},
@@ -887,9 +893,10 @@ func loadOrganizationSecrets(accountSecrets AccountSecrets, organizations []weba
 		}
 
 		orgSecret := OrganizationSecret{
-			OrganizationUUID: organization.Id,
-			Key:              *key,
-			Name:             organization.Name,
+			OrganizationUUID:   organization.Id,
+			Key:                *key,
+			Name:               organization.Name,
+			OrganizationUserId: organization.OrganizationUserId,
 		}
 		accountSecrets.OrganizationSecrets[orgSecret.OrganizationUUID] = orgSecret
 
