@@ -50,6 +50,70 @@ type OrganizationCreationRequest struct {
 	ExternalID string             `json:"externalId"`
 }
 
+type InviteUserRequest struct {
+	Emails      []string `json:"emails"`
+	Collections []string `json:"collections"`
+	AccessAll   bool     `json:"accessAll"`
+	Permissions struct {
+		Response interface{} `json:"response"`
+	} `json:"permissions"`
+	Type                 int      `json:"type"`
+	Groups               []string `json:"groups"`
+	AccessSecretsManager bool     `json:"accessSecretsManager"`
+}
+
+type ConfirmUserRequest struct {
+	Key string `json:"key"`
+}
+
+type UserPublicKeyResponse struct {
+	Object    models.ObjectType `json:"object"`
+	PublicKey string            `json:"publicKey"`
+	UserId    string            `json:"userId"`
+}
+
+type OrganizationUserList struct {
+	Data   []OrganizationUserDetails `json:"data"`
+	Object models.ObjectType         `json:"object"`
+}
+
+type OrganizationUserDetails struct {
+	AccessAll            bool              `json:"accessAll"`
+	AccessSecretsManager bool              `json:"accessSecretsManager"`
+	AvatarColor          string            `json:"avatarColor"`
+	Collections          []Collection      `json:"collections"`
+	Email                string            `json:"email"`
+	ExternalId           string            `json:"externalId"`
+	Groups               []string          `json:"groups"`
+	HasMasterPassword    bool              `json:"hasMasterPassword"`
+	Id                   string            `json:"id"`
+	Name                 string            `json:"name"`
+	Object               models.ObjectType `json:"object"`
+	Permissions          struct {
+		AccessEventLogs           bool `json:"accessEventLogs"`
+		AccessImportExport        bool `json:"accessImportExport"`
+		AccessReports             bool `json:"accessReports"`
+		CreateNewCollections      bool `json:"createNewCollections"`
+		DeleteAnyCollection       bool `json:"deleteAnyCollection"`
+		DeleteAssignedCollections bool `json:"deleteAssignedCollections"`
+		EditAnyCollection         bool `json:"editAnyCollection"`
+		EditAssignedCollections   bool `json:"editAssignedCollections"`
+		ManageGroups              bool `json:"manageGroups"`
+		ManagePolicies            bool `json:"managePolicies"`
+		ManageResetPassword       bool `json:"manageResetPassword"`
+		ManageScim                bool `json:"manageScim"`
+		ManageSso                 bool `json:"manageSso"`
+		ManageUsers               bool `json:"manageUsers"`
+	} `json:"permissions"`
+	ResetPasswordEnrolled bool   `json:"resetPasswordEnrolled"`
+	SsoBound              bool   `json:"ssoBound"`
+	Status                int    `json:"status"`
+	TwoFactorEnabled      bool   `json:"twoFactorEnabled"`
+	Type                  int    `json:"type"`
+	UserId                string `json:"userId"`
+	UsesKeyConnector      bool   `json:"usesKeyConnector"`
+}
+
 type CreateOrganizationRequest struct {
 	Name           string  `json:"name"`
 	BillingEmail   string  `json:"billingEmail"`
