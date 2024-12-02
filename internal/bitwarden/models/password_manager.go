@@ -6,13 +6,15 @@ import (
 )
 
 var (
-	ErrObjectNotFound      = errors.New("object not found")
-	ErrAttachmentNotFound  = errors.New("attachment not found")
-	ErrVaultLocked         = errors.New("vault is locked")
-	ErrAlreadyLoggedIn     = errors.New("you are already logged in")
-	ErrWrongMasterPassword = errors.New("invalid master password")
-	ErrLoggedOut           = errors.New("please login first")
-	ErrItemTypeMismatch    = errors.New("returned object type does not match requested object type")
+	ErrObjectNotFound              = errors.New("object not found")
+	ErrAttachmentNotFound          = errors.New("attachment not found")
+	ErrVaultLocked                 = errors.New("vault is locked")
+	ErrAlreadyLoggedIn             = errors.New("you are already logged in")
+	ErrWrongMasterPassword         = errors.New("invalid master password")
+	ErrLoggedOut                   = errors.New("please login first")
+	ErrItemTypeMismatch            = errors.New("returned object type does not match requested object type")
+	ErrTooManyObjectsFound         = errors.New("too many objects found")
+	ErrNoObjectFoundMatchingFilter = errors.New("no object found matching the filter")
 )
 
 type ItemType int
@@ -108,7 +110,7 @@ type ApiKey struct {
 	ClientSecret string
 }
 
-type Object struct {
+type Item struct {
 	Attachments         []Attachment          `json:"attachments,omitempty"`
 	CollectionIds       []string              `json:"collectionIds,omitempty"`
 	CreationDate        *time.Time            `json:"creationDate,omitempty"`
@@ -117,7 +119,6 @@ type Object struct {
 	Favorite            bool                  `json:"favorite,omitempty"`
 	Fields              []Field               `json:"fields,omitempty"`
 	FolderID            string                `json:"folderId,omitempty"`
-	Groups              []interface{}         `json:"groups"` // To be kept for the CLI when creating org-collections
 	ID                  string                `json:"id,omitempty"`
 	Key                 string                `json:"key,omitempty"`
 	Login               Login                 `json:"login,omitempty"`
@@ -132,6 +133,19 @@ type Object struct {
 	SecureNote          SecureNote            `json:"secureNote,omitempty"`
 	Type                ItemType              `json:"type,omitempty"`
 	ViewPassword        bool                  `json:"viewPassword,omitempty"`
+}
+
+type Folder struct {
+	ID           string     `json:"id,omitempty"`
+	Name         string     `json:"name,omitempty"`
+	Object       ObjectType `json:"object,omitempty"`
+	RevisionDate *time.Time `json:"revisionDate,omitempty"`
+}
+
+type Organization struct {
+	ID     string     `json:"id,omitempty"`
+	Name   string     `json:"name,omitempty"`
+	Object ObjectType `json:"object,omitempty"`
 }
 
 type PasswordHistoryItem struct {
@@ -165,4 +179,11 @@ type OrgMember struct {
 	Type             int        `json:"type,omitempty"`
 	TwoFactorEnabled bool       `json:"twoFactorEnabled,omitempty"`
 	Object           ObjectType `json:"object,omitempty"`
+}
+
+type OrgCollection struct {
+	ID             string     `json:"id,omitempty"`
+	Name           string     `json:"name,omitempty"`
+	Object         ObjectType `json:"object,omitempty"`
+	OrganizationID string     `json:"organizationId"`
 }

@@ -95,10 +95,8 @@ func TestFolderCreation(t *testing.T) {
 	}
 
 	newObj := testFullyFilledFolder()
-	newObj.OrganizationID = ""
-	newObj.CollectionIds = nil
 
-	obj, err := vault.CreateObject(ctx, newObj)
+	obj, err := vault.CreateFolder(ctx, newObj)
 	assert.NoError(t, err)
 	if !assert.NotNil(t, obj) {
 		return
@@ -119,11 +117,11 @@ func TestItemCreation(t *testing.T) {
 		t.Fatalf("vault unlock failed: %v", err)
 	}
 
-	newObj := testFullyFilledObject()
+	newObj := testFullyFilledItem()
 	newObj.OrganizationID = ""
 	newObj.CollectionIds = nil
 
-	obj, err := vault.CreateObject(ctx, newObj)
+	obj, err := vault.CreateItem(ctx, newObj)
 	assert.NoError(t, err)
 	if !assert.NotNil(t, obj) {
 		return
@@ -146,11 +144,11 @@ func TestItemCreationInOrganization(t *testing.T) {
 	}
 
 	vault.Sync(ctx)
-	newObj := testFullyFilledObject()
+	newObj := testFullyFilledItem()
 	newObj.OrganizationID = OrganizationID
 	newObj.CollectionIds = []string{"simply-not-empty"}
 
-	obj, err := vault.CreateObject(ctx, newObj)
+	obj, err := vault.CreateItem(ctx, newObj)
 	assert.NoError(t, err)
 	if !assert.NotNil(t, obj) {
 		return

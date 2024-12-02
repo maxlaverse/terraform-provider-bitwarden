@@ -13,26 +13,17 @@ import (
 
 func opItemCreate(attrType models.ItemType) passwordManagerOperation {
 	return func(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-		err := d.Set(schema_definition.AttributeObject, models.ObjectTypeItem)
+		err := d.Set(schema_definition.AttributeType, attrType)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
-		err = d.Set(schema_definition.AttributeType, attrType)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-
-		return diag.FromErr(applyOperation(ctx, d, bwClient.CreateObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
+		return diag.FromErr(applyOperation(ctx, d, bwClient.CreateItem, transformation.ItemSchemaToObject, transformation.ItemObjectToSchema))
 	}
 }
 
 func opItemDelete(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeItem)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	return diag.FromErr(applyOperation(ctx, d, withNilReturn(bwClient.DeleteObject), transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
+	return diag.FromErr(applyOperation(ctx, d, withNilReturn(bwClient.DeleteItem), transformation.ItemSchemaToObject, transformation.ItemObjectToSchema))
 }
 
 func opItemImport(attrType models.ItemType) schema.StateContextFunc {
@@ -52,12 +43,7 @@ func opItemImport(attrType models.ItemType) schema.StateContextFunc {
 
 func opItemRead(attrType models.ItemType) passwordManagerOperation {
 	return func(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-		err := d.Set(schema_definition.AttributeObject, models.ObjectTypeItem)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-
-		err = d.Set(schema_definition.AttributeType, attrType)
+		err := d.Set(schema_definition.AttributeType, attrType)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -68,24 +54,16 @@ func opItemRead(attrType models.ItemType) passwordManagerOperation {
 			return diag.FromErr(err)
 		}
 		if _, idProvided := d.GetOk(schema_definition.AttributeID); !idProvided {
-			return diag.FromErr(searchOperation(ctx, d, bwClient.ListObjects, transformation.BaseObjectToSchema))
+			return diag.FromErr(searchOperation(ctx, d, bwClient.FindItem, transformation.ItemObjectToSchema))
 		}
-		return diag.FromErr(applyOperation(ctx, d, bwClient.GetObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
+		return diag.FromErr(applyOperation(ctx, d, bwClient.GetItem, transformation.ItemSchemaToObject, transformation.ItemObjectToSchema))
 	}
 }
 
 func opItemReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeItem)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	return ignoreMissing(ctx, d, applyOperation(ctx, d, bwClient.GetObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
+	return ignoreMissing(ctx, d, applyOperation(ctx, d, bwClient.GetItem, transformation.ItemSchemaToObject, transformation.ItemObjectToSchema))
 }
 
 func opItemUpdate(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeItem)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	return diag.FromErr(applyOperation(ctx, d, bwClient.EditObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
+	return diag.FromErr(applyOperation(ctx, d, bwClient.EditItem, transformation.ItemSchemaToObject, transformation.ItemObjectToSchema))
 }

@@ -11,15 +11,27 @@ const (
 )
 
 type PasswordManager interface {
-	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error)
-	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Object, error)
-	CreateObject(context.Context, models.Object) (*models.Object, error)
+	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error)
+	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Item, error)
+	CreateFolder(context.Context, models.Folder) (*models.Folder, error)
+	CreateItem(context.Context, models.Item) (*models.Item, error)
+	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
-	DeleteObject(context.Context, models.Object) error
-	EditObject(context.Context, models.Object) (*models.Object, error)
+	DeleteFolder(context.Context, models.Folder) error
+	DeleteItem(context.Context, models.Item) error
+	DeleteOrganizationCollection(context.Context, models.OrgCollection) error
+	EditFolder(context.Context, models.Folder) (*models.Folder, error)
+	EditItem(context.Context, models.Item) (*models.Item, error)
+	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	FindFolder(ctx context.Context, options ...ListObjectsOption) (*models.Folder, error)
+	FindItem(ctx context.Context, options ...ListObjectsOption) (*models.Item, error)
+	FindOrganization(ctx context.Context, options ...ListObjectsOption) (*models.Organization, error)
+	FindOrganizationCollection(ctx context.Context, options ...ListObjectsOption) (*models.OrgCollection, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
-	GetObject(context.Context, models.Object) (*models.Object, error)
-	ListObjects(ctx context.Context, objType models.ObjectType, options ...ListObjectsOption) ([]models.Object, error)
+	GetFolder(context.Context, models.Folder) (*models.Folder, error)
+	GetItem(context.Context, models.Item) (*models.Item, error)
+	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
+	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
 	Sync(context.Context) error

@@ -89,8 +89,8 @@ func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 			{
 				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemLoginSmall(),
 				PreConfig: func() {
-					obj := models.Object{ID: objectID, Object: models.ObjectTypeItem}
-					err := bwTestClient(t).DeleteObject(context.Background(), obj)
+					obj := models.Item{ID: objectID, Object: models.ObjectTypeItem}
+					err := bwTestClient(t).DeleteItem(context.Background(), obj)
 					assert.NoError(t, err)
 
 					if useEmbeddedClient {

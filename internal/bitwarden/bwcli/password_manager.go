@@ -13,20 +13,32 @@ import (
 )
 
 type PasswordManagerClient interface {
-	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Object, error)
-	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error)
-	CreateObject(context.Context, models.Object) (*models.Object, error)
-	EditObject(context.Context, models.Object) (*models.Object, error)
+	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Item, error)
+	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error)
+	CreateFolder(context.Context, models.Folder) (*models.Folder, error)
+	CreateItem(context.Context, models.Item) (*models.Item, error)
+	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	EditFolder(context.Context, models.Folder) (*models.Folder, error)
+	EditItem(context.Context, models.Item) (*models.Item, error)
+	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	FindFolder(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Folder, error)
+	FindItem(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Item, error)
+	FindOrganization(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Organization, error)
+	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
-	GetObject(context.Context, models.Object) (*models.Object, error)
+	GetFolder(context.Context, models.Folder) (*models.Folder, error)
+	GetItem(context.Context, models.Item) (*models.Item, error)
+	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
+	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	GetSessionKey() string
 	HasSessionKey() bool
-	ListObjects(ctx context.Context, objType models.ObjectType, options ...bitwarden.ListObjectsOption) ([]models.Object, error)
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
 	Logout(context.Context) error
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
-	DeleteObject(context.Context, models.Object) error
+	DeleteFolder(context.Context, models.Folder) error
+	DeleteItem(context.Context, models.Item) error
+	DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error
 	SetServer(context.Context, string) error
 	SetSessionKey(string)
 	Status(context.Context) (*Status, error)
@@ -84,8 +96,41 @@ func DisableRetryBackoff() Options {
 	}
 }
 
-func (c *client) CreateObject(ctx context.Context, obj models.Object) (*models.Object, error) {
-	obj.Groups = []interface{}{}
+func (c *client) CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
+	return createGenericObject[models.Folder](ctx, c, obj, models.ObjectTypeFolder)
+}
+
+func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
+	return createGenericObject[models.Item](ctx, c, obj, models.ObjectTypeItem)
+}
+
+func (c *client) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error) {
+	return nil, fmt.Errorf("creating attachments from content is only supported by the embedded client")
+}
+
+func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, filePath string) (*models.Item, error) {
+	out, err := c.cmdWithSession("create", string(models.ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).Run(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var obj models.Item
+	err = json.Unmarshal(out, &obj)
+	if err != nil {
+		return nil, err
+	}
+
+	// NOTE(maxime): there is no need to sync after creating an item as the
+	// creation issued an API call on the Vault directly which refreshes the
+	// local cache.
+	return &obj, nil
+}
+
+func (c *client) CreateOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
+	return createGenericObject[models.OrgCollection](ctx, c, obj, models.ObjectTypeOrgCollection)
+}
+
+func createGenericObject[T any](ctx context.Context, c *client, obj T, objectType models.ObjectType) (*T, error) {
 	objEncoded, err := c.encode(obj)
 	if err != nil {
 		return nil, err
@@ -93,14 +138,14 @@ func (c *client) CreateObject(ctx context.Context, obj models.Object) (*models.O
 
 	args := []string{
 		"create",
-		string(obj.Object),
+		string(objectType),
 		objEncoded,
 	}
 
-	if obj.Object == models.ObjectTypeOrgCollection {
-		args = append(args, "--organizationid", obj.OrganizationID)
+	switch orgObj := any(obj).(type) {
+	case models.OrgCollection:
+		args = append(args, "--organizationid", orgObj.OrganizationID)
 	}
-
 	out, err := c.cmdWithSession(args...).Run(ctx)
 	if err != nil {
 		return nil, err
@@ -110,34 +155,25 @@ func (c *client) CreateObject(ctx context.Context, obj models.Object) (*models.O
 		return nil, newUnmarshallError(err, args[0:2], out)
 	}
 
-	// NOTE(maxime): there is no need to sync after creating an item
-	// as the creation issued an API call on the Vault directly.
+	// NOTE(maxime): there is no need to sync after creating an item as the
+	// creation issued an API call on the Vault directly which refreshes the
+	// local cache.
 	return &obj, nil
 }
 
-func (c *client) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error) {
-	return nil, fmt.Errorf("creating attachments from content is only supported by the embedded client")
+func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
+	return editGenericObject[models.Folder](ctx, c, obj, obj.Object, obj.ID)
 }
 
-func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, filePath string) (*models.Object, error) {
-	out, err := c.cmdWithSession("create", string(models.ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).Run(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var obj models.Object
-	err = json.Unmarshal(out, &obj)
-	if err != nil {
-		return nil, err
-	}
-
-	// NOTE(maxime): there is no need to sync after creating an item
-	// as the creation issued an API call on the Vault directly.
-	return &obj, nil
+func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
+	return editGenericObject[models.Item](ctx, c, obj, obj.Object, obj.ID)
 }
 
-func (c *client) EditObject(ctx context.Context, obj models.Object) (*models.Object, error) {
-	obj.Groups = []interface{}{}
+func (c *client) EditOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
+	return editGenericObject[models.OrgCollection](ctx, c, obj, obj.Object, obj.ID)
+}
+
+func editGenericObject[T any](ctx context.Context, c *client, obj T, objectType models.ObjectType, id string) (*T, error) {
 	objEncoded, err := c.encode(obj)
 	if err != nil {
 		return nil, err
@@ -145,13 +181,15 @@ func (c *client) EditObject(ctx context.Context, obj models.Object) (*models.Obj
 
 	args := []string{
 		"edit",
-		string(obj.Object),
-		obj.ID,
+		string(objectType),
+		id,
 	}
 
-	if obj.Object == models.ObjectTypeOrgCollection {
-		args = append(args, "--organizationid", obj.OrganizationID)
+	switch orgObj := any(obj).(type) {
+	case models.OrgCollection:
+		args = append(args, "--organizationid", orgObj.OrganizationID)
 	}
+
 	args = append(args, []string{objEncoded}...)
 
 	out, err := c.cmdWithSession(args...).Run(ctx)
@@ -170,17 +208,48 @@ func (c *client) EditObject(ctx context.Context, obj models.Object) (*models.Obj
 	return &obj, nil
 }
 
-func (c *client) GetObject(ctx context.Context, obj models.Object) (*models.Object, error) {
-	args := []string{
-		"get",
-		string(obj.Object),
-		obj.ID,
+func (c *client) GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error) {
+	out, err := c.cmdWithSession("get", string(models.ObjectTypeAttachment), attachmentId, "--itemid", itemId, "--raw").Run(ctx)
+	if err != nil {
+		return nil, remapError(err)
 	}
 
-	desiredObjType := obj.Type
+	return out, nil
+}
 
-	if obj.Object == models.ObjectTypeOrgCollection {
-		args = append(args, "--organizationid", obj.OrganizationID)
+func (c *client) GetFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
+	return getGenericObject[models.Folder](ctx, c, obj, obj.Object, obj.ID)
+}
+
+func (c *client) GetItem(ctx context.Context, obj models.Item) (*models.Item, error) {
+	return getGenericObject[models.Item](ctx, c, obj, obj.Object, obj.ID)
+}
+
+func (c *client) GetOrganization(ctx context.Context, obj models.Organization) (*models.Organization, error) {
+	return getGenericObject[models.Organization](ctx, c, obj, obj.Object, obj.ID)
+}
+
+func (c *client) GetOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
+	return getGenericObject[models.OrgCollection](ctx, c, obj, obj.Object, obj.ID)
+}
+
+func getGenericObject[T any](ctx context.Context, c *client, obj T, objectType models.ObjectType, id string) (*T, error) {
+	args := []string{
+		"get",
+		string(objectType),
+		id,
+	}
+
+	switch orgObj := any(obj).(type) {
+	case models.OrgCollection:
+		args = append(args, "--organizationid", orgObj.OrganizationID)
+	}
+
+	var desiredObjType models.ItemType
+
+	switch itemObj := any(obj).(type) {
+	case models.Item:
+		desiredObjType = itemObj.Type
 	}
 
 	out, err := c.cmdWithSession(args...).Run(ctx)
@@ -193,28 +262,37 @@ func (c *client) GetObject(ctx context.Context, obj models.Object) (*models.Obje
 		return nil, newUnmarshallError(err, args[0:2], out)
 	}
 
-	if desiredObjType > 0 && obj.Type != desiredObjType {
-		return nil, models.ErrItemTypeMismatch
+	switch itemObj := any(obj).(type) {
+	case models.Item:
+		if desiredObjType > 0 && itemObj.Type != desiredObjType {
+			return nil, models.ErrItemTypeMismatch
+		}
 	}
 
 	return &obj, nil
-}
-
-func (c *client) GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error) {
-	out, err := c.cmdWithSession("get", string(models.ObjectTypeAttachment), attachmentId, "--itemid", itemId, "--raw").Run(ctx)
-	if err != nil {
-		return nil, remapError(err)
-	}
-
-	return out, nil
 }
 
 func (c *client) GetSessionKey() string {
 	return c.sessionKey
 }
 
-// ListObjects returns objects of a given type matching given filters.
-func (c *client) ListObjects(ctx context.Context, objType models.ObjectType, options ...bitwarden.ListObjectsOption) ([]models.Object, error) {
+func (c *client) FindFolder(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Folder, error) {
+	return findGenericObject[models.Folder](ctx, c, models.ObjectTypeFolder, options...)
+}
+
+func (c *client) FindItem(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Item, error) {
+	return findGenericObject[models.Item](ctx, c, models.ObjectTypeItem, options...)
+}
+
+func (c *client) FindOrganization(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Organization, error) {
+	return findGenericObject[models.Organization](ctx, c, models.ObjectTypeOrganization, options...)
+}
+
+func (c *client) FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error) {
+	return findGenericObject[models.OrgCollection](ctx, c, models.ObjectTypeOrgCollection, options...)
+}
+
+func findGenericObject[T any](ctx context.Context, c *client, objType models.ObjectType, options ...bitwarden.ListObjectsOption) (*T, error) {
 	args := []string{
 		"list",
 		fmt.Sprintf("%ss", objType),
@@ -227,22 +305,19 @@ func (c *client) ListObjects(ctx context.Context, objType models.ObjectType, opt
 		return nil, remapError(err)
 	}
 
-	var objs []models.Object
+	var objs []T
 	err = json.Unmarshal(out, &objs)
 	if err != nil {
 		return nil, newUnmarshallError(err, args[0:2], out)
 	}
 
-	filters := bitwarden.ListObjectsOptionsToFilterOptions(options...)
-	filteredObj := []models.Object{}
-	for _, obj := range objs {
-		if filters.ItemType != 0 && obj.Type != filters.ItemType {
-			continue
-		}
-		filteredObj = append(filteredObj, obj)
+	if len(objs) == 0 {
+		return nil, models.ErrNoObjectFoundMatchingFilter
+	} else if len(objs) > 1 {
+		return nil, models.ErrTooManyObjectsFound
 	}
 
-	return filteredObj, nil
+	return &objs[0], nil
 }
 
 // LoginWithPassword logs in using a password and retrieves the session key,
@@ -271,18 +346,18 @@ func (c *client) Logout(ctx context.Context) error {
 	return err
 }
 
-func (c *client) DeleteObject(ctx context.Context, obj models.Object) error {
-	args := []string{
-		"delete",
-		string(obj.Object),
-		obj.ID,
-	}
+func (c *client) DeleteFolder(ctx context.Context, obj models.Folder) error {
+	_, err := c.cmdWithSession("delete", string(models.ObjectTypeFolder), obj.ID).Run(ctx)
+	return err
+}
 
-	if obj.Object == models.ObjectTypeOrgCollection {
-		args = append(args, "--organizationid", obj.OrganizationID)
-	}
+func (c *client) DeleteItem(ctx context.Context, obj models.Item) error {
+	_, err := c.cmdWithSession("delete", string(models.ObjectTypeItem), obj.ID).Run(ctx)
+	return err
+}
 
-	_, err := c.cmdWithSession(args...).Run(ctx)
+func (c *client) DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error {
+	_, err := c.cmdWithSession("delete", string(models.ObjectTypeItem), obj.ID, "--organizationid", obj.OrganizationID).Run(ctx)
 	return err
 }
 
@@ -358,7 +433,7 @@ func (c *client) env() []string {
 	return defaultEnv
 }
 
-func (c *client) encode(item models.Object) (string, error) {
+func (c *client) encode(item interface{}) (string, error) {
 	newOut, err := json.Marshal(item)
 	if err != nil {
 		return "", fmt.Errorf("marshalling error: %v, %v", err, string(newOut))

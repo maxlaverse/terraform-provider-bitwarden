@@ -12,14 +12,14 @@ import (
 
 func TestCreateObjectEncoding(t *testing.T) {
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJncm91cHMiOltdLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwidHlwZSI6MX0": `{}`,
+		"create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwidHlwZSI6MX0": `{}`,
 	})
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient("dummy")
-	_, err := b.CreateObject(context.Background(), models.Object{
-		Type:   models.ItemTypeLogin,
+	_, err := b.CreateItem(context.Background(), models.Item{
 		Object: models.ObjectTypeItem,
+		Type:   models.ItemTypeLogin,
 		Fields: []models.Field{
 			{
 				Name:  "test",
@@ -31,18 +31,18 @@ func TestCreateObjectEncoding(t *testing.T) {
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
-		assert.Equal(t, "create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJncm91cHMiOltdLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwidHlwZSI6MX0", commandsExecuted()[0])
+		assert.Equal(t, "create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwidHlwZSI6MX0", commandsExecuted()[0])
 	}
 }
 
 func TestListObjects(t *testing.T) {
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"list items --folderid folder-id --collectionid collection-id --search search": `[]`,
+		"list items --folderid folder-id --collectionid collection-id --search search": `[{ "id": "object-id" }]`,
 	})
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient("dummy")
-	_, err := b.ListObjects(context.Background(), models.ObjectTypeItem, bitwarden.WithFolderID("folder-id"), bitwarden.WithCollectionID("collection-id"), bitwarden.WithSearch("search"))
+	_, err := b.FindItem(context.Background(), bitwarden.WithFolderID("folder-id"), bitwarden.WithCollectionID("collection-id"), bitwarden.WithSearch("search"))
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
@@ -57,7 +57,7 @@ func TestGetItem(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient("dummy")
-	_, err := b.GetObject(context.Background(), models.Object{ID: "object-id", Object: models.ObjectTypeItem, Type: models.ItemTypeLogin})
+	_, err := b.GetItem(context.Background(), models.Item{ID: "object-id", Object: models.ObjectTypeItem, Type: models.ItemTypeLogin})
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
@@ -72,7 +72,7 @@ func TestGetOrganizationCollection(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient("dummy")
-	_, err := b.GetObject(context.Background(), models.Object{ID: "object-id", Object: models.ObjectTypeOrgCollection, OrganizationID: "org-id"})
+	_, err := b.GetOrganizationCollection(context.Background(), models.OrgCollection{ID: "object-id", Object: models.ObjectTypeOrgCollection, OrganizationID: "org-id"})
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
@@ -87,7 +87,7 @@ func TestErrorContainsCommand(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient("dummy")
-	_, err := b.ListObjects(context.Background(), models.ObjectTypeOrgCollection, bitwarden.WithSearch("search"))
+	_, err := b.FindOrganizationCollection(context.Background(), bitwarden.WithSearch("search"))
 
 	if assert.Error(t, err) {
 		assert.ErrorContains(t, err, "unable to parse result of 'list org-collections', error: 'unexpected end of JSON input', output: ''")

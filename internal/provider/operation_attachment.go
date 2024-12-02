@@ -27,7 +27,7 @@ func opAttachmentCreate(ctx context.Context, d *schema.ResourceData, bwClient bi
 		return diag.FromErr(err)
 	}
 
-	var obj *models.Object
+	var obj *models.Item
 	filePath, fileSpecified := d.GetOk(schema_definition.AttributeAttachmentFile)
 	content, contentSpecified := d.GetOk(schema_definition.AttributeAttachmentContent)
 	fileName, fileNameSpecified := d.GetOk(schema_definition.AttributeAttachmentFileName)
@@ -88,7 +88,7 @@ func opAttachmentRead(ctx context.Context, d *schema.ResourceData, bwClient bitw
 func opAttachmentReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
 
-	obj, err := bwClient.GetObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
+	obj, err := bwClient.GetItem(ctx, models.Item{ID: itemId, Object: models.ObjectTypeItem})
 	if err != nil {
 		// If the item is not found, we can't simply consider the attachment as
 		// deleted, because we won't have an item to attach it to.
@@ -110,7 +110,7 @@ func opAttachmentReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, 
 }
 
 func listExistingAttachments(ctx context.Context, client bitwarden.PasswordManager, itemId string) ([]models.Attachment, error) {
-	obj, err := client.GetObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
+	obj, err := client.GetItem(ctx, models.Item{ID: itemId, Object: models.ObjectTypeItem})
 	if err != nil {
 		return nil, err
 	}

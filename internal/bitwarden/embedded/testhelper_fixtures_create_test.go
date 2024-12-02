@@ -145,7 +145,7 @@ func createOrganizationResources(t *testing.T, account1 string, orgId string) {
 		t.Fatal(err)
 	}
 
-	orgCol, err := vault.CreateObject(ctx, models.Object{
+	orgCol, err := vault.CreateOrganizationCollection(ctx, models.OrgCollection{
 		Object:         models.ObjectTypeOrgCollection,
 		Name:           "org-collection",
 		OrganizationID: orgId,
@@ -154,7 +154,7 @@ func createOrganizationResources(t *testing.T, account1 string, orgId string) {
 		t.Fatal(err)
 	}
 
-	_, err = vault.CreateObject(ctx, models.Object{
+	_, err = vault.CreateItem(ctx, models.Item{
 		Object:         models.ObjectTypeItem,
 		Type:           models.ItemTypeLogin,
 		Name:           "Item in org Vault",
@@ -259,7 +259,7 @@ func createTestAccount(t *testing.T, mockName string, kdfConfig models.KdfConfig
 		return
 	}
 
-	_, err = vault.CreateObject(ctx, models.Object{
+	_, err = vault.CreateItem(ctx, models.Item{
 		Object: models.ObjectTypeItem,
 		Type:   models.ItemTypeLogin,
 		Name:   "Item in own Vault",
@@ -271,7 +271,7 @@ func createTestAccount(t *testing.T, mockName string, kdfConfig models.KdfConfig
 		t.Fatal(err)
 	}
 
-	_, err = vault.CreateObject(ctx, models.Object{
+	_, err = vault.CreateFolder(ctx, models.Folder{
 		Object: models.ObjectTypeFolder,
 		Name:   "Folder in own Vault",
 	})
