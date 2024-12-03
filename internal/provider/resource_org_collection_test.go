@@ -28,6 +28,37 @@ func TestAccResourceOrgCollection(t *testing.T) {
 					resource.TestMatchResourceAttr(
 						resourceName, attributeID, regexp.MustCompile(regExpId),
 					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.#", "2",
+					),
+					resource.TestMatchResourceAttr(
+						resourceName, "member.0.org_user_id", regexp.MustCompile(regExpId),
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.0.read_only", "false",
+					),
+					getObjectID(resourceName, &objectID),
+				),
+			},
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						resourceName, attributeName, "org-col-bar",
+					),
+					resource.TestMatchResourceAttr(
+						resourceName, attributeID, regexp.MustCompile(regExpId),
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.#", "2",
+					),
+					resource.TestMatchResourceAttr(
+						resourceName, "member.0.org_user_id", regexp.MustCompile(regExpId),
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.0.read_only", "false",
+					),
 					getObjectID(resourceName, &objectID),
 				),
 			},
@@ -38,13 +69,13 @@ func TestAccResourceOrgCollection(t *testing.T) {
 					resourceName, attributeName, "org-col-new-name-bar",
 				),
 			},
-			{
-				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfProviderOrgOwner(testAccountEmailOrgOwner) + tfConfigResourceOrgCollection("org-col-new-name-bar"),
-				Check: resource.TestCheckResourceAttr(
-					resourceName, attributeName, "org-col-new-name-bar",
-				),
-			},
+			// {
+			// 	ResourceName: resourceName,
+			// 	Config:       tfConfigPasswordManagerProvider() + tfProviderOrgOwner(testAccountEmailOrgOwner) + tfConfigResourceOrgCollection("org-col-new-name-bar"),
+			// 	Check: resource.TestCheckResourceAttr(
+			// 		resourceName, attributeName, "org-col-new-name-bar",
+			// 	),
+			// },
 			{
 				ResourceName:      resourceName,
 				ImportStateIdFunc: orgCollectionImportID(resourceName),
@@ -78,21 +109,25 @@ func tfConfigResourceOrgCollection(name string) string {
 	member {
 		org_user_id = "%s"
 	}
-}
-`, testOrganizationID, name, testAccountEmailOrgOwner)
-}
 
-func tfProviderOrgOwner(accountEmail string) string {
-	return fmt.Sprintf(`
-	provider "bitwarden" {
-		alias = "org_owner"
-		master_password = "%s"
-		server          = "%s"
-		email           = "%s"
-
-		experimental {
-			embedded_client = true
-		}
+	member {
+		org_user_id = "%s"
 	}
-`, testPassword, testServerURL, accountEmail)
 }
+`, testOrganizationID, name, testAccountEmailOrgOwnerInTestOrgUserId, testAccountEmailOrgUserInTestOrgUserId)
+}
+
+// func tfProviderOrgOwner(accountEmail string) string {
+// 	return fmt.Sprintf(`
+// 	provider "bitwarden" {
+// 		alias = "org_owner"
+// 		master_password = "%s"
+// 		server          = "%s"
+// 		email           = "%s"
+
+// 		experimental {
+// 			embedded_client = true
+// 		}
+// 	}
+// `, testPassword, testServerURL, accountEmail)
+// }

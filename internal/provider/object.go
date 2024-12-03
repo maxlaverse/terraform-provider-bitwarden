@@ -11,9 +11,12 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
 
 type objectOperationFunc func(ctx context.Context, secret models.Object) (*models.Object, error)
+
+type orgCollectionOperationFunc func(ctx context.Context, secret webapi.CollectionAccessDetails) (*webapi.CollectionAccessDetails, error)
 
 func objectCreate(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	return diag.FromErr(objectOperation(ctx, d, bwClient.CreateObject))
@@ -122,6 +125,19 @@ func objectOperation(ctx context.Context, d *schema.ResourceData, operation obje
 	}
 
 	return objectDataFromStruct(ctx, d, obj)
+}
+
+func orgCollectionCreate(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
+	return diag.FromErr(orgCollectionOperation(ctx, d, bwClient.CreateOrgCollection))
+}
+
+func orgCollectionOperation(ctx context.Context, d *schema.ResourceData, operation orgCollectionOperationFunc) error {
+	obj, err := operation(ctx, orgCollectionStructFromData(ctx, d))
+	if err != nil {
+		return err
+	}
+
+	return orgCollectionDataFromStruct(ctx, d, obj)
 }
 
 func objectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *models.Object) error {
@@ -241,6 +257,74 @@ func objectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *mode
 	}
 
 	return nil
+}
+
+func orgCollectionDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *webapi.CollectionAccessDetails) error {
+	if obj == nil {
+		// Object has been deleted
+		return nil
+	}
+
+	d.SetId(obj.Id)
+
+	err := d.Set(attributeName, obj.Name)
+	if err != nil {
+		return err
+	}
+
+	err = d.Set(attributeObject, obj.Object)
+	if err != nil {
+		return err
+	}
+
+	err = d.Set(attributeOrganizationID, obj.OrganizationId)
+	if err != nil {
+		return err
+	}
+
+	users := make([]interface{}, len(obj.Users))
+	for k, v := range obj.Users {
+		users[k] = map[string]interface{}{
+			"org_user_id": v.Id,
+			"read_only":   v.ReadOnly,
+		}
+	}
+
+	err = d.Set(attributeMember, users)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func orgCollectionStructFromData(ctx context.Context, d *schema.ResourceData) webapi.CollectionAccessDetails {
+	var obj webapi.CollectionAccessDetails
+
+	obj.Id = d.Id()
+	if v, ok := d.Get(attributeName).(string); ok {
+		obj.Name = v
+	}
+
+	if v, ok := d.Get(attributeObject).(string); ok {
+		obj.Object = models.ObjectType(v)
+	}
+
+	if v, ok := d.Get(attributeOrganizationID).(string); ok {
+		obj.OrganizationId = v
+	}
+
+	if v, ok := d.Get(attributeMember).([]interface{}); ok {
+		obj.Users = make([]webapi.CollectionUser, len(v))
+		for k, v2 := range v {
+			obj.Users[k] = webapi.CollectionUser{
+				Id:       v2.(map[string]interface{})["org_user_id"].(string),
+				ReadOnly: v2.(map[string]interface{})["read_only"].(bool),
+			}
+		}
+	}
+
+	return obj
 }
 
 func objectStructFromData(ctx context.Context, d *schema.ResourceData) models.Object {

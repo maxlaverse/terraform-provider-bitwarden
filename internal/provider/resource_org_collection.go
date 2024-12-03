@@ -16,8 +16,8 @@ func resourceOrgCollection() *schema.Resource {
 		Description: "Manages an organization collection.",
 
 		CreateContext: withPasswordManager(resourceCreateOrgCollection),
-		ReadContext:   withPasswordManager(resourceReadObjectIgnoreMissing),
-		UpdateContext: withPasswordManager(resourceUpdateObject),
+		ReadContext:   withPasswordManager(resourceReadCollectionIgnoreMissing),
+		UpdateContext: withPasswordManager(resourceUpdateOrgCollection),
 		DeleteContext: withPasswordManager(resourceDeleteObject),
 		Importer:      resourceImporter(resourceImportOrgCollection),
 
@@ -31,7 +31,7 @@ func resourceCreateOrgCollection(ctx context.Context, d *schema.ResourceData, bw
 		return diag.FromErr(err)
 	}
 
-	return objectCreate(ctx, d, bwClient)
+	return orgCollectionCreate(ctx, d, bwClient)
 }
 
 func resourceImportOrgCollection(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {

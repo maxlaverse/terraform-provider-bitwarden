@@ -289,3 +289,30 @@ type AccessPoliciesRequests struct {
 	GroupAccessPolicyRequests          []interface{} `json:"groupAccessPolicyRequests"`
 	ServiceAccountAccessPolicyRequests []interface{} `json:"serviceAccountAccessPolicyRequests"`
 }
+
+type CollectionAccessDetails struct {
+	Assigned       bool              `json:"assigned"`
+	ExternalId     string            `json:"externalId"`
+	Groups         []string          `json:"groups"`
+	HidePasswords  bool              `json:"hidePasswords"`
+	Id             string            `json:"id"`
+	Manage         bool              `json:"manage"`
+	Name           string            `json:"name"`
+	Object         models.ObjectType `json:"object"`
+	OrganizationId string            `json:"organizationId"`
+	ReadOnly       bool              `json:"readOnly"`
+	Unmanaged      bool              `json:"unmanaged"`
+	Users          []CollectionUser  `json:"users"`
+}
+
+type CollectionUser struct {
+	HidePasswords bool   `json:"hidePasswords"`
+	Id            string `json:"id"`
+	ReadOnly      bool   `json:"readOnly"`
+}
+
+type CollectionAccessResponse struct {
+	ContinuationToken string                    `json:"continuationToken"`
+	Data              []CollectionAccessDetails `json:"data"`
+	Object            models.ObjectType         `json:"object"`
+}

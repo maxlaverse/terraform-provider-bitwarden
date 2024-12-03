@@ -9,6 +9,7 @@ import (
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
 )
 
@@ -17,6 +18,7 @@ type PasswordManagerClient interface {
 	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error)
 	CreateObject(context.Context, models.Object) (*models.Object, error)
 	EditObject(context.Context, models.Object) (*models.Object, error)
+	EditOrgCollection(ctx context.Context, collection webapi.CollectionAccessDetails) (*webapi.CollectionAccessDetails, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	GetObject(context.Context, models.Object) (*models.Object, error)
 	GetSessionKey() string
@@ -201,6 +203,18 @@ func (c *client) GetAttachment(ctx context.Context, itemId, attachmentId string)
 	}
 
 	return out, nil
+}
+
+func (c *client) GetCollection(ctx context.Context, collection webapi.CollectionAccessDetails) (*webapi.CollectionAccessDetails, error) {
+	return nil, fmt.Errorf("getting collection is only supported by the embedded client")
+}
+
+func (c *client) CreateOrgCollection(ctx context.Context, collection webapi.CollectionAccessDetails) (*webapi.CollectionAccessDetails, error) {
+	return nil, fmt.Errorf("getting collection is only supported by the embedded client")
+}
+
+func (c *client) EditOrgCollection(ctx context.Context, collection webapi.CollectionAccessDetails) (*webapi.CollectionAccessDetails, error) {
+	return nil, fmt.Errorf("getting collection is only supported by the embedded client")
 }
 
 func (c *client) GetSessionKey() string {

@@ -165,6 +165,33 @@ func decryptAccountSecrets(account Account, password string) (*AccountSecrets, e
 	}, nil
 }
 
+func decryptOrgCollection(obj webapi.CollectionAccessDetails, secret AccountSecrets) (*webapi.CollectionAccessDetails, error) {
+	orgKey, err := secret.GetOrganizationKey(obj.OrganizationId)
+	if err != nil {
+		return nil, err
+	}
+
+	decName, err := decryptStringIfNotEmpty(obj.Name, *orgKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting collection name: %w", err)
+	}
+
+	return &webapi.CollectionAccessDetails{
+		Assigned:       obj.Assigned,
+		ExternalId:     obj.ExternalId,
+		Groups:         obj.Groups,
+		HidePasswords:  obj.HidePasswords,
+		Id:             obj.Id,
+		Manage:         obj.Manage,
+		Name:           decName,
+		Object:         models.ObjectTypeOrgCollection, // override
+		OrganizationId: obj.OrganizationId,
+		ReadOnly:       obj.ReadOnly,
+		Unmanaged:      obj.Unmanaged,
+		Users:          obj.Users,
+	}, nil
+}
+
 func decryptCollection(obj webapi.Collection, secret AccountSecrets) (*models.Object, error) {
 	orgKey, err := secret.GetOrganizationKey(obj.OrganizationId)
 	if err != nil {
@@ -379,18 +406,74 @@ func encryptCollection(_ context.Context, obj models.Object, secret AccountSecre
 			Name:           encObj.Name,
 			OrganizationId: obj.OrganizationID,
 		}
-		objForVerification, err := decryptCollection(encObjModified, secret)
+		actualObj, err := decryptCollection(encObjModified, secret)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting collection for verification: %w", err)
 		}
 
-		objForVerification.Key = ""
+		actualObj.Key = ""
 
-		err = compareObjects(obj, *objForVerification)
+		err = compareObjects(obj, *actualObj)
 		if err != nil {
 			return nil, fmt.Errorf("error verifying collection after encryption: %w", err)
 		}
 	}
+
+	return &encObj, nil
+
+}
+
+func encryptOrgCollection(_ context.Context, obj webapi.CollectionAccessDetails, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.OrganizationCreationRequest, error) {
+	orgKey, err := secret.GetOrganizationKey(obj.OrganizationId)
+	if err != nil {
+		return nil, err
+	}
+
+	collectionName := obj.Name
+	if len(collectionName) == 0 {
+		return nil, fmt.Errorf("collection name is empty")
+	}
+
+	collectionName, err = crypto.EncryptAsString([]byte(collectionName), *orgKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting collection: %w", err)
+	}
+
+	users := make([]webapi.OrganizationUser, len(obj.Users))
+	for k, f := range obj.Users {
+		users[k] = webapi.OrganizationUser{
+			Id:       f.Id,
+			ReadOnly: f.ReadOnly,
+		}
+	}
+	encObj := webapi.OrganizationCreationRequest{
+		Name:  collectionName,
+		Users: users,
+		// Users: []webapi.OrganizationUser{
+		// 	{
+		// 		Id: secret.OrganizationSecrets[obj.OrganizationID].OrganizationUserId,
+		// 	},
+		// },
+		Groups: []string{},
+	}
+	// if verifyObjectEncryption {
+	// 	encObjModified := webapi.Collection{
+	// 		Id:             obj.Id,
+	// 		Name:           encObj.Name,
+	// 		OrganizationId: obj.OrganizationId,
+	// 	}
+	// 	actualObj, err := decryptCollection(encObjModified, secret)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("error decrypting collection for verification: %w", err)
+	// 	}
+
+	// 	actualObj.Key = ""
+
+	// 	err = compareObjects(obj, *actualObj)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("error verifying collection after encryption: %w", err)
+	// 	}
+	// }
 
 	return &encObj, nil
 
@@ -410,12 +493,12 @@ func encryptFolder(_ context.Context, obj models.Object, secret AccountSecrets, 
 	}
 
 	if verifyObjectEncryption {
-		objForVerification, err := decryptFolder(encFolder, secret)
+		actualObj, err := decryptFolder(encFolder, secret)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting folder for verification: %w", err)
 		}
 
-		err = compareObjects(obj, *objForVerification)
+		err = compareObjects(obj, *actualObj)
 		if err != nil {
 			return nil, fmt.Errorf("error verifying folder after encryption: %w", err)
 		}
@@ -519,14 +602,14 @@ func encryptItem(_ context.Context, obj models.Object, secret AccountSecrets, ve
 	}
 
 	if verifyObjectEncryption {
-		objForVerification, err := decryptItem(encObj, secret)
+		actualObj, err := decryptItem(encObj, secret)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting item for verification: %w", err)
 		}
 
-		objForVerification.Key = ""
+		actualObj.Key = ""
 
-		err = compareObjects(obj, *objForVerification)
+		err = compareObjects(obj, *actualObj)
 		if err != nil {
 			return nil, fmt.Errorf("error verifying item after encryption: %w", err)
 		}
@@ -770,18 +853,18 @@ func matchHost(url1, url2 string) (bool, error) {
 	return len(parsedUrl1.Host) > 0 && parsedUrl1.Host == parsedUrl2.Host, nil
 }
 
-func compareObjects[T any](obj1, obj2 T) error {
-	out1, err := json.Marshal(obj1)
+func compareObjects[T any](expected, actual T) error {
+	out1, err := json.Marshal(expected)
 	if err != nil {
-		err := fmt.Errorf("error marshalling obj1 while comparing: %w", err)
+		err := fmt.Errorf("error marshalling expected while comparing: %w", err)
 		if panicOnEncryptionErrors {
 			panic(err)
 		}
 		return err
 	}
-	out2, err := json.Marshal(obj2)
+	out2, err := json.Marshal(actual)
 	if err != nil {
-		err := fmt.Errorf("error marshalling obj2 while comparing: %w", err)
+		err := fmt.Errorf("error marshalling actual while comparing: %w", err)
 		if panicOnEncryptionErrors {
 			panic(err)
 		}
@@ -790,8 +873,8 @@ func compareObjects[T any](obj1, obj2 T) error {
 
 	if !bytes.Equal(out1, out2) {
 		err := fmt.Errorf("object comparison failed")
-		fmt.Printf("Object1: %s\n", string(out1))
-		fmt.Printf("Object2: %s\n", string(out2))
+		fmt.Printf("Expected: %s\n", string(out1))
+		fmt.Printf("Actual: %s\n", string(out2))
 		if panicOnEncryptionErrors {
 			panic(err)
 		}

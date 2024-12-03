@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
 
 func resourceCreateObject(attrObject models.ObjectType, attrType models.ItemType) passwordManagerOperation {
@@ -24,6 +25,26 @@ func resourceCreateObject(attrObject models.ObjectType, attrType models.ItemType
 
 		return objectCreate(ctx, d, bwClient)
 	}
+}
+
+func resourceReadCollectionIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
+	err := orgCollectionOperation(ctx, d, func(ctx context.Context, secret webapi.CollectionAccessDetails) (*webapi.CollectionAccessDetails, error) {
+		return bwClient.GetCollection(ctx, secret)
+	})
+
+	if errors.Is(err, models.ErrObjectNotFound) {
+		d.SetId("")
+		tflog.Warn(ctx, "Object not found, removing from state")
+		return diag.Diagnostics{}
+	}
+
+	if _, exists := d.GetOk(attributeDeletedDate); exists {
+		d.SetId("")
+		tflog.Warn(ctx, "Object was soft deleted, removing from state")
+		return diag.Diagnostics{}
+	}
+
+	return diag.FromErr(err)
 }
 
 func resourceReadObjectIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
@@ -48,6 +69,10 @@ func resourceReadObjectIgnoreMissing(ctx context.Context, d *schema.ResourceData
 
 func resourceUpdateObject(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	return diag.FromErr(objectOperation(ctx, d, bwClient.EditObject))
+}
+
+func resourceUpdateOrgCollection(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
+	return diag.FromErr(orgCollectionOperation(ctx, d, bwClient.EditOrgCollection))
 }
 
 func resourceDeleteObject(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {

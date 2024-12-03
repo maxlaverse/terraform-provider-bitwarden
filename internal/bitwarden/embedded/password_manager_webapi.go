@@ -24,13 +24,16 @@ type PasswordManagerClient interface {
 	ConfirmInvite(ctx context.Context, orgId, userEmail string) (string, error)
 	CreateObject(ctx context.Context, obj models.Object) (*models.Object, error)
 	CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error)
+	CreateOrgCollection(ctx context.Context, collection webapi.CollectionAccessDetails) (*webapi.CollectionAccessDetails, error)
 	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error)
 	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Object, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteObject(ctx context.Context, obj models.Object) error
 	EditObject(ctx context.Context, obj models.Object) (*models.Object, error)
+	EditOrgCollection(ctx context.Context, collection webapi.CollectionAccessDetails) (*webapi.CollectionAccessDetails, error)
 	GetAPIKey(ctx context.Context, username, password string) (*models.ApiKey, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
+	GetCollection(ctx context.Context, collection webapi.CollectionAccessDetails) (*webapi.CollectionAccessDetails, error)
 	InviteUser(ctx context.Context, orgId, userEmail string, memberRoleType models.OrgMemberRoleType) error
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
@@ -156,6 +159,23 @@ func (v *webAPIVault) CreateAttachmentFromFile(ctx context.Context, itemId, file
 	}
 
 	return v.createAttachment(ctx, itemId, filename, data)
+}
+
+func (v *webAPIVault) GetCollection(ctx context.Context, collection2 webapi.CollectionAccessDetails) (*webapi.CollectionAccessDetails, error) {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	details, err := v.client.GetCollectionDetails(ctx, collection2.OrganizationId)
+	if err != nil {
+		return nil, fmt.Errorf("error reading collection details: %w", err)
+	}
+	for _, collection := range details {
+		if collection.Id == collection2.Id {
+			return decryptOrgCollection(collection, v.loginAccount.Secrets)
+		}
+	}
+
+	return nil, fmt.Errorf("collection not found")
 }
 
 func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename string, content []byte) (*models.Object, error) {
@@ -288,6 +308,124 @@ func (v *webAPIVault) CreateObject(ctx context.Context, obj models.Object) (*mod
 		return remoteObj, compareObjects(*resObj, *remoteObj)
 	}
 	return resObj, nil
+}
+
+func (v *webAPIVault) CreateOrgCollection(ctx context.Context, obj webapi.CollectionAccessDetails) (*webapi.CollectionAccessDetails, error) {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if !v.objectsLoaded() {
+		return nil, models.ErrVaultLocked
+	}
+
+	// var resObj *webapi.CollectionAccessDetails
+
+	encObj, err := encryptOrgCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting collection for creation: %w", err)
+	}
+
+	resEncCollection2, err := v.client.CreateOrgCollection(ctx, obj.OrganizationId, *encObj)
+	if err != nil {
+		return nil, fmt.Errorf("error creating collection: %w", err)
+	}
+
+	details, err := v.client.GetCollectionDetails(ctx, obj.OrganizationId)
+	if err != nil {
+		return nil, fmt.Errorf("error reading collection details: %w", err)
+	}
+	for _, collection := range details {
+		if collection.Id == resEncCollection2.Id {
+			return decryptOrgCollection(collection, v.loginAccount.Secrets)
+		}
+	}
+	// resObj, err = decryptOrgCollection(*resEncCollection, v.loginAccount.Secrets)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error decrypting collection after creation: %w", err)
+	// }
+
+	// v.storeObject(ctx, *resObj)
+
+	// if v.syncAfterWrite {
+	// 	err := v.sync(ctx)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("sync-after-write error: %w", err)
+	// 	}
+
+	// 	remoteObj, err := v.GetCollection(ctx, resObj.OrganizationID, resObj.ID)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("error getting object after creation (sync-after-write): %w", err)
+	// 	}
+
+	// 	// NOTE: The official Bitwarden server returns dates that are a few milliseconds apart
+	// 	//       between the object's creation call and a later retrieval. We need to ignore
+	// 	//       these differences in the diff.
+	// 	// resObj.CreationDate = remoteObj.CreationDate
+	// 	// resObj.RevisionDate = remoteObj.RevisionDate
+
+	// 	return remoteObj, compareObjects(*resObj, *remoteObj)
+	// }
+	// return resObj, nil
+	return nil, fmt.Errorf("not found after creation")
+}
+
+func (v *webAPIVault) EditOrgCollection(ctx context.Context, obj webapi.CollectionAccessDetails) (*webapi.CollectionAccessDetails, error) {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if !v.objectsLoaded() {
+		return nil, models.ErrVaultLocked
+	}
+
+	// var resObj *webapi.CollectionAccessDetails
+
+	encObj, err := encryptOrgCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting collection for creation: %w", err)
+	}
+
+	resEncCollection2, err := v.client.EditOrgCollection(ctx, obj.OrganizationId, obj.Id, *encObj)
+	if err != nil {
+		return nil, fmt.Errorf("error creating collection: %w", err)
+	}
+
+	details, err := v.client.GetCollectionDetails(ctx, obj.OrganizationId)
+	if err != nil {
+		return nil, fmt.Errorf("error reading collection details: %w", err)
+	}
+	for _, collection := range details {
+		if collection.Id == resEncCollection2.Id {
+			return decryptOrgCollection(collection, v.loginAccount.Secrets)
+		}
+	}
+	// resObj, err = decryptOrgCollection(*resEncCollection, v.loginAccount.Secrets)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error decrypting collection after creation: %w", err)
+	// }
+
+	// v.storeObject(ctx, *resObj)
+
+	// if v.syncAfterWrite {
+	// 	err := v.sync(ctx)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("sync-after-write error: %w", err)
+	// 	}
+
+	// 	remoteObj, err := v.GetCollection(ctx, resObj.OrganizationID, resObj.ID)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("error getting object after creation (sync-after-write): %w", err)
+	// 	}
+
+	// 	// NOTE: The official Bitwarden server returns dates that are a few milliseconds apart
+	// 	//       between the object's creation call and a later retrieval. We need to ignore
+	// 	//       these differences in the diff.
+	// 	// resObj.CreationDate = remoteObj.CreationDate
+	// 	// resObj.RevisionDate = remoteObj.RevisionDate
+
+	// 	return remoteObj, compareObjects(*resObj, *remoteObj)
+	// }
+	// return resObj, nil
+	return nil, fmt.Errorf("not found after creation")
 }
 
 func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error) {

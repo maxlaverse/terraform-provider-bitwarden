@@ -48,6 +48,7 @@ type Client interface {
 	EditProject(context.Context, models.Project) (*models.Project, error)
 	EditSecret(ctx context.Context, secret models.Secret) (*Secret, error)
 	GetAPIKey(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*ApiKey, error)
+	GetCollectionDetails(ctx context.Context, orgID string) ([]CollectionAccessDetails, error)
 	GetCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error)
 	GetContentFromURL(ctx context.Context, url string) ([]byte, error)
 	GetObjectAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
@@ -367,6 +368,19 @@ func (c *client) GetContentFromURL(ctx context.Context, url string) ([]byte, err
 
 	resp, err := doRequest[[]byte](ctx, c.httpClient, httpReq)
 	return []byte(*resp), err
+}
+
+func (c *client) GetCollectionDetails(ctx context.Context, orgID string) ([]CollectionAccessDetails, error) {
+	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/collections/details", c.serverURL, orgID), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing collection retrieval request: %w", err)
+	}
+
+	resp, err := doRequest[CollectionAccessResponse](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
 }
 
 func (c *client) GetCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error) {
