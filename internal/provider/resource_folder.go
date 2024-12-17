@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func resourceFolder() *schema.Resource {
@@ -19,12 +20,12 @@ func resourceFolder() *schema.Resource {
 		DeleteContext: withPasswordManager(resourceDeleteObject),
 		Importer:      resourceImporter(resourceImportFolder),
 
-		Schema: folderSchema(Resource),
+		Schema: schema_definition.FolderSchema(schema_definition.Resource),
 	}
 }
 
 func resourceCreateFolder(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	err := d.Set(attributeObject, models.ObjectTypeFolder)
+	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeFolder)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -34,7 +35,7 @@ func resourceCreateFolder(ctx context.Context, d *schema.ResourceData, bwClient 
 
 func resourceImportFolder(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	d.SetId(d.Id())
-	err := d.Set(attributeObject, models.ObjectTypeFolder)
+	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeFolder)
 	if err != nil {
 		return nil, err
 	}

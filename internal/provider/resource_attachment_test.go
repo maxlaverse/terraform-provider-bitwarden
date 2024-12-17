@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,10 +31,10 @@ func TestAccResourceAttachment(t *testing.T) {
 				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
-						resourceName, attributeAttachmentFile, regexp.MustCompile(`^34945801b5aed4540ccfde8320ec7c395325e02d$`),
+						resourceName, schema_definition.AttributeAttachmentFile, regexp.MustCompile(`^34945801b5aed4540ccfde8320ec7c395325e02d$`),
 					),
 					resource.TestMatchResourceAttr(
-						resourceName, attributeAttachmentItemID, regexp.MustCompile(regExpId),
+						resourceName, schema_definition.AttributeAttachmentItemID, regexp.MustCompile(regExpId),
 					),
 					checkAttachmentMatches(resourceName, ""),
 				),
@@ -56,10 +57,10 @@ func TestAccResourceAttachment(t *testing.T) {
 				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						resourceName, attributeAttachmentContent, contentHash("Hello, I'm a text attachment"),
+						resourceName, schema_definition.AttributeAttachmentContent, contentHash("Hello, I'm a text attachment"),
 					),
 					resource.TestMatchResourceAttr(
-						resourceName, attributeAttachmentItemID, regexp.MustCompile(regExpId),
+						resourceName, schema_definition.AttributeAttachmentItemID, regexp.MustCompile(regExpId),
 					),
 					checkAttachmentMatches(resourceName, ""),
 				),
@@ -69,7 +70,7 @@ func TestAccResourceAttachment(t *testing.T) {
 				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachmentFromContent("Hello, I'm a text attachment") + tfConfigDataAttachment(),
 				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
 				Check: resource.TestMatchResourceAttr(
-					"data.bitwarden_attachment.foo_data", attributeAttachmentContent, regexp.MustCompile(`^Hello, I'm a text attachment$`),
+					"data.bitwarden_attachment.foo_data", schema_definition.AttributeAttachmentContent, regexp.MustCompile(`^Hello, I'm a text attachment$`),
 				),
 			},
 			{
@@ -155,19 +156,19 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 func checkAttachmentMatches(resourceName, baseAttribute string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, attributeID), regexp.MustCompile("^[a-fA-F0-9]{20}$"),
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeID), regexp.MustCompile("^[a-fA-F0-9]{20}$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, attributeAttachmentFileName), regexp.MustCompile(`^attachment1.txt$`),
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentFileName), regexp.MustCompile(`^attachment1.txt$`),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, attributeAttachmentSize), regexp.MustCompile("^81$"),
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentSize), regexp.MustCompile("^81$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, attributeAttachmentSizeName), regexp.MustCompile(`^81\.00 bytes$`),
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentSizeName), regexp.MustCompile(`^81\.00 bytes$`),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, attributeAttachmentURL), regexp.MustCompile(`^http://127.0.0.1:8080/attachments/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}/[a-fA-F0-9]{20}\?token=.*$`),
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentURL), regexp.MustCompile(`^http://127.0.0.1:8080/attachments/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}/[a-fA-F0-9]{20}\?token=.*$`),
 		),
 	)
 }
@@ -187,7 +188,7 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					compareIdentifier(resourceName, &ID, true),
 					resource.TestMatchResourceAttr(
-						resourceName, attributeAttachmentFile, regexp.MustCompile(`^34945801b5aed4540ccfde8320ec7c395325e02d$`),
+						resourceName, schema_definition.AttributeAttachmentFile, regexp.MustCompile(`^34945801b5aed4540ccfde8320ec7c395325e02d$`),
 					),
 				),
 			},
@@ -198,7 +199,7 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					compareIdentifier(resourceName, &ID, false),
 					resource.TestMatchResourceAttr(
-						resourceName, attributeAttachmentFile, regexp.MustCompile(`^34945801b5aed4540ccfde8320ec7c395325e02d$`),
+						resourceName, schema_definition.AttributeAttachmentFile, regexp.MustCompile(`^34945801b5aed4540ccfde8320ec7c395325e02d$`),
 					),
 				),
 			},
@@ -209,7 +210,7 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					compareIdentifier(resourceName, &ID, true),
 					resource.TestMatchResourceAttr(
-						resourceName, attributeAttachmentFile, regexp.MustCompile(`^5d80a5115d21ca330f0d60e355ed829526dcbb47$`),
+						resourceName, schema_definition.AttributeAttachmentFile, regexp.MustCompile(`^5d80a5115d21ca330f0d60e355ed829526dcbb47$`),
 					),
 				),
 			},

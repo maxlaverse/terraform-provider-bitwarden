@@ -1,41 +1,41 @@
-package provider
+package schema_definition
 
 import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-func secretSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
+func SecretSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 	baseSchema := map[string]*schema.Schema{
-		attributeID: {
-			Description: descriptionIdentifier,
+		AttributeID: {
+			Description: DescriptionIdentifier,
 			Type:        schema.TypeString,
 			Computed:    schemaType == Resource,
 			Optional:    true,
 		},
-		attributeKey: {
-			Description: descriptionName,
+		AttributeKey: {
+			Description: DescriptionName,
 			Type:        schema.TypeString,
 			Optional:    schemaType == DataSource,
 			Required:    schemaType == Resource,
 		},
-		attributeValue: {
-			Description: descriptionValue,
+		AttributeValue: {
+			Description: DescriptionValue,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Required:    schemaType == Resource,
 		},
-		attributeNote: {
-			Description: descriptionNote,
+		AttributeNote: {
+			Description: DescriptionNote,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Required:    schemaType == Resource,
 		},
-		attributeOrganizationID: {
-			Description: descriptionOrganizationID,
+		AttributeOrganizationID: {
+			Description: DescriptionOrganizationID,
 			Type:        schema.TypeString,
 			Computed:    true,
 			Optional:    true,
 		},
-		attributeProjectID: {
-			Description: descriptionProjectID,
+		AttributeProjectID: {
+			Description: DescriptionProjectID,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Required:    schemaType == Resource,
@@ -43,10 +43,10 @@ func secretSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 	}
 
 	if schemaType == DataSource {
-		baseSchema[attributeID].AtLeastOneOf = []string{attributeID, attributeKey}
-		baseSchema[attributeID].ConflictsWith = []string{attributeKey}
-		baseSchema[attributeKey].AtLeastOneOf = []string{attributeID, attributeKey}
-		baseSchema[attributeKey].ConflictsWith = []string{attributeID}
+		baseSchema[AttributeID].AtLeastOneOf = []string{AttributeID, AttributeKey}
+		baseSchema[AttributeID].ConflictsWith = []string{AttributeKey}
+		baseSchema[AttributeKey].AtLeastOneOf = []string{AttributeID, AttributeKey}
+		baseSchema[AttributeKey].ConflictsWith = []string{AttributeID}
 	}
 
 	return baseSchema

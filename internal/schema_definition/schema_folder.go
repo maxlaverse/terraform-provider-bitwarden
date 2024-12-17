@@ -1,48 +1,48 @@
-package provider
+package schema_definition
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func folderSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
+func FolderSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 	base := map[string]*schema.Schema{
-		attributeID: {
-			Description: descriptionIdentifier,
+		AttributeID: {
+			Description: DescriptionIdentifier,
 			Type:        schema.TypeString,
 			Computed:    schemaType == Resource,
 			Optional:    true,
 		},
-		attributeName: {
-			Description: descriptionName,
+		AttributeName: {
+			Description: DescriptionName,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Required:    schemaType == Resource,
 		},
-		attributeObject: {
-			Description: descriptionInternal,
+		AttributeObject: {
+			Description: DescriptionInternal,
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
 	}
 
 	if schemaType == DataSource {
-		base[attributeFilterCollectionId] = &schema.Schema{
-			Description: descriptionFilterCollectionID,
+		base[AttributeFilterCollectionId] = &schema.Schema{
+			Description: DescriptionFilterCollectionID,
 			Type:        schema.TypeString,
 			Optional:    true,
 		}
 
-		base[attributeFilterOrganizationID] = &schema.Schema{
-			Description: descriptionFilterOrganizationID,
+		base[AttributeFilterOrganizationID] = &schema.Schema{
+			Description: DescriptionFilterOrganizationID,
 			Type:        schema.TypeString,
 			Optional:    true,
 		}
 
-		base[attributeFilterSearch] = &schema.Schema{
-			Description:  descriptionFilterSearch,
+		base[AttributeFilterSearch] = &schema.Schema{
+			Description:  DescriptionFilterSearch,
 			Type:         schema.TypeString,
 			Optional:     true,
-			AtLeastOneOf: []string{attributeFilterSearch, attributeID},
+			AtLeastOneOf: []string{AttributeFilterSearch, AttributeID},
 		}
 	}
 

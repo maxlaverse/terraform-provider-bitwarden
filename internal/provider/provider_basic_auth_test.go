@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 const (
@@ -96,7 +97,7 @@ func usernamePasswordTestProvider(email, password string) string {
 func checkResourceId() resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
 		resource.TestMatchResourceAttr(
-			"bitwarden_item_login.foo", attributeID, regexp.MustCompile(regExpId),
+			"bitwarden_item_login.foo", schema_definition.AttributeID, regexp.MustCompile(regExpId),
 		),
 	)
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func TestAccDataSourceOrgCollection(t *testing.T) {
@@ -20,10 +21,10 @@ func TestAccDataSourceOrgCollection(t *testing.T) {
 				Config: tfConfigPasswordManagerProvider() + tfConfigDataOrgCollection(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
-						resourceName, attributeName, regexp.MustCompile("^coll-([0-9]{6})$"),
+						resourceName, schema_definition.AttributeName, regexp.MustCompile("^coll-([0-9]{6})$"),
 					),
 					resource.TestMatchResourceAttr(
-						resourceName, attributeID, regexp.MustCompile(regExpId),
+						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
 					),
 				),
 			},

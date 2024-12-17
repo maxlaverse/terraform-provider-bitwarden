@@ -9,15 +9,16 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func resourceCreateObject(attrObject models.ObjectType, attrType models.ItemType) passwordManagerOperation {
 	return func(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-		err := d.Set(attributeObject, attrObject)
+		err := d.Set(schema_definition.AttributeObject, attrObject)
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		err = d.Set(attributeType, attrType)
+		err = d.Set(schema_definition.AttributeType, attrType)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -37,7 +38,7 @@ func resourceReadObjectIgnoreMissing(ctx context.Context, d *schema.ResourceData
 		return diag.Diagnostics{}
 	}
 
-	if _, exists := d.GetOk(attributeDeletedDate); exists {
+	if _, exists := d.GetOk(schema_definition.AttributeDeletedDate); exists {
 		d.SetId("")
 		tflog.Warn(ctx, "Object was soft deleted, removing from state")
 		return diag.Diagnostics{}
@@ -59,11 +60,11 @@ func resourceDeleteObject(ctx context.Context, d *schema.ResourceData, bwClient 
 func resourceImportObject(attrObject models.ObjectType, attrType models.ItemType) schema.StateContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 		d.SetId(d.Id())
-		err := d.Set(attributeObject, attrObject)
+		err := d.Set(schema_definition.AttributeObject, attrObject)
 		if err != nil {
 			return nil, err
 		}
-		err = d.Set(attributeType, attrType)
+		err = d.Set(schema_definition.AttributeType, attrType)
 		if err != nil {
 			return nil, err
 		}

@@ -1,41 +1,41 @@
-package provider
+package schema_definition
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func orgCollectionSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
+func OrgCollectionSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 	base := map[string]*schema.Schema{
-		attributeID: {
-			Description: descriptionIdentifier,
+		AttributeID: {
+			Description: DescriptionIdentifier,
 			Type:        schema.TypeString,
 			Computed:    schemaType == Resource,
 			Optional:    true,
 		},
-		attributeName: {
-			Description: descriptionName,
+		AttributeName: {
+			Description: DescriptionName,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Required:    schemaType == Resource,
 		},
-		attributeObject: {
-			Description: descriptionInternal,
+		AttributeObject: {
+			Description: DescriptionInternal,
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		attributeOrganizationID: {
-			Description: descriptionOrganizationID,
+		AttributeOrganizationID: {
+			Description: DescriptionOrganizationID,
 			Type:        schema.TypeString,
 			Required:    true,
 		},
 	}
 
 	if schemaType == DataSource {
-		base[attributeFilterSearch] = &schema.Schema{
-			Description:  descriptionFilterSearch,
+		base[AttributeFilterSearch] = &schema.Schema{
+			Description:  DescriptionFilterSearch,
 			Type:         schema.TypeString,
 			Optional:     true,
-			AtLeastOneOf: []string{attributeFilterSearch, attributeID},
+			AtLeastOneOf: []string{AttributeFilterSearch, AttributeID},
 		}
 	}
 

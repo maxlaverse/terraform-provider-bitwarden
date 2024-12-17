@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 type secretOperationFunc func(ctx context.Context, secret models.Secret) (*models.Secret, error)
@@ -49,7 +50,7 @@ func secretCreate(ctx context.Context, d *schema.ResourceData, bwsClient bitward
 }
 
 func secretRead(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	if _, idProvided := d.GetOk(attributeID); !idProvided {
+	if _, idProvided := d.GetOk(schema_definition.AttributeID); !idProvided {
 		return diag.FromErr(secretSearch(ctx, d, bwsClient))
 	}
 
@@ -66,7 +67,7 @@ func secretRead(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden
 }
 
 func secretSearch(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) error {
-	secretKey, ok := d.GetOk(attributeKey)
+	secretKey, ok := d.GetOk(schema_definition.AttributeKey)
 	if !ok {
 		return fmt.Errorf("BUG: secret key not set in the resource data")
 	}
@@ -92,23 +93,23 @@ func secretStructFromData(_ context.Context, d *schema.ResourceData) models.Secr
 	var secret models.Secret
 
 	secret.ID = d.Id()
-	if v, ok := d.Get(attributeKey).(string); ok {
+	if v, ok := d.Get(schema_definition.AttributeKey).(string); ok {
 		secret.Key = v
 	}
 
-	if v, ok := d.Get(attributeValue).(string); ok {
+	if v, ok := d.Get(schema_definition.AttributeValue).(string); ok {
 		secret.Value = v
 	}
 
-	if v, ok := d.Get(attributeNote).(string); ok {
+	if v, ok := d.Get(schema_definition.AttributeNote).(string); ok {
 		secret.Note = v
 	}
 
-	if v, ok := d.Get(attributeOrganizationID).(string); ok {
+	if v, ok := d.Get(schema_definition.AttributeOrganizationID).(string); ok {
 		secret.OrganizationID = v
 	}
 
-	if v, ok := d.Get(attributeProjectID).(string); ok {
+	if v, ok := d.Get(schema_definition.AttributeProjectID).(string); ok {
 		secret.ProjectID = v
 	}
 
@@ -123,27 +124,27 @@ func secretDataFromStruct(_ context.Context, d *schema.ResourceData, secret *mod
 
 	d.SetId(secret.ID)
 
-	err := d.Set(attributeKey, secret.Key)
+	err := d.Set(schema_definition.AttributeKey, secret.Key)
 	if err != nil {
 		return err
 	}
 
-	err = d.Set(attributeValue, secret.Value)
+	err = d.Set(schema_definition.AttributeValue, secret.Value)
 	if err != nil {
 		return err
 	}
 
-	err = d.Set(attributeNote, secret.Note)
+	err = d.Set(schema_definition.AttributeNote, secret.Note)
 	if err != nil {
 		return err
 	}
 
-	err = d.Set(attributeOrganizationID, secret.OrganizationID)
+	err = d.Set(schema_definition.AttributeOrganizationID, secret.OrganizationID)
 	if err != nil {
 		return err
 	}
 
-	err = d.Set(attributeProjectID, secret.ProjectID)
+	err = d.Set(schema_definition.AttributeProjectID, secret.ProjectID)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-package provider
+package schema_definition
 
 import (
 	"testing"
@@ -9,13 +9,13 @@ import (
 func TestSensisitiveFieldsAreMarkedAsSensitive(t *testing.T) {
 	sensitiveFields := []string{}
 
-	for k, v := range baseSchema(DataSource) {
+	for k, v := range BaseSchema(DataSource) {
 		if v.Sensitive {
 			sensitiveFields = append(sensitiveFields, k)
 		}
 	}
 
-	for k, v := range loginSchema(DataSource) {
+	for k, v := range LoginSchema(DataSource) {
 		if v.Sensitive {
 			sensitiveFields = append(sensitiveFields, k)
 		}

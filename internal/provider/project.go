@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 type projectOperationFunc func(ctx context.Context, secret models.Project) (*models.Project, error)
@@ -72,11 +73,11 @@ func projectStructFromData(_ context.Context, d *schema.ResourceData) models.Pro
 	var project models.Project
 
 	project.ID = d.Id()
-	if v, ok := d.Get(attributeName).(string); ok {
+	if v, ok := d.Get(schema_definition.AttributeName).(string); ok {
 		project.Name = v
 	}
 
-	if v, ok := d.Get(attributeOrganizationID).(string); ok {
+	if v, ok := d.Get(schema_definition.AttributeOrganizationID).(string); ok {
 		project.OrganizationID = v
 	}
 
@@ -91,12 +92,12 @@ func projectDataFromStruct(_ context.Context, d *schema.ResourceData, project *m
 
 	d.SetId(project.ID)
 
-	err := d.Set(attributeName, project.Name)
+	err := d.Set(schema_definition.AttributeName, project.Name)
 	if err != nil {
 		return err
 	}
 
-	err = d.Set(attributeOrganizationID, project.OrganizationID)
+	err = d.Set(schema_definition.AttributeOrganizationID, project.OrganizationID)
 	if err != nil {
 		return err
 	}
