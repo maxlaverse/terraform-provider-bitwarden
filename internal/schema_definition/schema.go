@@ -1,4 +1,4 @@
-package provider
+package schema_definition
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -11,20 +11,20 @@ const (
 	Resource   schemaTypeEnum = 1
 )
 
-func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
+func BaseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 
 	base := map[string]*schema.Schema{
 		/*
 		* Attributes that can be required
 		 */
-		attributeID: {
-			Description: descriptionIdentifier,
+		AttributeID: {
+			Description: DescriptionIdentifier,
 			Type:        schema.TypeString,
 			Computed:    schemaType == Resource,
 			Optional:    true,
 		},
-		attributeName: {
-			Description: descriptionName,
+		AttributeName: {
+			Description: DescriptionName,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Required:    schemaType == Resource,
@@ -33,46 +33,46 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 		/*
 		* Most common attributes
 		 */
-		attributeCollectionIDs: {
-			Description: descriptionCollectionIDs,
+		AttributeCollectionIDs: {
+			Description: DescriptionCollectionIDs,
 			Type:        schema.TypeList,
 			Elem:        &schema.Schema{Type: schema.TypeString},
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
 		},
-		attributeFavorite: {
-			Description: descriptionFavorite,
+		AttributeFavorite: {
+			Description: DescriptionFavorite,
 			Type:        schema.TypeBool,
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
 		},
-		attributeField: {
-			Description: descriptionField,
+		AttributeField: {
+			Description: DescriptionField,
 			Type:        schema.TypeList,
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
-					attributeFieldName: {
-						Description: descriptionFieldName,
+					AttributeFieldName: {
+						Description: DescriptionFieldName,
 						Type:        schema.TypeString,
 						Required:    true,
 					},
-					attributeFieldText: {
-						Description: descriptionFieldText,
+					AttributeFieldText: {
+						Description: DescriptionFieldText,
 						Type:        schema.TypeString,
 						Optional:    true,
 					},
-					attributeFieldBoolean: {
-						Description: descriptionFieldBoolean,
+					AttributeFieldBoolean: {
+						Description: DescriptionFieldBoolean,
 						Type:        schema.TypeBool,
 						Optional:    true,
 					},
-					attributeFieldHidden: {
-						Description: descriptionFieldHidden,
+					AttributeFieldHidden: {
+						Description: DescriptionFieldHidden,
 						Type:        schema.TypeString,
 						Optional:    true,
 					},
-					attributeFieldLinked: {
-						Description: descriptionFieldLinked,
+					AttributeFieldLinked: {
+						Description: DescriptionFieldLinked,
 						Type:        schema.TypeString,
 						Optional:    true,
 					},
@@ -82,28 +82,28 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Optional:  schemaType == Resource,
 			Sensitive: true,
 		},
-		attributeFolderID: {
-			Description: descriptionFolderID,
+		AttributeFolderID: {
+			Description: DescriptionFolderID,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
 		},
 
-		attributeNotes: {
-			Description: descriptionNotes,
+		AttributeNotes: {
+			Description: DescriptionNotes,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
 			Sensitive:   true,
 		},
-		attributeOrganizationID: {
-			Description: descriptionOrganizationID,
+		AttributeOrganizationID: {
+			Description: DescriptionOrganizationID,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
 		},
-		attributeReprompt: {
-			Description: descriptionReprompt,
+		AttributeReprompt: {
+			Description: DescriptionReprompt,
 			Type:        schema.TypeBool,
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
@@ -112,94 +112,94 @@ func baseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 		/*
 		* Attributes that are always computed
 		 */
-		attributeCreationDate: {
-			Description: descriptionCreationDate,
+		AttributeCreationDate: {
+			Description: DescriptionCreationDate,
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		attributeDeletedDate: {
-			Description: descriptionDeletedDate,
+		AttributeDeletedDate: {
+			Description: DescriptionDeletedDate,
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		attributeObject: {
-			Description: descriptionInternal,
+		AttributeObject: {
+			Description: DescriptionInternal,
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		attributeRevisionDate: {
-			Description: descriptionRevisionDate,
+		AttributeRevisionDate: {
+			Description: DescriptionRevisionDate,
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		attributeType: {
-			Description: descriptionInternal,
+		AttributeType: {
+			Description: DescriptionInternal,
 			Type:        schema.TypeInt,
 			Computed:    true,
 		},
-		attributeAttachments: {
-			Description: descriptionAttachments,
+		AttributeAttachments: {
+			Description: DescriptionAttachments,
 			Type:        schema.TypeList,
 			Elem: &schema.Resource{
-				Schema: attachmentSchema(),
+				Schema: AttachmentSchema(),
 			},
 			Computed: true,
 		},
 	}
 
 	if schemaType == DataSource {
-		base[attributeFilterCollectionId] = &schema.Schema{
-			Description: descriptionFilterCollectionID,
+		base[AttributeFilterCollectionId] = &schema.Schema{
+			Description: DescriptionFilterCollectionID,
 			Type:        schema.TypeString,
 			Optional:    true,
 		}
 
-		base[attributeFilterFolderID] = &schema.Schema{
-			Description: descriptionFilterFolderID,
+		base[AttributeFilterFolderID] = &schema.Schema{
+			Description: DescriptionFilterFolderID,
 			Type:        schema.TypeString,
 			Optional:    true,
 		}
 
-		base[attributeFilterOrganizationID] = &schema.Schema{
-			Description: descriptionFilterOrganizationID,
+		base[AttributeFilterOrganizationID] = &schema.Schema{
+			Description: DescriptionFilterOrganizationID,
 			Type:        schema.TypeString,
 			Optional:    true,
 		}
 
-		base[attributeFilterSearch] = &schema.Schema{
-			Description:  descriptionFilterSearch,
+		base[AttributeFilterSearch] = &schema.Schema{
+			Description:  DescriptionFilterSearch,
 			Type:         schema.TypeString,
 			Optional:     true,
-			AtLeastOneOf: []string{attributeFilterSearch, attributeID},
+			AtLeastOneOf: []string{AttributeFilterSearch, AttributeID},
 		}
 	}
 	return base
 }
 
-func attachmentSchema() map[string]*schema.Schema {
+func AttachmentSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
-		attributeID: {
-			Description: descriptionIdentifier,
+		AttributeID: {
+			Description: DescriptionIdentifier,
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		attributeAttachmentFileName: {
-			Description: descriptionItemAttachmentFileName,
+		AttributeAttachmentFileName: {
+			Description: DescriptionItemAttachmentFileName,
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		attributeAttachmentSize: {
-			Description: descriptionItemAttachmentSize,
+		AttributeAttachmentSize: {
+			Description: DescriptionItemAttachmentSize,
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		attributeAttachmentSizeName: {
-			Description: descriptionItemAttachmentSizeName,
+		AttributeAttachmentSizeName: {
+			Description: DescriptionItemAttachmentSizeName,
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		attributeAttachmentURL: {
-			Description: descriptionItemAttachmentURL,
+		AttributeAttachmentURL: {
+			Description: DescriptionItemAttachmentURL,
 			Type:        schema.TypeString,
 			Computed:    true,
 		},

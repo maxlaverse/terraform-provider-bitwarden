@@ -1,23 +1,23 @@
-package provider
+package schema_definition
 
 import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-func projectSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
+func ProjectSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 	return map[string]*schema.Schema{
-		attributeID: {
-			Description: descriptionIdentifier,
+		AttributeID: {
+			Description: DescriptionIdentifier,
 			Type:        schema.TypeString,
 			Computed:    schemaType == Resource,
 			Optional:    true,
 		},
-		attributeName: {
-			Description: descriptionName,
+		AttributeName: {
+			Description: DescriptionName,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Required:    schemaType == Resource,
 		},
-		attributeOrganizationID: {
-			Description: descriptionOrganizationID,
+		AttributeOrganizationID: {
+			Description: DescriptionOrganizationID,
 			Type:        schema.TypeString,
 			Computed:    true,
 			Optional:    true,

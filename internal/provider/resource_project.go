@@ -2,10 +2,11 @@ package provider
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func resourceProject() *schema.Resource {
-	resourceProjectSchema := projectSchema(Resource)
+	resourceProjectSchema := schema_definition.ProjectSchema(schema_definition.Resource)
 
 	return &schema.Resource{
 		Description:   "Manages a Project.",

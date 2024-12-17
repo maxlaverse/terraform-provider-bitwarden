@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func resourceOrgCollection() *schema.Resource {
@@ -21,12 +22,12 @@ func resourceOrgCollection() *schema.Resource {
 		DeleteContext: withPasswordManager(resourceDeleteObject),
 		Importer:      resourceImporter(resourceImportOrgCollection),
 
-		Schema: orgCollectionSchema(Resource),
+		Schema: schema_definition.OrgCollectionSchema(schema_definition.Resource),
 	}
 }
 
 func resourceCreateOrgCollection(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	err := d.Set(attributeObject, models.ObjectTypeOrgCollection)
+	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeOrgCollection)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -40,8 +41,8 @@ func resourceImportOrgCollection(ctx context.Context, d *schema.ResourceData, me
 		return nil, fmt.Errorf("invalid ID specified, should be in the format <organization_id>/<collection_id>: '%s'", d.Id())
 	}
 	d.SetId(split[1])
-	d.Set(attributeOrganizationID, split[0])
-	err := d.Set(attributeObject, models.ObjectTypeOrgCollection)
+	d.Set(schema_definition.AttributeOrganizationID, split[0])
+	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeOrgCollection)
 	if err != nil {
 		return nil, err
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 type LoginMethod int
@@ -40,78 +41,78 @@ func New(version string) func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
 				// Attributes which depend on each other
-				attributeMasterPassword: {
+				schema_definition.AttributeMasterPassword: {
 					Type:          schema.TypeString,
-					Description:   descriptionMasterPassword,
-					ConflictsWith: []string{attributeSessionKey, attributeAccessToken},
-					AtLeastOneOf:  []string{attributeSessionKey, attributeAccessToken},
+					Description:   schema_definition.DescriptionMasterPassword,
+					ConflictsWith: []string{schema_definition.AttributeSessionKey, schema_definition.AttributeAccessToken},
+					AtLeastOneOf:  []string{schema_definition.AttributeSessionKey, schema_definition.AttributeAccessToken},
 					Optional:      true,
 					DefaultFunc:   schema.EnvDefaultFunc("BW_PASSWORD", nil),
 				},
-				attributeSessionKey: {
+				schema_definition.AttributeSessionKey: {
 					Type:         schema.TypeString,
-					Description:  descriptionSessionKey,
-					AtLeastOneOf: []string{attributeMasterPassword, attributeAccessToken},
+					Description:  schema_definition.DescriptionSessionKey,
+					AtLeastOneOf: []string{schema_definition.AttributeMasterPassword, schema_definition.AttributeAccessToken},
 					Optional:     true,
 					DefaultFunc:  schema.EnvDefaultFunc("BW_SESSION", nil),
 				},
-				attributeClientID: {
+				schema_definition.AttributeClientID: {
 					Type:         schema.TypeString,
-					Description:  descriptionClientID,
+					Description:  schema_definition.DescriptionClientID,
 					Optional:     true,
-					RequiredWith: []string{attributeClientSecret, attributeMasterPassword},
+					RequiredWith: []string{schema_definition.AttributeClientSecret, schema_definition.AttributeMasterPassword},
 					DefaultFunc:  schema.EnvDefaultFunc("BW_CLIENTID", nil),
 				},
-				attributeClientSecret: {
+				schema_definition.AttributeClientSecret: {
 					Type:         schema.TypeString,
-					Description:  descriptionClientSecret,
+					Description:  schema_definition.DescriptionClientSecret,
 					Optional:     true,
-					RequiredWith: []string{attributeClientID, attributeMasterPassword},
+					RequiredWith: []string{schema_definition.AttributeClientID, schema_definition.AttributeMasterPassword},
 					DefaultFunc:  schema.EnvDefaultFunc("BW_CLIENTSECRET", nil),
 				},
-				attributeAccessToken: {
+				schema_definition.AttributeAccessToken: {
 					Type:        schema.TypeString,
-					Description: descriptionAccessToken,
+					Description: schema_definition.DescriptionAccessToken,
 					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("BWS_ACCESS_TOKEN", nil),
 				},
 
 				// Standalone attributes
-				attributeServer: {
+				schema_definition.AttributeServer: {
 					Type:        schema.TypeString,
-					Description: descriptionServer,
+					Description: schema_definition.DescriptionServer,
 					Required:    true,
 					DefaultFunc: schema.EnvDefaultFunc("BW_URL", bitwarden.DefaultBitwardenServerURL),
 				},
-				attributeEmail: {
+				schema_definition.AttributeEmail: {
 					Type:         schema.TypeString,
-					Description:  descriptionEmail,
+					Description:  schema_definition.DescriptionEmail,
 					Optional:     true,
-					AtLeastOneOf: []string{attributeAccessToken, attributeClientID, attributeSessionKey},
+					AtLeastOneOf: []string{schema_definition.AttributeAccessToken, schema_definition.AttributeClientID, schema_definition.AttributeSessionKey},
 					DefaultFunc:  schema.EnvDefaultFunc("BW_EMAIL", nil),
 				},
-				attributeVaultPath: {
+				schema_definition.AttributeVaultPath: {
 					Type:        schema.TypeString,
-					Description: descriptionVaultPath,
+					Description: schema_definition.DescriptionVaultPath,
 					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("BITWARDENCLI_APPDATA_DIR", ".bitwarden/"),
 				},
-				attributeExtraCACertsPath: {
+				schema_definition.AttributeExtraCACertsPath: {
 					Type:        schema.TypeString,
-					Description: descriptionExtraCACertsPath,
+					Description: schema_definition.DescriptionExtraCACertsPath,
 					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("NODE_EXTRA_CA_CERTS", nil),
 				},
 
 				// Experimental
-				attributeExperimental: {
-					Description: descriptionExperimental,
+				schema_definition.AttributeExperimental: {
+					Description: schema_definition.DescriptionExperimental,
 					Type:        schema.TypeSet,
 					Optional:    true,
 					Elem: &schema.Resource{
 						Schema: map[string]*schema.Schema{
-							attributeExperimentalEmbeddedClient: {
-								Description: descriptionExperimentalEmbeddedClient,
+							schema_definition.AttributeExperimentalEmbeddedClient: {
+								Description: schema_definition.DescriptionExperimentalEmbeddedClient,
 								Type:        schema.TypeBool,
 								Optional:    true,
 							},
@@ -150,10 +151,10 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 
-		_, hasAccessToken := d.GetOk(attributeAccessToken)
+		_, hasAccessToken := d.GetOk(schema_definition.AttributeAccessToken)
 		useEmbeddedClient := useExperimentalEmbeddedClient(d)
 
-		if _, hasSessionKey := d.GetOk(attributeSessionKey); useEmbeddedClient && hasSessionKey {
+		if _, hasSessionKey := d.GetOk(schema_definition.AttributeSessionKey); useEmbeddedClient && hasSessionKey {
 			return nil, diag.Errorf("session key is not supported with the embedded client")
 		}
 
@@ -192,7 +193,7 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 			return nil, diag.FromErr(err)
 		}
 
-		sessionKey, hasSessionKey := d.GetOk(attributeSessionKey)
+		sessionKey, hasSessionKey := d.GetOk(schema_definition.AttributeSessionKey)
 		if hasSessionKey {
 			bwClient.SetSessionKey(sessionKey.(string))
 		}
@@ -209,7 +210,7 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 }
 
 func useExperimentalEmbeddedClient(d *schema.ResourceData) bool {
-	experimentalFeatures, hasExperimentalFeatures := d.GetOk(attributeExperimental)
+	experimentalFeatures, hasExperimentalFeatures := d.GetOk(schema_definition.AttributeExperimental)
 	if !hasExperimentalFeatures {
 		return false
 	}
@@ -217,7 +218,7 @@ func useExperimentalEmbeddedClient(d *schema.ResourceData) bool {
 		if experimentalFeatures.(*schema.Set).Len() == 0 {
 			return false
 		}
-		embeddedClient, hasEmbeddedClient := experimentalFeatures.(*schema.Set).List()[0].(map[string]interface{})[attributeExperimentalEmbeddedClient]
+		embeddedClient, hasEmbeddedClient := experimentalFeatures.(*schema.Set).List()[0].(map[string]interface{})[schema_definition.AttributeExperimentalEmbeddedClient]
 		if hasEmbeddedClient && embeddedClient.(bool) {
 			return true
 		}
@@ -246,7 +247,7 @@ func ensureLoggedInCLIPasswordManager(ctx context.Context, d *schema.ResourceDat
 	// Scenario 2: The Vault is *locked* and we have a master password. This
 	//             happens when the Vault is already cached locally.
 	//             => unlock and return
-	masterPassword, hasMasterPassword := d.GetOk(attributeMasterPassword)
+	masterPassword, hasMasterPassword := d.GetOk(schema_definition.AttributeMasterPassword)
 	if hasMasterPassword && status.Status == bwcli.StatusLocked {
 		err = bwClient.Unlock(ctx, masterPassword.(string))
 		if err != nil {
@@ -265,18 +266,18 @@ func ensureLoggedInCLIPasswordManager(ctx context.Context, d *schema.ResourceDat
 	loginMethod := loginMethod(d)
 	switch loginMethod {
 	case LoginMethodPersonalAPIKey:
-		clientID := d.Get(attributeClientID)
-		clientSecret := d.Get(attributeClientSecret)
+		clientID := d.Get(schema_definition.AttributeClientID)
+		clientSecret := d.Get(schema_definition.AttributeClientSecret)
 		return bwClient.LoginWithAPIKey(ctx, masterPassword.(string), clientID.(string), clientSecret.(string))
 	case LoginMethodPassword:
-		email := d.Get(attributeEmail)
+		email := d.Get(schema_definition.AttributeEmail)
 		return bwClient.LoginWithPassword(ctx, email.(string), masterPassword.(string))
 	}
 
 	// Scenario 4: We need to login but don't have the information to do so.
 	//             This is a situation we can't get out from.
 	//             => failure
-	if _, hasSessionKey := d.GetOk(attributeSessionKey); hasSessionKey {
+	if _, hasSessionKey := d.GetOk(schema_definition.AttributeSessionKey); hasSessionKey {
 		return fmt.Errorf("unable to unlock Vault with provided session key (status: %s)", status.Status)
 	}
 
@@ -286,10 +287,10 @@ func ensureLoggedInCLIPasswordManager(ctx context.Context, d *schema.ResourceDat
 }
 
 func loginMethod(d *schema.ResourceData) LoginMethod {
-	_, hasClientID := d.GetOk(attributeClientID)
-	_, hasClientSecret := d.GetOk(attributeClientSecret)
-	_, hasAccessToken := d.GetOk(attributeAccessToken)
-	_, hasMasterPassword := d.GetOk(attributeMasterPassword)
+	_, hasClientID := d.GetOk(schema_definition.AttributeClientID)
+	_, hasClientSecret := d.GetOk(schema_definition.AttributeClientSecret)
+	_, hasAccessToken := d.GetOk(schema_definition.AttributeAccessToken)
+	_, hasMasterPassword := d.GetOk(schema_definition.AttributeMasterPassword)
 
 	if hasAccessToken {
 		return LoginMethodAccessToken
@@ -303,8 +304,8 @@ func loginMethod(d *schema.ResourceData) LoginMethod {
 }
 
 func logoutIfIdentityChanged(ctx context.Context, d *schema.ResourceData, bwClient bwcli.PasswordManagerClient, status *bwcli.Status) error {
-	serverURL := d.Get(attributeServer).(string)
-	email := d.Get(attributeEmail).(string)
+	serverURL := d.Get(schema_definition.AttributeServer).(string)
+	email := d.Get(schema_definition.AttributeEmail).(string)
 
 	if (status.Status == bwcli.StatusLocked || status.Status == bwcli.StatusUnlocked) && (!status.VaultOfUser(email) || !status.VaultFromServer(serverURL)) {
 		status.Status = bwcli.StatusUnauthenticated
@@ -327,7 +328,7 @@ func logoutIfIdentityChanged(ctx context.Context, d *schema.ResourceData, bwClie
 
 func newCLIPasswordManagerClient(d *schema.ResourceData, version string) (bwcli.PasswordManagerClient, error) {
 	opts := []bwcli.Options{}
-	if vaultPath, exists := d.GetOk(attributeVaultPath); exists {
+	if vaultPath, exists := d.GetOk(schema_definition.AttributeVaultPath); exists {
 		abs, err := filepath.Abs(vaultPath.(string))
 		if err != nil {
 			return nil, err
@@ -335,7 +336,7 @@ func newCLIPasswordManagerClient(d *schema.ResourceData, version string) (bwcli.
 		opts = append(opts, bwcli.WithAppDataDir(abs))
 	}
 
-	if extraCACertsPath, exists := d.GetOk(attributeExtraCACertsPath); exists {
+	if extraCACertsPath, exists := d.GetOk(schema_definition.AttributeExtraCACertsPath); exists {
 		opts = append(opts, bwcli.WithExtraCACertsPath(extraCACertsPath.(string)))
 	}
 
@@ -358,7 +359,7 @@ func newEmbeddedPasswordManagerClient(ctx context.Context, d *schema.ResourceDat
 		return nil, err
 	}
 
-	serverURL := d.Get(attributeServer).(string)
+	serverURL := d.Get(schema_definition.AttributeServer).(string)
 	return embedded.NewPasswordManagerClient(serverURL, deviceId, version, embedded.WithPasswordManagerHttpOptions(buildWebapiOptions(version)...)), nil
 }
 
@@ -368,7 +369,7 @@ func newEmbeddedSecretsManagerClient(ctx context.Context, d *schema.ResourceData
 		return nil, err
 	}
 
-	serverURL := d.Get(attributeServer).(string)
+	serverURL := d.Get(schema_definition.AttributeServer).(string)
 	return embedded.NewSecretsManagerClient(serverURL, deviceId, version, embedded.WithSecretsManagerHttpOptions(buildWebapiOptions(version)...)), nil
 }
 
@@ -406,7 +407,7 @@ func getOrGenerateDeviceIdentifier(ctx context.Context) (string, error) {
 }
 
 func ensureLoggedInEmbeddedSecretsManager(ctx context.Context, d *schema.ResourceData, bwClient embedded.SecretsManager) error {
-	accessToken, hasAccessToken := d.GetOk(attributeAccessToken)
+	accessToken, hasAccessToken := d.GetOk(schema_definition.AttributeAccessToken)
 	if !hasAccessToken {
 		return fmt.Errorf("access token is required")
 	}
@@ -421,7 +422,7 @@ func ensureLoggedInEmbeddedSecretsManager(ctx context.Context, d *schema.Resourc
 }
 
 func ensureLoggedInEmbeddedPasswordManager(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) error {
-	masterPassword, hasMasterPassword := d.GetOk(attributeMasterPassword)
+	masterPassword, hasMasterPassword := d.GetOk(schema_definition.AttributeMasterPassword)
 	if !hasMasterPassword {
 		return fmt.Errorf("master password is required")
 	}
@@ -429,11 +430,11 @@ func ensureLoggedInEmbeddedPasswordManager(ctx context.Context, d *schema.Resour
 	loginMethod := loginMethod(d)
 	switch loginMethod {
 	case LoginMethodPersonalAPIKey:
-		clientID := d.Get(attributeClientID)
-		clientSecret := d.Get(attributeClientSecret)
+		clientID := d.Get(schema_definition.AttributeClientID)
+		clientSecret := d.Get(schema_definition.AttributeClientSecret)
 		return bwClient.LoginWithAPIKey(ctx, masterPassword.(string), clientID.(string), clientSecret.(string))
 	case LoginMethodPassword:
-		email := d.Get(attributeEmail)
+		email := d.Get(schema_definition.AttributeEmail)
 		return bwClient.LoginWithPassword(ctx, email.(string), masterPassword.(string))
 	}
 

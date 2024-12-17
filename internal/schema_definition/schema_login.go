@@ -1,35 +1,35 @@
-package provider
+package schema_definition
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func loginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
+func LoginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 	base := map[string]*schema.Schema{
-		attributeLoginPassword: {
-			Description: descriptionLoginPassword,
+		AttributeLoginPassword: {
+			Description: DescriptionLoginPassword,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
 			Sensitive:   true,
 		},
-		attributeLoginUsername: {
-			Description: descriptionLoginUsername,
+		AttributeLoginUsername: {
+			Description: DescriptionLoginUsername,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
 			Sensitive:   true,
 		},
-		attributeLoginTotp: {
-			Description: descriptionLoginTotp,
+		AttributeLoginTotp: {
+			Description: DescriptionLoginTotp,
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
 			Sensitive:   true,
 		},
-		attributeLoginURIs: {
-			Description: descriptionLoginUri,
+		AttributeLoginURIs: {
+			Description: DescriptionLoginUri,
 			Type:        schema.TypeList,
 			Elem:        uriElem(),
 			Computed:    schemaType == DataSource,
@@ -39,8 +39,8 @@ func loginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 	}
 
 	if schemaType == DataSource {
-		base[attributeFilterURL] = &schema.Schema{
-			Description: descriptionFilterURL,
+		base[AttributeFilterURL] = &schema.Schema{
+			Description: DescriptionFilterURL,
 			Type:        schema.TypeString,
 			Optional:    true,
 		}
@@ -53,15 +53,15 @@ func uriElem() *schema.Resource {
 
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
-			attributeLoginURIsMatch: {
-				Description:      descriptionLoginUriMatch,
+			AttributeLoginURIsMatch: {
+				Description:      DescriptionLoginUriMatch,
 				Type:             schema.TypeString,
 				Default:          validMatchStr[0],
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(validMatchStr, false)),
 				Optional:         true,
 			},
-			attributeLoginURIsValue: {
-				Description: descriptionLoginUriValue,
+			AttributeLoginURIsValue: {
+				Description: DescriptionLoginUriValue,
 				Type:        schema.TypeString,
 				Required:    true,
 			},

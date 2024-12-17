@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func TestAccResourceOrgCollection(t *testing.T) {
@@ -23,10 +24,10 @@ func TestAccResourceOrgCollection(t *testing.T) {
 				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						resourceName, attributeName, "org-col-bar",
+						resourceName, schema_definition.AttributeName, "org-col-bar",
 					),
 					resource.TestMatchResourceAttr(
-						resourceName, attributeID, regexp.MustCompile(regExpId),
+						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
 					),
 					getObjectID(resourceName, &objectID),
 				),
@@ -35,7 +36,7 @@ func TestAccResourceOrgCollection(t *testing.T) {
 				ResourceName: resourceName,
 				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-new-name-bar"),
 				Check: resource.TestCheckResourceAttr(
-					resourceName, attributeName, "org-col-new-name-bar",
+					resourceName, schema_definition.AttributeName, "org-col-new-name-bar",
 				),
 			},
 			{

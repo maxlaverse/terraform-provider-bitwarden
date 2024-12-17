@@ -2,6 +2,7 @@ package provider
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func dataSourceAttachment() *schema.Resource {
@@ -9,18 +10,18 @@ func dataSourceAttachment() *schema.Resource {
 		Description: "Use this data source to get the content on an existing item's attachment.",
 		ReadContext: withPasswordManager(resourceReadDataSourceAttachment),
 		Schema: map[string]*schema.Schema{
-			attributeID: {
-				Description: descriptionIdentifier,
+			schema_definition.AttributeID: {
+				Description: schema_definition.DescriptionIdentifier,
 				Type:        schema.TypeString,
 				Required:    true,
 			},
-			attributeAttachmentItemID: {
-				Description: descriptionItemIdentifier,
+			schema_definition.AttributeAttachmentItemID: {
+				Description: schema_definition.DescriptionItemIdentifier,
 				Type:        schema.TypeString,
 				Required:    true,
 			},
-			attributeAttachmentContent: {
-				Description: descriptionItemAttachmentContent,
+			schema_definition.AttributeAttachmentContent: {
+				Description: schema_definition.DescriptionItemAttachmentContent,
 				Type:        schema.TypeString,
 				Computed:    true,
 			},

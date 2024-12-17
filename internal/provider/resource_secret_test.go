@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func TestResourceSecretSchema(t *testing.T) {
@@ -78,11 +79,11 @@ func TestResourceSecret(t *testing.T) {
 
 func checkSecret(fullRessourceName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
-		resource.TestMatchResourceAttr(fullRessourceName, attributeID, regexp.MustCompile("^([a-z0-9-]+)$")),
-		resource.TestCheckResourceAttr(fullRessourceName, attributeKey, "login-bar"),
-		resource.TestCheckResourceAttr(fullRessourceName, attributeValue, "value-bar"),
-		resource.TestCheckResourceAttr(fullRessourceName, attributeNote, "note-bar"),
-		resource.TestMatchResourceAttr(fullRessourceName, attributeProjectID, regexp.MustCompile("^([a-z0-9-]+)$")),
+		resource.TestMatchResourceAttr(fullRessourceName, schema_definition.AttributeID, regexp.MustCompile("^([a-z0-9-]+)$")),
+		resource.TestCheckResourceAttr(fullRessourceName, schema_definition.AttributeKey, "login-bar"),
+		resource.TestCheckResourceAttr(fullRessourceName, schema_definition.AttributeValue, "value-bar"),
+		resource.TestCheckResourceAttr(fullRessourceName, schema_definition.AttributeNote, "note-bar"),
+		resource.TestMatchResourceAttr(fullRessourceName, schema_definition.AttributeProjectID, regexp.MustCompile("^([a-z0-9-]+)$")),
 	)
 }
 func tfConfigDataSecretByID(id string) string {

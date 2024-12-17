@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,7 +26,7 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					checkItemLogin(resourceName),
 					resource.TestCheckResourceAttr(
-						resourceName, attributeNotes, "notes-reslogin",
+						resourceName, schema_definition.AttributeNotes, "notes-reslogin",
 					),
 					getObjectID(resourceName, &objectID),
 				),
@@ -35,7 +36,7 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					checkItemLogin(resourceName),
 					resource.TestCheckResourceAttr(
-						resourceName, attributeNotes, "notes-resloginmodified",
+						resourceName, schema_definition.AttributeNotes, "notes-resloginmodified",
 					),
 					getObjectID(resourceName, &objectID),
 				),
@@ -205,13 +206,13 @@ func checkItemLogin(resourceName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
 		checkItemGeneral(resourceName),
 		resource.TestMatchResourceAttr(
-			resourceName, attributeLoginUsername, regexp.MustCompile("^test-username$"),
+			resourceName, schema_definition.AttributeLoginUsername, regexp.MustCompile("^test-username$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, attributeLoginPassword, regexp.MustCompile("^test-password$"),
+			resourceName, schema_definition.AttributeLoginPassword, regexp.MustCompile("^test-password$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, attributeLoginTotp, regexp.MustCompile("^1234$"),
+			resourceName, schema_definition.AttributeLoginTotp, regexp.MustCompile("^1234$"),
 		),
 		checkItemLoginUriMatches(resourceName),
 	)
@@ -220,55 +221,55 @@ func checkItemLogin(resourceName string) resource.TestCheckFunc {
 func checkItemLoginUriMatches(resourceName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.#", attributeLoginURIs), regexp.MustCompile("^8$"),
+			resourceName, fmt.Sprintf("%s.#", schema_definition.AttributeLoginURIs), regexp.MustCompile("^8$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.0.match", attributeLoginURIs), regexp.MustCompile("^default$"),
+			resourceName, fmt.Sprintf("%s.0.match", schema_definition.AttributeLoginURIs), regexp.MustCompile("^default$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.0.value", attributeLoginURIs), regexp.MustCompile("^https://default$"),
+			resourceName, fmt.Sprintf("%s.0.value", schema_definition.AttributeLoginURIs), regexp.MustCompile("^https://default$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.1.match", attributeLoginURIs), regexp.MustCompile("^base_domain$"),
+			resourceName, fmt.Sprintf("%s.1.match", schema_definition.AttributeLoginURIs), regexp.MustCompile("^base_domain$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.1.value", attributeLoginURIs), regexp.MustCompile("^https://base_domain$"),
+			resourceName, fmt.Sprintf("%s.1.value", schema_definition.AttributeLoginURIs), regexp.MustCompile("^https://base_domain$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.2.match", attributeLoginURIs), regexp.MustCompile("^host$"),
+			resourceName, fmt.Sprintf("%s.2.match", schema_definition.AttributeLoginURIs), regexp.MustCompile("^host$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.2.value", attributeLoginURIs), regexp.MustCompile("^https://host$"),
+			resourceName, fmt.Sprintf("%s.2.value", schema_definition.AttributeLoginURIs), regexp.MustCompile("^https://host$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.3.match", attributeLoginURIs), regexp.MustCompile("^start_with$"),
+			resourceName, fmt.Sprintf("%s.3.match", schema_definition.AttributeLoginURIs), regexp.MustCompile("^start_with$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.3.value", attributeLoginURIs), regexp.MustCompile("^https://start_with$"),
+			resourceName, fmt.Sprintf("%s.3.value", schema_definition.AttributeLoginURIs), regexp.MustCompile("^https://start_with$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.4.match", attributeLoginURIs), regexp.MustCompile("^exact$"),
+			resourceName, fmt.Sprintf("%s.4.match", schema_definition.AttributeLoginURIs), regexp.MustCompile("^exact$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.4.value", attributeLoginURIs), regexp.MustCompile("^https://exact$"),
+			resourceName, fmt.Sprintf("%s.4.value", schema_definition.AttributeLoginURIs), regexp.MustCompile("^https://exact$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.5.match", attributeLoginURIs), regexp.MustCompile("^regexp$"),
+			resourceName, fmt.Sprintf("%s.5.match", schema_definition.AttributeLoginURIs), regexp.MustCompile("^regexp$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.5.value", attributeLoginURIs), regexp.MustCompile("^https://regexp$"),
+			resourceName, fmt.Sprintf("%s.5.value", schema_definition.AttributeLoginURIs), regexp.MustCompile("^https://regexp$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.6.match", attributeLoginURIs), regexp.MustCompile("^never$"),
+			resourceName, fmt.Sprintf("%s.6.match", schema_definition.AttributeLoginURIs), regexp.MustCompile("^never$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.6.value", attributeLoginURIs), regexp.MustCompile("^https://never$"),
+			resourceName, fmt.Sprintf("%s.6.value", schema_definition.AttributeLoginURIs), regexp.MustCompile("^https://never$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.7.match", attributeLoginURIs), regexp.MustCompile("^default$"),
+			resourceName, fmt.Sprintf("%s.7.match", schema_definition.AttributeLoginURIs), regexp.MustCompile("^default$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s.7.value", attributeLoginURIs), regexp.MustCompile("^https://default$"),
+			resourceName, fmt.Sprintf("%s.7.value", schema_definition.AttributeLoginURIs), regexp.MustCompile("^https://default$"),
 		),
 	)
 }

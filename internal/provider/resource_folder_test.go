@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func TestAccResourceFolder(t *testing.T) {
@@ -30,7 +31,7 @@ func TestAccResourceFolder(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					checkObject(resourceName),
 					resource.TestCheckResourceAttr(
-						resourceName, attributeName, "folder-new-name-bar",
+						resourceName, schema_definition.AttributeName, "folder-new-name-bar",
 					),
 					getObjectID(resourceName, &objectID),
 				),

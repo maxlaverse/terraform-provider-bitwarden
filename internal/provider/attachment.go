@@ -12,10 +12,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func resourceCreateAttachment(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	itemId := d.Get(attributeAttachmentItemID).(string)
+	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
 
 	existingAttachments, err := listExistingAttachments(ctx, bwClient, itemId)
 	if err != nil {
@@ -23,9 +24,9 @@ func resourceCreateAttachment(ctx context.Context, d *schema.ResourceData, bwCli
 	}
 
 	var obj *models.Object
-	filePath, fileSpecified := d.GetOk(attributeAttachmentFile)
-	content, contentSpecified := d.GetOk(attributeAttachmentContent)
-	fileName, fileNameSpecified := d.GetOk(attributeAttachmentFileName)
+	filePath, fileSpecified := d.GetOk(schema_definition.AttributeAttachmentFile)
+	content, contentSpecified := d.GetOk(schema_definition.AttributeAttachmentContent)
+	fileName, fileNameSpecified := d.GetOk(schema_definition.AttributeAttachmentFileName)
 	if fileSpecified {
 		obj, err = bwClient.CreateAttachmentFromFile(ctx, itemId, filePath.(string))
 	} else if contentSpecified && fileNameSpecified {
@@ -50,7 +51,7 @@ func resourceCreateAttachment(ctx context.Context, d *schema.ResourceData, bwCli
 }
 
 func resourceReadAttachment(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	itemId := d.Get(attributeAttachmentItemID).(string)
+	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
 
 	obj, err := bwClient.GetObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
 	if err != nil {
@@ -74,7 +75,7 @@ func resourceReadAttachment(ctx context.Context, d *schema.ResourceData, bwClien
 }
 
 func resourceDeleteAttachment(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	itemId := d.Get(attributeAttachmentItemID).(string)
+	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
 
 	return diag.FromErr(bwClient.DeleteAttachment(ctx, itemId, d.Id()))
 }
@@ -82,21 +83,21 @@ func resourceDeleteAttachment(ctx context.Context, d *schema.ResourceData, bwCli
 func attachmentDataFromStruct(d *schema.ResourceData, attachment models.Attachment) error {
 	d.SetId(attachment.ID)
 
-	err := d.Set(attributeAttachmentFileName, attachment.FileName)
+	err := d.Set(schema_definition.AttributeAttachmentFileName, attachment.FileName)
 	if err != nil {
 		return err
 	}
 
-	err = d.Set(attributeAttachmentSize, attachment.Size)
+	err = d.Set(schema_definition.AttributeAttachmentSize, attachment.Size)
 	if err != nil {
 		return err
 	}
-	err = d.Set(attributeAttachmentSizeName, attachment.SizeName)
+	err = d.Set(schema_definition.AttributeAttachmentSizeName, attachment.SizeName)
 	if err != nil {
 		return err
 	}
 
-	err = d.Set(attributeAttachmentURL, attachment.Url)
+	err = d.Set(schema_definition.AttributeAttachmentURL, attachment.Url)
 	if err != nil {
 		return err
 	}
@@ -105,9 +106,9 @@ func attachmentDataFromStruct(d *schema.ResourceData, attachment models.Attachme
 }
 
 func resourceReadDataSourceAttachment(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	itemId := d.Get(attributeAttachmentItemID).(string)
+	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
 
-	attachmentId := d.Get(attributeID).(string)
+	attachmentId := d.Get(schema_definition.AttributeID).(string)
 
 	content, err := bwClient.GetAttachment(ctx, itemId, attachmentId)
 	if err != nil {
@@ -116,7 +117,7 @@ func resourceReadDataSourceAttachment(ctx context.Context, d *schema.ResourceDat
 
 	d.SetId(attachmentId)
 
-	return diag.FromErr(d.Set(attributeAttachmentContent, string(content)))
+	return diag.FromErr(d.Set(schema_definition.AttributeAttachmentContent, string(content)))
 }
 
 func listExistingAttachments(ctx context.Context, client bitwarden.PasswordManager, itemId string) ([]models.Attachment, error) {

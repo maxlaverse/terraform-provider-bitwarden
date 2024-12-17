@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func TestResourceProject(t *testing.T) {
@@ -40,9 +41,9 @@ func TestResourceProject(t *testing.T) {
 
 func checkProject(fullRessourceName, projectName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
-		resource.TestMatchResourceAttr(fullRessourceName, attributeID, regexp.MustCompile("^([a-z0-9-]+)$")),
-		resource.TestCheckResourceAttr(fullRessourceName, attributeName, projectName),
-		resource.TestMatchResourceAttr(fullRessourceName, attributeOrganizationID, regexp.MustCompile("^([a-z0-9-]+)$")),
+		resource.TestMatchResourceAttr(fullRessourceName, schema_definition.AttributeID, regexp.MustCompile("^([a-z0-9-]+)$")),
+		resource.TestCheckResourceAttr(fullRessourceName, schema_definition.AttributeName, projectName),
+		resource.TestMatchResourceAttr(fullRessourceName, schema_definition.AttributeOrganizationID, regexp.MustCompile("^([a-z0-9-]+)$")),
 	)
 }
 func tfConfigDataProjectByID(id string) string {

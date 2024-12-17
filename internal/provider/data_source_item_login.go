@@ -3,11 +3,12 @@ package provider
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func dataSourceItemLogin() *schema.Resource {
-	dataSourceItemLoginSchema := baseSchema(DataSource)
-	for k, v := range loginSchema(DataSource) {
+	dataSourceItemLoginSchema := schema_definition.BaseSchema(schema_definition.DataSource)
+	for k, v := range schema_definition.LoginSchema(schema_definition.DataSource) {
 		dataSourceItemLoginSchema[k] = v
 	}
 

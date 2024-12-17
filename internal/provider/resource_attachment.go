@@ -8,44 +8,45 @@ import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func resourceAttachment() *schema.Resource {
-	resourceAttachmentSchema := attachmentSchema()
-	resourceAttachmentSchema[attributeAttachmentFile] = &schema.Schema{
-		Description:      descriptionItemAttachmentFile,
+	resourceAttachmentSchema := schema_definition.AttachmentSchema()
+	resourceAttachmentSchema[schema_definition.AttributeAttachmentFile] = &schema.Schema{
+		Description:      schema_definition.DescriptionItemAttachmentFile,
 		Type:             schema.TypeString,
 		Optional:         true,
-		ConflictsWith:    []string{attributeAttachmentContent},
-		AtLeastOneOf:     []string{attributeAttachmentContent},
+		ConflictsWith:    []string{schema_definition.AttributeAttachmentContent},
+		AtLeastOneOf:     []string{schema_definition.AttributeAttachmentContent},
 		ForceNew:         true,
 		ValidateDiagFunc: fileHashComputable,
 		StateFunc:        fileHash,
 	}
-	resourceAttachmentSchema[attributeAttachmentContent] = &schema.Schema{
-		Description:   descriptionItemAttachmentFile,
+	resourceAttachmentSchema[schema_definition.AttributeAttachmentContent] = &schema.Schema{
+		Description:   schema_definition.DescriptionItemAttachmentFile,
 		Type:          schema.TypeString,
 		Optional:      true,
-		RequiredWith:  []string{attributeAttachmentContent},
-		ConflictsWith: []string{attributeAttachmentFile},
-		AtLeastOneOf:  []string{attributeAttachmentFile},
+		RequiredWith:  []string{schema_definition.AttributeAttachmentContent},
+		ConflictsWith: []string{schema_definition.AttributeAttachmentFile},
+		AtLeastOneOf:  []string{schema_definition.AttributeAttachmentFile},
 		ForceNew:      true,
 		StateFunc:     contentHash,
 	}
-	resourceAttachmentSchema[attributeAttachmentFileName] = &schema.Schema{
-		Description:   descriptionItemAttachmentFileName,
+	resourceAttachmentSchema[schema_definition.AttributeAttachmentFileName] = &schema.Schema{
+		Description:   schema_definition.DescriptionItemAttachmentFileName,
 		Type:          schema.TypeString,
-		RequiredWith:  []string{attributeAttachmentContent},
-		ConflictsWith: []string{attributeAttachmentFile},
-		ComputedWhen:  []string{attributeAttachmentFile},
-		AtLeastOneOf:  []string{attributeAttachmentFile},
+		RequiredWith:  []string{schema_definition.AttributeAttachmentContent},
+		ConflictsWith: []string{schema_definition.AttributeAttachmentFile},
+		ComputedWhen:  []string{schema_definition.AttributeAttachmentFile},
+		AtLeastOneOf:  []string{schema_definition.AttributeAttachmentFile},
 		ForceNew:      true,
 		Optional:      true,
 		Computed:      true,
 	}
 
-	resourceAttachmentSchema[attributeAttachmentItemID] = &schema.Schema{
-		Description: descriptionItemIdentifier,
+	resourceAttachmentSchema[schema_definition.AttributeAttachmentItemID] = &schema.Schema{
+		Description: schema_definition.DescriptionItemIdentifier,
 		Type:        schema.TypeString,
 		Required:    true,
 		ForceNew:    true,
@@ -69,7 +70,7 @@ func resourceImportAttachment(ctx context.Context, d *schema.ResourceData, meta 
 		return nil, fmt.Errorf("invalid ID specified, should be in the format <item_id>/<attachment_id>: '%s'", d.Id())
 	}
 	d.SetId(split[0])
-	d.Set(attributeAttachmentItemID, split[1])
+	d.Set(schema_definition.AttributeAttachmentItemID, split[1])
 	return []*schema.ResourceData{d}, nil
 }
 
