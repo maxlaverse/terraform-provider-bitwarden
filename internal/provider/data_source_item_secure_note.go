@@ -11,7 +11,7 @@ func dataSourceItemSecureNote() *schema.Resource {
 
 	return &schema.Resource{
 		Description: "Use this data source to get information on an existing secure note item.",
-		ReadContext: withPasswordManager(resourceReadDataSourceItem(models.ObjectTypeItem, models.ItemTypeSecureNote)),
+		ReadContext: withPasswordManager(opItemRead(models.ObjectTypeItem, models.ItemTypeSecureNote)),
 		Schema:      dataSourceItemSecureNoteSchema,
 	}
 }

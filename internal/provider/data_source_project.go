@@ -10,7 +10,7 @@ func dataSourceProject() *schema.Resource {
 
 	return &schema.Resource{
 		Description: "Use this data source to get information on an existing project.",
-		ReadContext: withSecretsManager(resourceReadDataSourceProject),
+		ReadContext: withSecretsManager(opProjectRead),
 		Schema:      dataSourceProjectSchema,
 	}
 }

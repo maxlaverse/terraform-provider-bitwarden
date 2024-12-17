@@ -10,11 +10,11 @@ func resourceProject() *schema.Resource {
 
 	return &schema.Resource{
 		Description:   "Manages a Project.",
-		CreateContext: withSecretsManager(resourceCreateProject()),
-		ReadContext:   withSecretsManager(resourceReadProjectIgnoreMissing),
-		UpdateContext: withSecretsManager(resourceUpdateProject),
-		DeleteContext: withSecretsManager(resourceDeleteProject),
+		CreateContext: withSecretsManager(opProjectCreate()),
+		ReadContext:   withSecretsManager(opProjectReadIgnoreMissing),
+		UpdateContext: withSecretsManager(opProjectUpdate),
+		DeleteContext: withSecretsManager(opProjectDelete),
 		Schema:        resourceProjectSchema,
-		Importer:      resourceImporter(resourceImportProject),
+		Importer:      resourceImporter(opProjectImport),
 	}
 }
