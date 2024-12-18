@@ -11,6 +11,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/transformation"
 )
 
 type secretOperationFunc func(ctx context.Context, secret models.Secret) (*models.Secret, error)
@@ -79,14 +80,14 @@ func secretSearch(ctx context.Context, d *schema.ResourceData, bwsClient bitward
 		return err
 	}
 
-	return secretDataFromStruct(ctx, d, secret)
+	return transformation.SecretDataFromStruct(ctx, d, secret)
 }
 
 func secretOperation(ctx context.Context, d *schema.ResourceData, operation secretOperationFunc) error {
-	secret, err := operation(ctx, secretStructFromData(ctx, d))
+	secret, err := operation(ctx, transformation.SecretStructFromData(ctx, d))
 	if err != nil {
 		return err
 	}
 
-	return secretDataFromStruct(ctx, d, secret)
+	return transformation.SecretDataFromStruct(ctx, d, secret)
 }

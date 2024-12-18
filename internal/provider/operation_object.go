@@ -12,6 +12,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/transformation"
 )
 
 type objectOperationFunc func(ctx context.Context, secret models.Object) (*models.Object, error)
@@ -124,7 +125,7 @@ func objectSearch(ctx context.Context, d *schema.ResourceData, bwClient bitwarde
 		return fmt.Errorf("BUG: object type not set in the resource data")
 	}
 
-	objs, err := bwClient.ListObjects(ctx, models.ObjectType(objType.(string)), listOptionsFromData(d)...)
+	objs, err := bwClient.ListObjects(ctx, models.ObjectType(objType.(string)), transformation.ListOptionsFromData(d)...)
 	if err != nil {
 		return err
 	}
@@ -159,14 +160,14 @@ func objectSearch(ctx context.Context, d *schema.ResourceData, bwClient bitwarde
 		return errors.New("object is soft deleted")
 	}
 
-	return objectDataFromStruct(ctx, d, &obj)
+	return transformation.ObjectDataFromStruct(ctx, d, &obj)
 }
 
 func objectOperation(ctx context.Context, d *schema.ResourceData, operation objectOperationFunc) error {
-	obj, err := operation(ctx, objectStructFromData(ctx, d))
+	obj, err := operation(ctx, transformation.ObjectStructFromData(ctx, d))
 	if err != nil {
 		return err
 	}
 
-	return objectDataFromStruct(ctx, d, obj)
+	return transformation.ObjectDataFromStruct(ctx, d, obj)
 }

@@ -1,4 +1,4 @@
-package provider
+package transformation
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func objectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *models.Object) error {
+func ObjectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *models.Object) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil
@@ -129,7 +129,7 @@ func objectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *mode
 	return nil
 }
 
-func objectStructFromData(ctx context.Context, d *schema.ResourceData) models.Object {
+func ObjectStructFromData(ctx context.Context, d *schema.ResourceData) models.Object {
 	var obj models.Object
 
 	obj.ID = d.Id()
@@ -367,7 +367,7 @@ const (
 	URIMatchNever      URIMatchStr = "never"
 )
 
-func listOptionsFromData(d *schema.ResourceData) []bitwarden.ListObjectsOption {
+func ListOptionsFromData(d *schema.ResourceData) []bitwarden.ListObjectsOption {
 	filters := []bitwarden.ListObjectsOption{}
 
 	filterMap := map[string]bitwarden.ListObjectsOptionGenerator{

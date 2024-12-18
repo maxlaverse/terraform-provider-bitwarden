@@ -1,4 +1,4 @@
-package provider
+package transformation
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -6,7 +6,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func attachmentDataFromStruct(d *schema.ResourceData, attachment models.Attachment) error {
+func AttachmentDataFromStruct(d *schema.ResourceData, attachment models.Attachment) error {
 	d.SetId(attachment.ID)
 
 	err := d.Set(schema_definition.AttributeAttachmentFileName, attachment.FileName)

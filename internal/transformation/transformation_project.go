@@ -1,4 +1,4 @@
-package provider
+package transformation
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func projectStructFromData(_ context.Context, d *schema.ResourceData) models.Project {
+func ProjectStructFromData(_ context.Context, d *schema.ResourceData) models.Project {
 	var project models.Project
 
 	project.ID = d.Id()
@@ -23,7 +23,7 @@ func projectStructFromData(_ context.Context, d *schema.ResourceData) models.Pro
 	return project
 }
 
-func projectDataFromStruct(_ context.Context, d *schema.ResourceData, project *models.Project) error {
+func ProjectDataFromStruct(_ context.Context, d *schema.ResourceData, project *models.Project) error {
 	if project == nil {
 		// Project has been deleted
 		return nil

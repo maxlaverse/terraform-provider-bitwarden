@@ -10,6 +10,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/transformation"
 )
 
 type projectOperationFunc func(ctx context.Context, secret models.Project) (*models.Project, error)
@@ -64,10 +65,10 @@ func opProjectUpdate(ctx context.Context, d *schema.ResourceData, bwsClient bitw
 }
 
 func projectOperation(ctx context.Context, d *schema.ResourceData, operation projectOperationFunc) error {
-	project, err := operation(ctx, projectStructFromData(ctx, d))
+	project, err := operation(ctx, transformation.ProjectStructFromData(ctx, d))
 	if err != nil {
 		return err
 	}
 
-	return projectDataFromStruct(ctx, d, project)
+	return transformation.ProjectDataFromStruct(ctx, d, project)
 }

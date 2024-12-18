@@ -16,6 +16,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/transformation"
 )
 
 func opAttachmentCreate(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
@@ -50,7 +51,7 @@ func opAttachmentCreate(ctx context.Context, d *schema.ResourceData, bwClient bi
 		return diag.FromErr(errors.New("BUG: at least one attachment removed"))
 	}
 
-	return diag.FromErr(attachmentDataFromStruct(d, attachmentsAdded[0]))
+	return diag.FromErr(transformation.AttachmentDataFromStruct(d, attachmentsAdded[0]))
 }
 
 func opAttachmentDelete(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
@@ -98,7 +99,7 @@ func opAttachmentReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, 
 
 	for _, attachment := range obj.Attachments {
 		if attachment.ID == d.Id() {
-			return diag.FromErr(attachmentDataFromStruct(d, attachment))
+			return diag.FromErr(transformation.AttachmentDataFromStruct(d, attachment))
 		}
 	}
 
