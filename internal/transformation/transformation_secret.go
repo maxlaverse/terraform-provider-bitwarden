@@ -1,4 +1,4 @@
-package provider
+package transformation
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func secretStructFromData(_ context.Context, d *schema.ResourceData) models.Secret {
+func SecretStructFromData(_ context.Context, d *schema.ResourceData) models.Secret {
 	var secret models.Secret
 
 	secret.ID = d.Id()
@@ -35,7 +35,7 @@ func secretStructFromData(_ context.Context, d *schema.ResourceData) models.Secr
 	return secret
 }
 
-func secretDataFromStruct(_ context.Context, d *schema.ResourceData, secret *models.Secret) error {
+func SecretDataFromStruct(_ context.Context, d *schema.ResourceData, secret *models.Secret) error {
 	if secret == nil {
 		// Secret has been deleted
 		return nil
