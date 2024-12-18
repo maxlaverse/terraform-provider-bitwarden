@@ -62,6 +62,9 @@ func (v *baseVault) getObject(_ context.Context, obj models.Object) (*models.Obj
 	if !ok || obj.DeletedDate != nil {
 		return nil, models.ErrObjectNotFound
 	}
+	if obj.Type > 0 && storedObj.Type != obj.Type {
+		return nil, models.ErrItemTypeMismatch
+	}
 
 	return &storedObj, nil
 }
@@ -656,6 +659,10 @@ func objMatchFilter(ctx context.Context, obj models.Object, filters bitwarden.Li
 		if !matchCollection {
 			return false
 		}
+	}
+
+	if filters.ItemType > 0 && obj.Object == models.ObjectTypeItem && obj.Type != filters.ItemType {
+		return false
 	}
 
 	if len(filters.UrlFilter) > 0 {

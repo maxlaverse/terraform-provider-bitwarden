@@ -2,29 +2,20 @@ package provider
 
 import (
 	"context"
-	"errors"
 
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/transformation"
 )
 
-type projectOperationFunc func(ctx context.Context, secret models.Project) (*models.Project, error)
-
-func opProjectCreate() secretsManagerOperation {
-	return func(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-		return diag.FromErr(projectOperation(ctx, d, bwsClient.CreateProject))
-	}
+func opProjectCreate(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
+	return diag.FromErr(applyOperation(ctx, d, bwsClient.CreateProject, transformation.ProjectStructFromData, transformation.ProjectDataFromStruct))
 }
 
 func opProjectDelete(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	return diag.FromErr(projectOperation(ctx, d, func(ctx context.Context, project models.Project) (*models.Project, error) {
-		return nil, bwsClient.DeleteProject(ctx, project)
-	}))
+	return diag.FromErr(applyOperation(ctx, d, withNilReturn(bwsClient.DeleteProject), transformation.ProjectStructFromData, transformation.ProjectDataFromStruct))
 }
 
 func opProjectImport(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
@@ -34,41 +25,13 @@ func opProjectImport(ctx context.Context, d *schema.ResourceData, meta interface
 
 func opProjectRead(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
 	d.SetId(d.Get(schema_definition.AttributeID).(string))
-	return diag.FromErr(projectOperation(ctx, d, func(ctx context.Context, projectReq models.Project) (*models.Project, error) {
-		project, err := bwsClient.GetProject(ctx, projectReq)
-		if project != nil {
-			if project.ID != projectReq.ID {
-				return nil, errors.New("returned project ID does not match requested project ID")
-			}
-		}
-
-		return project, err
-	}))
+	return diag.FromErr(applyOperation(ctx, d, bwsClient.GetProject, transformation.ProjectStructFromData, transformation.ProjectDataFromStruct))
 }
 
 func opProjectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	err := projectOperation(ctx, d, func(ctx context.Context, project models.Project) (*models.Project, error) {
-		return bwsClient.GetProject(ctx, project)
-	})
-
-	if errors.Is(err, models.ErrObjectNotFound) {
-		d.SetId("")
-		tflog.Warn(ctx, "Project not found, removing from state")
-		return diag.Diagnostics{}
-	}
-
-	return diag.FromErr(err)
+	return ignoreMissing(ctx, d, applyOperation(ctx, d, bwsClient.GetProject, transformation.ProjectStructFromData, transformation.ProjectDataFromStruct))
 }
 
 func opProjectUpdate(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	return diag.FromErr(projectOperation(ctx, d, bwsClient.EditProject))
-}
-
-func projectOperation(ctx context.Context, d *schema.ResourceData, operation projectOperationFunc) error {
-	project, err := operation(ctx, transformation.ProjectStructFromData(ctx, d))
-	if err != nil {
-		return err
-	}
-
-	return transformation.ProjectDataFromStruct(ctx, d, project)
+	return diag.FromErr(applyOperation(ctx, d, bwsClient.EditProject, transformation.ProjectStructFromData, transformation.ProjectDataFromStruct))
 }

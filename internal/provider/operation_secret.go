@@ -2,30 +2,21 @@ package provider
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/transformation"
 )
 
-type secretOperationFunc func(ctx context.Context, secret models.Secret) (*models.Secret, error)
-
-func opSecretCreate() secretsManagerOperation {
-	return func(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-		return diag.FromErr(secretOperation(ctx, d, bwsClient.CreateSecret))
-	}
+func opSecretCreate(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
+	return diag.FromErr(applyOperation(ctx, d, bwsClient.CreateSecret, transformation.SecretStructFromData, transformation.SecretDataFromStruct))
 }
 
 func opSecretDelete(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	return diag.FromErr(secretOperation(ctx, d, func(ctx context.Context, secret models.Secret) (*models.Secret, error) {
-		return nil, bwsClient.DeleteSecret(ctx, secret)
-	}))
+	return diag.FromErr(applyOperation(ctx, d, withNilReturn(bwsClient.DeleteSecret), transformation.SecretStructFromData, transformation.SecretDataFromStruct))
 }
 
 func opSecretImport(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
@@ -39,34 +30,15 @@ func opSecretRead(ctx context.Context, d *schema.ResourceData, bwsClient bitward
 		return diag.FromErr(secretSearch(ctx, d, bwsClient))
 	}
 
-	return diag.FromErr(secretOperation(ctx, d, func(ctx context.Context, secretReq models.Secret) (*models.Secret, error) {
-		secret, err := bwsClient.GetSecret(ctx, secretReq)
-		if secret != nil {
-			if secret.ID != secretReq.ID {
-				return nil, errors.New("returned secret ID does not match requested secret ID")
-			}
-		}
-
-		return secret, err
-	}))
+	return diag.FromErr(applyOperation(ctx, d, bwsClient.GetSecret, transformation.SecretStructFromData, transformation.SecretDataFromStruct))
 }
 
 func opSecretReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	err := secretOperation(ctx, d, func(ctx context.Context, secret models.Secret) (*models.Secret, error) {
-		return bwsClient.GetSecret(ctx, secret)
-	})
-
-	if errors.Is(err, models.ErrObjectNotFound) {
-		d.SetId("")
-		tflog.Warn(ctx, "Secret not found, removing from state")
-		return diag.Diagnostics{}
-	}
-
-	return diag.FromErr(err)
+	return ignoreMissing(ctx, d, applyOperation(ctx, d, bwsClient.GetSecret, transformation.SecretStructFromData, transformation.SecretDataFromStruct))
 }
 
 func opSecretUpdate(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	return diag.FromErr(secretOperation(ctx, d, bwsClient.EditSecret))
+	return diag.FromErr(applyOperation(ctx, d, bwsClient.EditSecret, transformation.SecretStructFromData, transformation.SecretDataFromStruct))
 }
 
 func secretSearch(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) error {
@@ -76,15 +48,6 @@ func secretSearch(ctx context.Context, d *schema.ResourceData, bwsClient bitward
 	}
 
 	secret, err := bwsClient.GetSecretByKey(ctx, secretKey.(string))
-	if err != nil {
-		return err
-	}
-
-	return transformation.SecretDataFromStruct(ctx, d, secret)
-}
-
-func secretOperation(ctx context.Context, d *schema.ResourceData, operation secretOperationFunc) error {
-	secret, err := operation(ctx, transformation.SecretStructFromData(ctx, d))
 	if err != nil {
 		return err
 	}

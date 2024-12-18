@@ -10,9 +10,9 @@ func resourceOrgCollection() *schema.Resource {
 		Description: "Manages an organization collection.",
 
 		CreateContext: withPasswordManager(opOrganizationCollectionCreate),
-		ReadContext:   withPasswordManager(opObjectReadIgnoreMissing),
-		UpdateContext: withPasswordManager(opObjectUpdate),
-		DeleteContext: withPasswordManager(opObjectDelete),
+		ReadContext:   withPasswordManager(opOrganizationCollectionReadIgnoreMissing),
+		UpdateContext: withPasswordManager(opOrganizationCollectionUpdate),
+		DeleteContext: withPasswordManager(opOrganizationCollectionDelete),
 		Importer:      resourceImporter(opOrganizationCollectionImport),
 
 		Schema: schema_definition.OrgCollectionSchema(schema_definition.Resource),

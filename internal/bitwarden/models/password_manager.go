@@ -12,6 +12,7 @@ var (
 	ErrAlreadyLoggedIn     = errors.New("you are already logged in")
 	ErrWrongMasterPassword = errors.New("invalid master password")
 	ErrLoggedOut           = errors.New("please login first")
+	ErrItemTypeMismatch    = errors.New("returned object type does not match requested object type")
 )
 
 type ItemType int
