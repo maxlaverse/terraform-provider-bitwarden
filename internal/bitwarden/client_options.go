@@ -1,5 +1,7 @@
 package bitwarden
 
+import "github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+
 type ListObjectsOptionGenerator func(id string) ListObjectsOption
 type ListObjectsFilterOptions struct {
 	CollectionFilter   string
@@ -7,6 +9,7 @@ type ListObjectsFilterOptions struct {
 	OrganizationFilter string
 	SearchFilter       string
 	UrlFilter          string
+	ItemType           models.ItemType
 }
 
 func (f *ListObjectsFilterOptions) IsValid() bool {
@@ -24,6 +27,12 @@ func WithCollectionID(id string) ListObjectsOption {
 func WithFolderID(id string) ListObjectsOption {
 	return func(f *ListObjectsFilterOptions) {
 		f.FolderFilter = id
+	}
+}
+
+func WithItemType(itemType int) ListObjectsOption {
+	return func(f *ListObjectsFilterOptions) {
+		f.ItemType = models.ItemType(itemType)
 	}
 }
 

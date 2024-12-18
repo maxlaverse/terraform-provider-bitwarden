@@ -10,9 +10,9 @@ func resourceFolder() *schema.Resource {
 		Description: "Manages a folder.",
 
 		CreateContext: withPasswordManager(opFolderCreate),
-		ReadContext:   withPasswordManager(opObjectReadIgnoreMissing),
-		UpdateContext: withPasswordManager(opObjectUpdate),
-		DeleteContext: withPasswordManager(opObjectDelete),
+		ReadContext:   withPasswordManager(opFolderReadIgnoreMissing),
+		UpdateContext: withPasswordManager(opFolderUpdate),
+		DeleteContext: withPasswordManager(opFolderDelete),
 		Importer:      resourceImporter(opFolderImport),
 
 		Schema: schema_definition.FolderSchema(schema_definition.Resource),

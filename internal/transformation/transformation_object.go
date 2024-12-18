@@ -389,5 +389,11 @@ func ListOptionsFromData(d *schema.ResourceData) []bitwarden.ListObjectsOption {
 			filters = append(filters, optionFunc(v))
 		}
 	}
+
+	itemType, ok := d.GetOk(schema_definition.AttributeType)
+	if ok {
+		filters = append(filters, bitwarden.WithItemType(itemType.(int)))
+	}
+
 	return filters
 }

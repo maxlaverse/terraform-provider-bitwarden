@@ -177,6 +177,8 @@ func (c *client) GetObject(ctx context.Context, obj models.Object) (*models.Obje
 		obj.ID,
 	}
 
+	desiredObjType := obj.Type
+
 	if obj.Object == models.ObjectTypeOrgCollection {
 		args = append(args, "--organizationid", obj.OrganizationID)
 	}
@@ -189,6 +191,10 @@ func (c *client) GetObject(ctx context.Context, obj models.Object) (*models.Obje
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
 		return nil, newUnmarshallError(err, args[0:2], out)
+	}
+
+	if desiredObjType > 0 && obj.Type != desiredObjType {
+		return nil, models.ErrItemTypeMismatch
 	}
 
 	return &obj, nil
@@ -221,13 +227,22 @@ func (c *client) ListObjects(ctx context.Context, objType models.ObjectType, opt
 		return nil, remapError(err)
 	}
 
-	var obj []models.Object
-	err = json.Unmarshal(out, &obj)
+	var objs []models.Object
+	err = json.Unmarshal(out, &objs)
 	if err != nil {
 		return nil, newUnmarshallError(err, args[0:2], out)
 	}
 
-	return obj, nil
+	filters := bitwarden.ListObjectsOptionsToFilterOptions(options...)
+	filteredObj := []models.Object{}
+	for _, obj := range objs {
+		if filters.ItemType != 0 && obj.Type != filters.ItemType {
+			continue
+		}
+		filteredObj = append(filteredObj, obj)
+	}
+
+	return filteredObj, nil
 }
 
 // LoginWithPassword logs in using a password and retrieves the session key,
