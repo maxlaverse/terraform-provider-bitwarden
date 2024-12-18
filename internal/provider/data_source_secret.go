@@ -10,7 +10,7 @@ func dataSourceSecret() *schema.Resource {
 
 	return &schema.Resource{
 		Description: "Use this data source to get information on an existing secret.",
-		ReadContext: withSecretsManager(resourceReadDataSourceSecret),
+		ReadContext: withSecretsManager(opSecretRead),
 		Schema:      dataSourceSecretSchema,
 	}
 }

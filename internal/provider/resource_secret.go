@@ -10,11 +10,11 @@ func resourceSecret() *schema.Resource {
 
 	return &schema.Resource{
 		Description:   "Manages a secret.",
-		CreateContext: withSecretsManager(resourceCreateSecret()),
-		ReadContext:   withSecretsManager(resourceReadSecretIgnoreMissing),
-		UpdateContext: withSecretsManager(resourceUpdateSecret),
-		DeleteContext: withSecretsManager(resourceDeleteSecret),
+		CreateContext: withSecretsManager(opSecretCreate()),
+		ReadContext:   withSecretsManager(opSecretReadIgnoreMissing),
+		UpdateContext: withSecretsManager(opSecretUpdate),
+		DeleteContext: withSecretsManager(opSecretDelete),
 		Schema:        resourceSecretSchema,
-		Importer:      resourceImporter(resourceImportSecret),
+		Importer:      resourceImporter(opSecretImport),
 	}
 }

@@ -14,7 +14,7 @@ func dataSourceItemLogin() *schema.Resource {
 
 	return &schema.Resource{
 		Description: "Use this data source to get information on an existing login item.",
-		ReadContext: withPasswordManager(resourceReadDataSourceItem(models.ObjectTypeItem, models.ItemTypeLogin)),
+		ReadContext: withPasswordManager(opItemRead(models.ObjectTypeItem, models.ItemTypeLogin)),
 		Schema:      dataSourceItemLoginSchema,
 	}
 }

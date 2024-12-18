@@ -9,7 +9,7 @@ import (
 func dataSourceOrganization() *schema.Resource {
 	return &schema.Resource{
 		Description: "Use this data source to get information on an existing organization.",
-		ReadContext: withPasswordManager(resourceReadDataSourceObject(models.ObjectTypeOrganization)),
+		ReadContext: withPasswordManager(opObjectRead(models.ObjectTypeOrganization)),
 		Schema:      schema_definition.OrganizationSchema(),
 	}
 }

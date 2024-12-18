@@ -2,128 +2,13 @@ package provider
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
-
-type objectOperationFunc func(ctx context.Context, secret models.Object) (*models.Object, error)
-
-func objectCreate(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	return diag.FromErr(objectOperation(ctx, d, bwClient.CreateObject))
-}
-
-func objectRead(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	if _, idProvided := d.GetOk(schema_definition.AttributeID); !idProvided {
-		return diag.FromErr(objectSearch(ctx, d, bwClient))
-	}
-
-	return diag.FromErr(objectOperation(ctx, d, func(ctx context.Context, secret models.Object) (*models.Object, error) {
-		obj, err := bwClient.GetObject(ctx, secret)
-		if obj != nil {
-			// If the object exists but is marked as soft deleted, we return an error, because relying
-			// on an object in the 'trash' sounds like a bad idea.
-			if obj.DeletedDate != nil {
-				return nil, errors.New("object is soft deleted")
-			}
-
-			if obj.ID != secret.ID {
-				return nil, errors.New("returned object ID does not match requested object ID")
-			}
-
-			if obj.Type != secret.Type {
-				return nil, errors.New("returned object type does not match requested object type")
-			}
-		}
-
-		return obj, err
-	}))
-}
-
-func objectSearch(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) error {
-	objType, ok := d.GetOk(schema_definition.AttributeObject)
-	if !ok {
-		return fmt.Errorf("BUG: object type not set in the resource data")
-	}
-
-	objs, err := bwClient.ListObjects(ctx, models.ObjectType(objType.(string)), listOptionsFromData(d)...)
-	if err != nil {
-		return err
-	}
-
-	// If the object is an item, also filter by type to avoid returning a login when a secure note is expected.
-	if models.ObjectType(objType.(string)) == models.ObjectTypeItem {
-		itemType, ok := d.GetOk(schema_definition.AttributeType)
-		if !ok {
-			return fmt.Errorf("BUG: item type not set in the resource data")
-		}
-
-		objs = bwcli.FilterObjectsByType(objs, models.ItemType(itemType.(int)))
-	}
-
-	if len(objs) == 0 {
-		return fmt.Errorf("no object found matching the filter")
-	} else if len(objs) > 1 {
-		objects := []string{}
-		for _, obj := range objs {
-			objects = append(objects, fmt.Sprintf("%s (%s)", obj.Name, obj.ID))
-		}
-		tflog.Warn(ctx, "Too many objects found", map[string]interface{}{"objects": objects})
-
-		return fmt.Errorf("too many objects found")
-	}
-
-	obj := objs[0]
-
-	// If the object exists but is marked as soft deleted, we return an error. This shouldn't happen
-	// in theory since we never pass the --trash flag to the Bitwarden CLI when listing objects.
-	if obj.DeletedDate != nil {
-		return errors.New("object is soft deleted")
-	}
-
-	return objectDataFromStruct(ctx, d, &obj)
-}
-
-func listOptionsFromData(d *schema.ResourceData) []bitwarden.ListObjectsOption {
-	filters := []bitwarden.ListObjectsOption{}
-
-	filterMap := map[string]bitwarden.ListObjectsOptionGenerator{
-		schema_definition.AttributeFilterSearch:         bitwarden.WithSearch,
-		schema_definition.AttributeFilterCollectionId:   bitwarden.WithCollectionID,
-		schema_definition.AttributeOrganizationID:       bitwarden.WithOrganizationID,
-		schema_definition.AttributeFilterFolderID:       bitwarden.WithFolderID,
-		schema_definition.AttributeFilterOrganizationID: bitwarden.WithOrganizationID,
-		schema_definition.AttributeFilterURL:            bitwarden.WithUrl,
-	}
-
-	for attribute, optionFunc := range filterMap {
-		v, ok := d.GetOk(attribute)
-		if !ok {
-			continue
-		}
-
-		if v, ok := v.(string); ok && len(v) > 0 {
-			filters = append(filters, optionFunc(v))
-		}
-	}
-	return filters
-}
-
-func objectOperation(ctx context.Context, d *schema.ResourceData, operation objectOperationFunc) error {
-	obj, err := operation(ctx, objectStructFromData(ctx, d))
-	if err != nil {
-		return err
-	}
-
-	return objectDataFromStruct(ctx, d, obj)
-}
 
 func objectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *models.Object) error {
 	if obj == nil {
@@ -481,3 +366,28 @@ const (
 	URIMatchRegExp     URIMatchStr = "regexp"
 	URIMatchNever      URIMatchStr = "never"
 )
+
+func listOptionsFromData(d *schema.ResourceData) []bitwarden.ListObjectsOption {
+	filters := []bitwarden.ListObjectsOption{}
+
+	filterMap := map[string]bitwarden.ListObjectsOptionGenerator{
+		schema_definition.AttributeFilterSearch:         bitwarden.WithSearch,
+		schema_definition.AttributeFilterCollectionId:   bitwarden.WithCollectionID,
+		schema_definition.AttributeOrganizationID:       bitwarden.WithOrganizationID,
+		schema_definition.AttributeFilterFolderID:       bitwarden.WithFolderID,
+		schema_definition.AttributeFilterOrganizationID: bitwarden.WithOrganizationID,
+		schema_definition.AttributeFilterURL:            bitwarden.WithUrl,
+	}
+
+	for attribute, optionFunc := range filterMap {
+		v, ok := d.GetOk(attribute)
+		if !ok {
+			continue
+		}
+
+		if v, ok := v.(string); ok && len(v) > 0 {
+			filters = append(filters, optionFunc(v))
+		}
+	}
+	return filters
+}

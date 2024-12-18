@@ -5,9 +5,12 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"os"
+	"strings"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
@@ -15,7 +18,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func resourceCreateAttachment(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
+func opAttachmentCreate(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
 
 	existingAttachments, err := listExistingAttachments(ctx, bwClient, itemId)
@@ -50,7 +53,38 @@ func resourceCreateAttachment(ctx context.Context, d *schema.ResourceData, bwCli
 	return diag.FromErr(attachmentDataFromStruct(d, attachmentsAdded[0]))
 }
 
-func resourceReadAttachment(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
+func opAttachmentDelete(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
+	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
+
+	return diag.FromErr(bwClient.DeleteAttachment(ctx, itemId, d.Id()))
+}
+
+func opAttachmentImport(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	split := strings.Split(d.Id(), "/")
+	if len(split) != 2 {
+		return nil, fmt.Errorf("invalid ID specified, should be in the format <item_id>/<attachment_id>: '%s'", d.Id())
+	}
+	d.SetId(split[0])
+	d.Set(schema_definition.AttributeAttachmentItemID, split[1])
+	return []*schema.ResourceData{d}, nil
+}
+
+func opAttachmentRead(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
+	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
+
+	attachmentId := d.Get(schema_definition.AttributeID).(string)
+
+	content, err := bwClient.GetAttachment(ctx, itemId, attachmentId)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	d.SetId(attachmentId)
+
+	return diag.FromErr(d.Set(schema_definition.AttributeAttachmentContent, string(content)))
+}
+
+func opAttachmentReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
 
 	obj, err := bwClient.GetObject(ctx, models.Object{ID: itemId, Object: models.ObjectTypeItem})
@@ -72,52 +106,6 @@ func resourceReadAttachment(ctx context.Context, d *schema.ResourceData, bwClien
 	// attachment as deleted.
 	d.SetId("")
 	return diag.Diagnostics{}
-}
-
-func resourceDeleteAttachment(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
-
-	return diag.FromErr(bwClient.DeleteAttachment(ctx, itemId, d.Id()))
-}
-
-func attachmentDataFromStruct(d *schema.ResourceData, attachment models.Attachment) error {
-	d.SetId(attachment.ID)
-
-	err := d.Set(schema_definition.AttributeAttachmentFileName, attachment.FileName)
-	if err != nil {
-		return err
-	}
-
-	err = d.Set(schema_definition.AttributeAttachmentSize, attachment.Size)
-	if err != nil {
-		return err
-	}
-	err = d.Set(schema_definition.AttributeAttachmentSizeName, attachment.SizeName)
-	if err != nil {
-		return err
-	}
-
-	err = d.Set(schema_definition.AttributeAttachmentURL, attachment.Url)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func resourceReadDataSourceAttachment(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
-
-	attachmentId := d.Get(schema_definition.AttributeID).(string)
-
-	content, err := bwClient.GetAttachment(ctx, itemId, attachmentId)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	d.SetId(attachmentId)
-
-	return diag.FromErr(d.Set(schema_definition.AttributeAttachmentContent, string(content)))
 }
 
 func listExistingAttachments(ctx context.Context, client bitwarden.PasswordManager, itemId string) ([]models.Attachment, error) {
@@ -175,4 +163,22 @@ func contentSha1Sum(content string) (string, error) {
 	outputChecksum := hash.Sum(nil)
 
 	return hex.EncodeToString(outputChecksum[:]), nil
+}
+
+func contentHash(val interface{}) string {
+	hash, _ := contentSha1Sum(val.(string))
+	return hash
+}
+
+func fileHashComputable(val interface{}, _ cty.Path) diag.Diagnostics {
+	_, err := fileSha1Sum(val.(string))
+	if err != nil {
+		return diag.FromErr(fmt.Errorf("unable to compute hash of file: %w", err))
+	}
+	return diag.Diagnostics{}
+}
+
+func fileHash(val interface{}) string {
+	hash, _ := fileSha1Sum(val.(string))
+	return hash
 }
