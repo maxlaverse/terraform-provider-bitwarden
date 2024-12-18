@@ -33,18 +33,18 @@ type Client interface {
 	CreateObjectAttachment(ctx context.Context, itemId string, data []byte, req AttachmentRequestData) (*CreateObjectAttachmentResponse, error)
 	CreateObjectAttachmentData(ctx context.Context, itemId, attachmentId string, data []byte) error
 	CreateOrganization(ctx context.Context, req CreateOrganizationRequest) (*CreateOrganizationResponse, error)
-	CreateOrgCollection(ctx context.Context, orgId string, req OrganizationCreationRequest) (*Collection, error)
+	CreateOrganizationCollection(ctx context.Context, orgId string, req OrganizationCreationRequest) (*Collection, error)
 	CreateProject(ctx context.Context, project models.Project) (*models.Project, error)
 	CreateSecret(ctx context.Context, secret models.Secret) (*Secret, error)
 	DeleteFolder(ctx context.Context, objID string) error
 	DeleteObject(ctx context.Context, objID string) error
 	DeleteObjectAttachment(ctx context.Context, itemId, attachmentId string) error
-	DeleteOrgCollection(ctx context.Context, orgID, collectionID string) error
+	DeleteOrganizationCollection(ctx context.Context, orgID, collectionID string) error
 	DeleteProject(ctx context.Context, projectId string) error
 	DeleteSecret(ctx context.Context, secretId string) error
 	EditFolder(ctx context.Context, obj Folder) (*Folder, error)
 	EditObject(context.Context, models.Object) (*models.Object, error)
-	EditOrgCollection(ctx context.Context, orgId, objId string, obj OrganizationCreationRequest) (*Collection, error)
+	EditOrganizationCollection(ctx context.Context, orgId, objId string, obj OrganizationCreationRequest) (*Collection, error)
 	EditProject(context.Context, models.Project) (*models.Project, error)
 	EditSecret(ctx context.Context, secret models.Secret) (*Secret, error)
 	GetAPIKey(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*ApiKey, error)
@@ -179,7 +179,7 @@ func (c *client) CreateOrganization(ctx context.Context, req CreateOrganizationR
 	return doRequest[CreateOrganizationResponse](ctx, c.httpClient, httpReq)
 }
 
-func (c *client) CreateOrgCollection(ctx context.Context, orgId string, req OrganizationCreationRequest) (*Collection, error) {
+func (c *client) CreateOrganizationCollection(ctx context.Context, orgId string, req OrganizationCreationRequest) (*Collection, error) {
 	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/collections", c.serverURL, orgId), req)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing organization collection creation request: %w", err)
@@ -245,7 +245,7 @@ func (c *client) DeleteObjectAttachment(ctx context.Context, itemId, attachmentI
 	return err
 }
 
-func (c *client) DeleteOrgCollection(ctx context.Context, orgID, collectionID string) error {
+func (c *client) DeleteOrganizationCollection(ctx context.Context, orgID, collectionID string) error {
 	httpReq, err := c.prepareRequest(ctx, "DELETE", fmt.Sprintf("%s/api/organizations/%s/collections/%s", c.serverURL, orgID, collectionID), nil)
 	if err != nil {
 		return fmt.Errorf("error preparing organization collection deletion request: %w", err)
@@ -303,7 +303,7 @@ func (c *client) EditObject(ctx context.Context, obj models.Object) (*models.Obj
 	return doRequest[models.Object](ctx, c.httpClient, req)
 }
 
-func (c *client) EditOrgCollection(ctx context.Context, orgId, objId string, obj OrganizationCreationRequest) (*Collection, error) {
+func (c *client) EditOrganizationCollection(ctx context.Context, orgId, objId string, obj OrganizationCreationRequest) (*Collection, error) {
 	req, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/organizations/%s/collections/%s", c.serverURL, orgId, objId), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing collection edition request: %w", err)

@@ -12,11 +12,11 @@ import (
 )
 
 func opSecretCreate(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	return diag.FromErr(applyOperation(ctx, d, bwsClient.CreateSecret, transformation.SecretStructFromData, transformation.SecretDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, bwsClient.CreateSecret, transformation.SecretSchemaToObject, transformation.SecretObjectToSchema))
 }
 
 func opSecretDelete(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	return diag.FromErr(applyOperation(ctx, d, withNilReturn(bwsClient.DeleteSecret), transformation.SecretStructFromData, transformation.SecretDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, withNilReturn(bwsClient.DeleteSecret), transformation.SecretSchemaToObject, transformation.SecretObjectToSchema))
 }
 
 func opSecretImport(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
@@ -30,15 +30,15 @@ func opSecretRead(ctx context.Context, d *schema.ResourceData, bwsClient bitward
 		return diag.FromErr(secretSearch(ctx, d, bwsClient))
 	}
 
-	return diag.FromErr(applyOperation(ctx, d, bwsClient.GetSecret, transformation.SecretStructFromData, transformation.SecretDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, bwsClient.GetSecret, transformation.SecretSchemaToObject, transformation.SecretObjectToSchema))
 }
 
 func opSecretReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	return ignoreMissing(ctx, d, applyOperation(ctx, d, bwsClient.GetSecret, transformation.SecretStructFromData, transformation.SecretDataFromStruct))
+	return ignoreMissing(ctx, d, applyOperation(ctx, d, bwsClient.GetSecret, transformation.SecretSchemaToObject, transformation.SecretObjectToSchema))
 }
 
 func opSecretUpdate(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	return diag.FromErr(applyOperation(ctx, d, bwsClient.EditSecret, transformation.SecretStructFromData, transformation.SecretDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, bwsClient.EditSecret, transformation.SecretSchemaToObject, transformation.SecretObjectToSchema))
 }
 
 func secretSearch(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) error {
@@ -52,5 +52,5 @@ func secretSearch(ctx context.Context, d *schema.ResourceData, bwsClient bitward
 		return err
 	}
 
-	return transformation.SecretDataFromStruct(ctx, d, secret)
+	return transformation.SecretObjectToSchema(ctx, d, secret)
 }

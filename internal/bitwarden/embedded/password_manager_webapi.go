@@ -237,7 +237,7 @@ func (v *webAPIVault) CreateObject(ctx context.Context, obj models.Object) (*mod
 			return nil, fmt.Errorf("error encrypting collection for creation: %w", err)
 		}
 
-		resEncCollection, err := v.client.CreateOrgCollection(ctx, obj.OrganizationID, *encObj)
+		resEncCollection, err := v.client.CreateOrganizationCollection(ctx, obj.OrganizationID, *encObj)
 		if err != nil {
 			return nil, fmt.Errorf("error creating collection: %w", err)
 		}
@@ -408,7 +408,7 @@ func (v *webAPIVault) DeleteObject(ctx context.Context, obj models.Object) error
 	if obj.Object == models.ObjectTypeFolder {
 		err = v.client.DeleteFolder(ctx, obj.ID)
 	} else if obj.Object == models.ObjectTypeOrgCollection {
-		err = v.client.DeleteOrgCollection(ctx, obj.OrganizationID, obj.ID)
+		err = v.client.DeleteOrganizationCollection(ctx, obj.OrganizationID, obj.ID)
 	} else {
 		err = v.client.DeleteObject(ctx, obj.ID)
 	}
@@ -455,7 +455,7 @@ func (v *webAPIVault) EditObject(ctx context.Context, obj models.Object) (*model
 			return nil, fmt.Errorf("error encrypting collection for creation: %w", err)
 		}
 
-		resCollection, err := v.client.EditOrgCollection(ctx, obj.OrganizationID, obj.ID, *encObj)
+		resCollection, err := v.client.EditOrganizationCollection(ctx, obj.OrganizationID, obj.ID, *encObj)
 		if err != nil {
 			return nil, fmt.Errorf("error editing collection: %w", err)
 		}

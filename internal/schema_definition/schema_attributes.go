@@ -49,7 +49,7 @@ const (
 	AttributeProjectID = "project_id"
 	AttributeValue     = "value"
 
-	// Data-source and Resource field schema_definition.Descriptions
+	// Data-source and Resource field descriptions
 	DescriptionAttachments            = "List of item attachments."
 	DescriptionCollectionIDs          = "Identifier of the collections the item belongs to."
 	DescriptionCreationDate           = "Date the item was created."
@@ -106,7 +106,7 @@ const (
 	AttributeExperimental               = "experimental"
 	AttributeExperimentalEmbeddedClient = "embedded_client"
 
-	// Provider field schema_definition.Descriptions
+	// Provider field descriptions
 	DescriptionAccessToken                = "Machine Account Access Token (env: `BWS_ACCESS_TOKEN`))."
 	DescriptionClientSecret               = "Client Secret (env: `BW_CLIENTSECRET`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment."
 	DescriptionClientID                   = "Client ID (env: `BW_CLIENTID`)"

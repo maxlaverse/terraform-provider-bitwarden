@@ -6,11 +6,9 @@ import (
 )
 
 func dataSourceSecret() *schema.Resource {
-	dataSourceSecretSchema := schema_definition.SecretSchema(schema_definition.DataSource)
-
 	return &schema.Resource{
 		Description: "Use this data source to get information on an existing secret.",
 		ReadContext: withSecretsManager(opSecretRead),
-		Schema:      dataSourceSecretSchema,
+		Schema:      schema_definition.SecretSchema(schema_definition.DataSource),
 	}
 }

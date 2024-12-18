@@ -5,12 +5,11 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func ObjectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *models.Object) error {
+func BaseObjectToSchema(ctx context.Context, d *schema.ResourceData, obj *models.Object) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil
@@ -72,7 +71,7 @@ func ObjectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *mode
 			return err
 		}
 
-		err = d.Set(schema_definition.AttributeField, objectFieldDataFromStruct(obj))
+		err = d.Set(schema_definition.AttributeField, objectFieldObjectToSchema(obj))
 		if err != nil {
 			return err
 		}
@@ -129,7 +128,7 @@ func ObjectDataFromStruct(ctx context.Context, d *schema.ResourceData, obj *mode
 	return nil
 }
 
-func ObjectStructFromData(ctx context.Context, d *schema.ResourceData) models.Object {
+func BaseSchemaToObject(ctx context.Context, d *schema.ResourceData) models.Object {
 	var obj models.Object
 
 	obj.ID = d.Id()
@@ -181,11 +180,11 @@ func ObjectStructFromData(ctx context.Context, d *schema.ResourceData) models.Ob
 		}
 
 		if vList, ok := d.Get(schema_definition.AttributeAttachments).([]interface{}); ok {
-			obj.Attachments = objectAttachmentStructFromData(vList)
+			obj.Attachments = objectAttachmentSchemaToObject(vList)
 		}
 
 		if v, ok := d.Get(schema_definition.AttributeField).([]interface{}); ok {
-			obj.Fields = objectFieldStructFromData(v)
+			obj.Fields = objectFieldSchemaToObject(v)
 		}
 
 		if obj.Type == models.ItemTypeLogin {
@@ -207,7 +206,7 @@ func ObjectStructFromData(ctx context.Context, d *schema.ResourceData) models.Ob
 	return obj
 }
 
-func objectFieldDataFromStruct(obj *models.Object) []interface{} {
+func objectFieldObjectToSchema(obj *models.Object) []interface{} {
 	fields := make([]interface{}, len(obj.Fields))
 	for k, f := range obj.Fields {
 		field := map[string]interface{}{
@@ -227,7 +226,7 @@ func objectFieldDataFromStruct(obj *models.Object) []interface{} {
 	return fields
 }
 
-func objectAttachmentStructFromData(vList []interface{}) []models.Attachment {
+func objectAttachmentSchemaToObject(vList []interface{}) []models.Attachment {
 	attachments := make([]models.Attachment, len(vList))
 	for k, v := range vList {
 		vc := v.(map[string]interface{})
@@ -256,7 +255,7 @@ func objectAttachmentsFromStruct(objAttachments []models.Attachment) []interface
 	return attachments
 }
 
-func objectFieldStructFromData(vList []interface{}) []models.Field {
+func objectFieldSchemaToObject(vList []interface{}) []models.Field {
 	fields := make([]models.Field, len(vList))
 	for k, v := range vList {
 		vc := v.(map[string]interface{})
@@ -366,34 +365,3 @@ const (
 	URIMatchRegExp     URIMatchStr = "regexp"
 	URIMatchNever      URIMatchStr = "never"
 )
-
-func ListOptionsFromData(d *schema.ResourceData) []bitwarden.ListObjectsOption {
-	filters := []bitwarden.ListObjectsOption{}
-
-	filterMap := map[string]bitwarden.ListObjectsOptionGenerator{
-		schema_definition.AttributeFilterSearch:         bitwarden.WithSearch,
-		schema_definition.AttributeFilterCollectionId:   bitwarden.WithCollectionID,
-		schema_definition.AttributeOrganizationID:       bitwarden.WithOrganizationID,
-		schema_definition.AttributeFilterFolderID:       bitwarden.WithFolderID,
-		schema_definition.AttributeFilterOrganizationID: bitwarden.WithOrganizationID,
-		schema_definition.AttributeFilterURL:            bitwarden.WithUrl,
-	}
-
-	for attribute, optionFunc := range filterMap {
-		v, ok := d.GetOk(attribute)
-		if !ok {
-			continue
-		}
-
-		if v, ok := v.(string); ok && len(v) > 0 {
-			filters = append(filters, optionFunc(v))
-		}
-	}
-
-	itemType, ok := d.GetOk(schema_definition.AttributeType)
-	if ok {
-		filters = append(filters, bitwarden.WithItemType(itemType.(int)))
-	}
-
-	return filters
-}

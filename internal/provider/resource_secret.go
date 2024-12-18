@@ -6,15 +6,13 @@ import (
 )
 
 func resourceSecret() *schema.Resource {
-	resourceSecretSchema := schema_definition.SecretSchema(schema_definition.Resource)
-
 	return &schema.Resource{
 		Description:   "Manages a secret.",
 		CreateContext: withSecretsManager(opSecretCreate),
 		ReadContext:   withSecretsManager(opSecretReadIgnoreMissing),
 		UpdateContext: withSecretsManager(opSecretUpdate),
 		DeleteContext: withSecretsManager(opSecretDelete),
-		Schema:        resourceSecretSchema,
+		Schema:        schema_definition.SecretSchema(schema_definition.Resource),
 		Importer:      resourceImporter(opSecretImport),
 	}
 }

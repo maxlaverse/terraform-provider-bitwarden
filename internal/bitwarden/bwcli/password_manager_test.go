@@ -65,7 +65,7 @@ func TestGetItem(t *testing.T) {
 	}
 }
 
-func TestGetOrgCollection(t *testing.T) {
+func TestGetOrganizationCollection(t *testing.T) {
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
 		"get org-collection object-id --organizationid org-id": `{}`,
 	})

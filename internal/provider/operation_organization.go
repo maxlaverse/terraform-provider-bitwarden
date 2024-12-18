@@ -20,8 +20,8 @@ func opOrganizationRead(ctx context.Context, d *schema.ResourceData, bwClient bi
 	}
 
 	if _, idProvided := d.GetOk(schema_definition.AttributeID); !idProvided {
-		return diag.FromErr(searchOperation(ctx, d, bwClient.ListObjects, transformation.ObjectDataFromStruct))
+		return diag.FromErr(searchOperation(ctx, d, bwClient.ListObjects, transformation.BaseObjectToSchema))
 	}
 
-	return diag.FromErr(applyOperation(ctx, d, bwClient.GetObject, transformation.ObjectStructFromData, transformation.ObjectDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, bwClient.GetObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
 }

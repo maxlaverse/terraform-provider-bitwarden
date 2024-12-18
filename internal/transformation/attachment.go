@@ -6,7 +6,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func AttachmentDataFromStruct(d *schema.ResourceData, attachment models.Attachment) error {
+func AttachmentObjectToSchema(d *schema.ResourceData, attachment models.Attachment) error {
 	d.SetId(attachment.ID)
 
 	err := d.Set(schema_definition.AttributeAttachmentFileName, attachment.FileName)

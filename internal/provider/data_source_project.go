@@ -6,11 +6,9 @@ import (
 )
 
 func dataSourceProject() *schema.Resource {
-	dataSourceProjectSchema := schema_definition.ProjectSchema(schema_definition.DataSource)
-
 	return &schema.Resource{
 		Description: "Use this data source to get information on an existing project.",
 		ReadContext: withSecretsManager(opProjectRead),
-		Schema:      dataSourceProjectSchema,
+		Schema:      schema_definition.ProjectSchema(schema_definition.DataSource),
 	}
 }

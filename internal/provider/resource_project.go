@@ -6,15 +6,13 @@ import (
 )
 
 func resourceProject() *schema.Resource {
-	resourceProjectSchema := schema_definition.ProjectSchema(schema_definition.Resource)
-
 	return &schema.Resource{
 		Description:   "Manages a Project.",
 		CreateContext: withSecretsManager(opProjectCreate),
 		ReadContext:   withSecretsManager(opProjectReadIgnoreMissing),
 		UpdateContext: withSecretsManager(opProjectUpdate),
 		DeleteContext: withSecretsManager(opProjectDelete),
-		Schema:        resourceProjectSchema,
+		Schema:        schema_definition.ProjectSchema(schema_definition.Resource),
 		Importer:      resourceImporter(opProjectImport),
 	}
 }

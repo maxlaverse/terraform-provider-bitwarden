@@ -18,7 +18,7 @@ func opOrganizationCollectionCreate(ctx context.Context, d *schema.ResourceData,
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	return diag.FromErr(applyOperation(ctx, d, bwClient.CreateObject, transformation.ObjectStructFromData, transformation.ObjectDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, bwClient.CreateObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
 }
 
 func opOrganizationCollectionDelete(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
@@ -26,7 +26,7 @@ func opOrganizationCollectionDelete(ctx context.Context, d *schema.ResourceData,
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	return diag.FromErr(applyOperation(ctx, d, withNilReturn(bwClient.DeleteObject), transformation.ObjectStructFromData, transformation.ObjectDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, withNilReturn(bwClient.DeleteObject), transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
 }
 
 func opOrganizationCollectionImport(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
@@ -51,10 +51,10 @@ func opOrganizationCollectionRead(ctx context.Context, d *schema.ResourceData, b
 		return diag.FromErr(err)
 	}
 	if _, idProvided := d.GetOk(schema_definition.AttributeID); !idProvided {
-		return diag.FromErr(searchOperation(ctx, d, bwClient.ListObjects, transformation.ObjectDataFromStruct))
+		return diag.FromErr(searchOperation(ctx, d, bwClient.ListObjects, transformation.BaseObjectToSchema))
 	}
 
-	return diag.FromErr(applyOperation(ctx, d, bwClient.GetObject, transformation.ObjectStructFromData, transformation.ObjectDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, bwClient.GetObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
 }
 
 func opOrganizationCollectionReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
@@ -62,7 +62,7 @@ func opOrganizationCollectionReadIgnoreMissing(ctx context.Context, d *schema.Re
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	return ignoreMissing(ctx, d, applyOperation(ctx, d, bwClient.GetObject, transformation.ObjectStructFromData, transformation.ObjectDataFromStruct))
+	return ignoreMissing(ctx, d, applyOperation(ctx, d, bwClient.GetObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
 }
 
 func opOrganizationCollectionUpdate(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
@@ -70,5 +70,5 @@ func opOrganizationCollectionUpdate(ctx context.Context, d *schema.ResourceData,
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	return diag.FromErr(applyOperation(ctx, d, bwClient.EditObject, transformation.ObjectStructFromData, transformation.ObjectDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, bwClient.EditObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
 }

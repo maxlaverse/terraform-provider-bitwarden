@@ -11,11 +11,11 @@ import (
 )
 
 func opProjectCreate(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	return diag.FromErr(applyOperation(ctx, d, bwsClient.CreateProject, transformation.ProjectStructFromData, transformation.ProjectDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, bwsClient.CreateProject, transformation.ProjectSchemaToObject, transformation.ProjectObjectToSchema))
 }
 
 func opProjectDelete(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	return diag.FromErr(applyOperation(ctx, d, withNilReturn(bwsClient.DeleteProject), transformation.ProjectStructFromData, transformation.ProjectDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, withNilReturn(bwsClient.DeleteProject), transformation.ProjectSchemaToObject, transformation.ProjectObjectToSchema))
 }
 
 func opProjectImport(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
@@ -25,13 +25,13 @@ func opProjectImport(ctx context.Context, d *schema.ResourceData, meta interface
 
 func opProjectRead(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
 	d.SetId(d.Get(schema_definition.AttributeID).(string))
-	return diag.FromErr(applyOperation(ctx, d, bwsClient.GetProject, transformation.ProjectStructFromData, transformation.ProjectDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, bwsClient.GetProject, transformation.ProjectSchemaToObject, transformation.ProjectObjectToSchema))
 }
 
 func opProjectReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	return ignoreMissing(ctx, d, applyOperation(ctx, d, bwsClient.GetProject, transformation.ProjectStructFromData, transformation.ProjectDataFromStruct))
+	return ignoreMissing(ctx, d, applyOperation(ctx, d, bwsClient.GetProject, transformation.ProjectSchemaToObject, transformation.ProjectObjectToSchema))
 }
 
 func opProjectUpdate(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) diag.Diagnostics {
-	return diag.FromErr(applyOperation(ctx, d, bwsClient.EditProject, transformation.ProjectStructFromData, transformation.ProjectDataFromStruct))
+	return diag.FromErr(applyOperation(ctx, d, bwsClient.EditProject, transformation.ProjectSchemaToObject, transformation.ProjectObjectToSchema))
 }

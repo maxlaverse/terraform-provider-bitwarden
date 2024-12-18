@@ -7,8 +7,6 @@ import (
 )
 
 func resourceItemSecureNote() *schema.Resource {
-	dataSourceItemSecureNoteSchema := schema_definition.BaseSchema(schema_definition.Resource)
-
 	return &schema.Resource{
 		Description:   "Manages a secure note item.",
 		CreateContext: withPasswordManager(opItemCreate(models.ItemTypeSecureNote)),
@@ -16,6 +14,6 @@ func resourceItemSecureNote() *schema.Resource {
 		UpdateContext: withPasswordManager(opItemUpdate),
 		DeleteContext: withPasswordManager(opItemDelete),
 		Importer:      resourceImporter(opItemImport(models.ItemTypeSecureNote)),
-		Schema:        dataSourceItemSecureNoteSchema,
+		Schema:        schema_definition.BaseSchema(schema_definition.Resource),
 	}
 }
