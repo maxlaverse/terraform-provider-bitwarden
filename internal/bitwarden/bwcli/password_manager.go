@@ -13,11 +13,15 @@ import (
 )
 
 type PasswordManagerClient interface {
-	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Item, error)
 	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error)
+	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Item, error)
 	CreateFolder(context.Context, models.Folder) (*models.Folder, error)
 	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
+	DeleteFolder(context.Context, models.Folder) error
+	DeleteItem(context.Context, models.Item) error
+	DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error
 	EditFolder(context.Context, models.Folder) (*models.Folder, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
@@ -35,10 +39,6 @@ type PasswordManagerClient interface {
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
 	Logout(context.Context) error
-	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
-	DeleteFolder(context.Context, models.Folder) error
-	DeleteItem(context.Context, models.Item) error
-	DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error
 	SetServer(context.Context, string) error
 	SetSessionKey(string)
 	Status(context.Context) (*Status, error)
@@ -96,18 +96,6 @@ func DisableRetryBackoff() Options {
 	}
 }
 
-func (c *client) CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
-	return createGenericObject[models.Folder](ctx, c, obj, models.ObjectTypeFolder)
-}
-
-func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
-	return createGenericObject[models.Item](ctx, c, obj, models.ObjectTypeItem)
-}
-
-func (c *client) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error) {
-	return nil, fmt.Errorf("creating attachments from content is only supported by the embedded client")
-}
-
 func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, filePath string) (*models.Item, error) {
 	out, err := c.cmdWithSession("create", string(models.ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).Run(ctx)
 	if err != nil {
@@ -126,12 +114,24 @@ func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, fi
 	return &obj, nil
 }
 
-func (c *client) CreateOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
-	obj.Groups = []interface{}{}
-	return createGenericObject[models.OrgCollection](ctx, c, obj, models.ObjectTypeOrgCollection)
+func (c *client) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error) {
+	return nil, fmt.Errorf("creating attachments from content is only supported by the embedded client")
 }
 
-func createGenericObject[T any](ctx context.Context, c *client, obj T, objectType models.ObjectType) (*T, error) {
+func (c *client) CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
+	return createObject(ctx, c, obj, models.ObjectTypeFolder)
+}
+
+func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
+	return createObject(ctx, c, obj, models.ObjectTypeItem)
+}
+
+func (c *client) CreateOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
+	obj.Groups = []interface{}{}
+	return createObject(ctx, c, obj, models.ObjectTypeOrgCollection)
+}
+
+func createObject[T any](ctx context.Context, c *client, obj T, objectType models.ObjectType) (*T, error) {
 	objEncoded, err := c.encode(obj)
 	if err != nil {
 		return nil, err
@@ -220,22 +220,22 @@ func (c *client) GetAttachment(ctx context.Context, itemId, attachmentId string)
 }
 
 func (c *client) GetFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
-	return getGenericObject[models.Folder](ctx, c, obj, obj.Object, obj.ID)
+	return getObject(ctx, c, obj, obj.Object, obj.ID)
 }
 
 func (c *client) GetItem(ctx context.Context, obj models.Item) (*models.Item, error) {
-	return getGenericObject[models.Item](ctx, c, obj, obj.Object, obj.ID)
+	return getObject(ctx, c, obj, obj.Object, obj.ID)
 }
 
 func (c *client) GetOrganization(ctx context.Context, obj models.Organization) (*models.Organization, error) {
-	return getGenericObject[models.Organization](ctx, c, obj, obj.Object, obj.ID)
+	return getObject(ctx, c, obj, obj.Object, obj.ID)
 }
 
 func (c *client) GetOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
-	return getGenericObject[models.OrgCollection](ctx, c, obj, obj.Object, obj.ID)
+	return getObject(ctx, c, obj, obj.Object, obj.ID)
 }
 
-func getGenericObject[T any](ctx context.Context, c *client, obj T, objectType models.ObjectType, id string) (*T, error) {
+func getObject[T any](ctx context.Context, c *client, obj T, objectType models.ObjectType, id string) (*T, error) {
 	args := []string{
 		"get",
 		string(objectType),
@@ -307,15 +307,15 @@ func findGenericObject[T any](ctx context.Context, c *client, objType models.Obj
 		return nil, remapError(err)
 	}
 
-	var objs []T
-	err = json.Unmarshal(out, &objs)
+	var foundObjects []T
+	err = json.Unmarshal(out, &foundObjects)
 	if err != nil {
 		return nil, newUnmarshallError(err, args[0:2], out)
 	}
 
 	filters := bitwarden.ListObjectsOptionsToFilterOptions(options...)
 	filteredObj := []T{}
-	for _, obj := range objs {
+	for _, obj := range foundObjects {
 		switch itemObj := any(obj).(type) {
 		case models.Item:
 			if filters.ItemType > 0 && itemObj.Type != filters.ItemType {

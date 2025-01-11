@@ -892,28 +892,28 @@ func matchHost(url1, url2 string) (bool, error) {
 	return len(parsedUrl1.Host) > 0 && parsedUrl1.Host == parsedUrl2.Host, nil
 }
 
-func compareObjects[T any](obj1, obj2 T) error {
-	out1, err := json.Marshal(obj1)
+func compareObjects[T any](actual, expected T) error {
+	actualJson, err := json.Marshal(actual)
 	if err != nil {
-		err := fmt.Errorf("error marshalling obj1 while comparing: %w", err)
+		err := fmt.Errorf("error marshalling actual object while comparing: %w", err)
 		if panicOnEncryptionErrors {
 			panic(err)
 		}
 		return err
 	}
-	out2, err := json.Marshal(obj2)
+	expectedJson, err := json.Marshal(expected)
 	if err != nil {
-		err := fmt.Errorf("error marshalling obj2 while comparing: %w", err)
+		err := fmt.Errorf("error marshalling expected object while comparing: %w", err)
 		if panicOnEncryptionErrors {
 			panic(err)
 		}
 		return err
 	}
 
-	if !bytes.Equal(out1, out2) {
+	if !bytes.Equal(actualJson, expectedJson) {
 		err := fmt.Errorf("object comparison failed")
-		fmt.Printf("Object1: %s\n", string(out1))
-		fmt.Printf("Object2: %s\n", string(out2))
+		fmt.Printf("Expected: %s\n", string(actualJson))
+		fmt.Printf("Actual: %s\n", string(expectedJson))
 		if panicOnEncryptionErrors {
 			panic(err)
 		}

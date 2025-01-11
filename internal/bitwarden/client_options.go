@@ -1,6 +1,8 @@
 package bitwarden
 
-import "github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+import (
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+)
 
 type ListObjectsOptionGenerator func(id string) ListObjectsOption
 type ListObjectsFilterOptions struct {
