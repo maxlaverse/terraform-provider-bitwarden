@@ -529,7 +529,6 @@ func (c *client) LoginWithPassword(ctx context.Context, username, password strin
 	httpReq.Header.Set("user-agent", c.device.official.userAgent)
 	httpReq.Header.Set("auth-email", base64.RawURLEncoding.EncodeToString([]byte(username)))
 	httpReq.Header.Set("bitwarden-client-name", "cli")
-	httpReq.Header.Set("bitwarden-client-version", c.device.official.deviceVersion)
 
 	tokenResp, err := doRequest[TokenResponse](ctx, c.httpClient, httpReq)
 	if err != nil {
@@ -639,6 +638,7 @@ func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, r
 		httpReq.Header.Add("authorization", fmt.Sprintf("Bearer %s", c.sessionAccessToken))
 	}
 	httpReq.Header.Set("Accept", "application/json")
+	httpReq.Header.Set("bitwarden-client-version", c.device.official.deviceVersion)
 
 	if reqMethod == "GET" {
 		httpReq.Header.Set("Cache-Control", "no-store")
