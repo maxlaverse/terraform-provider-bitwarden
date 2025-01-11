@@ -447,12 +447,12 @@ func encryptOrgCollection(_ context.Context, obj models.OrgCollection, secret Ac
 			Name:           encObj.Name,
 			OrganizationId: obj.OrganizationID,
 		}
-		objForVerification, err := decryptOrgCollection(encObjModified, secret)
+		actualObj, err := decryptOrgCollection(encObjModified, secret)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting collection for verification: %w", err)
 		}
 
-		err = compareObjects(obj, *objForVerification)
+		err = compareObjects(obj, *actualObj)
 		if err != nil {
 			return nil, fmt.Errorf("error verifying collection after encryption: %w", err)
 		}
@@ -476,12 +476,12 @@ func encryptFolder(_ context.Context, obj models.Folder, secret AccountSecrets, 
 	}
 
 	if verifyObjectEncryption {
-		objForVerification, err := decryptFolder(encFolder, secret)
+		actualObj, err := decryptFolder(encFolder, secret)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting folder for verification: %w", err)
 		}
 
-		err = compareObjects(obj, *objForVerification)
+		err = compareObjects(obj, *actualObj)
 		if err != nil {
 			return nil, fmt.Errorf("error verifying folder after encryption: %w", err)
 		}
@@ -585,14 +585,14 @@ func encryptItem(_ context.Context, obj models.Item, secret AccountSecrets, veri
 	}
 
 	if verifyObjectEncryption {
-		objForVerification, err := decryptItem(encObj, secret)
+		actualObj, err := decryptItem(encObj, secret)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting item for verification: %w", err)
 		}
 
-		objForVerification.Key = ""
+		actualObj.Key = ""
 
-		err = compareObjects(obj, *objForVerification)
+		err = compareObjects(obj, *actualObj)
 		if err != nil {
 			return nil, fmt.Errorf("error verifying item after encryption: %w", err)
 		}
