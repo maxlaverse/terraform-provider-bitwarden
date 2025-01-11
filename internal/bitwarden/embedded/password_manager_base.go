@@ -912,8 +912,8 @@ func compareObjects[T any](actual, expected T) error {
 
 	if !bytes.Equal(actualJson, expectedJson) {
 		err := fmt.Errorf("object comparison failed")
-		fmt.Printf("Expected: %s\n", string(actualJson))
-		fmt.Printf("Actual: %s\n", string(expectedJson))
+		fmt.Printf("Expected: %s\n", string(expectedJson))
+		fmt.Printf("Actual: %s\n", string(actualJson))
 		if panicOnEncryptionErrors {
 			panic(err)
 		}
