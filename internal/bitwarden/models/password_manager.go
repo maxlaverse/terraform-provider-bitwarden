@@ -182,8 +182,9 @@ type OrgMember struct {
 }
 
 type OrgCollection struct {
-	ID             string     `json:"id,omitempty"`
-	Name           string     `json:"name,omitempty"`
-	Object         ObjectType `json:"object,omitempty"`
-	OrganizationID string     `json:"organizationId"`
+	ID             string        `json:"id,omitempty"`
+	Name           string        `json:"name,omitempty"`
+	Object         ObjectType    `json:"object,omitempty"`
+	OrganizationID string        `json:"organizationId"`
+	Groups         []interface{} `json:"groups"` // To be kept for the CLI when creating org-collections
 }

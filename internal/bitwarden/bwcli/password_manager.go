@@ -127,6 +127,7 @@ func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, fi
 }
 
 func (c *client) CreateOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
+	obj.Groups = []interface{}{}
 	return createGenericObject[models.OrgCollection](ctx, c, obj, models.ObjectTypeOrgCollection)
 }
 
@@ -170,6 +171,7 @@ func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, e
 }
 
 func (c *client) EditOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
+	obj.Groups = []interface{}{}
 	return editGenericObject[models.OrgCollection](ctx, c, obj, obj.Object, obj.ID)
 }
 
@@ -369,7 +371,7 @@ func (c *client) DeleteItem(ctx context.Context, obj models.Item) error {
 }
 
 func (c *client) DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error {
-	_, err := c.cmdWithSession("delete", string(models.ObjectTypeItem), obj.ID, "--organizationid", obj.OrganizationID).Run(ctx)
+	_, err := c.cmdWithSession("delete", string(models.ObjectTypeOrgCollection), obj.ID, "--organizationid", obj.OrganizationID).Run(ctx)
 	return err
 }
 
