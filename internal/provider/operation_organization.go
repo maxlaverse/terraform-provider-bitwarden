@@ -14,14 +14,11 @@ import (
 func opOrganizationRead(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	d.SetId(d.Get(schema_definition.AttributeID).(string))
 
-	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeOrganization)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
 	if _, idProvided := d.GetOk(schema_definition.AttributeID); !idProvided {
-		return diag.FromErr(searchOperation(ctx, d, bwClient.ListObjects, transformation.BaseObjectToSchema))
+		return diag.FromErr(searchOperation(ctx, d, bwClient.FindOrganization, transformation.OrganizationObjectToSchema))
 	}
 
-	return diag.FromErr(applyOperation(ctx, d, bwClient.GetObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
+	return diag.FromErr(applyOperation(ctx, d, func(ctx context.Context, secret models.Organization) (*models.Organization, error) {
+		return bwClient.GetOrganization(ctx, secret)
+	}, transformation.OrganizationSchemaToObject, transformation.OrganizationObjectToSchema))
 }

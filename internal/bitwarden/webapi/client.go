@@ -29,7 +29,7 @@ type Client interface {
 	ClearSession()
 	ConfirmOrganizationUser(ctx context.Context, orgID, orgUserID, key string) error
 	CreateFolder(ctx context.Context, obj Folder) (*Folder, error)
-	CreateObject(context.Context, models.Object) (*models.Object, error)
+	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateObjectAttachment(ctx context.Context, itemId string, data []byte, req AttachmentRequestData) (*CreateObjectAttachmentResponse, error)
 	CreateObjectAttachmentData(ctx context.Context, itemId, attachmentId string, data []byte) error
 	CreateOrganization(ctx context.Context, req CreateOrganizationRequest) (*CreateOrganizationResponse, error)
@@ -43,14 +43,14 @@ type Client interface {
 	DeleteProject(ctx context.Context, projectId string) error
 	DeleteSecret(ctx context.Context, secretId string) error
 	EditFolder(ctx context.Context, obj Folder) (*Folder, error)
-	EditObject(context.Context, models.Object) (*models.Object, error)
+	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, orgId, objId string, obj OrganizationCreationRequest) (*Collection, error)
 	EditProject(context.Context, models.Project) (*models.Project, error)
 	EditSecret(ctx context.Context, secret models.Secret) (*Secret, error)
 	GetAPIKey(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*ApiKey, error)
-	GetCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error)
+	GetOrganizationCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error)
 	GetContentFromURL(ctx context.Context, url string) ([]byte, error)
-	GetObjectAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
+	GetCipherAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
 	GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error)
 	GetProfile(context.Context) (*Profile, error)
 	GetProject(ctx context.Context, projectId string) (*models.Project, error)
@@ -112,7 +112,7 @@ func (c *client) CreateFolder(ctx context.Context, obj Folder) (*Folder, error) 
 	return doRequest[Folder](ctx, c.httpClient, httpReq)
 }
 
-func (c *client) CreateObject(ctx context.Context, obj models.Object) (*models.Object, error) {
+func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
 	var err error
 	var httpReq *http.Request
 	if len(obj.CollectionIds) != 0 {
@@ -128,7 +128,7 @@ func (c *client) CreateObject(ctx context.Context, obj models.Object) (*models.O
 		return nil, fmt.Errorf("error preparing object create request: %w", err)
 	}
 
-	return doRequest[models.Object](ctx, c.httpClient, httpReq)
+	return doRequest[models.Item](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) CreateObjectAttachment(ctx context.Context, itemId string, data []byte, req AttachmentRequestData) (*CreateObjectAttachmentResponse, error) {
@@ -277,7 +277,7 @@ func (c *client) DeleteSecret(ctx context.Context, secretId string) error {
 	return err
 }
 
-func (c *client) GetObjectAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error) {
+func (c *client) GetCipherAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error) {
 	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/ciphers/%s/attachment/%s", c.serverURL, itemId, attachmentId), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing object attachment retrieval request: %w", err)
@@ -294,13 +294,13 @@ func (c *client) EditFolder(ctx context.Context, obj Folder) (*Folder, error) {
 	return doRequest[Folder](ctx, c.httpClient, req)
 }
 
-func (c *client) EditObject(ctx context.Context, obj models.Object) (*models.Object, error) {
+func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
 	req, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/ciphers/%s", c.serverURL, obj.ID), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing object edition request: %w", err)
 	}
 
-	return doRequest[models.Object](ctx, c.httpClient, req)
+	return doRequest[models.Item](ctx, c.httpClient, req)
 }
 
 func (c *client) EditOrganizationCollection(ctx context.Context, orgId, objId string, obj OrganizationCreationRequest) (*Collection, error) {
@@ -369,7 +369,7 @@ func (c *client) GetContentFromURL(ctx context.Context, url string) ([]byte, err
 	return []byte(*resp), err
 }
 
-func (c *client) GetCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error) {
+func (c *client) GetOrganizationCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error) {
 	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/collections", c.serverURL, orgID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing collection retrieval request: %w", err)

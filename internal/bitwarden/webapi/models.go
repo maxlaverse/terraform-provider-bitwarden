@@ -32,7 +32,7 @@ type AttachmentRequestData struct {
 
 type CreateObjectAttachmentResponse struct {
 	AttachmentId   string            `json:"attachmentId"`
-	CipherResponse models.Object     `json:"cipherResponse"`
+	CipherResponse models.Item       `json:"cipherResponse"`
 	FileUploadType int               `json:"fileUploadType"`
 	Object         models.ObjectType `json:"object"`
 	Url            string            `json:"url"`
@@ -183,12 +183,12 @@ type Collection struct {
 }
 
 type CreateCipherRequest struct {
-	Cipher        models.Object `json:"cipher"`
-	CollectionIds []string      `json:"collectionIds"`
+	Cipher        models.Item `json:"cipher"`
+	CollectionIds []string    `json:"collectionIds"`
 }
 
 type SyncResponse struct {
-	Ciphers     []models.Object   `json:"ciphers"`
+	Ciphers     []models.Item     `json:"ciphers"`
 	Collections []Collection      `json:"collections"`
 	Folders     []Folder          `json:"folders"`
 	Object      models.ObjectType `json:"object"`

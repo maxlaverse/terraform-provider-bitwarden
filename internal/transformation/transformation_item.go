@@ -9,7 +9,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func BaseObjectToSchema(ctx context.Context, d *schema.ResourceData, obj *models.Object) error {
+func ItemObjectToSchema(ctx context.Context, d *schema.ResourceData, obj *models.Item) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil
@@ -22,191 +22,169 @@ func BaseObjectToSchema(ctx context.Context, d *schema.ResourceData, obj *models
 		return err
 	}
 
-	err = d.Set(schema_definition.AttributeObject, obj.Object)
+	err = d.Set(schema_definition.AttributeObject, models.ObjectTypeItem)
 	if err != nil {
 		return err
 	}
 
-	// Object-specific fields
-	switch obj.Object {
-	case models.ObjectTypeOrgCollection:
-		err = d.Set(schema_definition.AttributeOrganizationID, obj.OrganizationID)
+	err = d.Set(schema_definition.AttributeFolderID, obj.FolderID)
+	if err != nil {
+		return err
+	}
+
+	err = d.Set(schema_definition.AttributeType, obj.Type)
+	if err != nil {
+		return err
+	}
+
+	err = d.Set(schema_definition.AttributeNotes, obj.Notes)
+	if err != nil {
+		return err
+	}
+
+	err = d.Set(schema_definition.AttributeOrganizationID, obj.OrganizationID)
+	if err != nil {
+		return err
+	}
+
+	err = d.Set(schema_definition.AttributeFavorite, obj.Favorite)
+	if err != nil {
+		return err
+	}
+
+	err = d.Set(schema_definition.AttributeCollectionIDs, obj.CollectionIds)
+	if err != nil {
+		return err
+	}
+
+	err = d.Set(schema_definition.AttributeAttachments, ItemAttachmentsFromStruct(obj.Attachments))
+	if err != nil {
+		return err
+	}
+
+	err = d.Set(schema_definition.AttributeField, ItemFieldDataFromStruct(obj))
+	if err != nil {
+		return err
+	}
+
+	err = d.Set(schema_definition.AttributeReprompt, obj.Reprompt == 1)
+	if err != nil {
+		return err
+	}
+
+	if obj.RevisionDate != nil {
+		err = d.Set(schema_definition.AttributeRevisionDate, obj.RevisionDate.Format(models.DateLayout))
 		if err != nil {
 			return err
-		}
-
-	case models.ObjectTypeItem:
-		err = d.Set(schema_definition.AttributeFolderID, obj.FolderID)
-		if err != nil {
-			return err
-		}
-
-		err = d.Set(schema_definition.AttributeType, obj.Type)
-		if err != nil {
-			return err
-		}
-
-		err = d.Set(schema_definition.AttributeNotes, obj.Notes)
-		if err != nil {
-			return err
-		}
-
-		err = d.Set(schema_definition.AttributeOrganizationID, obj.OrganizationID)
-		if err != nil {
-			return err
-		}
-
-		err = d.Set(schema_definition.AttributeFavorite, obj.Favorite)
-		if err != nil {
-			return err
-		}
-
-		err = d.Set(schema_definition.AttributeCollectionIDs, obj.CollectionIds)
-		if err != nil {
-			return err
-		}
-
-		err = d.Set(schema_definition.AttributeAttachments, objectAttachmentsFromStruct(obj.Attachments))
-		if err != nil {
-			return err
-		}
-
-		err = d.Set(schema_definition.AttributeField, objectFieldObjectToSchema(obj))
-		if err != nil {
-			return err
-		}
-
-		err = d.Set(schema_definition.AttributeReprompt, obj.Reprompt == 1)
-		if err != nil {
-			return err
-		}
-
-		if obj.RevisionDate != nil {
-			err = d.Set(schema_definition.AttributeRevisionDate, obj.RevisionDate.Format(models.DateLayout))
-			if err != nil {
-				return err
-			}
-		}
-
-		if obj.CreationDate != nil {
-			err = d.Set(schema_definition.AttributeCreationDate, obj.CreationDate.Format(models.DateLayout))
-			if err != nil {
-				return err
-			}
-		}
-
-		if obj.DeletedDate != nil {
-			err = d.Set(schema_definition.AttributeDeletedDate, obj.DeletedDate.Format(models.DateLayout))
-			if err != nil {
-				return err
-			}
-		}
-
-		if obj.Type == models.ItemTypeLogin {
-			err = d.Set(schema_definition.AttributeLoginPassword, obj.Login.Password)
-			if err != nil {
-				return err
-			}
-
-			err = d.Set(schema_definition.AttributeLoginTotp, obj.Login.Totp)
-			if err != nil {
-				return err
-			}
-
-			err = d.Set(schema_definition.AttributeLoginUsername, obj.Login.Username)
-			if err != nil {
-				return err
-			}
-
-			err = d.Set(schema_definition.AttributeLoginURIs, objectLoginURIsFromStruct(ctx, obj.Login.URIs))
-			if err != nil {
-				return err
-			}
 		}
 	}
 
+	if obj.CreationDate != nil {
+		err = d.Set(schema_definition.AttributeCreationDate, obj.CreationDate.Format(models.DateLayout))
+		if err != nil {
+			return err
+		}
+	}
+
+	if obj.DeletedDate != nil {
+		err = d.Set(schema_definition.AttributeDeletedDate, obj.DeletedDate.Format(models.DateLayout))
+		if err != nil {
+			return err
+		}
+	}
+
+	if obj.Type == models.ItemTypeLogin {
+		err = d.Set(schema_definition.AttributeLoginPassword, obj.Login.Password)
+		if err != nil {
+			return err
+		}
+
+		err = d.Set(schema_definition.AttributeLoginTotp, obj.Login.Totp)
+		if err != nil {
+			return err
+		}
+
+		err = d.Set(schema_definition.AttributeLoginUsername, obj.Login.Username)
+		if err != nil {
+			return err
+		}
+
+		err = d.Set(schema_definition.AttributeLoginURIs, objectLoginURIsFromStruct(ctx, obj.Login.URIs))
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func BaseSchemaToObject(ctx context.Context, d *schema.ResourceData) models.Object {
-	var obj models.Object
+func ItemSchemaToObject(ctx context.Context, d *schema.ResourceData) models.Item {
+	var obj models.Item
 
 	obj.ID = d.Id()
 	if v, ok := d.Get(schema_definition.AttributeName).(string); ok {
 		obj.Name = v
 	}
 
-	if v, ok := d.Get(schema_definition.AttributeObject).(string); ok {
-		obj.Object = models.ObjectType(v)
+	obj.Object = models.ObjectTypeItem
+
+	if v, ok := d.Get(schema_definition.AttributeType).(int); ok {
+		obj.Type = models.ItemType(v)
 	}
 
-	// Object-specific fields
-	switch obj.Object {
-	case models.ObjectTypeOrgCollection:
-		if v, ok := d.Get(schema_definition.AttributeOrganizationID).(string); ok {
-			obj.OrganizationID = v
-		}
+	if v, ok := d.Get(schema_definition.AttributeFolderID).(string); ok {
+		obj.FolderID = v
+	}
 
-	case models.ObjectTypeItem:
-		if v, ok := d.Get(schema_definition.AttributeType).(int); ok {
-			obj.Type = models.ItemType(v)
-		}
+	if v, ok := d.Get(schema_definition.AttributeFavorite).(bool); ok && v {
+		obj.Favorite = true
+	}
 
-		if v, ok := d.Get(schema_definition.AttributeFolderID).(string); ok {
-			obj.FolderID = v
-		}
+	if v, ok := d.Get(schema_definition.AttributeNotes).(string); ok {
+		obj.Notes = v
+	}
 
-		if v, ok := d.Get(schema_definition.AttributeFavorite).(bool); ok && v {
-			obj.Favorite = true
-		}
+	if v, ok := d.Get(schema_definition.AttributeOrganizationID).(string); ok {
+		obj.OrganizationID = v
+	}
 
-		if v, ok := d.Get(schema_definition.AttributeNotes).(string); ok {
-			obj.Notes = v
-		}
+	if v, ok := d.Get(schema_definition.AttributeReprompt).(bool); ok && v {
+		obj.Reprompt = 1
+	}
 
-		if v, ok := d.Get(schema_definition.AttributeOrganizationID).(string); ok {
-			obj.OrganizationID = v
+	if vList, ok := d.Get(schema_definition.AttributeCollectionIDs).([]interface{}); ok {
+		obj.CollectionIds = make([]string, len(vList))
+		for k, v := range vList {
+			obj.CollectionIds[k] = v.(string)
 		}
+	}
 
-		if v, ok := d.Get(schema_definition.AttributeReprompt).(bool); ok && v {
-			obj.Reprompt = 1
+	if vList, ok := d.Get(schema_definition.AttributeAttachments).([]interface{}); ok {
+		obj.Attachments = ItemAttachmentStructFromData(vList)
+	}
+
+	if v, ok := d.Get(schema_definition.AttributeField).([]interface{}); ok {
+		obj.Fields = ObjectFieldStructFromData(v)
+	}
+
+	if obj.Type == models.ItemTypeLogin {
+		if v, ok := d.Get(schema_definition.AttributeLoginPassword).(string); ok {
+			obj.Login.Password = v
 		}
-
-		if vList, ok := d.Get(schema_definition.AttributeCollectionIDs).([]interface{}); ok {
-			obj.CollectionIds = make([]string, len(vList))
-			for k, v := range vList {
-				obj.CollectionIds[k] = v.(string)
-			}
+		if v, ok := d.Get(schema_definition.AttributeLoginTotp).(string); ok {
+			obj.Login.Totp = v
 		}
-
-		if vList, ok := d.Get(schema_definition.AttributeAttachments).([]interface{}); ok {
-			obj.Attachments = objectAttachmentSchemaToObject(vList)
+		if v, ok := d.Get(schema_definition.AttributeLoginUsername).(string); ok {
+			obj.Login.Username = v
 		}
-
-		if v, ok := d.Get(schema_definition.AttributeField).([]interface{}); ok {
-			obj.Fields = objectFieldSchemaToObject(v)
-		}
-
-		if obj.Type == models.ItemTypeLogin {
-			if v, ok := d.Get(schema_definition.AttributeLoginPassword).(string); ok {
-				obj.Login.Password = v
-			}
-			if v, ok := d.Get(schema_definition.AttributeLoginTotp).(string); ok {
-				obj.Login.Totp = v
-			}
-			if v, ok := d.Get(schema_definition.AttributeLoginUsername).(string); ok {
-				obj.Login.Username = v
-			}
-			if vList, ok := d.Get(schema_definition.AttributeLoginURIs).([]interface{}); ok {
-				obj.Login.URIs = objectLoginURIsFromData(ctx, vList)
-			}
+		if vList, ok := d.Get(schema_definition.AttributeLoginURIs).([]interface{}); ok {
+			obj.Login.URIs = ObjectLoginURIsFromData(ctx, vList)
 		}
 	}
 
 	return obj
 }
 
-func objectFieldObjectToSchema(obj *models.Object) []interface{} {
+func ItemFieldDataFromStruct(obj *models.Item) []interface{} {
 	fields := make([]interface{}, len(obj.Fields))
 	for k, f := range obj.Fields {
 		field := map[string]interface{}{
@@ -226,7 +204,7 @@ func objectFieldObjectToSchema(obj *models.Object) []interface{} {
 	return fields
 }
 
-func objectAttachmentSchemaToObject(vList []interface{}) []models.Attachment {
+func ItemAttachmentStructFromData(vList []interface{}) []models.Attachment {
 	attachments := make([]models.Attachment, len(vList))
 	for k, v := range vList {
 		vc := v.(map[string]interface{})
@@ -241,7 +219,7 @@ func objectAttachmentSchemaToObject(vList []interface{}) []models.Attachment {
 	return attachments
 }
 
-func objectAttachmentsFromStruct(objAttachments []models.Attachment) []interface{} {
+func ItemAttachmentsFromStruct(objAttachments []models.Attachment) []interface{} {
 	attachments := make([]interface{}, len(objAttachments))
 	for k, f := range objAttachments {
 		attachments[k] = map[string]interface{}{
@@ -255,7 +233,7 @@ func objectAttachmentsFromStruct(objAttachments []models.Attachment) []interface
 	return attachments
 }
 
-func objectFieldSchemaToObject(vList []interface{}) []models.Field {
+func ObjectFieldStructFromData(vList []interface{}) []models.Field {
 	fields := make([]models.Field, len(vList))
 	for k, v := range vList {
 		vc := v.(map[string]interface{})
@@ -283,7 +261,7 @@ func objectFieldSchemaToObject(vList []interface{}) []models.Field {
 	return fields
 }
 
-func objectLoginURIsFromData(ctx context.Context, vList []interface{}) []models.LoginURI {
+func ObjectLoginURIsFromData(ctx context.Context, vList []interface{}) []models.LoginURI {
 	uris := make([]models.LoginURI, len(vList))
 	for k, v := range vList {
 		vc := v.(map[string]interface{})

@@ -12,20 +12,11 @@ import (
 )
 
 func opFolderCreate(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeFolder)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	return diag.FromErr(applyOperation(ctx, d, bwClient.CreateObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
+	return diag.FromErr(applyOperation(ctx, d, bwClient.CreateFolder, transformation.SchemaToFolderObject, transformation.FolderObjectToSchema))
 }
 
 func opFolderDelete(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeFolder)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	return diag.FromErr(applyOperation(ctx, d, withNilReturn(bwClient.DeleteObject), transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
+	return diag.FromErr(applyOperation(ctx, d, withNilReturn(bwClient.DeleteFolder), transformation.SchemaToFolderObject, transformation.FolderObjectToSchema))
 }
 
 func opFolderImport(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
@@ -39,29 +30,17 @@ func opFolderImport(ctx context.Context, d *schema.ResourceData, meta interface{
 
 func opFolderRead(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	d.SetId(d.Get(schema_definition.AttributeID).(string))
-	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeFolder)
-	if err != nil {
-		return diag.FromErr(err)
-	}
 	if _, idProvided := d.GetOk(schema_definition.AttributeID); !idProvided {
-		return diag.FromErr(searchOperation(ctx, d, bwClient.ListObjects, transformation.BaseObjectToSchema))
+		return diag.FromErr(searchOperation(ctx, d, bwClient.FindFolder, transformation.FolderObjectToSchema))
 	}
 
-	return diag.FromErr(applyOperation(ctx, d, bwClient.GetObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
+	return diag.FromErr(applyOperation(ctx, d, bwClient.GetFolder, transformation.SchemaToFolderObject, transformation.FolderObjectToSchema))
 }
 
 func opFolderReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeFolder)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	return ignoreMissing(ctx, d, applyOperation(ctx, d, bwClient.GetObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
+	return ignoreMissing(ctx, d, applyOperation(ctx, d, bwClient.GetFolder, transformation.SchemaToFolderObject, transformation.FolderObjectToSchema))
 }
 
 func opFolderUpdate(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
-	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeFolder)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	return diag.FromErr(applyOperation(ctx, d, bwClient.EditObject, transformation.BaseSchemaToObject, transformation.BaseObjectToSchema))
+	return diag.FromErr(applyOperation(ctx, d, bwClient.EditFolder, transformation.SchemaToFolderObject, transformation.FolderObjectToSchema))
 }

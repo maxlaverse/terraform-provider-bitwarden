@@ -26,13 +26,20 @@ var (
 )
 
 type BaseVault interface {
-	GetObject(ctx context.Context, obj models.Object) (*models.Object, error)
-	ListObjects(ctx context.Context, objType models.ObjectType, options ...bitwarden.ListObjectsOption) ([]models.Object, error)
+	GetFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
+	GetItem(ctx context.Context, obj models.Item) (*models.Item, error)
+	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
+	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+
+	FindFolder(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Folder, error)
+	FindItem(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Item, error)
+	FindOrganization(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Organization, error)
+	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
 }
 
 type baseVault struct {
 	loginAccount Account
-	objectStore  map[string]models.Object
+	objectStore  map[string]interface{}
 
 	// vaultOperationMutex protects the objectStore and loginAccount fields
 	// from concurrent access. Read operations are allowed to run concurrently,
@@ -46,34 +53,94 @@ type baseVault struct {
 	verifyObjectEncryption bool
 }
 
-func (v *baseVault) GetObject(ctx context.Context, obj models.Object) (*models.Object, error) {
+func (v *baseVault) GetItem(ctx context.Context, obj models.Item) (*models.Item, error) {
 	v.vaultOperationMutex.RLock()
 	defer v.vaultOperationMutex.RUnlock()
 
-	return v.getObject(ctx, obj)
+	return getObject(v.objectStore, obj)
 }
 
-func (v *baseVault) getObject(_ context.Context, obj models.Object) (*models.Object, error) {
-	if v.objectStore == nil {
+func (v *baseVault) GetFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	return getObject(v.objectStore, obj)
+}
+
+func (v *baseVault) GetOrganization(ctx context.Context, obj models.Organization) (*models.Organization, error) {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	return getObject(v.objectStore, obj)
+}
+
+func (v *baseVault) GetOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	return getObject(v.objectStore, obj)
+}
+
+func getObject[T any](store map[string]interface{}, obj T) (*T, error) {
+	if store == nil {
 		return nil, models.ErrVaultLocked
 	}
 
-	storedObj, ok := v.objectStore[objKey(obj)]
-	if !ok || obj.DeletedDate != nil {
+	var itemType models.ItemType
+	switch itemObj := any(obj).(type) {
+	case models.Item:
+		itemType = itemObj.Type
+	}
+
+	storedObj, ok := store[objKey(obj)]
+	if !ok {
 		return nil, models.ErrObjectNotFound
 	}
-	if obj.Type > 0 && storedObj.Type != obj.Type {
-		return nil, models.ErrItemTypeMismatch
+
+	switch itemObj := any(storedObj).(type) {
+	case models.Item:
+		if itemObj.DeletedDate != nil {
+			return nil, models.ErrObjectNotFound
+		}
+		if itemType > 0 && itemObj.Type != itemType {
+			return nil, models.ErrItemTypeMismatch
+		}
 	}
 
-	return &storedObj, nil
+	v := storedObj.(T)
+	return &v, nil
 }
 
-func (v *baseVault) ListObjects(ctx context.Context, objType models.ObjectType, options ...bitwarden.ListObjectsOption) ([]models.Object, error) {
+func (v *baseVault) FindFolder(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Folder, error) {
 	v.vaultOperationMutex.RLock()
 	defer v.vaultOperationMutex.RUnlock()
 
-	if v.objectStore == nil {
+	return findObject[models.Folder](ctx, v.objectStore, models.ObjectTypeFolder, options...)
+}
+
+func (v *baseVault) FindItem(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Item, error) {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	return findObject[models.Item](ctx, v.objectStore, models.ObjectTypeItem, options...)
+}
+
+func (v *baseVault) FindOrganization(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Organization, error) {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	return findObject[models.Organization](ctx, v.objectStore, models.ObjectTypeOrganization, options...)
+}
+
+func (v *baseVault) FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error) {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	return findObject[models.OrgCollection](ctx, v.objectStore, models.ObjectTypeOrgCollection, options...)
+}
+
+func findObject[T any](ctx context.Context, store map[string]interface{}, objType models.ObjectType, options ...bitwarden.ListObjectsOption) (*T, error) {
+	if store == nil {
 		return nil, models.ErrVaultLocked
 	}
 
@@ -82,36 +149,38 @@ func (v *baseVault) ListObjects(ctx context.Context, objType models.ObjectType, 
 		return nil, fmt.Errorf("invalid filter options")
 	}
 
-	foundObjects := []models.Object{}
-	for _, obj := range v.objectStore {
-		if obj.Object != objType {
+	foundObjects := []T{}
+	for _, rawObj := range store {
+		obj, ok := rawObj.(T)
+		if !ok {
 			continue
 		}
 
-		if obj.DeletedDate != nil {
-			tflog.Trace(ctx, "Ignoring deleted object in search results", map[string]interface{}{"object_id": obj.ID})
-			continue
-		}
-
-		if !objMatchFilter(ctx, obj, filter) {
+		if !objMatchFilter(ctx, obj, filter, objType) {
 			continue
 		}
 
 		foundObjects = append(foundObjects, obj)
 	}
 
-	return foundObjects, nil
+	if len(foundObjects) == 0 {
+		return nil, models.ErrNoObjectFoundMatchingFilter
+	} else if len(foundObjects) > 1 {
+		return nil, models.ErrTooManyObjectsFound
+	}
+
+	return &foundObjects[0], nil
 }
 
 func (v *baseVault) clearObjectStore(ctx context.Context) {
 	if v.objectStore != nil {
 		tflog.Trace(ctx, "Clearing object store")
 	}
-	v.objectStore = make(map[string]models.Object)
+	v.objectStore = make(map[string]interface{})
 }
 
-func (v *baseVault) deleteObjectFromStore(ctx context.Context, obj models.Object) {
-	tflog.Trace(ctx, "Deleting object from store", map[string]interface{}{"object_id": obj.ID, "object_name": obj.Name, "object_folder_id": obj.FolderID})
+func (v *baseVault) deleteObjectFromStore(ctx context.Context, obj any) {
+	tflog.Trace(ctx, "Deleting object from store", map[string]interface{}{"key": objKey(obj)})
 	delete(v.objectStore, objKey(obj))
 }
 
@@ -119,19 +188,20 @@ func (v *baseVault) objectsLoaded() bool {
 	return v.objectStore != nil
 }
 
-func (v *baseVault) storeObject(ctx context.Context, obj models.Object) {
-	tflog.Trace(ctx, "Storing new object", map[string]interface{}{"object_id": obj.ID, "object_name": obj.Name, "object_folder_id": obj.FolderID})
+func (v *baseVault) storeObject(ctx context.Context, obj any) {
+	tflog.Trace(ctx, "Storing new object", map[string]interface{}{"key": objKey(obj)})
 	v.objectStore[objKey(obj)] = obj
 }
 
-func (v *baseVault) storeObjects(ctx context.Context, objs []models.Object) {
-	for _, obj := range objs {
-		v.storeObject(ctx, obj)
+func (v *baseVault) storeObjects(ctx context.Context, obj []interface{}) {
+	for _, o := range obj {
+		v.storeObject(ctx, o)
 	}
 }
+
 func (v *baseVault) storeOrganizationSecrets(ctx context.Context) {
 	for _, orgSecret := range v.loginAccount.Secrets.OrganizationSecrets {
-		v.storeObject(ctx, models.Object{
+		v.storeObject(ctx, models.Organization{
 			ID:     orgSecret.OrganizationUUID,
 			Object: models.ObjectTypeOrganization,
 			Name:   orgSecret.Name,
@@ -168,7 +238,7 @@ func decryptAccountSecrets(account Account, password string) (*AccountSecrets, e
 	}, nil
 }
 
-func decryptCollection(obj webapi.Collection, secret AccountSecrets) (*models.Object, error) {
+func decryptOrgCollection(obj webapi.Collection, secret AccountSecrets) (*models.OrgCollection, error) {
 	orgKey, err := secret.GetOrganizationKey(obj.OrganizationId)
 	if err != nil {
 		return nil, err
@@ -179,7 +249,7 @@ func decryptCollection(obj webapi.Collection, secret AccountSecrets) (*models.Ob
 		return nil, fmt.Errorf("error decrypting collection name: %w", err)
 	}
 
-	return &models.Object{
+	return &models.OrgCollection{
 		ID:             obj.Id,
 		Name:           decName,
 		Object:         models.ObjectTypeOrgCollection,
@@ -187,13 +257,13 @@ func decryptCollection(obj webapi.Collection, secret AccountSecrets) (*models.Ob
 	}, nil
 }
 
-func decryptFolder(obj webapi.Folder, secret AccountSecrets) (*models.Object, error) {
+func decryptFolder(obj webapi.Folder, secret AccountSecrets) (*models.Folder, error) {
 	objName, err := decryptStringIfNotEmpty(obj.Name, secret.MainKey)
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting folder name: %w", err)
 	}
 
-	return &models.Object{
+	return &models.Folder{
 		ID:           obj.Id,
 		Name:         objName,
 		Object:       models.ObjectTypeFolder,
@@ -201,7 +271,7 @@ func decryptFolder(obj webapi.Folder, secret AccountSecrets) (*models.Object, er
 	}, nil
 }
 
-func decryptItem(obj models.Object, secret AccountSecrets) (*models.Object, error) {
+func decryptItem(obj models.Item, secret AccountSecrets) (*models.Item, error) {
 	objectKey, err := getObjectKey(obj, secret)
 	if err != nil {
 		return nil, fmt.Errorf("error getting item object key: %w", err)
@@ -263,7 +333,7 @@ func decryptItem(obj models.Object, secret AccountSecrets) (*models.Object, erro
 		decKey = string(objectKey.Key)
 	}
 
-	return &models.Object{
+	return &models.Item{
 		Attachments:         decAttachments,
 		CollectionIds:       obj.CollectionIds,
 		CreationDate:        cloneDate(obj.CreationDate),
@@ -350,7 +420,7 @@ func decryptItemLogin(objLogin models.Login, objectKey symmetrickey.Key) (*model
 	}, nil
 }
 
-func encryptCollection(_ context.Context, obj models.Object, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.OrganizationCreationRequest, error) {
+func encryptOrgCollection(_ context.Context, obj models.OrgCollection, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.OrganizationCreationRequest, error) {
 	orgKey, err := secret.GetOrganizationKey(obj.OrganizationID)
 	if err != nil {
 		return nil, err
@@ -377,12 +447,10 @@ func encryptCollection(_ context.Context, obj models.Object, secret AccountSecre
 			Name:           encObj.Name,
 			OrganizationId: obj.OrganizationID,
 		}
-		objForVerification, err := decryptCollection(encObjModified, secret)
+		objForVerification, err := decryptOrgCollection(encObjModified, secret)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting collection for verification: %w", err)
 		}
-
-		objForVerification.Key = ""
 
 		err = compareObjects(obj, *objForVerification)
 		if err != nil {
@@ -394,7 +462,7 @@ func encryptCollection(_ context.Context, obj models.Object, secret AccountSecre
 
 }
 
-func encryptFolder(_ context.Context, obj models.Object, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.Folder, error) {
+func encryptFolder(_ context.Context, obj models.Folder, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.Folder, error) {
 	encFolderName, err := encryptAsStringIfNotEmpty(obj.Name, secret.MainKey)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting folder's name: %w", err)
@@ -422,7 +490,7 @@ func encryptFolder(_ context.Context, obj models.Object, secret AccountSecrets, 
 	return &encFolder, nil
 }
 
-func encryptItem(_ context.Context, obj models.Object, secret AccountSecrets, verifyObjectEncryption bool) (*models.Object, error) {
+func encryptItem(_ context.Context, obj models.Item, secret AccountSecrets, verifyObjectEncryption bool) (*models.Item, error) {
 	objectKey, err := getOrCreateObjectKey(obj)
 	if err != nil {
 		return nil, err
@@ -489,7 +557,7 @@ func encryptItem(_ context.Context, obj models.Object, secret AccountSecrets, ve
 		}
 	}
 
-	encObj := models.Object{
+	encObj := models.Item{
 		Attachments:         encAttachments,
 		CollectionIds:       obj.CollectionIds,
 		CreationDate:        cloneDate(obj.CreationDate),
@@ -594,7 +662,7 @@ func encryptItemLogin(objLogin models.Login, objectKey symmetrickey.Key) (*model
 	}, nil
 }
 
-func (v *baseVault) getOrDefaultObjectKey(obj models.Object) (*symmetrickey.Key, error) {
+func (v *baseVault) getOrDefaultObjectKey(obj models.Item) (*symmetrickey.Key, error) {
 	if len(obj.Key) == 0 {
 		return &v.loginAccount.Secrets.MainKey, nil
 	}
@@ -602,7 +670,7 @@ func (v *baseVault) getOrDefaultObjectKey(obj models.Object) (*symmetrickey.Key,
 	return symmetrickey.NewFromRawBytesWithEncryptionType([]byte(obj.Key), symmetrickey.AesCbc256_HmacSha256_B64)
 }
 
-func getMainKeyForObject(obj models.Object, secret AccountSecrets) (*symmetrickey.Key, error) {
+func getMainKeyForObject(obj models.Item, secret AccountSecrets) (*symmetrickey.Key, error) {
 	if len(obj.OrganizationID) == 0 {
 		return &secret.MainKey, nil
 	}
@@ -610,7 +678,7 @@ func getMainKeyForObject(obj models.Object, secret AccountSecrets) (*symmetricke
 	return secret.GetOrganizationKey(obj.OrganizationID)
 }
 
-func getObjectKey(obj models.Object, secret AccountSecrets) (*symmetrickey.Key, error) {
+func getObjectKey(obj models.Item, secret AccountSecrets) (*symmetrickey.Key, error) {
 	objectKey, err := getMainKeyForObject(obj, secret)
 	if err != nil {
 		return nil, err
@@ -626,7 +694,7 @@ func getObjectKey(obj models.Object, secret AccountSecrets) (*symmetrickey.Key, 
 	return objectKey, nil
 }
 
-func getOrCreateObjectKey(obj models.Object) (*symmetrickey.Key, error) {
+func getOrCreateObjectKey(obj models.Item) (*symmetrickey.Key, error) {
 	var objectKeyBytes []byte
 	if len(obj.Key) > 0 {
 		objectKeyBytes = []byte(obj.Key)
@@ -636,68 +704,120 @@ func getOrCreateObjectKey(obj models.Object) (*symmetrickey.Key, error) {
 	}
 }
 
-func objKey(obj models.Object) string {
-	return fmt.Sprintf("%s___%s", obj.Object, obj.ID)
+func objKey(obj any) string {
+	switch itemObj := any(obj).(type) {
+	case models.Item:
+		return fmt.Sprintf("%s___%s", models.ObjectTypeItem, itemObj.ID)
+	case models.Folder:
+		return fmt.Sprintf("%s___%s", models.ObjectTypeFolder, itemObj.ID)
+	case models.Organization:
+		return fmt.Sprintf("%s___%s", models.ObjectTypeOrganization, itemObj.ID)
+	case models.OrgCollection:
+		return fmt.Sprintf("%s___%s", models.ObjectTypeOrgCollection, itemObj.ID)
+	}
+	panic(fmt.Sprintf("BUG: objKey, unsupported object type: %T", obj))
 }
 
-func objMatchFilter(ctx context.Context, obj models.Object, filters bitwarden.ListObjectsFilterOptions) bool {
-	if len(filters.OrganizationFilter) > 0 && obj.OrganizationID != filters.OrganizationFilter {
-		return false
-	}
-
-	if len(filters.FolderFilter) > 0 && obj.FolderID != filters.FolderFilter {
-		return false
-	}
-
-	if len(filters.CollectionFilter) > 0 {
-		matchCollection := false
-		for _, h := range obj.CollectionIds {
-			if h == filters.CollectionFilter {
-				matchCollection = true
-			}
-		}
-		if !matchCollection {
+func objMatchFilter[T any](ctx context.Context, rawObj T, filters bitwarden.ListObjectsFilterOptions, objType models.ObjectType) bool {
+	switch obj := any(rawObj).(type) {
+	case models.Item:
+		if obj.DeletedDate != nil {
+			tflog.Trace(ctx, "Ignoring deleted object in search results", map[string]interface{}{"object_id": obj.ID})
 			return false
 		}
-	}
 
-	if filters.ItemType > 0 && obj.Object == models.ObjectTypeItem && obj.Type != filters.ItemType {
-		return false
-	}
+		if obj.Object != objType {
+			return false
+		}
 
-	if len(filters.UrlFilter) > 0 {
-		matchUrl := false
-		for _, u := range obj.Login.URIs {
-			if u.Match == nil {
-				// When selecting 'default' match in the CLI, it results in a
-				// 'nil' match which we default to 'base_domain' here.
-				u.Match = models.URIMatchBaseDomain.ToPointer()
+		if len(filters.OrganizationFilter) > 0 && obj.OrganizationID != filters.OrganizationFilter {
+			return false
+		}
+		if filters.ItemType > 0 && obj.Type != filters.ItemType {
+			return false
+		}
+		if len(filters.FolderFilter) > 0 && obj.FolderID != filters.FolderFilter {
+			return false
+		}
+
+		if len(filters.CollectionFilter) > 0 {
+			matchCollection := false
+			for _, h := range obj.CollectionIds {
+				if h == filters.CollectionFilter {
+					matchCollection = true
+				}
 			}
-
-			matched, err := urlsMatch(u, filters.UrlFilter)
-			if err != nil {
-				tflog.Trace(ctx, "Error matching URL", map[string]interface{}{"object_id": obj.ID, "url": u.URI, "error": err})
-				continue
-			}
-			if matched {
-				matchUrl = true
+			if !matchCollection {
+				return false
 			}
 		}
-		if !matchUrl {
+
+		if len(filters.UrlFilter) > 0 {
+			matchUrl := false
+			for _, u := range obj.Login.URIs {
+				if u.Match == nil {
+					// When selecting 'default' match in the CLI, it results in a
+					// 'nil' match which we default to 'base_domain' here.
+					u.Match = models.URIMatchBaseDomain.ToPointer()
+				}
+
+				matched, err := urlsMatch(u, filters.UrlFilter)
+				if err != nil {
+					tflog.Trace(ctx, "Error matching URL", map[string]interface{}{"object_id": obj.ID, "url": u.URI, "error": err})
+					continue
+				}
+				if matched {
+					matchUrl = true
+				}
+			}
+			if !matchUrl {
+				return false
+			}
+		}
+	case models.OrgCollection:
+		if obj.Object != objType {
+			return false
+		}
+
+		if len(filters.OrganizationFilter) > 0 && obj.OrganizationID != filters.OrganizationFilter {
+			return false
+		}
+	case models.Folder:
+		if obj.Object != objType {
+			return false
+		}
+	case models.Organization:
+		if obj.Object != objType {
 			return false
 		}
 	}
 
 	if len(filters.SearchFilter) > 0 {
 		foundSomething := false
-		if strings.Contains(obj.Name, filters.SearchFilter) {
-			foundSomething = true
-		}
-		if strings.Contains(obj.Login.Username, filters.SearchFilter) {
-			foundSomething = true
-		}
-		if strings.Contains(obj.Notes, filters.SearchFilter) {
-			foundSomething = true
+		switch obj := any(rawObj).(type) {
+		case models.Item:
+			if strings.Contains(obj.Name, filters.SearchFilter) {
+				foundSomething = true
+			}
+			if strings.Contains(obj.Login.Username, filters.SearchFilter) {
+				foundSomething = true
+			}
+
+			if strings.Contains(obj.Notes, filters.SearchFilter) {
+				foundSomething = true
+			}
+		case models.Folder:
+			if strings.Contains(obj.Name, filters.SearchFilter) {
+				foundSomething = true
+			}
+		case models.OrgCollection:
+			if strings.Contains(obj.Name, filters.SearchFilter) {
+				foundSomething = true
+			}
+		case models.Organization:
+			if strings.Contains(obj.Name, filters.SearchFilter) {
+				foundSomething = true
+			}
 		}
 
 		if !foundSomething {

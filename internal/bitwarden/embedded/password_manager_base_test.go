@@ -21,13 +21,13 @@ const (
 )
 
 func TestCompareObjects(t *testing.T) {
-	obj1 := models.Object{
+	obj1 := models.Item{
 		Name: "test",
 	}
-	obj2 := models.Object{
+	obj2 := models.Item{
 		Name: "test",
 	}
-	obj3 := models.Object{
+	obj3 := models.Item{
 		Name: "test1",
 	}
 	assert.NoError(t, compareObjects(obj1, obj2))
@@ -131,11 +131,11 @@ func TestDecryptAccountSecretWrongPassword(t *testing.T) {
 	assert.ErrorIs(t, err, models.ErrWrongMasterPassword)
 }
 
-func TestEncryptCollection(t *testing.T) {
+func TestEncryptOrgCollection(t *testing.T) {
 	accountSecrets := computeTestAccountSecrets(t)
 
-	orgToEncrypt := testFullyFilledCollection()
-	newFolder, err := encryptCollection(context.Background(), orgToEncrypt, *accountSecrets, true)
+	orgToEncrypt := testFullyFilledOrgCollection()
+	newFolder, err := encryptOrgCollection(context.Background(), orgToEncrypt, *accountSecrets, true)
 	if !assert.Nil(t, err) {
 		return
 	}
@@ -172,7 +172,7 @@ func TestEncryptFolder(t *testing.T) {
 func TestEncryptItem(t *testing.T) {
 	accountSecrets := computeTestAccountSecrets(t)
 
-	objectToEncrypt := testFullyFilledObject()
+	objectToEncrypt := testFullyFilledItem()
 	newObj, err := encryptItem(context.Background(), objectToEncrypt, *accountSecrets, true)
 	if !assert.Nil(t, err) {
 		return
@@ -381,8 +381,8 @@ func computeTestAccountSecrets(t *testing.T) *AccountSecrets {
  * Test data: all fields meant to be encrypted are prefixed with "sensitive-"
  *            in order to detect eventual leaks while testing.
  */
-func testFullyFilledCollection() models.Object {
-	obj := models.Object{
+func testFullyFilledOrgCollection() models.OrgCollection {
+	obj := models.OrgCollection{
 		Name:           "sensitive-name",
 		Object:         models.ObjectTypeOrgCollection,
 		OrganizationID: orgUuid,
@@ -390,21 +390,21 @@ func testFullyFilledCollection() models.Object {
 	return obj
 }
 
-func testFullyFilledFolder() models.Object {
-	obj := models.Object{
+func testFullyFilledFolder() models.Folder {
+	obj := models.Folder{
 		Name:   "sensitive-name",
 		Object: models.ObjectTypeFolder,
 	}
 	return obj
 }
 
-func testFullyFilledObject() models.Object {
+func testFullyFilledItem() models.Item {
 	createdDate := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 	deletedDate := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
 	revisionDate := time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
 	lastPasswordUsedDate := time.Date(2021, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	obj := models.Object{
+	obj := models.Item{
 		Attachments: []models.Attachment{
 			{
 				ID:       "public-id",

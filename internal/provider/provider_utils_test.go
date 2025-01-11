@@ -92,7 +92,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cols, err := webapiClient.GetCollections(ctx, testOrganizationID)
+	cols, err := webapiClient.GetOrganizationCollections(ctx, testOrganizationID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	testCollectionID = cols[0].Id
 
 	testFolderName := fmt.Sprintf("folder-%s-bar", testUniqueIdentifier)
-	folder, err := bwClient.CreateObject(ctx, models.Object{
+	folder, err := bwClient.CreateFolder(ctx, models.Folder{
 		Object: models.ObjectTypeFolder,
 		Name:   testFolderName,
 	})
