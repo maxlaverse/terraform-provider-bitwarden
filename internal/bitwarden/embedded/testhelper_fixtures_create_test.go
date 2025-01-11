@@ -118,12 +118,12 @@ func createOrganization(t *testing.T, account1 string, account2 string) {
 	}
 
 	accountEmail2 := fmt.Sprintf("%s@laverse.net", account2)
-	err = vault.InviteUser(ctx, OrganizationID, accountEmail2)
+	err = vault.InviteUser(ctx, OrganizationID, accountEmail2, models.OrgMemberRoleTypeAdmin)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = vault.ConfirmInvite(ctx, OrganizationID, accountEmail2)
+	_, err = vault.ConfirmInvite(ctx, OrganizationID, accountEmail2)
 	if err != nil {
 		t.Fatal(err)
 	}

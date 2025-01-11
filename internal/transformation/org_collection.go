@@ -31,6 +31,21 @@ func OrganizationCollectionObjectToSchema(ctx context.Context, obj *models.OrgCo
 		return err
 	}
 
+	users := make([]interface{}, len(obj.Users))
+	for k, v := range obj.Users {
+		users[k] = map[string]interface{}{
+			schema_definition.AttributeCollectionMemberHidePasswords: v.HidePasswords,
+			schema_definition.AttributeCollectionMemberOrgMemberId:   v.OrgMemberId,
+			schema_definition.AttributeCollectionMemberReadOnly:      v.ReadOnly,
+			schema_definition.AttributeCollectionMemberUserEmail:     v.UserEmail,
+		}
+	}
+
+	err = d.Set(schema_definition.AttributeMember, users)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -48,5 +63,16 @@ func OrganizationCollectionToObject(ctx context.Context, d *schema.ResourceData)
 		obj.OrganizationID = v
 	}
 
+	if v, ok := d.Get(schema_definition.AttributeMember).([]interface{}); ok {
+		obj.Users = make([]models.OrgCollectionMember, len(v))
+		for k, v2 := range v {
+			obj.Users[k] = models.OrgCollectionMember{
+				HidePasswords: v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberHidePasswords].(bool),
+				OrgMemberId:   v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberOrgMemberId].(string),
+				ReadOnly:      v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberReadOnly].(bool),
+				UserEmail:     v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberUserEmail].(string),
+			}
+		}
+	}
 	return obj
 }

@@ -29,12 +29,81 @@ func TestAccResourceOrgCollection(t *testing.T) {
 					resource.TestMatchResourceAttr(
 						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
 					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.#", "2",
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.0.user_email", testAccountEmailOrgOwner,
+					),
+					resource.TestMatchResourceAttr(
+						resourceName, fmt.Sprintf("member.0.%s", schema_definition.AttributeCollectionMemberOrgMemberId), regexp.MustCompile(regExpId),
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.0.read_only", "false",
+					),
+					getObjectID(resourceName, &objectID),
+				),
+			},
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar2"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						resourceName, schema_definition.AttributeName, "org-col-bar2",
+					),
+					resource.TestMatchResourceAttr(
+						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.#", "2",
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.0.user_email", testAccountEmailOrgOwner,
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.0.read_only", "false",
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.1.user_email", testAccountEmailOrgUser,
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.1.read_only", "false",
+					),
+					getObjectID(resourceName, &objectID),
+				),
+			},
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionOneLess("org-col-bar2"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						resourceName, schema_definition.AttributeName, "org-col-bar2",
+					),
+					resource.TestMatchResourceAttr(
+						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.#", "1",
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.0.user_email", testAccountEmailOrgOwner,
+					),
+					resource.TestCheckResourceAttr(
+						resourceName, "member.0.read_only", "false",
+					),
 					getObjectID(resourceName, &objectID),
 				),
 			},
 			{
 				ResourceName: resourceName,
 				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-new-name-bar"),
+				Check: resource.TestCheckResourceAttr(
+					resourceName, schema_definition.AttributeName, "org-col-new-name-bar",
+				),
+			},
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigPasswordManagerProvider() + tfProviderOrgOwner(testAccountEmailOrgOwner) + tfConfigResourceOrgCollection("org-col-new-name-bar"),
 				Check: resource.TestCheckResourceAttr(
 					resourceName, schema_definition.AttributeName, "org-col-new-name-bar",
 				),
@@ -68,6 +137,45 @@ func tfConfigResourceOrgCollection(name string) string {
 	organization_id = "%s"
 
 	name     = "%s"
+	
+	member {
+		user_email = "%s"
+	}
+
+	member {
+		user_email = "%s"
+	}
 }
-`, testOrganizationID, name)
+`, testOrganizationID, name, testAccountEmailOrgOwner, testAccountEmailOrgUser)
+}
+
+func tfConfigResourceOrgCollectionOneLess(name string) string {
+	return fmt.Sprintf(`
+	resource "bitwarden_org_collection" "foo_org_col" {
+	provider	= bitwarden
+
+	organization_id = "%s"
+
+	name     = "%s"
+	
+	member {
+		user_email = "%s"
+	}
+}
+`, testOrganizationID, name, testAccountEmailOrgOwner)
+}
+
+func tfProviderOrgOwner(accountEmail string) string {
+	return fmt.Sprintf(`
+	provider "bitwarden" {
+		alias = "org_owner"
+		master_password = "%s"
+		server          = "%s"
+		email           = "%s"
+
+		experimental {
+			embedded_client = true
+		}
+	}
+`, testPassword, testServerURL, accountEmail)
 }

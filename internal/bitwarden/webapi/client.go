@@ -33,7 +33,7 @@ type Client interface {
 	CreateObjectAttachment(ctx context.Context, itemId string, data []byte, req AttachmentRequestData) (*CreateObjectAttachmentResponse, error)
 	CreateObjectAttachmentData(ctx context.Context, itemId, attachmentId string, data []byte) error
 	CreateOrganization(ctx context.Context, req CreateOrganizationRequest) (*CreateOrganizationResponse, error)
-	CreateOrganizationCollection(ctx context.Context, orgId string, req OrganizationCreationRequest) (*Collection, error)
+	CreateOrganizationCollection(ctx context.Context, orgId string, req Collection) (*Collection, error)
 	CreateProject(ctx context.Context, project models.Project) (*models.Project, error)
 	CreateSecret(ctx context.Context, secret models.Secret) (*Secret, error)
 	DeleteFolder(ctx context.Context, objID string) error
@@ -44,11 +44,12 @@ type Client interface {
 	DeleteSecret(ctx context.Context, secretId string) error
 	EditFolder(ctx context.Context, obj Folder) (*Folder, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
-	EditOrganizationCollection(ctx context.Context, orgId, objId string, obj OrganizationCreationRequest) (*Collection, error)
+	EditItemCollections(ctx context.Context, objId string, collectionIds []string) (*models.Item, error)
+	EditOrganizationCollection(ctx context.Context, orgId, objId string, obj Collection) (*Collection, error)
 	EditProject(context.Context, models.Project) (*models.Project, error)
 	EditSecret(ctx context.Context, secret models.Secret) (*Secret, error)
 	GetAPIKey(ctx context.Context, username, password string, kdfConfig models.KdfConfiguration) (*ApiKey, error)
-	GetOrganizationCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error)
+	GetOrganizationCollections(ctx context.Context, orgID string) ([]Collection, error)
 	GetContentFromURL(ctx context.Context, url string) ([]byte, error)
 	GetCipherAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
 	GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error)
@@ -179,7 +180,7 @@ func (c *client) CreateOrganization(ctx context.Context, req CreateOrganizationR
 	return doRequest[CreateOrganizationResponse](ctx, c.httpClient, httpReq)
 }
 
-func (c *client) CreateOrganizationCollection(ctx context.Context, orgId string, req OrganizationCreationRequest) (*Collection, error) {
+func (c *client) CreateOrganizationCollection(ctx context.Context, orgId string, req Collection) (*Collection, error) {
 	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/collections", c.serverURL, orgId), req)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing organization collection creation request: %w", err)
@@ -303,7 +304,22 @@ func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, e
 	return doRequest[models.Item](ctx, c.httpClient, req)
 }
 
-func (c *client) EditOrganizationCollection(ctx context.Context, orgId, objId string, obj OrganizationCreationRequest) (*Collection, error) {
+func (c *client) EditItemCollections(ctx context.Context, objId string, collectionIds []string) (*models.Item, error) {
+	type CollectionChange struct {
+		CollectionIDs []string `json:"collectionIds"`
+	}
+
+	req, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/ciphers/%s/collections_v2", c.serverURL, objId), CollectionChange{
+		CollectionIDs: collectionIds,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error preparing item collection edition request: %w", err)
+	}
+
+	return doRequest[models.Item](ctx, c.httpClient, req)
+}
+
+func (c *client) EditOrganizationCollection(ctx context.Context, orgId, objId string, obj Collection) (*Collection, error) {
 	req, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/organizations/%s/collections/%s", c.serverURL, orgId, objId), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing collection edition request: %w", err)
@@ -369,13 +385,13 @@ func (c *client) GetContentFromURL(ctx context.Context, url string) ([]byte, err
 	return []byte(*resp), err
 }
 
-func (c *client) GetOrganizationCollections(ctx context.Context, orgID string) ([]CollectionResponseItem, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/collections", c.serverURL, orgID), nil)
+func (c *client) GetOrganizationCollections(ctx context.Context, orgID string) ([]Collection, error) {
+	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/collections/details", c.serverURL, orgID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing collection retrieval request: %w", err)
 	}
 
-	resp, err := doRequest[CollectionResponse](ctx, c.httpClient, httpReq)
+	resp, err := doRequest[CollectionAccessResponse](ctx, c.httpClient, httpReq)
 	if err != nil {
 		return nil, err
 	}

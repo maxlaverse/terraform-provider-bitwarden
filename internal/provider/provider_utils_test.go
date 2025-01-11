@@ -31,6 +31,16 @@ const (
 
 // Generated resources used for testing
 var testEmail string
+var testAccountEmailOrgOwner string
+var testAccountEmailOrgUser string
+var testAccountEmailOrgAdmin string
+var testAccountEmailOrgManager string
+
+var testAccountEmailOrgOwnerInTestOrgUserId string
+var testAccountEmailOrgUserInTestOrgUserId string
+var testAccountEmailOrgAdminInTestOrgUserId string
+var testAccountEmailOrgManagerInTestOrgUserId string
+
 var testUsername string
 var testServerURL string
 var testOrganizationID string
@@ -83,6 +93,47 @@ func ensureVaultwardenConfigured(t *testing.T) {
 
 	var err error
 	testOrganizationID, err = bwClient.(embedded.PasswordManagerClient).CreateOrganization(ctx, "org-"+testUniqueIdentifier, "coll-"+testUniqueIdentifier, testEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("Inviting users to organization %s", testOrganizationID)
+	err = bwClient.(embedded.PasswordManagerClient).InviteUser(ctx, testOrganizationID, testAccountEmailOrgOwner, models.OrgMemberRoleTypeOwner)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testAccountEmailOrgOwnerInTestOrgUserId, err = bwClient.(embedded.PasswordManagerClient).ConfirmInvite(ctx, testOrganizationID, testAccountEmailOrgOwner)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = bwClient.(embedded.PasswordManagerClient).InviteUser(ctx, testOrganizationID, testAccountEmailOrgAdmin, models.OrgMemberRoleTypeAdmin)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testAccountEmailOrgAdminInTestOrgUserId, err = bwClient.(embedded.PasswordManagerClient).ConfirmInvite(ctx, testOrganizationID, testAccountEmailOrgAdmin)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = bwClient.(embedded.PasswordManagerClient).InviteUser(ctx, testOrganizationID, testAccountEmailOrgUser, models.OrgMemberRoleTypeUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testAccountEmailOrgUserInTestOrgUserId, err = bwClient.(embedded.PasswordManagerClient).ConfirmInvite(ctx, testOrganizationID, testAccountEmailOrgUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = bwClient.(embedded.PasswordManagerClient).InviteUser(ctx, testOrganizationID, testAccountEmailOrgManager, models.OrgMemberRoleTypeManager)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testAccountEmailOrgManagerInTestOrgUserId, err = bwClient.(embedded.PasswordManagerClient).ConfirmInvite(ctx, testOrganizationID, testAccountEmailOrgManager)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,18 +200,58 @@ func ensureVaultwardenHasUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	testEmail2 := fmt.Sprintf("test-%s-argon2@laverse.net", testUniqueIdentifier)
+	testAccountEmailOrgOwner = fmt.Sprintf("test-%s-org-owner@laverse.net", testUniqueIdentifier)
 	kdfConfig = models.KdfConfiguration{
 		KdfType:        models.KdfTypeArgon2,
 		KdfIterations:  3,
 		KdfMemory:      64,
 		KdfParallelism: 4,
 	}
-	err = client.RegisterUser(context.Background(), testUsername, testEmail2, testPassword, kdfConfig)
+	err = client.RegisterUser(context.Background(), testUsername, testAccountEmailOrgOwner, testPassword, kdfConfig)
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
-	t.Logf("Created test user (argon2) %s", testEmail2)
+	t.Logf("Created test user (org-owner) %s", testAccountEmailOrgOwner)
+
+	testAccountEmailOrgUser = fmt.Sprintf("test-%s-org-user@laverse.net", testUniqueIdentifier)
+	kdfConfig = models.KdfConfiguration{
+		KdfType:        models.KdfTypeArgon2,
+		KdfIterations:  3,
+		KdfMemory:      64,
+		KdfParallelism: 4,
+	}
+	err = client.RegisterUser(context.Background(), testUsername, testAccountEmailOrgUser, testPassword, kdfConfig)
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
+		t.Fatal(err)
+	}
+	t.Logf("Created test user (org-user) %s", testAccountEmailOrgUser)
+
+	testAccountEmailOrgAdmin = fmt.Sprintf("test-%s-org-admin@laverse.net", testUniqueIdentifier)
+	kdfConfig = models.KdfConfiguration{
+		KdfType:        models.KdfTypeArgon2,
+		KdfIterations:  3,
+		KdfMemory:      64,
+		KdfParallelism: 4,
+	}
+	err = client.RegisterUser(context.Background(), testUsername, testAccountEmailOrgAdmin, testPassword, kdfConfig)
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
+		t.Fatal(err)
+	}
+	t.Logf("Created test user (org-admin) %s", testAccountEmailOrgAdmin)
+
+	testAccountEmailOrgManager = fmt.Sprintf("test-%s-org-manager@laverse.net", testUniqueIdentifier)
+	kdfConfig = models.KdfConfiguration{
+		KdfType:        models.KdfTypeArgon2,
+		KdfIterations:  3,
+		KdfMemory:      64,
+		KdfParallelism: 4,
+	}
+	err = client.RegisterUser(context.Background(), testUsername, testAccountEmailOrgManager, testPassword, kdfConfig)
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
+		t.Fatal(err)
+	}
+	t.Logf("Created test user (org-manager) %s", testAccountEmailOrgManager)
+
 	isUserCreated = true
 }
 
