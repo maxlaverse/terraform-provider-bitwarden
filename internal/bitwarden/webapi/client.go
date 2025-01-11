@@ -280,7 +280,7 @@ func (c *client) DeleteSecret(ctx context.Context, secretId string) error {
 func (c *client) GetCipherAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error) {
 	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/ciphers/%s/attachment/%s", c.serverURL, itemId, attachmentId), nil)
 	if err != nil {
-		return nil, fmt.Errorf("error preparing object attachment retrieval request: %w", err)
+		return nil, fmt.Errorf("error preparing item attachment retrieval request: %w", err)
 	}
 	return doRequest[models.Attachment](ctx, c.httpClient, httpReq)
 }
@@ -297,7 +297,7 @@ func (c *client) EditFolder(ctx context.Context, obj Folder) (*Folder, error) {
 func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
 	req, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/ciphers/%s", c.serverURL, obj.ID), obj)
 	if err != nil {
-		return nil, fmt.Errorf("error preparing object edition request: %w", err)
+		return nil, fmt.Errorf("error preparing item edition request: %w", err)
 	}
 
 	return doRequest[models.Item](ctx, c.httpClient, req)
@@ -318,7 +318,7 @@ func (c *client) EditProject(ctx context.Context, project models.Project) (*mode
 	}
 	httpReq, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/projects/%s", c.serverURL, project.ID), projectEditionRequest)
 	if err != nil {
-		return nil, fmt.Errorf("error preparing secret edition request: %w", err)
+		return nil, fmt.Errorf("error preparing project edition request: %w", err)
 	}
 
 	return doRequest[models.Project](ctx, c.httpClient, httpReq)

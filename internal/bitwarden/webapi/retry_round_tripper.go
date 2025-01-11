@@ -77,9 +77,17 @@ func (rrt *RetryRoundTripper) doRequest(ctx context.Context, httpReq *http.Reque
 		return resp, false, nil
 	}
 
+	debugInfo := map[string]interface{}{
+		"url":            httpReq.URL.RequestURI(),
+		"method":         httpReq.Method,
+		"attempt_number": attemptNumber,
+		"is_retryable":   false,
+	}
+
 	// Got a low-level error, or a 429 HTTP response. We're returning the error
 	// so let's not log anything additional.
-	if !rrt.isRetryableError(err, attemptNumber, httpReq.Method) {
+	if err != nil && !rrt.isRetryableError(err, attemptNumber, httpReq.Method) {
+		tflog.Info(ctx, "retry_round_tripper", debugInfo)
 		return nil, false, err
 	}
 
@@ -88,12 +96,7 @@ func (rrt *RetryRoundTripper) doRequest(ctx context.Context, httpReq *http.Reque
 	resp.Body.Close()
 
 	var waitDuration time.Duration
-	debugInfo := map[string]interface{}{
-		"url":            httpReq.URL.RequestURI(),
-		"method":         httpReq.Method,
-		"attempt_number": attemptNumber,
-		"is_retryable":   true,
-	}
+	debugInfo["is_retryable"] = true
 
 	if err != nil {
 		debugInfo["error"] = err
@@ -111,7 +114,7 @@ func (rrt *RetryRoundTripper) doRequest(ctx context.Context, httpReq *http.Reque
 }
 
 func (rrt *RetryRoundTripper) isRetryableError(err error, attemptNumber int, httpMethod string) bool {
-	if err != nil {
+	if err == nil {
 		return false
 	}
 
