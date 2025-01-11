@@ -311,13 +311,25 @@ func findGenericObject[T any](ctx context.Context, c *client, objType models.Obj
 		return nil, newUnmarshallError(err, args[0:2], out)
 	}
 
-	if len(objs) == 0 {
+	filters := bitwarden.ListObjectsOptionsToFilterOptions(options...)
+	filteredObj := []T{}
+	for _, obj := range objs {
+		switch itemObj := any(obj).(type) {
+		case models.Item:
+			if filters.ItemType > 0 && itemObj.Type != filters.ItemType {
+				continue
+			}
+		}
+		filteredObj = append(filteredObj, obj)
+	}
+
+	if len(filteredObj) == 0 {
 		return nil, models.ErrNoObjectFoundMatchingFilter
-	} else if len(objs) > 1 {
+	} else if len(filteredObj) > 1 {
 		return nil, models.ErrTooManyObjectsFound
 	}
 
-	return &objs[0], nil
+	return &filteredObj[0], nil
 }
 
 // LoginWithPassword logs in using a password and retrieves the session key,
