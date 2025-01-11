@@ -8,7 +8,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func FolderObjectToSchema(ctx context.Context, d *schema.ResourceData, obj *models.Folder) error {
+func FolderObjectToSchema(ctx context.Context, obj *models.Folder, d *schema.ResourceData) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil

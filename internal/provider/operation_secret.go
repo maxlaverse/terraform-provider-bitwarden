@@ -52,5 +52,5 @@ func secretSearch(ctx context.Context, d *schema.ResourceData, bwsClient bitward
 		return err
 	}
 
-	return transformation.SecretObjectToSchema(ctx, d, secret)
+	return transformation.SecretObjectToSchema(ctx, secret, d)
 }

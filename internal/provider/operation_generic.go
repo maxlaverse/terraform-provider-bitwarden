@@ -19,7 +19,7 @@ type findOperationFn[T any] func(ctx context.Context, options ...bitwarden.ListO
 
 // TransformationOperation
 type schemaToObjectTransformation[T any] func(ctx context.Context, d *schema.ResourceData) T
-type objectToSchemaTransformation[T any] func(ctx context.Context, d *schema.ResourceData, obj *T) error
+type objectToSchemaTransformation[T any] func(ctx context.Context, obj *T, d *schema.ResourceData) error
 
 func applyOperation[T any](ctx context.Context, d *schema.ResourceData, clientOperation applyOperationFn[T], fromSchemaToObj schemaToObjectTransformation[T], fromObjToSchema objectToSchemaTransformation[T]) error {
 	obj, err := clientOperation(ctx, fromSchemaToObj(ctx, d))
@@ -27,7 +27,7 @@ func applyOperation[T any](ctx context.Context, d *schema.ResourceData, clientOp
 		return err
 	}
 
-	return fromObjToSchema(ctx, d, obj)
+	return fromObjToSchema(ctx, obj, d)
 }
 
 func searchOperation[T any](ctx context.Context, d *schema.ResourceData, clientOperation findOperationFn[T], fromObjToSchema objectToSchemaTransformation[T]) error {
@@ -35,7 +35,7 @@ func searchOperation[T any](ctx context.Context, d *schema.ResourceData, clientO
 	if err != nil {
 		return err
 	}
-	return fromObjToSchema(ctx, d, obj)
+	return fromObjToSchema(ctx, obj, d)
 }
 
 func withNilReturn[T any](operation deleteOperationFn[T]) func(ctx context.Context, secret T) (*T, error) {

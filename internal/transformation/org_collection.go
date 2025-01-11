@@ -8,7 +8,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func OrganizationCollectionObjectToSchema(ctx context.Context, d *schema.ResourceData, obj *models.OrgCollection) error {
+func OrganizationCollectionObjectToSchema(ctx context.Context, obj *models.OrgCollection, d *schema.ResourceData) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil

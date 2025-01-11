@@ -51,7 +51,7 @@ func opAttachmentCreate(ctx context.Context, d *schema.ResourceData, bwClient bi
 		return diag.FromErr(errors.New("BUG: at least one attachment removed"))
 	}
 
-	return diag.FromErr(transformation.AttachmentObjectToSchema(d, attachmentsAdded[0]))
+	return diag.FromErr(transformation.AttachmentObjectToSchema(ctx, attachmentsAdded[0], d))
 }
 
 func opAttachmentDelete(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
@@ -99,7 +99,7 @@ func opAttachmentReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, 
 
 	for _, attachment := range obj.Attachments {
 		if attachment.ID == d.Id() {
-			return diag.FromErr(transformation.AttachmentObjectToSchema(d, attachment))
+			return diag.FromErr(transformation.AttachmentObjectToSchema(ctx, attachment, d))
 		}
 	}
 

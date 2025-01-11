@@ -23,7 +23,7 @@ func ProjectSchemaToObject(_ context.Context, d *schema.ResourceData) models.Pro
 	return project
 }
 
-func ProjectObjectToSchema(_ context.Context, d *schema.ResourceData, project *models.Project) error {
+func ProjectObjectToSchema(_ context.Context, project *models.Project, d *schema.ResourceData) error {
 	if project == nil {
 		// Project has been deleted
 		return nil

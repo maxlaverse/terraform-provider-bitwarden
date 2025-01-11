@@ -35,7 +35,7 @@ func SecretSchemaToObject(_ context.Context, d *schema.ResourceData) models.Secr
 	return secret
 }
 
-func SecretObjectToSchema(_ context.Context, d *schema.ResourceData, secret *models.Secret) error {
+func SecretObjectToSchema(_ context.Context, secret *models.Secret, d *schema.ResourceData) error {
 	if secret == nil {
 		// Secret has been deleted
 		return nil

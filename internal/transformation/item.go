@@ -9,7 +9,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func ItemObjectToSchema(ctx context.Context, d *schema.ResourceData, obj *models.Item) error {
+func ItemObjectToSchema(ctx context.Context, obj *models.Item, d *schema.ResourceData) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil
