@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/transformation"
 )
@@ -28,20 +27,12 @@ func opOrganizationCollectionImport(ctx context.Context, d *schema.ResourceData,
 	}
 	d.SetId(split[1])
 	d.Set(schema_definition.AttributeOrganizationID, split[0])
-	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeOrgCollection)
-	if err != nil {
-		return nil, err
-	}
 
 	return []*schema.ResourceData{d}, nil
 }
 
 func opOrganizationCollectionRead(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	d.SetId(d.Get(schema_definition.AttributeID).(string))
-	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeOrgCollection)
-	if err != nil {
-		return diag.FromErr(err)
-	}
 	if _, idProvided := d.GetOk(schema_definition.AttributeID); !idProvided {
 		return diag.FromErr(searchOperation(ctx, d, bwClient.FindOrganizationCollection, transformation.OrganizationCollectionObjectToSchema))
 	}

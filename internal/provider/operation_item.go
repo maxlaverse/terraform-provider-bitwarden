@@ -29,11 +29,7 @@ func opItemDelete(ctx context.Context, d *schema.ResourceData, bwClient bitwarde
 func opItemImport(attrType models.ItemType) schema.StateContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 		d.SetId(d.Id())
-		err := d.Set(schema_definition.AttributeObject, models.ObjectTypeItem)
-		if err != nil {
-			return nil, err
-		}
-		err = d.Set(schema_definition.AttributeType, attrType)
+		err := d.Set(schema_definition.AttributeType, attrType)
 		if err != nil {
 			return nil, err
 		}
@@ -49,10 +45,6 @@ func opItemRead(attrType models.ItemType) passwordManagerOperation {
 		}
 
 		d.SetId(d.Get(schema_definition.AttributeID).(string))
-		err = d.Set(schema_definition.AttributeObject, models.ObjectTypeItem)
-		if err != nil {
-			return diag.FromErr(err)
-		}
 		if _, idProvided := d.GetOk(schema_definition.AttributeID); !idProvided {
 			return diag.FromErr(searchOperation(ctx, d, bwClient.FindItem, transformation.ItemObjectToSchema))
 		}
