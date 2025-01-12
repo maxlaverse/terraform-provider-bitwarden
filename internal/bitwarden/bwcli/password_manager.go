@@ -128,6 +128,9 @@ func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item,
 
 func (c *client) CreateOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
 	obj.Groups = []interface{}{}
+	if len(obj.Users) > 0 {
+		return nil, fmt.Errorf("managing collection memberships is only supported by the embedded client")
+	}
 	return createObject(ctx, c, obj, models.ObjectTypeOrgCollection)
 }
 
@@ -163,16 +166,19 @@ func createObject[T any](ctx context.Context, c *client, obj T, objectType model
 }
 
 func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
-	return editGenericObject[models.Folder](ctx, c, obj, obj.Object, obj.ID)
+	return editGenericObject(ctx, c, obj, obj.Object, obj.ID)
 }
 
 func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
-	return editGenericObject[models.Item](ctx, c, obj, obj.Object, obj.ID)
+	return editGenericObject(ctx, c, obj, obj.Object, obj.ID)
 }
 
 func (c *client) EditOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
 	obj.Groups = []interface{}{}
-	return editGenericObject[models.OrgCollection](ctx, c, obj, obj.Object, obj.ID)
+	if len(obj.Users) > 0 {
+		return nil, fmt.Errorf("managing collection memberships is only supported by the embedded client")
+	}
+	return editGenericObject(ctx, c, obj, obj.Object, obj.ID)
 }
 
 func editGenericObject[T any](ctx context.Context, c *client, obj T, objectType models.ObjectType, id string) (*T, error) {

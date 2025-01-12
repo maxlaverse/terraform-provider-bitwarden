@@ -38,16 +38,10 @@ type CreateObjectAttachmentResponse struct {
 	Url            string            `json:"url"`
 }
 
-type OrganizationUser struct {
-	Id            string `json:"id"`
+type CollectionUser struct {
 	HidePasswords bool   `json:"hidePasswords"`
+	Id            string `json:"id"`
 	ReadOnly      bool   `json:"readOnly"`
-}
-type OrganizationCreationRequest struct {
-	Name       string             `json:"name"`
-	Users      []OrganizationUser `json:"users"`
-	Groups     []string           `json:"groups"`
-	ExternalID string             `json:"externalId"`
 }
 
 type InviteUserRequest struct {
@@ -57,9 +51,9 @@ type InviteUserRequest struct {
 	Permissions struct {
 		Response interface{} `json:"response"`
 	} `json:"permissions"`
-	Type                 int      `json:"type"`
-	Groups               []string `json:"groups"`
-	AccessSecretsManager bool     `json:"accessSecretsManager"`
+	Type                 models.OrgMemberRoleType `json:"type"`
+	Groups               []string                 `json:"groups"`
+	AccessSecretsManager bool                     `json:"accessSecretsManager"`
 }
 
 type ConfirmUserRequest struct {
@@ -173,13 +167,18 @@ type CollectionResponseItem struct {
 }
 
 type Collection struct {
-	ExternalId     string            `json:"externalId,omitempty"`
-	Id             string            `json:"id,omitempty"`
-	HidePasswords  bool              `json:"hidePasswords,omitempty"` // Missing in get collections
-	Name           string            `json:"name,omitempty"`
-	Object         models.ObjectType `json:"object,omitempty"`
-	OrganizationId string            `json:"organizationId,omitempty"`
-	ReadOnly       bool              `json:"readOnly,omitempty"` // Missing in get collections
+	Assigned       bool              `json:"assigned"`
+	ExternalId     string            `json:"externalId"`
+	Groups         []string          `json:"groups"`
+	HidePasswords  bool              `json:"hidePasswords"` // Missing in get collections
+	Id             string            `json:"id"`
+	Manage         bool              `json:"manage"`
+	Name           string            `json:"name"`
+	Object         models.ObjectType `json:"object"`
+	OrganizationId string            `json:"organizationId"`
+	ReadOnly       bool              `json:"readOnly"` // Missing in get collections
+	Unmanaged      bool              `json:"unmanaged"`
+	Users          []CollectionUser  `json:"users"`
 }
 
 type CreateCipherRequest struct {
@@ -287,4 +286,10 @@ type AccessPoliciesRequests struct {
 	UserAccessPolicyRequests           []interface{} `json:"userAccessPolicyRequests"`
 	GroupAccessPolicyRequests          []interface{} `json:"groupAccessPolicyRequests"`
 	ServiceAccountAccessPolicyRequests []interface{} `json:"serviceAccountAccessPolicyRequests"`
+}
+
+type CollectionAccessResponse struct {
+	ContinuationToken string            `json:"continuationToken"`
+	Data              []Collection      `json:"data"`
+	Object            models.ObjectType `json:"object"`
 }

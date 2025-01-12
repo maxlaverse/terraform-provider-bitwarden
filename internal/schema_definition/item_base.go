@@ -11,7 +11,7 @@ const (
 	Resource   schemaTypeEnum = 1
 )
 
-func BaseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
+func ItemBaseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 
 	base := map[string]*schema.Schema{
 		/*

@@ -7,7 +7,7 @@ import (
 )
 
 func dataSourceItemLogin() *schema.Resource {
-	dataSourceItemLoginSchema := schema_definition.BaseSchema(schema_definition.DataSource)
+	dataSourceItemLoginSchema := schema_definition.ItemBaseSchema(schema_definition.DataSource)
 	for k, v := range schema_definition.LoginSchema(schema_definition.DataSource) {
 		dataSourceItemLoginSchema[k] = v
 	}

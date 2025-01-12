@@ -77,3 +77,10 @@ func checkItemFields(resourceName string) resource.TestCheckFunc {
 		),
 	)
 }
+
+func conditionalAssertion(shouldRun bool, testCheckFunc ...resource.TestCheckFunc) resource.TestCheckFunc {
+	if !shouldRun {
+		return resource.ComposeTestCheckFunc()
+	}
+	return resource.ComposeTestCheckFunc(testCheckFunc...)
+}

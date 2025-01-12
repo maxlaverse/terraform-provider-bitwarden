@@ -47,6 +47,22 @@ const (
 	FieldTypeLinked  FieldType = 3
 )
 
+type OrgMemberRoleType int
+
+const (
+	// According to UI: Manage all aspects of your organization, including billing and subscriptions
+	OrgMemberRoleTypeOwner OrgMemberRoleType = 0
+
+	// According to UI: Manage organization access, all collections, members, reporting, and security settings
+	OrgMemberRoleTypeAdmin OrgMemberRoleType = 1
+
+	// According to UI: Access and add items to assigned collections
+	OrgMemberRoleTypeUser OrgMemberRoleType = 2
+
+	// According to UI: Create, delete, and manage access in assigned collections
+	OrgMemberRoleTypeManager OrgMemberRoleType = 3
+)
+
 type ObjectType string
 
 const (
@@ -170,21 +186,19 @@ type Attachment struct {
 	Object   ObjectType `json:"object"`
 }
 
-// TODO: Use or drop
-type OrgMember struct {
-	Email            string     `json:"email,omitempty"`
-	Name             string     `json:"name,omitempty"`
-	ID               string     `json:"id,omitempty"`
-	Status           int        `json:"status,omitempty"`
-	Type             int        `json:"type,omitempty"`
-	TwoFactorEnabled bool       `json:"twoFactorEnabled,omitempty"`
-	Object           ObjectType `json:"object,omitempty"`
+type OrgCollectionMember struct {
+	HidePasswords bool
+	OrgMemberId   string
+	ReadOnly      bool
+	UserEmail     string
 }
 
 type OrgCollection struct {
-	ID             string        `json:"id,omitempty"`
-	Name           string        `json:"name,omitempty"`
-	Object         ObjectType    `json:"object,omitempty"`
-	OrganizationID string        `json:"organizationId"`
-	Groups         []interface{} `json:"groups"` // To be kept for the CLI when creating org-collections
+	ID             string                `json:"id,omitempty"`
+	Name           string                `json:"name,omitempty"`
+	Object         ObjectType            `json:"object,omitempty"`
+	OrganizationID string                `json:"organizationId"`
+	Users          []OrgCollectionMember `json:"users,omitempty"`
+	Groups         []interface{}         `json:"groups"` // Required but not used when creating collections using the CLI
+	Manage         bool                  `json:"-"`
 }

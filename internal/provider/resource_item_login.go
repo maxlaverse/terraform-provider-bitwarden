@@ -7,7 +7,7 @@ import (
 )
 
 func resourceItemLogin() *schema.Resource {
-	dataSourceItemSecureNoteSchema := schema_definition.BaseSchema(schema_definition.Resource)
+	dataSourceItemSecureNoteSchema := schema_definition.ItemBaseSchema(schema_definition.Resource)
 	for k, v := range schema_definition.LoginSchema(schema_definition.Resource) {
 		dataSourceItemSecureNoteSchema[k] = v
 	}

@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/encryptedstring"
@@ -21,7 +23,7 @@ import (
 
 type PasswordManagerClient interface {
 	BaseVault
-	ConfirmInvite(ctx context.Context, orgId, userEmail string) error
+	ConfirmInvite(ctx context.Context, orgId, userEmail string) (string, error)
 	CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	CreateItem(ctx context.Context, obj models.Item) (*models.Item, error)
 	CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error)
@@ -35,9 +37,12 @@ type PasswordManagerClient interface {
 	EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	EditItem(ctx context.Context, obj models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
 	GetAPIKey(ctx context.Context, username, password string) (*models.ApiKey, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
-	InviteUser(ctx context.Context, orgId, userEmail string) error
+	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
+	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	InviteUser(ctx context.Context, orgId, userEmail string, memberRoleType models.OrgMemberRoleType) error
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
 	Logout(ctx context.Context) error
@@ -90,8 +95,9 @@ func EnablePanicOnEncryptionError() PasswordManagerOptions {
 func NewPasswordManagerClient(serverURL, deviceIdentifier, providerVersion string, opts ...PasswordManagerOptions) PasswordManagerClient {
 	c := &webAPIVault{
 		baseVault: baseVault{
-			objectStore:            make(map[string]interface{}),
-			verifyObjectEncryption: true,
+			collectionDetailsLoadedForOrg: map[string]bool{},
+			objectStore:                   make(map[string]interface{}),
+			verifyObjectEncryption:        true,
 		},
 		serverURL: serverURL,
 
@@ -122,26 +128,26 @@ type webAPIVault struct {
 	serverURL      string
 }
 
-func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string) error {
+func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string) (string, error) {
 	v.vaultOperationMutex.RLock()
 	defer v.vaultOperationMutex.RUnlock()
 
 	orgUser, err := v.findOrganizationUser(ctx, orgId, userEmail)
 	if err != nil {
-		return fmt.Errorf("error getting organization user : %w", err)
+		return "", fmt.Errorf("error getting organization user : %w", err)
 	}
 
 	publicKey, err := v.getUserPublicKey(ctx, orgUser.UserId)
 	if err != nil {
-		return fmt.Errorf("error getting user public key: %w", err)
+		return "", fmt.Errorf("error getting user public key: %w", err)
 	}
 
 	orgKey, err := keybuilder.RSAEncrypt(v.loginAccount.Secrets.OrganizationSecrets[orgId].Key.Key, publicKey)
 	if err != nil {
-		return fmt.Errorf("error rsa encrypting organization key: %w", err)
+		return "", fmt.Errorf("error rsa encrypting organization key: %w", err)
 	}
 
-	return v.client.ConfirmOrganizationUser(ctx, orgId, orgUser.Id, string(orgKey))
+	return orgUser.Id, v.client.ConfirmOrganizationUser(ctx, orgId, orgUser.Id, string(orgKey))
 }
 
 func (v *webAPIVault) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error) {
@@ -307,6 +313,28 @@ func (v *webAPIVault) CreateItem(ctx context.Context, obj models.Item) (*models.
 	return resObj, nil
 }
 
+func (v *webAPIVault) ensureUsersLoadedForOrg(ctx context.Context, orgId string) error {
+	if v.organizationMembers.OrganizationInitialized(orgId) {
+		return nil
+	}
+
+	orgUsers, err := v.client.GetOrganizationUsers(ctx, orgId)
+	if err != nil {
+		return fmt.Errorf("error getting organization users: %w", err)
+	}
+
+	v.organizationMembers.ResetOrganization(orgId)
+	for _, u := range orgUsers {
+		v.organizationMembers.AddMember(orgId, OrganizationMember{
+			Email:  u.Email,
+			Id:     u.Id,
+			UserId: u.UserId,
+		})
+	}
+
+	return nil
+}
+
 func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
@@ -315,39 +343,65 @@ func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj mode
 		return nil, models.ErrVaultLocked
 	}
 
+	manageMembership := len(obj.Users) > 0
+	if manageMembership {
+		err := v.enhanceOrgCollectionMembers(ctx, obj)
+		if err != nil {
+			return nil, fmt.Errorf("error completing member information for creation: %w", err)
+		}
+	}
+
 	encObj, err := encryptOrgCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting collection for creation: %w", err)
 	}
 
-	resApi, err := v.client.CreateOrganizationCollection(ctx, obj.OrganizationID, *encObj)
+	resOrgCol, err := v.client.CreateOrganizationCollection(ctx, obj.OrganizationID, *encObj)
 	if err != nil {
 		return nil, fmt.Errorf("error creating collection: %w", err)
 	}
 
-	resObj := models.OrgCollection{
-		ID:             resApi.Id,
-		Object:         models.ObjectTypeOrgCollection,
-		Name:           obj.Name,
-		OrganizationID: obj.OrganizationID,
+	resObj, err := decryptOrgCollection(*resOrgCol, v.loginAccount.Secrets)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting collection after creation: %w", err)
 	}
 
-	v.storeObject(ctx, resObj)
+	if manageMembership {
+		err := v.reloadCollectionDetailsOfOrg(ctx, obj.OrganizationID)
+		if err != nil {
+			return nil, fmt.Errorf("error loading collections: %w", err)
+		}
 
-	if v.syncAfterWrite {
+		resObj, err = getObject(v.objectStore, *resObj)
+		if err != nil {
+			return nil, fmt.Errorf("refetch-after-write error: %w", err)
+		}
+	} else {
+		v.storeObject(ctx, *resObj)
+	}
+
+	if v.syncAfterWrite && !manageMembership {
 		err := v.sync(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("sync-after-write error: %w", err)
 		}
 
-		remoteObj, err := getObject(v.objectStore, resObj)
+		remoteObj, err := getObject(v.objectStore, *resObj)
 		if err != nil {
 			return nil, fmt.Errorf("error getting collection after creation (sync-after-write): %w", err)
 		}
 
-		return remoteObj, compareObjects(resObj, *remoteObj)
+		return remoteObj, compareObjects(*resObj, *remoteObj)
+	} else if v.syncAfterWrite && manageMembership {
+		obj.ID = resObj.ID
+
+		// If we had enough permissions to manage memberships, the server will
+		// always return the collection with the Manage flag set to true.
+		obj.Manage = true
+		return resObj, compareObjects(*resObj, obj)
 	}
-	return &resObj, nil
+	return resObj, err
+
 }
 
 func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
@@ -358,38 +412,71 @@ func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models
 		return nil, models.ErrVaultLocked
 	}
 
+	// When editing a collection, we need to ensure we have enough permissions
+	// to manage the collection's memberships if members were specified.
+	currentObj, err := getObject(v.objectStore, obj)
+	if err != nil {
+		return nil, fmt.Errorf("error getting collection prior to edition: %w", err)
+	}
+
+	manageMembership := currentObj.Manage
+	if manageMembership {
+		err := v.enhanceOrgCollectionMembers(ctx, obj)
+		if err != nil {
+			return nil, fmt.Errorf("error completing member information for edition: %w", err)
+		}
+	} else if len(obj.Users) > 0 {
+		return nil, fmt.Errorf("error editing collection: you need to have the Manage permission to edit memberships")
+	}
+
 	encObj, err := encryptOrgCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting collection for edition: %w", err)
 	}
 
-	resApi, err := v.client.EditOrganizationCollection(ctx, obj.OrganizationID, obj.ID, *encObj)
+	resOrgCol, err := v.client.EditOrganizationCollection(ctx, obj.OrganizationID, obj.ID, *encObj)
 	if err != nil {
-		return nil, fmt.Errorf("error editing collection: %w %v", err, encObj)
-	}
-	resObj := models.OrgCollection{
-		ID:             resApi.Id,
-		Object:         models.ObjectTypeOrgCollection,
-		Name:           obj.Name,
-		OrganizationID: obj.OrganizationID,
+		return nil, fmt.Errorf("error decrypting collection after creation: %w", err)
 	}
 
-	v.storeObject(ctx, resObj)
+	resObj, err := decryptOrgCollection(*resOrgCol, v.loginAccount.Secrets)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting collection after creation: %w", err)
+	}
 
-	if v.syncAfterWrite {
+	if manageMembership {
+		err := v.reloadCollectionDetailsOfOrg(ctx, obj.OrganizationID)
+		if err != nil {
+			return nil, fmt.Errorf("error loading collections: %w", err)
+		}
+
+		resObj, err = getObject(v.objectStore, *resObj)
+		if err != nil {
+			return nil, fmt.Errorf("refetch-after-write error: %w", err)
+		}
+	} else {
+		v.storeObject(ctx, *resObj)
+	}
+
+	if v.syncAfterWrite && !manageMembership {
 		err := v.sync(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("sync-after-write error: %w", err)
 		}
 
-		remoteObj, err := getObject(v.objectStore, resObj)
+		remoteObj, err := getObject(v.objectStore, *resObj)
 		if err != nil {
-			return nil, fmt.Errorf("error getting object after edition (sync-after-write): %w", err)
+			return nil, fmt.Errorf("error getting collection after edition (sync-after-write): %w", err)
 		}
 
-		return remoteObj, compareObjects(resObj, *remoteObj)
+		return remoteObj, compareObjects(*resObj, *remoteObj)
+	} else if v.syncAfterWrite && manageMembership {
+		// If we had enough permissions to manage memberships, the server will
+		// always return the collection with the Manage flag set to true.
+		obj.Manage = true
+		return resObj, compareObjects(*resObj, obj)
 	}
-	return &resObj, nil
+	return resObj, err
 }
 
 func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error) {
@@ -534,6 +621,7 @@ func (v *webAPIVault) DeleteOrganizationCollection(ctx context.Context, obj mode
 	}
 
 	v.deleteObjectFromStore(ctx, obj)
+	v.invalidateCollectionCache(ctx, obj.OrganizationID)
 
 	if v.syncAfterWrite {
 		return v.sync(ctx)
@@ -616,6 +704,20 @@ func (v *webAPIVault) EditItem(ctx context.Context, obj models.Item) (*models.It
 
 	if !v.objectsLoaded() {
 		return nil, models.ErrVaultLocked
+	}
+
+	// Special handling for collections identifiers changes, since you need to
+	// call a different endpoint to update them.
+	currentObj, err := getObject(v.objectStore, obj)
+	if err != nil {
+		return nil, fmt.Errorf("error getting item prior to edition: %w", err)
+	}
+
+	if !slices.Equal(currentObj.CollectionIds, obj.CollectionIds) {
+		_, err = v.client.EditItemCollections(ctx, obj.ID, obj.CollectionIds)
+		if err != nil {
+			return nil, fmt.Errorf("error editing item collections: %w", err)
+		}
 	}
 
 	var resObj *models.Item
@@ -722,20 +824,55 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 	return []byte(decryptedBody), nil
 }
 
-func (v *webAPIVault) InviteUser(ctx context.Context, orgId, userEmail string) error {
+func (v *webAPIVault) GetOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	err := v.ensureCollectionLoadedForOrg(ctx, obj.OrganizationID)
+	if err != nil {
+		// We do our best to load the collection details, but we don't want to fail if we can't.
+		// We'll just miss membership information.
+		tflog.Error(ctx, "error loading collections details", map[string]interface{}{"error": err, "id": obj.ID})
+	}
+
+	return getObject(v.objectStore, obj)
+}
+
+func (v *webAPIVault) InviteUser(ctx context.Context, orgId, userEmail string, memberRoleType models.OrgMemberRoleType) error {
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
 	req := webapi.InviteUserRequest{
 		Emails:               []string{userEmail},
-		Type:                 0, // 0:Owner, 2:User
-		AccessAll:            true,
+		Type:                 memberRoleType,
+		AccessAll:            false, // TODO: Make this configurable
 		AccessSecretsManager: false,
 		Groups:               []string{},
 		Collections:          []string{},
 	}
 
+	v.organizationMembers.ForgetOrganization(orgId)
+
 	return v.client.InviteUser(ctx, orgId, req)
+}
+
+func (v *webAPIVault) FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error) {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
+	if !filter.IsValid() {
+		return nil, fmt.Errorf("invalid filter options")
+	}
+
+	err := v.ensureCollectionLoadedForOrg(ctx, filter.OrganizationFilter)
+	if err != nil {
+		// We do our best to load the collection details, but we don't want to fail if we can't.
+		// We'll just miss membership information.
+		tflog.Error(ctx, "error loading collections details", map[string]interface{}{"error": err})
+	}
+
+	return findObject[models.OrgCollection](ctx, v.objectStore, models.ObjectTypeOrgCollection, options...)
 }
 
 func (v *webAPIVault) LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error {
@@ -906,18 +1043,13 @@ func (v *webAPIVault) continueLoginWithTokens(ctx context.Context, tokenResp web
 	return v.sync(ctx)
 }
 
-func (v *webAPIVault) findOrganizationUser(ctx context.Context, orgId, userEmail string) (*webapi.OrganizationUserDetails, error) {
-	orgUsers, err := v.client.GetOrganizationUsers(ctx, orgId)
+func (v *webAPIVault) findOrganizationUser(ctx context.Context, orgId, userEmail string) (*OrganizationMember, error) {
+	err := v.ensureUsersLoadedForOrg(ctx, orgId)
 	if err != nil {
-		return nil, fmt.Errorf("error getting users: %w", err)
+		return nil, fmt.Errorf("error loading users of organization '%s': %w", orgId, err)
 	}
 
-	for _, user := range orgUsers {
-		if user.Email == userEmail {
-			return &user, nil
-		}
-	}
-	return nil, nil
+	return v.organizationMembers.FindMemberByEmail(orgId, userEmail)
 }
 
 func (v *webAPIVault) getUserPublicKey(ctx context.Context, userId string) (*rsa.PublicKey, error) {
@@ -938,7 +1070,44 @@ func (v *webAPIVault) getUserPublicKey(ctx context.Context, userId string) (*rsa
 	return pubKey.(*rsa.PublicKey), nil
 }
 
-func (v *webAPIVault) prepareAttachmentCreationRequest(ctx context.Context, itemId, filename string, content []byte) (*webapi.AttachmentRequestData, []byte, error) {
+func (v *webAPIVault) reloadCollectionDetailsOfOrg(ctx context.Context, orgId string) error {
+	v.invalidateCollectionCache(ctx, orgId)
+	return v.ensureCollectionLoadedForOrg(ctx, orgId)
+}
+
+func (v *webAPIVault) ensureCollectionLoadedForOrg(ctx context.Context, orgId string) error {
+	if _, ok := v.collectionDetailsLoadedForOrg[orgId]; ok {
+		return nil
+	}
+
+	tflog.Trace(ctx, "Loading collections for organization", map[string]interface{}{"org_id": orgId})
+	accessDetails, err := v.client.GetOrganizationCollections(ctx, orgId)
+	if err != nil {
+		return fmt.Errorf("error reading collection details: %w", err)
+	}
+
+	for _, collection := range accessDetails {
+		orgCol, err := decryptOrgCollection(collection, v.loginAccount.Secrets)
+		if err != nil {
+			return fmt.Errorf("error decrypting collection: %w", err)
+		}
+
+		err = v.enhanceOrgCollectionMembers(ctx, *orgCol)
+		if err != nil {
+			return fmt.Errorf("error completing member information: %w", err)
+		}
+
+		v.storeObject(ctx, *orgCol)
+	}
+	return nil
+}
+
+func (v *webAPIVault) invalidateCollectionCache(ctx context.Context, orgId string) {
+	tflog.Trace(ctx, "Invalidating cached collections for organization", map[string]interface{}{"org_id": orgId})
+	delete(v.collectionDetailsLoadedForOrg, orgId)
+}
+
+func (v *webAPIVault) prepareAttachmentCreationRequest(_ context.Context, itemId, filename string, content []byte) (*webapi.AttachmentRequestData, []byte, error) {
 	// NOTE: We don't Sync() to get the latest version of Object before adding an attachment to it, because we
 	//       assume the Object's key can't change.
 	originalObj, err := getObject(v.objectStore, models.Item{ID: itemId, Object: models.ObjectTypeItem})
@@ -1021,19 +1190,19 @@ func ciphersToObjects[T SupportedCipher](accountSecrets AccountSecrets, ciphers 
 		case models.Item:
 			obj, err := decryptItem(secret, accountSecrets)
 			if err != nil {
-				return nil, fmt.Errorf("error decrypting cipher: %w", err)
+				return nil, fmt.Errorf("error decrypting cipher item: %w", err)
 			}
 			objects[k] = *obj
 		case webapi.Folder:
 			obj, err := decryptFolder(secret, accountSecrets)
 			if err != nil {
-				return nil, fmt.Errorf("error decrypting cipher: %w", err)
+				return nil, fmt.Errorf("error decrypting cipher folder: %w", err)
 			}
 			objects[k] = *obj
 		case webapi.Collection:
 			obj, err := decryptOrgCollection(secret, accountSecrets)
 			if err != nil {
-				return nil, fmt.Errorf("error decrypting cipher: %w", err)
+				return nil, fmt.Errorf("error decrypting cipher collection: %w", err)
 			}
 			objects[k] = *obj
 		default:

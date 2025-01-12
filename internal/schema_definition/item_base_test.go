@@ -9,7 +9,7 @@ import (
 func TestSensisitiveFieldsAreMarkedAsSensitive(t *testing.T) {
 	sensitiveFields := []string{}
 
-	for k, v := range BaseSchema(DataSource) {
+	for k, v := range ItemBaseSchema(DataSource) {
 		if v.Sensitive {
 			sensitiveFields = append(sensitiveFields, k)
 		}

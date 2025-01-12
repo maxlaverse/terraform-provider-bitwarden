@@ -47,4 +47,15 @@ resource "bitwarden_item_login" "administrative_user" {
 
 ### Read-Only
 
+- `member` (List of Object) [Experimental] Member of a collection. (see [below for nested schema](#nestedatt--member))
 - `name` (String) Name.
+
+<a id="nestedatt--member"></a>
+### Nested Schema for `member`
+
+Read-Only:
+
+- `hide_passwords` (Boolean)
+- `org_member_id` (String)
+- `read_only` (Boolean)
+- `user_email` (String)

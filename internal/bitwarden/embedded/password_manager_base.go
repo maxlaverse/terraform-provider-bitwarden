@@ -29,12 +29,10 @@ type BaseVault interface {
 	GetFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	GetItem(ctx context.Context, obj models.Item) (*models.Item, error)
 	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
-	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 
 	FindFolder(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Folder, error)
 	FindItem(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Item, error)
 	FindOrganization(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Organization, error)
-	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
 }
 
 type baseVault struct {
@@ -51,6 +49,15 @@ type baseVault struct {
 	// verifyObjectEncryption is a flag that can be set to true to verify that
 	// every object that is encrypted can be decrypted back to its original.
 	verifyObjectEncryption bool
+
+	// collectionDetailsLoadedForOrg stores whether collections have been loaded for
+	// a given organization.
+	collectionDetailsLoadedForOrg map[string]bool
+
+	// organizationMembers stores the members of an organization alongside
+	// their user information. This allows us to reference members by their
+	// email for example.
+	organizationMembers MemberMapping
 }
 
 func (v *baseVault) GetItem(ctx context.Context, obj models.Item) (*models.Item, error) {
@@ -132,13 +139,6 @@ func (v *baseVault) FindOrganization(ctx context.Context, options ...bitwarden.L
 	return findObject[models.Organization](ctx, v.objectStore, models.ObjectTypeOrganization, options...)
 }
 
-func (v *baseVault) FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error) {
-	v.vaultOperationMutex.RLock()
-	defer v.vaultOperationMutex.RUnlock()
-
-	return findObject[models.OrgCollection](ctx, v.objectStore, models.ObjectTypeOrgCollection, options...)
-}
-
 func findObject[T any](ctx context.Context, store map[string]interface{}, objType models.ObjectType, options ...bitwarden.ListObjectsOption) (*T, error) {
 	if store == nil {
 		return nil, models.ErrVaultLocked
@@ -176,12 +176,64 @@ func (v *baseVault) clearObjectStore(ctx context.Context) {
 	if v.objectStore != nil {
 		tflog.Trace(ctx, "Clearing object store")
 	}
+	v.collectionDetailsLoadedForOrg = make(map[string]bool)
 	v.objectStore = make(map[string]interface{})
+	v.organizationMembers = NewMemberMapping()
 }
 
 func (v *baseVault) deleteObjectFromStore(ctx context.Context, obj any) {
 	tflog.Trace(ctx, "Deleting object from store", map[string]interface{}{"key": objKey(obj)})
 	delete(v.objectStore, objKey(obj))
+}
+
+func (v *webAPIVault) enhanceOrgCollectionMembers(ctx context.Context, orgCol models.OrgCollection) error {
+	err := v.ensureUsersLoadedForOrg(ctx, orgCol.OrganizationID)
+	if err != nil {
+		return fmt.Errorf("error loading users of organization '%s': %w", orgCol.OrganizationID, err)
+	}
+
+	for k, user := range orgCol.Users {
+		if len(user.UserEmail) == 0 {
+			u, err := v.organizationMembers.FindMemberByID(orgCol.OrganizationID, user.OrgMemberId)
+			if err != nil {
+				return fmt.Errorf("no details found for member with id '%s' in organization '%s'", user.OrgMemberId, orgCol.OrganizationID)
+			}
+			orgCol.Users[k].UserEmail = u.Email
+			continue
+		}
+
+		if len(user.OrgMemberId) == 0 {
+			u, err := v.organizationMembers.FindMemberByEmail(orgCol.OrganizationID, user.UserEmail)
+			if err != nil {
+				return fmt.Errorf("no details found for member with email '%s' in organization '%s'", user.UserEmail, orgCol.OrganizationID)
+			}
+			orgCol.Users[k].OrgMemberId = u.Id
+			continue
+		}
+	}
+
+	emailsFound := make(map[string]int)
+	idFounds := make(map[string]int)
+	for _, user := range orgCol.Users {
+		if len(user.UserEmail) > 0 {
+			emailsFound[user.UserEmail]++
+		}
+		if len(user.OrgMemberId) > 0 {
+			idFounds[user.OrgMemberId]++
+		}
+	}
+	for email, count := range emailsFound {
+		if count > 1 {
+			return fmt.Errorf("BUG: enhanceOrgCollectionMembers, duplicate email '%s' found", email)
+		}
+	}
+	for id, count := range idFounds {
+		if count > 1 {
+			return fmt.Errorf("BUG: enhanceOrgCollectionMembers, duplicate id '%s' found", id)
+		}
+	}
+
+	return nil
 }
 
 func (v *baseVault) objectsLoaded() bool {
@@ -249,11 +301,22 @@ func decryptOrgCollection(obj webapi.Collection, secret AccountSecrets) (*models
 		return nil, fmt.Errorf("error decrypting collection name: %w", err)
 	}
 
+	var users []models.OrgCollectionMember
+	for _, u := range obj.Users {
+		users = append(users, models.OrgCollectionMember{
+			HidePasswords: u.HidePasswords,
+			OrgMemberId:   u.Id,
+			ReadOnly:      u.ReadOnly,
+		})
+	}
+
 	return &models.OrgCollection{
 		ID:             obj.Id,
+		Manage:         obj.Manage,
 		Name:           decName,
 		Object:         models.ObjectTypeOrgCollection,
 		OrganizationID: obj.OrganizationId,
+		Users:          users,
 	}, nil
 }
 
@@ -420,7 +483,7 @@ func decryptItemLogin(objLogin models.Login, objectKey symmetrickey.Key) (*model
 	}, nil
 }
 
-func encryptOrgCollection(_ context.Context, obj models.OrgCollection, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.OrganizationCreationRequest, error) {
+func encryptOrgCollection(_ context.Context, obj models.OrgCollection, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.Collection, error) {
 	orgKey, err := secret.GetOrganizationKey(obj.OrganizationID)
 	if err != nil {
 		return nil, err
@@ -436,20 +499,36 @@ func encryptOrgCollection(_ context.Context, obj models.OrgCollection, secret Ac
 		return nil, fmt.Errorf("error encrypting collection: %w", err)
 	}
 
-	encObj := webapi.OrganizationCreationRequest{
-		Name:   collectionName,
-		Users:  []webapi.OrganizationUser{},
-		Groups: []string{},
-	}
-	if verifyObjectEncryption {
-		encObjModified := webapi.Collection{
-			Id:             obj.ID,
-			Name:           encObj.Name,
-			OrganizationId: obj.OrganizationID,
+	users := make([]webapi.CollectionUser, len(obj.Users))
+	for k, orgMember := range obj.Users {
+		if len(orgMember.OrgMemberId) == 0 {
+			return nil, fmt.Errorf("member id is empty")
 		}
-		actualObj, err := decryptOrgCollection(encObjModified, secret)
+		users[k] = webapi.CollectionUser{
+			HidePasswords: orgMember.HidePasswords,
+			Id:            orgMember.OrgMemberId,
+			ReadOnly:      orgMember.ReadOnly,
+		}
+	}
+	encObj := webapi.Collection{
+		Groups:         []string{},
+		Id:             obj.ID,
+		Manage:         obj.Manage,
+		Name:           collectionName,
+		OrganizationId: obj.OrganizationID,
+		Users:          users,
+	}
+
+	if verifyObjectEncryption {
+		actualObj, err := decryptOrgCollection(encObj, secret)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting collection for verification: %w", err)
+		}
+
+		// Emails are lost when converting from webapi.Collection to models.OrgCollection.
+		// We need to diff them out for the comparison to work.
+		for k := range actualObj.Users {
+			actualObj.Users[k].UserEmail = obj.Users[k].UserEmail
 		}
 
 		err = compareObjects(obj, *actualObj)
@@ -913,7 +992,7 @@ func compareObjects[T any](actual, expected T) error {
 	if !bytes.Equal(actualJson, expectedJson) {
 		err := fmt.Errorf("object comparison failed")
 		fmt.Printf("Expected: %s\n", string(expectedJson))
-		fmt.Printf("Actual: %s\n", string(actualJson))
+		fmt.Printf("Actual:   %s\n", string(actualJson))
 		if panicOnEncryptionErrors {
 			panic(err)
 		}

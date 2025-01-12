@@ -14,6 +14,6 @@ func resourceItemSecureNote() *schema.Resource {
 		UpdateContext: withPasswordManager(opItemUpdate),
 		DeleteContext: withPasswordManager(opItemDelete),
 		Importer:      resourceImporter(opItemImport(models.ItemTypeSecureNote)),
-		Schema:        schema_definition.BaseSchema(schema_definition.Resource),
+		Schema:        schema_definition.ItemBaseSchema(schema_definition.Resource),
 	}
 }
