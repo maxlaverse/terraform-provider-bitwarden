@@ -2,48 +2,54 @@ package embedded
 
 import "fmt"
 
-type Member struct {
+type OrganizationMember struct {
 	Email  string
 	Id     string
 	UserId string
 }
 
-type MemberMapping map[string][]Member
+type MemberMapping map[string][]OrganizationMember
 
 func NewMemberMapping() MemberMapping {
-	return make(map[string][]Member)
+	return make(map[string][]OrganizationMember)
 }
 
-func (m MemberMapping) AddMember(orgId string, member Member) {
+func (m MemberMapping) AddMember(orgId string, member OrganizationMember) {
 	m[orgId] = append(m[orgId], member)
 }
 
-func (m MemberMapping) FindMemberByID(orgId, memberId string) (*Member, error) {
-	if members, ok := m[orgId]; ok {
+func (m MemberMapping) FindMemberByID(orgId, memberId string) (*OrganizationMember, error) {
+	if len(memberId) == 0 {
+		return nil, fmt.Errorf("BUG: FindMemberByID() called with empty memberId")
+	}
+
+	members, ok := m[orgId]
+	if ok {
 		for _, user := range members {
 			if user.Id == memberId {
 				return &user, nil
 			}
 		}
-	} else {
-		return nil, fmt.Errorf("BUG: unknown organization '%s'", orgId)
 	}
 
-	return nil, fmt.Errorf("no member found with email '%s' in organization '%s': %+v", orgId, memberId, m)
+	return nil, fmt.Errorf("no member found with email '%s' in organization '%s' (org exists: %t)", orgId, memberId, ok)
 }
 
-func (m MemberMapping) FindMemberByEmail(orgId, userEmail string) (*Member, error) {
-	if members, ok := m[orgId]; ok {
+func (m MemberMapping) FindMemberByEmail(orgId, userEmail string) (*OrganizationMember, error) {
+	if len(userEmail) == 0 {
+		return nil, fmt.Errorf("BUG: FindMemberByEmail() called with empty userEmail")
+	}
+
+	members, ok := m[orgId]
+	if ok {
 		for _, user := range members {
 			if user.Email == userEmail {
 				return &user, nil
 			}
 		}
-	} else {
-		return nil, fmt.Errorf("BUG: unknown organization '%s'", orgId)
 	}
 
-	return nil, fmt.Errorf("no member found with email '%s' in organization '%s': %+v", userEmail, orgId, m)
+	return nil, fmt.Errorf("no member found with email '%s' in organization '%s' (org exists: %t)", userEmail, orgId, ok)
 }
 
 func (m MemberMapping) ForgetOrganization(orgId string) {
@@ -56,5 +62,5 @@ func (m MemberMapping) OrganizationInitialized(orgId string) bool {
 }
 
 func (m MemberMapping) ResetOrganization(orgId string) {
-	m[orgId] = []Member{}
+	m[orgId] = []OrganizationMember{}
 }

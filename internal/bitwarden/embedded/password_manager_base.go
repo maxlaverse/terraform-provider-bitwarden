@@ -193,20 +193,46 @@ func (v *webAPIVault) enhanceOrgCollectionMembers(ctx context.Context, orgCol mo
 	}
 
 	for k, user := range orgCol.Users {
-		u, err := v.organizationMembers.FindMemberByID(orgCol.OrganizationID, user.OrgMemberId)
-		if err == nil {
+		if len(user.UserEmail) == 0 {
+			u, err := v.organizationMembers.FindMemberByID(orgCol.OrganizationID, user.OrgMemberId)
+			if err != nil {
+				return fmt.Errorf("no details found for member with id '%s' in organization '%s'", user.OrgMemberId, orgCol.OrganizationID)
+			}
 			orgCol.Users[k].UserEmail = u.Email
 			continue
 		}
 
-		u, err = v.organizationMembers.FindMemberByEmail(orgCol.OrganizationID, user.UserEmail)
-		if err == nil {
+		if len(user.OrgMemberId) == 0 {
+			u, err := v.organizationMembers.FindMemberByEmail(orgCol.OrganizationID, user.UserEmail)
+			if err != nil {
+				return fmt.Errorf("no details found for member with email '%s' in organization '%s'", user.UserEmail, orgCol.OrganizationID)
+			}
 			orgCol.Users[k].OrgMemberId = u.Id
 			continue
 		}
-
-		return fmt.Errorf("no details found for member '%s' of organization '%s' (%s/%s)", user.OrgMemberId, orgCol.OrganizationID, user.OrgMemberId, user.UserEmail)
 	}
+
+	emailsFound := make(map[string]int)
+	idFounds := make(map[string]int)
+	for _, user := range orgCol.Users {
+		if len(user.UserEmail) > 0 {
+			emailsFound[user.UserEmail]++
+		}
+		if len(user.OrgMemberId) > 0 {
+			idFounds[user.OrgMemberId]++
+		}
+	}
+	for email, count := range emailsFound {
+		if count > 1 {
+			return fmt.Errorf("BUG: enhanceOrgCollectionMembers, duplicate email '%s' found", email)
+		}
+	}
+	for id, count := range idFounds {
+		if count > 1 {
+			return fmt.Errorf("BUG: enhanceOrgCollectionMembers, duplicate id '%s' found", id)
+		}
+	}
+
 	return nil
 }
 
@@ -286,6 +312,7 @@ func decryptOrgCollection(obj webapi.Collection, secret AccountSecrets) (*models
 
 	return &models.OrgCollection{
 		ID:             obj.Id,
+		Manage:         obj.Manage,
 		Name:           decName,
 		Object:         models.ObjectTypeOrgCollection,
 		OrganizationID: obj.OrganizationId,
@@ -486,8 +513,9 @@ func encryptOrgCollection(_ context.Context, obj models.OrgCollection, secret Ac
 	encObj := webapi.Collection{
 		Groups:         []string{},
 		Id:             obj.ID,
-		OrganizationId: obj.OrganizationID,
+		Manage:         obj.Manage,
 		Name:           collectionName,
+		OrganizationId: obj.OrganizationID,
 		Users:          users,
 	}
 
@@ -964,7 +992,7 @@ func compareObjects[T any](actual, expected T) error {
 	if !bytes.Equal(actualJson, expectedJson) {
 		err := fmt.Errorf("object comparison failed")
 		fmt.Printf("Expected: %s\n", string(expectedJson))
-		fmt.Printf("Actual: %s\n", string(actualJson))
+		fmt.Printf("Actual:   %s\n", string(actualJson))
 		if panicOnEncryptionErrors {
 			panic(err)
 		}

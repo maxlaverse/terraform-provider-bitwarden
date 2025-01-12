@@ -97,7 +97,6 @@ func ensureVaultwardenConfigured(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Logf("Inviting users to organization %s", testOrganizationID)
 	err = bwClient.(embedded.PasswordManagerClient).InviteUser(ctx, testOrganizationID, testAccountEmailOrgOwner, models.OrgMemberRoleTypeOwner)
 	if err != nil {
 		t.Fatal(err)
@@ -107,6 +106,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("Invited %s to organization %s (%s)", testAccountEmailOrgOwner, testOrganizationID, testAccountEmailOrgOwnerInTestOrgUserId)
 
 	err = bwClient.(embedded.PasswordManagerClient).InviteUser(ctx, testOrganizationID, testAccountEmailOrgAdmin, models.OrgMemberRoleTypeAdmin)
 	if err != nil {
@@ -117,6 +117,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("Invited %s to organization %s (%s)", testAccountEmailOrgAdmin, testOrganizationID, testAccountEmailOrgAdminInTestOrgUserId)
 
 	err = bwClient.(embedded.PasswordManagerClient).InviteUser(ctx, testOrganizationID, testAccountEmailOrgUser, models.OrgMemberRoleTypeUser)
 	if err != nil {
@@ -127,6 +128,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("Invited %s to organization %s (%s)", testAccountEmailOrgUser, testOrganizationID, testAccountEmailOrgUserInTestOrgUserId)
 
 	err = bwClient.(embedded.PasswordManagerClient).InviteUser(ctx, testOrganizationID, testAccountEmailOrgManager, models.OrgMemberRoleTypeManager)
 	if err != nil {
@@ -137,6 +139,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("Invited %s to organization %s (%s)", testAccountEmailOrgManager, testOrganizationID, testAccountEmailOrgManagerInTestOrgUserId)
 
 	webapiClient := webapi.NewClient(testServerURL, embedded.NewDeviceIdentifier(), testDeviceVersion)
 	_, err = webapiClient.LoginWithPassword(ctx, testEmail, testPassword, models.KdfConfiguration{KdfIterations: kdfIterations})

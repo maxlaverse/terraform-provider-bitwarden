@@ -325,7 +325,7 @@ func (v *webAPIVault) ensureUsersLoadedForOrg(ctx context.Context, orgId string)
 
 	v.organizationMembers.ResetOrganization(orgId)
 	for _, u := range orgUsers {
-		v.organizationMembers.AddMember(orgId, Member{
+		v.organizationMembers.AddMember(orgId, OrganizationMember{
 			Email:  u.Email,
 			Id:     u.Id,
 			UserId: u.UserId,
@@ -394,6 +394,10 @@ func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj mode
 		return remoteObj, compareObjects(*resObj, *remoteObj)
 	} else if v.syncAfterWrite && manageMembership {
 		obj.ID = resObj.ID
+
+		// If we had enough permissions to manage memberships, the server will
+		// always return the collection with the Manage flag set to true.
+		obj.Manage = true
 		return resObj, compareObjects(*resObj, obj)
 	}
 	return resObj, err
@@ -408,12 +412,21 @@ func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models
 		return nil, models.ErrVaultLocked
 	}
 
-	manageMembership := len(obj.Users) > 0
+	// When editing a collection, we need to ensure we have enough permissions
+	// to manage the collection's memberships if members were specified.
+	currentObj, err := getObject(v.objectStore, obj)
+	if err != nil {
+		return nil, fmt.Errorf("error getting collection prior to edition: %w", err)
+	}
+
+	manageMembership := currentObj.Manage
 	if manageMembership {
 		err := v.enhanceOrgCollectionMembers(ctx, obj)
 		if err != nil {
 			return nil, fmt.Errorf("error completing member information for edition: %w", err)
 		}
+	} else if len(obj.Users) > 0 {
+		return nil, fmt.Errorf("error editing collection: you need to have the Manage permission to edit memberships")
 	}
 
 	encObj, err := encryptOrgCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
@@ -458,6 +471,9 @@ func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models
 
 		return remoteObj, compareObjects(*resObj, *remoteObj)
 	} else if v.syncAfterWrite && manageMembership {
+		// If we had enough permissions to manage memberships, the server will
+		// always return the collection with the Manage flag set to true.
+		obj.Manage = true
 		return resObj, compareObjects(*resObj, obj)
 	}
 	return resObj, err
@@ -1027,7 +1043,7 @@ func (v *webAPIVault) continueLoginWithTokens(ctx context.Context, tokenResp web
 	return v.sync(ctx)
 }
 
-func (v *webAPIVault) findOrganizationUser(ctx context.Context, orgId, userEmail string) (*Member, error) {
+func (v *webAPIVault) findOrganizationUser(ctx context.Context, orgId, userEmail string) (*OrganizationMember, error) {
 	err := v.ensureUsersLoadedForOrg(ctx, orgId)
 	if err != nil {
 		return nil, fmt.Errorf("error loading users of organization '%s': %w", orgId, err)

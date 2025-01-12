@@ -50,9 +50,16 @@ const (
 type OrgMemberRoleType int
 
 const (
-	OrgMemberRoleTypeOwner   OrgMemberRoleType = 0
-	OrgMemberRoleTypeAdmin   OrgMemberRoleType = 1
-	OrgMemberRoleTypeUser    OrgMemberRoleType = 2
+	// According to UI: Manage all aspects of your organization, including billing and subscriptions
+	OrgMemberRoleTypeOwner OrgMemberRoleType = 0
+
+	// According to UI: Manage organization access, all collections, members, reporting, and security settings
+	OrgMemberRoleTypeAdmin OrgMemberRoleType = 1
+
+	// According to UI: Access and add items to assigned collections
+	OrgMemberRoleTypeUser OrgMemberRoleType = 2
+
+	// According to UI: Create, delete, and manage access in assigned collections
 	OrgMemberRoleTypeManager OrgMemberRoleType = 3
 )
 
@@ -193,4 +200,5 @@ type OrgCollection struct {
 	OrganizationID string                `json:"organizationId"`
 	Users          []OrgCollectionMember `json:"users,omitempty"`
 	Groups         []interface{}         `json:"groups"` // Required but not used when creating collections using the CLI
+	Manage         bool                  `json:"-"`
 }
