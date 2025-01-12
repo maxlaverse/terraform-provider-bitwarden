@@ -86,6 +86,9 @@ func ensureVaultwardenConfigured(t *testing.T) {
 		return
 	}
 
+	// Force refreshing the embedded client variable
+	tfConfigPasswordManagerProvider()
+
 	ensureVaultwardenHasUser(t)
 	ctx := context.Background()
 
