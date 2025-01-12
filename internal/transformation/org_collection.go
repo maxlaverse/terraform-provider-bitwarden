@@ -68,9 +68,10 @@ func OrganizationCollectionToObject(ctx context.Context, d *schema.ResourceData)
 		for k, v2 := range v {
 			obj.Users[k] = models.OrgCollectionMember{
 				HidePasswords: v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberHidePasswords].(bool),
-				OrgMemberId:   v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberOrgMemberId].(string),
 				ReadOnly:      v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberReadOnly].(bool),
 				UserEmail:     v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberUserEmail].(string),
+
+				// Note: We don't set OrgMemberId on purpose as it's computed and we're always going to lookup by email.
 			}
 		}
 	}
