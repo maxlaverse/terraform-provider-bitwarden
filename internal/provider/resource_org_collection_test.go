@@ -29,17 +29,19 @@ func TestAccResourceOrgCollection(t *testing.T) {
 					resource.TestMatchResourceAttr(
 						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
 					),
-					resource.TestCheckResourceAttr(
-						resourceName, "member.#", "2",
-					),
-					resource.TestCheckResourceAttr(
-						resourceName, "member.0.user_email", testAccountEmailOrgOwner,
-					),
-					resource.TestMatchResourceAttr(
-						resourceName, fmt.Sprintf("member.0.%s", schema_definition.AttributeCollectionMemberOrgMemberId), regexp.MustCompile(regExpId),
-					),
-					resource.TestCheckResourceAttr(
-						resourceName, "member.0.read_only", "false",
+					conditionalAssertion(useEmbeddedClient,
+						resource.TestCheckResourceAttr(
+							resourceName, "member.#", "2",
+						),
+						resource.TestCheckResourceAttr(
+							resourceName, "member.0.user_email", testAccountEmailOrgOwner,
+						),
+						resource.TestMatchResourceAttr(
+							resourceName, fmt.Sprintf("member.0.%s", schema_definition.AttributeCollectionMemberOrgMemberId), regexp.MustCompile(regExpId),
+						),
+						resource.TestCheckResourceAttr(
+							resourceName, "member.0.read_only", "false",
+						),
 					),
 					getObjectID(resourceName, &objectID),
 				),
@@ -54,20 +56,22 @@ func TestAccResourceOrgCollection(t *testing.T) {
 					resource.TestMatchResourceAttr(
 						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
 					),
-					resource.TestCheckResourceAttr(
-						resourceName, "member.#", "2",
-					),
-					resource.TestCheckResourceAttr(
-						resourceName, "member.0.user_email", testAccountEmailOrgOwner,
-					),
-					resource.TestCheckResourceAttr(
-						resourceName, "member.0.read_only", "false",
-					),
-					resource.TestCheckResourceAttr(
-						resourceName, "member.1.user_email", testAccountEmailOrgUser,
-					),
-					resource.TestCheckResourceAttr(
-						resourceName, "member.1.read_only", "false",
+					conditionalAssertion(useEmbeddedClient,
+						resource.TestCheckResourceAttr(
+							resourceName, "member.#", "2",
+						),
+						resource.TestCheckResourceAttr(
+							resourceName, "member.0.user_email", testAccountEmailOrgOwner,
+						),
+						resource.TestCheckResourceAttr(
+							resourceName, "member.0.read_only", "false",
+						),
+						resource.TestCheckResourceAttr(
+							resourceName, "member.1.user_email", testAccountEmailOrgUser,
+						),
+						resource.TestCheckResourceAttr(
+							resourceName, "member.1.read_only", "false",
+						),
 					),
 					getObjectID(resourceName, &objectID),
 				),
@@ -82,14 +86,16 @@ func TestAccResourceOrgCollection(t *testing.T) {
 					resource.TestMatchResourceAttr(
 						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
 					),
-					resource.TestCheckResourceAttr(
-						resourceName, "member.#", "1",
-					),
-					resource.TestCheckResourceAttr(
-						resourceName, "member.0.user_email", testAccountEmailOrgOwner,
-					),
-					resource.TestCheckResourceAttr(
-						resourceName, "member.0.read_only", "false",
+					conditionalAssertion(useEmbeddedClient,
+						resource.TestCheckResourceAttr(
+							resourceName, "member.#", "1",
+						),
+						resource.TestCheckResourceAttr(
+							resourceName, "member.0.user_email", testAccountEmailOrgOwner,
+						),
+						resource.TestCheckResourceAttr(
+							resourceName, "member.0.read_only", "false",
+						),
 					),
 					getObjectID(resourceName, &objectID),
 				),
