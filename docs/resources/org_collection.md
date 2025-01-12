@@ -17,9 +17,18 @@ data "bitwarden_organization" "terraform" {
   search = "Terraform"
 }
 
-resource "bitwarden_org_collection" "engineering" {
-  name            = "Engineering"
+resource "bitwarden_org_collection" "infrastructure" {
+  name            = "Infrastructure Passwords"
   organization_id = data.bitwarden_organization.terraform.id
+}
+
+resource "bitwarden_org_collection" "generated" {
+  name            = "Generated Passwords"
+  organization_id = data.bitwarden_organization.terraform.id
+
+  member {
+    email = "devops@example.com"
+  }
 }
 ```
 
@@ -34,9 +43,26 @@ resource "bitwarden_org_collection" "engineering" {
 ### Optional
 
 - `id` (String) Identifier.
+- `member` (Block List) [Experimental] Member of a collection. (see [below for nested schema](#nestedblock--member))
 
 ### Read-Only
 
+
+<a id="nestedblock--member"></a>
+### Nested Schema for `member`
+
+Required:
+
+- `user_email` (String) [Experimental] User email.
+
+Optional:
+
+- `hide_passwords` (Boolean) [Experimental] Hide passwords.
+- `read_only` (Boolean) [Experimental] Read/Write permissions.
+
+Read-Only:
+
+- `org_member_id` (String) [Experimental] Identifier of the member in the organization.
 
 ## Import
 
