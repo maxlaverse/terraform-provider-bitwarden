@@ -25,4 +25,4 @@ server:
 	-e ADMIN_RATELIMIT_SECONDS=1 \
 	-e ADMIN_RATELIMIT_MAX_BURST=1000000 \
 	--mount type=tmpfs,destination=/data \
-	-p 8080:80 vaultwarden/server
+	-p 8080:80 vaultwarden/server:1.32.5
