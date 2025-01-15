@@ -74,6 +74,7 @@ const (
 	ObjectTypeList                ObjectType = "list"              // encapsulates collection list response
 	ObjectTypeCollectionDetails   ObjectType = "collectionDetails" // collection listed in sync
 	ObjectTypeCollection          ObjectType = "collection"        // used when refetching collections
+	ObjectTypeOrgMember           ObjectType = "org-member"
 	ObjectTypeProfile             ObjectType = "profile"
 	ObjectTypeSync                ObjectType = "sync"
 	ObjectTypeProfileOrganization ObjectType = "profileOrganization"   // organization under profile
@@ -83,7 +84,6 @@ const (
 	ObjectProject                 ObjectType = "project"
 	ObjectSecret                  ObjectType = "secret"
 	ObjectUserKey                 ObjectType = "userKey"
-	ObjectOrgMember               ObjectType = "org-member"
 )
 
 const (
@@ -187,10 +187,17 @@ type Attachment struct {
 }
 
 type OrgCollectionMember struct {
-	HidePasswords bool
-	OrgMemberId   string
-	ReadOnly      bool
-	UserEmail     string
+	HidePasswords bool   `json:"hidePasswords"`
+	Id            string `json:"id"`
+	ReadOnly      bool   `json:"readOnly"`
+}
+
+type OrgMember struct {
+	OrganizationId string
+	ID             string
+	Email          string
+	Name           string
+	UserId         string
 }
 
 type OrgCollection struct {

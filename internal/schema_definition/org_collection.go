@@ -30,7 +30,7 @@ func OrgCollectionSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 		},
 		AttributeMember: {
 			Description: DescriptionCollectionMember,
-			Type:        schema.TypeList,
+			Type:        schema.TypeSet,
 			Elem:        membershipElem(),
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
@@ -53,25 +53,22 @@ func OrgCollectionSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 func membershipElem() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
-			AttributeCollectionMemberUserEmail: {
-				Description: DescriptionCollectionMemberUserEmail,
+			AttributeID: {
+				Description: DescriptionIdentifier,
 				Type:        schema.TypeString,
 				Required:    true,
-			},
-			AttributeCollectionMemberOrgMemberId: {
-				Description: DescriptionCollectionMemberOrgMemberId,
-				Type:        schema.TypeString,
-				Computed:    true,
 			},
 			AttributeCollectionMemberReadOnly: {
 				Description: DescriptionCollectionMemberReadOnly,
 				Type:        schema.TypeBool,
 				Optional:    true,
+				Default:     false,
 			},
 			AttributeCollectionMemberHidePasswords: {
 				Description: DescriptionCollectionMemberHidePasswords,
 				Type:        schema.TypeBool,
 				Optional:    true,
+				Default:     false,
 			},
 		},
 	}

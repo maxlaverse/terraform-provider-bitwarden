@@ -57,7 +57,7 @@ type baseVault struct {
 	// organizationMembers stores the members of an organization alongside
 	// their user information. This allows us to reference members by their
 	// email for example.
-	organizationMembers MemberMapping
+	organizationMembers OrgMemberStore
 }
 
 func (v *baseVault) GetItem(ctx context.Context, obj models.Item) (*models.Item, error) {
@@ -178,62 +178,12 @@ func (v *baseVault) clearObjectStore(ctx context.Context) {
 	}
 	v.collectionDetailsLoadedForOrg = make(map[string]bool)
 	v.objectStore = make(map[string]interface{})
-	v.organizationMembers = NewMemberMapping()
+	v.organizationMembers = NewOrgMemberStore()
 }
 
 func (v *baseVault) deleteObjectFromStore(ctx context.Context, obj any) {
 	tflog.Trace(ctx, "Deleting object from store", map[string]interface{}{"key": objKey(obj)})
 	delete(v.objectStore, objKey(obj))
-}
-
-func (v *webAPIVault) enhanceOrgCollectionMembers(ctx context.Context, orgCol models.OrgCollection) error {
-	err := v.ensureUsersLoadedForOrg(ctx, orgCol.OrganizationID)
-	if err != nil {
-		return fmt.Errorf("error loading users of organization '%s': %w", orgCol.OrganizationID, err)
-	}
-
-	for k, user := range orgCol.Users {
-		if len(user.UserEmail) == 0 {
-			u, err := v.organizationMembers.FindMemberByID(orgCol.OrganizationID, user.OrgMemberId)
-			if err != nil {
-				return fmt.Errorf("no details found for member with id '%s' in organization '%s'", user.OrgMemberId, orgCol.OrganizationID)
-			}
-			orgCol.Users[k].UserEmail = u.Email
-			continue
-		}
-
-		if len(user.OrgMemberId) == 0 {
-			u, err := v.organizationMembers.FindMemberByEmail(orgCol.OrganizationID, user.UserEmail)
-			if err != nil {
-				return fmt.Errorf("no details found for member with email '%s' in organization '%s'", user.UserEmail, orgCol.OrganizationID)
-			}
-			orgCol.Users[k].OrgMemberId = u.Id
-			continue
-		}
-	}
-
-	emailsFound := make(map[string]int)
-	idFounds := make(map[string]int)
-	for _, user := range orgCol.Users {
-		if len(user.UserEmail) > 0 {
-			emailsFound[user.UserEmail]++
-		}
-		if len(user.OrgMemberId) > 0 {
-			idFounds[user.OrgMemberId]++
-		}
-	}
-	for email, count := range emailsFound {
-		if count > 1 {
-			return fmt.Errorf("BUG: enhanceOrgCollectionMembers, duplicate email '%s' found", email)
-		}
-	}
-	for id, count := range idFounds {
-		if count > 1 {
-			return fmt.Errorf("BUG: enhanceOrgCollectionMembers, duplicate id '%s' found", id)
-		}
-	}
-
-	return nil
 }
 
 func (v *baseVault) objectsLoaded() bool {
@@ -305,7 +255,7 @@ func decryptOrgCollection(obj webapi.Collection, secret AccountSecrets) (*models
 	for _, u := range obj.Users {
 		users = append(users, models.OrgCollectionMember{
 			HidePasswords: u.HidePasswords,
-			OrgMemberId:   u.Id,
+			Id:            u.Id,
 			ReadOnly:      u.ReadOnly,
 		})
 	}
@@ -501,12 +451,9 @@ func encryptOrgCollection(_ context.Context, obj models.OrgCollection, secret Ac
 
 	users := make([]webapi.CollectionUser, len(obj.Users))
 	for k, orgMember := range obj.Users {
-		if len(orgMember.OrgMemberId) == 0 {
-			return nil, fmt.Errorf("member id is empty")
-		}
 		users[k] = webapi.CollectionUser{
 			HidePasswords: orgMember.HidePasswords,
-			Id:            orgMember.OrgMemberId,
+			Id:            orgMember.Id,
 			ReadOnly:      orgMember.ReadOnly,
 		}
 	}
@@ -523,12 +470,6 @@ func encryptOrgCollection(_ context.Context, obj models.OrgCollection, secret Ac
 		actualObj, err := decryptOrgCollection(encObj, secret)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting collection for verification: %w", err)
-		}
-
-		// Emails are lost when converting from webapi.Collection to models.OrgCollection.
-		// We need to diff them out for the comparison to work.
-		for k := range actualObj.Users {
-			actualObj.Users[k].UserEmail = obj.Users[k].UserEmail
 		}
 
 		err = compareObjects(obj, *actualObj)

@@ -7,7 +7,7 @@ resource "bitwarden_attachment" "vpn_config_from_content" {
   // NOTE: Only works when the experimental embedded client support is enabled
   file_name = "vpn-config.txt"
   content = jsonencode({
-    domain : "laverse.net",
+    domain : "example.com",
     persistence : {
       enabled : true,
     }
