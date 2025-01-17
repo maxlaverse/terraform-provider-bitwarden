@@ -80,7 +80,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 						getObjectID(resourceName, &objectID),
 					),
 				},
-				// Adding one member
+				// 2. Adding one member
 				{
 					ResourceName: resourceName,
 					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionSingleMember("org-col-bar"),
@@ -94,22 +94,18 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 						resource.TestCheckResourceAttr(
 							resourceName, "member.#", "1",
 						),
-						resource.TestCheckResourceAttr(
-							resourceName, "member.0.user_email", testAccountEmailOrgOwner,
+						resource.TestCheckTypeSetElemNestedAttrs(
+							resourceName, "member.*", map[string]string{
+								"id":             testAccountEmailOrgOwnerInTestOrgUserId,
+								"read_only":      "false",
+								"hide_passwords": "false",
+							},
 						),
-						resource.TestMatchResourceAttr(
-							resourceName, fmt.Sprintf("member.0.%s", schema_definition.AttributeCollectionMemberOrgMemberId), regexp.MustCompile(regExpId),
-						),
-						resource.TestCheckResourceAttr(
-							resourceName, "member.0.read_only", "false",
-						),
-						resource.TestCheckResourceAttr(
-							resourceName, "member.0.hide_passwords", "false",
-						),
+
 						getObjectID(resourceName, &objectID),
 					),
 				},
-				// Adding a second member with permission set 1
+				// 3. Adding a second member with permission set 1
 				{
 					ResourceName: resourceName,
 					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionTwoMembers("org-col-bar", false, true),
@@ -123,18 +119,16 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 						resource.TestCheckResourceAttr(
 							resourceName, "member.#", "2",
 						),
-						resource.TestCheckResourceAttr(
-							resourceName, "member.0.user_email", testAccountEmailOrgUser,
-						),
-						resource.TestCheckResourceAttr(
-							resourceName, "member.0.read_only", "false",
-						),
-						resource.TestCheckResourceAttr(
-							resourceName, "member.0.hide_passwords", "true",
+						resource.TestCheckTypeSetElemNestedAttrs(
+							resourceName, "member.*", map[string]string{
+								"id":             testAccountEmailOrgUserInTestOrgUserId,
+								"read_only":      "false",
+								"hide_passwords": "true",
+							},
 						),
 					),
 				},
-				// Changing second member to permissions set 2
+				// 4. Changing second member to permissions set 2
 				{
 					ResourceName: resourceName,
 					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionTwoMembers("org-col-bar", true, false),
@@ -148,18 +142,16 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 						resource.TestCheckResourceAttr(
 							resourceName, "member.#", "2",
 						),
-						resource.TestCheckResourceAttr(
-							resourceName, "member.0.user_email", testAccountEmailOrgUser,
-						),
-						resource.TestCheckResourceAttr(
-							resourceName, "member.0.read_only", "true",
-						),
-						resource.TestCheckResourceAttr(
-							resourceName, "member.0.hide_passwords", "false",
+						resource.TestCheckTypeSetElemNestedAttrs(
+							resourceName, "member.*", map[string]string{
+								"id":             testAccountEmailOrgUserInTestOrgUserId,
+								"read_only":      "true",
+								"hide_passwords": "false",
+							},
 						),
 					),
 				},
-				// Removing permissions
+				// 5. Removing permissions
 				{
 					ResourceName: resourceName,
 					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionSingleMember("org-col-bar"),
@@ -173,14 +165,12 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 						resource.TestCheckResourceAttr(
 							resourceName, "member.#", "1",
 						),
-						resource.TestCheckResourceAttr(
-							resourceName, "member.0.user_email", testAccountEmailOrgOwner,
-						),
-						resource.TestCheckResourceAttr(
-							resourceName, "member.0.read_only", "false",
-						),
-						resource.TestCheckResourceAttr(
-							resourceName, "member.0.hide_passwords", "false",
+						resource.TestCheckTypeSetElemNestedAttrs(
+							resourceName, "member.*", map[string]string{
+								"id":             testAccountEmailOrgOwnerInTestOrgUserId,
+								"read_only":      "false",
+								"hide_passwords": "false",
+							},
 						),
 					),
 				},
@@ -241,16 +231,16 @@ func tfConfigResourceOrgCollectionTwoMembers(name string, readOnly, hidePassword
 	name     = "%s"
 	
 	member {
-		user_email = "%s"
+		id = "%s"
 		read_only = %s
 		hide_passwords = %s
 	}
 
 	member {
-		user_email = "%s"
+		id = "%s"
 	}
 }
-`, testOrganizationID, name, testAccountEmailOrgUser, strconv.FormatBool(readOnly), strconv.FormatBool(hidePasswords), testAccountEmailOrgOwner)
+`, testOrganizationID, name, testAccountEmailOrgUserInTestOrgUserId, strconv.FormatBool(readOnly), strconv.FormatBool(hidePasswords), testAccountEmailOrgOwnerInTestOrgUserId)
 }
 
 func tfConfigResourceOrgCollectionNoMembers(name string) string {
@@ -275,8 +265,8 @@ func tfConfigResourceOrgCollectionSingleMember(name string) string {
 	name     = "%s"
 	
 	member {
-		user_email = "%s"
+		id = "%s"
 	}
 }
-`, testOrganizationID, name, testAccountEmailOrgOwner)
+`, testOrganizationID, name, testAccountEmailOrgOwnerInTestOrgUserId)
 }

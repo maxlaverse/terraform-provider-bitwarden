@@ -2,6 +2,7 @@ package transformation
 
 import (
 	"context"
+	"hash/fnv"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
@@ -35,13 +36,15 @@ func OrganizationCollectionObjectToSchema(ctx context.Context, obj *models.OrgCo
 	for k, v := range obj.Users {
 		users[k] = map[string]interface{}{
 			schema_definition.AttributeCollectionMemberHidePasswords: v.HidePasswords,
-			schema_definition.AttributeCollectionMemberOrgMemberId:   v.OrgMemberId,
+			schema_definition.AttributeID:                            v.Id,
 			schema_definition.AttributeCollectionMemberReadOnly:      v.ReadOnly,
-			schema_definition.AttributeCollectionMemberUserEmail:     v.UserEmail,
 		}
 	}
 
-	err = d.Set(schema_definition.AttributeMember, users)
+	set := schema.NewSet(func(i interface{}) int {
+		return hashStringToInt(i.(map[string]interface{})[schema_definition.AttributeID].(string))
+	}, users)
+	err = d.Set(schema_definition.AttributeMember, set)
 	if err != nil {
 		return err
 	}
@@ -63,17 +66,22 @@ func OrganizationCollectionToObject(ctx context.Context, d *schema.ResourceData)
 		obj.OrganizationID = v
 	}
 
-	if v, ok := d.Get(schema_definition.AttributeMember).([]interface{}); ok {
-		obj.Users = make([]models.OrgCollectionMember, len(v))
-		for k, v2 := range v {
+	if v, ok := d.Get(schema_definition.AttributeMember).(*schema.Set); ok {
+		obj.Users = make([]models.OrgCollectionMember, v.Len())
+		for k, v2 := range v.List() {
 			obj.Users[k] = models.OrgCollectionMember{
 				HidePasswords: v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberHidePasswords].(bool),
+				Id:            v2.(map[string]interface{})[schema_definition.AttributeID].(string),
 				ReadOnly:      v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberReadOnly].(bool),
-				UserEmail:     v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberUserEmail].(string),
-
-				// Note: We don't set OrgMemberId on purpose as it's computed and we're always going to lookup by email.
 			}
 		}
 	}
+
 	return obj
+}
+
+func hashStringToInt(s string) int {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return int(h.Sum32())
 }

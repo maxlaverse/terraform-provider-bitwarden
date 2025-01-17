@@ -84,9 +84,9 @@ func New(version string) func() *schema.Provider {
 					Required:    true,
 					DefaultFunc: schema.EnvDefaultFunc("BW_URL", bitwarden.DefaultBitwardenServerURL),
 				},
-				schema_definition.AttributeEmail: {
+				schema_definition.AttributeProviderEmail: {
 					Type:         schema.TypeString,
-					Description:  schema_definition.DescriptionEmail,
+					Description:  schema_definition.DescriptionProviderEmail,
 					Optional:     true,
 					AtLeastOneOf: []string{schema_definition.AttributeAccessToken, schema_definition.AttributeClientID, schema_definition.AttributeSessionKey},
 					DefaultFunc:  schema.EnvDefaultFunc("BW_EMAIL", nil),
@@ -126,6 +126,7 @@ func New(version string) func() *schema.Provider {
 				"bitwarden_item_login":       dataSourceItemLogin(),
 				"bitwarden_item_secure_note": dataSourceItemSecureNote(),
 				"bitwarden_org_collection":   dataSourceOrgCollection(),
+				"bitwarden_org_member":       dataSourceOrgMember(),
 				"bitwarden_organization":     dataSourceOrganization(),
 				"bitwarden_project":          dataSourceProject(),
 				"bitwarden_secret":           dataSourceSecret(),
@@ -270,7 +271,7 @@ func ensureLoggedInCLIPasswordManager(ctx context.Context, d *schema.ResourceDat
 		clientSecret := d.Get(schema_definition.AttributeClientSecret)
 		return bwClient.LoginWithAPIKey(ctx, masterPassword.(string), clientID.(string), clientSecret.(string))
 	case LoginMethodPassword:
-		email := d.Get(schema_definition.AttributeEmail)
+		email := d.Get(schema_definition.AttributeProviderEmail)
 		return bwClient.LoginWithPassword(ctx, email.(string), masterPassword.(string))
 	}
 
@@ -305,7 +306,7 @@ func loginMethod(d *schema.ResourceData) LoginMethod {
 
 func logoutIfIdentityChanged(ctx context.Context, d *schema.ResourceData, bwClient bwcli.PasswordManagerClient, status *bwcli.Status) error {
 	serverURL := d.Get(schema_definition.AttributeServer).(string)
-	email := d.Get(schema_definition.AttributeEmail).(string)
+	email := d.Get(schema_definition.AttributeProviderEmail).(string)
 
 	if (status.Status == bwcli.StatusLocked || status.Status == bwcli.StatusUnlocked) && (!status.VaultOfUser(email) || !status.VaultFromServer(serverURL)) {
 		status.Status = bwcli.StatusUnauthenticated
@@ -434,7 +435,7 @@ func ensureLoggedInEmbeddedPasswordManager(ctx context.Context, d *schema.Resour
 		clientSecret := d.Get(schema_definition.AttributeClientSecret)
 		return bwClient.LoginWithAPIKey(ctx, masterPassword.(string), clientID.(string), clientSecret.(string))
 	case LoginMethodPassword:
-		email := d.Get(schema_definition.AttributeEmail)
+		email := d.Get(schema_definition.AttributeProviderEmail)
 		return bwClient.LoginWithPassword(ctx, email.(string), masterPassword.(string))
 	}
 

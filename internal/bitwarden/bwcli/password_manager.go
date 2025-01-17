@@ -28,11 +28,13 @@ type PasswordManagerClient interface {
 	FindFolder(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Folder, error)
 	FindItem(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Item, error)
 	FindOrganization(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Organization, error)
+	FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error)
 	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	GetFolder(context.Context, models.Folder) (*models.Folder, error)
 	GetItem(context.Context, models.Item) (*models.Item, error)
 	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
+	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	GetSessionKey() string
 	HasSessionKey() bool
@@ -237,6 +239,10 @@ func (c *client) GetOrganization(ctx context.Context, obj models.Organization) (
 	return getObject(ctx, c, obj, obj.Object, obj.ID)
 }
 
+func (c *client) GetOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error) {
+	return nil, fmt.Errorf("getting organization members is only supported by the embedded client")
+}
+
 func (c *client) GetOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
 	return getObject(ctx, c, obj, obj.Object, obj.ID)
 }
@@ -294,6 +300,10 @@ func (c *client) FindItem(ctx context.Context, options ...bitwarden.ListObjectsO
 
 func (c *client) FindOrganization(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Organization, error) {
 	return findGenericObject[models.Organization](ctx, c, models.ObjectTypeOrganization, options...)
+}
+
+func (c *client) FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error) {
+	return nil, fmt.Errorf("find organization members is only supported by the embedded client")
 }
 
 func (c *client) FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error) {

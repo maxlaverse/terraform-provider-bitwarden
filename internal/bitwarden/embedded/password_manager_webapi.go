@@ -37,10 +37,12 @@ type PasswordManagerClient interface {
 	EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	EditItem(ctx context.Context, obj models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error)
 	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
 	GetAPIKey(ctx context.Context, username, password string) (*models.ApiKey, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
+	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	InviteUser(ctx context.Context, orgId, userEmail string, memberRoleType models.OrgMemberRoleType) error
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
@@ -129,10 +131,16 @@ type webAPIVault struct {
 }
 
 func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string) (string, error) {
-	v.vaultOperationMutex.RLock()
-	defer v.vaultOperationMutex.RUnlock()
+	// Write lock is needed since we eventually load the organization members.
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
 
-	orgUser, err := v.findOrganizationUser(ctx, orgId, userEmail)
+	err := v.ensureUsersLoadedForOrg(ctx, orgId)
+	if err != nil {
+		return "", fmt.Errorf("error loading users of organization '%s': %w", orgId, err)
+	}
+
+	orgUser, err := v.organizationMembers.FindMemberByEmail(orgId, userEmail)
 	if err != nil {
 		return "", fmt.Errorf("error getting organization user : %w", err)
 	}
@@ -147,7 +155,7 @@ func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string
 		return "", fmt.Errorf("error rsa encrypting organization key: %w", err)
 	}
 
-	return orgUser.Id, v.client.ConfirmOrganizationUser(ctx, orgId, orgUser.Id, string(orgKey))
+	return orgUser.ID, v.client.ConfirmOrganizationUser(ctx, orgId, orgUser.ID, string(orgKey))
 }
 
 func (v *webAPIVault) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error) {
@@ -323,19 +331,19 @@ func (v *webAPIVault) ensureUsersLoadedForOrg(ctx context.Context, orgId string)
 		return fmt.Errorf("error getting organization users: %w", err)
 	}
 
-	v.organizationMembers.ResetOrganization(orgId)
-	for _, u := range orgUsers {
-		v.organizationMembers.AddMember(orgId, OrganizationMember{
-			Email:  u.Email,
-			Id:     u.Id,
-			UserId: u.UserId,
-		})
-	}
+	v.organizationMembers.LoadMembers(orgId, orgUsers)
 
 	return nil
 }
 
 func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
+	// ValidateFunc is not supported on TypeSet, which means we can't check for
+	// duplicate during Schema validation. Doing it here instead.
+	err := checkForDuplicateMembers(obj.Users)
+	if err != nil {
+		return nil, err
+	}
+
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
@@ -344,12 +352,6 @@ func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj mode
 	}
 
 	manageMembership := len(obj.Users) > 0
-	if manageMembership {
-		err := v.enhanceOrgCollectionMembers(ctx, obj)
-		if err != nil {
-			return nil, fmt.Errorf("error completing member information for creation: %w", err)
-		}
-	}
 
 	encObj, err := encryptOrgCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 	if err != nil {
@@ -405,6 +407,13 @@ func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj mode
 }
 
 func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
+	// ValidateFunc is not supported on TypeSet, which means we can't check for
+	// duplicate during Schema validation. Doing it here instead.
+	err := checkForDuplicateMembers(obj.Users)
+	if err != nil {
+		return nil, err
+	}
+
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
@@ -414,18 +423,13 @@ func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models
 
 	// When editing a collection, we need to ensure we have enough permissions
 	// to manage the collection's memberships if members were specified.
-	currentObj, err := getObject(v.objectStore, obj)
+	currentObj, err := v.getOrganizationCollection(ctx, obj)
 	if err != nil {
-		return nil, fmt.Errorf("error getting collection prior to edition: %w", err)
+		return nil, fmt.Errorf("error getting collection prior to edition: %w %+v", err, obj)
 	}
 
 	manageMembership := currentObj.Manage
-	if manageMembership {
-		err := v.enhanceOrgCollectionMembers(ctx, obj)
-		if err != nil {
-			return nil, fmt.Errorf("error completing member information for edition: %w", err)
-		}
-	} else if len(obj.Users) > 0 {
+	if !manageMembership && len(obj.Users) > 0 {
 		return nil, fmt.Errorf("error editing collection: you need to have the Manage permission to edit memberships")
 	}
 
@@ -824,10 +828,28 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 	return []byte(decryptedBody), nil
 }
 
-func (v *webAPIVault) GetOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
-	v.vaultOperationMutex.RLock()
-	defer v.vaultOperationMutex.RUnlock()
+func (v *webAPIVault) GetOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error) {
+	// Write lock is needed since we eventually load the organization members.
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
 
+	err := v.ensureUsersLoadedForOrg(ctx, obj.OrganizationId)
+	if err != nil {
+		return nil, fmt.Errorf("error loading users of organization '%s': %w", obj.OrganizationId, err)
+	}
+
+	return v.organizationMembers.FindMemberByID(obj.OrganizationId, obj.ID)
+}
+
+func (v *webAPIVault) GetOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
+	// Write lock is needed since we eventually load collections.
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	return v.getOrganizationCollection(ctx, obj)
+}
+
+func (v *webAPIVault) getOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
 	err := v.ensureCollectionLoadedForOrg(ctx, obj.OrganizationID)
 	if err != nil {
 		// We do our best to load the collection details, but we don't want to fail if we can't.
@@ -856,14 +878,35 @@ func (v *webAPIVault) InviteUser(ctx context.Context, orgId, userEmail string, m
 	return v.client.InviteUser(ctx, orgId, req)
 }
 
-func (v *webAPIVault) FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error) {
-	v.vaultOperationMutex.RLock()
-	defer v.vaultOperationMutex.RUnlock()
-
+func (v *webAPIVault) FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error) {
 	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
 	if !filter.IsValid() {
 		return nil, fmt.Errorf("invalid filter options")
 	}
+
+	// Write lock is needed since we eventually load the organization members.
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	orgId := filter.OrganizationFilter
+	userEmail := filter.SearchFilter
+	err := v.ensureUsersLoadedForOrg(ctx, orgId)
+	if err != nil {
+		return nil, fmt.Errorf("error loading users of organization '%s': %w", orgId, err)
+	}
+
+	return v.organizationMembers.FindMemberByEmail(orgId, userEmail)
+}
+
+func (v *webAPIVault) FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error) {
+	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
+	if !filter.IsValid() {
+		return nil, fmt.Errorf("invalid filter options")
+	}
+
+	// Write lock is needed since we eventually load collections.
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
 
 	err := v.ensureCollectionLoadedForOrg(ctx, filter.OrganizationFilter)
 	if err != nil {
@@ -1043,15 +1086,6 @@ func (v *webAPIVault) continueLoginWithTokens(ctx context.Context, tokenResp web
 	return v.sync(ctx)
 }
 
-func (v *webAPIVault) findOrganizationUser(ctx context.Context, orgId, userEmail string) (*OrganizationMember, error) {
-	err := v.ensureUsersLoadedForOrg(ctx, orgId)
-	if err != nil {
-		return nil, fmt.Errorf("error loading users of organization '%s': %w", orgId, err)
-	}
-
-	return v.organizationMembers.FindMemberByEmail(orgId, userEmail)
-}
-
 func (v *webAPIVault) getUserPublicKey(ctx context.Context, userId string) (*rsa.PublicKey, error) {
 	userPublicKey, err := v.client.GetUserPublicKey(ctx, userId)
 	if err != nil {
@@ -1090,11 +1124,6 @@ func (v *webAPIVault) ensureCollectionLoadedForOrg(ctx context.Context, orgId st
 		orgCol, err := decryptOrgCollection(collection, v.loginAccount.Secrets)
 		if err != nil {
 			return fmt.Errorf("error decrypting collection: %w", err)
-		}
-
-		err = v.enhanceOrgCollectionMembers(ctx, *orgCol)
-		if err != nil {
-			return fmt.Errorf("error completing member information: %w", err)
 		}
 
 		v.storeObject(ctx, *orgCol)
@@ -1226,6 +1255,20 @@ func loadOrganizationSecrets(accountSecrets AccountSecrets, organizations []weba
 		}
 		accountSecrets.OrganizationSecrets[orgSecret.OrganizationUUID] = orgSecret
 
+	}
+	return nil
+}
+
+func checkForDuplicateMembers(users []models.OrgCollectionMember) error {
+	uniqueMembers := make(map[string]int)
+	for _, member := range users {
+		uniqueMembers[member.Id]++
+	}
+
+	for memberId, count := range uniqueMembers {
+		if count > 1 {
+			return fmt.Errorf("member ID '%s' was specified twice", memberId)
+		}
 	}
 	return nil
 }

@@ -26,11 +26,13 @@ type PasswordManager interface {
 	FindFolder(ctx context.Context, options ...ListObjectsOption) (*models.Folder, error)
 	FindItem(ctx context.Context, options ...ListObjectsOption) (*models.Item, error)
 	FindOrganization(ctx context.Context, options ...ListObjectsOption) (*models.Organization, error)
+	FindOrganizationMember(ctx context.Context, options ...ListObjectsOption) (*models.OrgMember, error)
 	FindOrganizationCollection(ctx context.Context, options ...ListObjectsOption) (*models.OrgCollection, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	GetFolder(context.Context, models.Folder) (*models.Folder, error)
 	GetItem(context.Context, models.Item) (*models.Item, error)
 	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
+	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error

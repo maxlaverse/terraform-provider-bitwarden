@@ -43,7 +43,7 @@ resource "bitwarden_org_collection" "generated" {
 ### Optional
 
 - `id` (String) Identifier.
-- `member` (Block List) [Experimental] Member of a collection. (see [below for nested schema](#nestedblock--member))
+- `member` (Block Set) [Experimental] Member of a collection. (see [below for nested schema](#nestedblock--member))
 
 ### Read-Only
 
@@ -53,16 +53,12 @@ resource "bitwarden_org_collection" "generated" {
 
 Required:
 
-- `user_email` (String) [Experimental] User email.
+- `id` (String) Identifier.
 
 Optional:
 
 - `hide_passwords` (Boolean) [Experimental] Hide passwords.
 - `read_only` (Boolean) [Experimental] Read/Write permissions.
-
-Read-Only:
-
-- `org_member_id` (String) [Experimental] Identifier of the member in the organization.
 
 ## Import
 
