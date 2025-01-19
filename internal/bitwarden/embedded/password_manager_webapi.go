@@ -475,10 +475,15 @@ func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models
 
 		return remoteObj, compareObjects(*resObj, *remoteObj)
 	} else if v.syncAfterWrite && manageMembership {
-		// If we had enough permissions to manage memberships, the server will
-		// always return the collection with the Manage flag set to true.
-		obj.Manage = true
-		return resObj, compareObjects(*resObj, obj)
+		// The server adapts the member list based on the permissions of the
+		// users. Typically, if we set Manage=false but the user is an owner,
+		// the server will return the collection with Manage=true and the
+		// comparison fails. Similarly, if we add the owner of a collection as
+		// user, it won't be returned in the response as it's an implicit
+		// member. Instead of managing these edge cases, we'll just not compare
+		// the objects in this case.
+		return resObj, err
+
 	}
 	return resObj, err
 }
