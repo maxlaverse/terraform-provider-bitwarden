@@ -189,20 +189,13 @@ type CreateCipherRequest struct {
 type SyncResponse struct {
 	Ciphers     []models.Item     `json:"ciphers"`
 	Collections []Collection      `json:"collections"`
-	Folders     []Folder          `json:"folders"`
+	Folders     []models.Folder   `json:"folders"`
 	Object      models.ObjectType `json:"object"`
 	Profile     Profile           `json:"profile"`
 }
 
 type ApiKey struct {
 	ApiKey       string            `json:"apiKey"`
-	Object       models.ObjectType `json:"object"`
-	RevisionDate *time.Time        `json:"revisionDate"`
-}
-
-type Folder struct {
-	Id           string            `json:"id"`
-	Name         string            `json:"name"`
 	Object       models.ObjectType `json:"object"`
 	RevisionDate *time.Time        `json:"revisionDate"`
 }

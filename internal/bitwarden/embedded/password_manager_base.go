@@ -270,14 +270,14 @@ func decryptOrgCollection(obj webapi.Collection, secret AccountSecrets) (*models
 	}, nil
 }
 
-func decryptFolder(obj webapi.Folder, secret AccountSecrets) (*models.Folder, error) {
+func decryptFolder(obj models.Folder, secret AccountSecrets) (*models.Folder, error) {
 	objName, err := decryptStringIfNotEmpty(obj.Name, secret.MainKey)
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting folder name: %w", err)
 	}
 
 	return &models.Folder{
-		ID:           obj.Id,
+		ID:           obj.ID,
 		Name:         objName,
 		Object:       models.ObjectTypeFolder,
 		RevisionDate: cloneDate(obj.RevisionDate),
@@ -482,14 +482,14 @@ func encryptOrgCollection(_ context.Context, obj models.OrgCollection, secret Ac
 
 }
 
-func encryptFolder(_ context.Context, obj models.Folder, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.Folder, error) {
+func encryptFolder(_ context.Context, obj models.Folder, secret AccountSecrets, verifyObjectEncryption bool) (*models.Folder, error) {
 	encFolderName, err := encryptAsStringIfNotEmpty(obj.Name, secret.MainKey)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting folder's name: %w", err)
 	}
 
-	encFolder := webapi.Folder{
-		Id:           obj.ID,
+	encFolder := models.Folder{
+		ID:           obj.ID,
 		Object:       obj.Object,
 		RevisionDate: obj.RevisionDate,
 		Name:         encFolderName,

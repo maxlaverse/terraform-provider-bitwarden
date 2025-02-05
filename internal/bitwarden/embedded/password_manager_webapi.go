@@ -1214,7 +1214,7 @@ func (v *webAPIVault) loadObjectMap(ctx context.Context, cipherMap webapi.SyncRe
 }
 
 type SupportedCipher interface {
-	models.Item | webapi.Folder | webapi.Collection
+	models.Item | models.Folder | webapi.Collection
 }
 
 func ciphersToObjects[T SupportedCipher](accountSecrets AccountSecrets, ciphers []T) ([]interface{}, error) {
@@ -1227,7 +1227,7 @@ func ciphersToObjects[T SupportedCipher](accountSecrets AccountSecrets, ciphers 
 				return nil, fmt.Errorf("error decrypting cipher item: %w", err)
 			}
 			objects[k] = *obj
-		case webapi.Folder:
+		case models.Folder:
 			obj, err := decryptFolder(secret, accountSecrets)
 			if err != nil {
 				return nil, fmt.Errorf("error decrypting cipher folder: %w", err)
