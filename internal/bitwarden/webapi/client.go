@@ -28,7 +28,7 @@ const (
 type Client interface {
 	ClearSession()
 	ConfirmOrganizationUser(ctx context.Context, orgID, orgUserID, key string) error
-	CreateFolder(ctx context.Context, obj Folder) (*Folder, error)
+	CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateObjectAttachment(ctx context.Context, itemId string, data []byte, req AttachmentRequestData) (*CreateObjectAttachmentResponse, error)
 	CreateObjectAttachmentData(ctx context.Context, itemId, attachmentId string, data []byte) error
@@ -42,7 +42,7 @@ type Client interface {
 	DeleteOrganizationCollection(ctx context.Context, orgID, collectionID string) error
 	DeleteProject(ctx context.Context, projectId string) error
 	DeleteSecret(ctx context.Context, secretId string) error
-	EditFolder(ctx context.Context, obj Folder) (*Folder, error)
+	EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditItemCollections(ctx context.Context, objId string, collectionIds []string) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, orgId, objId string, obj Collection) (*Collection, error)
@@ -104,13 +104,13 @@ func (c *client) ConfirmOrganizationUser(ctx context.Context, orgID, orgUserId, 
 	return err
 }
 
-func (c *client) CreateFolder(ctx context.Context, obj Folder) (*Folder, error) {
+func (c *client) CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
 	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/folders", c.serverURL), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing folder create request: %w", err)
 	}
 
-	return doRequest[Folder](ctx, c.httpClient, httpReq)
+	return doRequest[models.Folder](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
@@ -286,13 +286,13 @@ func (c *client) GetCipherAttachment(ctx context.Context, itemId, attachmentId s
 	return doRequest[models.Attachment](ctx, c.httpClient, httpReq)
 }
 
-func (c *client) EditFolder(ctx context.Context, obj Folder) (*Folder, error) {
-	req, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/folders/%s", c.serverURL, obj.Id), obj)
+func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
+	req, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/folders/%s", c.serverURL, obj.ID), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing folder edition request: %w", err)
 	}
 
-	return doRequest[Folder](ctx, c.httpClient, req)
+	return doRequest[models.Folder](ctx, c.httpClient, req)
 }
 
 func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
