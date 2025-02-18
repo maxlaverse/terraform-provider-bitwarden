@@ -38,6 +38,33 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedOnDifferentServer(t *t
 	}, commandsExecuted())
 }
 
+func TestProviderReauthenticateWithPasswordIfAuthenticatedWithDifferentUser(t *testing.T) {
+	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
+		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "as-an-other-user@laverse.net", "status": "unlocked"}`,
+		"logout": ``,
+		"login test@laverse.net --raw --passwordenv BW_PASSWORD": `session-key1234`,
+	})
+	defer removeMocks(t)
+
+	providerConfiguration := map[string]interface{}{
+		"server":          "http://127.0.0.1/",
+		"email":           "test@laverse.net",
+		"master_password": "master-password-9",
+	}
+
+	diag := New(versionTestDisabledRetries)().Configure(context.Background(), terraform.NewResourceConfigRaw(providerConfiguration))
+
+	if !assert.False(t, diag.HasError()) {
+		t.Fatalf("unexpected error: %v", diag[0])
+	}
+
+	assert.Equal(t, []string{
+		"status",
+		"logout",
+		"login test@laverse.net --raw --passwordenv BW_PASSWORD",
+	}, commandsExecuted())
+}
+
 func TestProviderDoesntLogoutFirstIfUnauthenticated(t *testing.T) {
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
 		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "as-an-other-user@laverse.net", "status": "unauthenticated"}`,

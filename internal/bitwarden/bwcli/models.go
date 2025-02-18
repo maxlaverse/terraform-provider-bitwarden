@@ -29,6 +29,10 @@ func (s *Status) VaultFromServer(serverUrl string) bool {
 	return vaultServerUrl == providerServerUrl || len(vaultServerUrl) == 0 && providerServerUrl == bitwarden.DefaultBitwardenServerURL
 }
 
+func (s *Status) VaultOfUser(email string) bool {
+	return s.UserEmail == email
+}
+
 func trimSlashSuffix(serverUrl string) string {
 	return strings.TrimSuffix(serverUrl, "/")
 }
