@@ -22,7 +22,7 @@ func TestAccProviderAuthUsernamePassword(t *testing.T) {
 	ensureVaultwardenHasUser(t)
 	validProvider := usernamePasswordTestProvider(testEmail, testPassword)
 	invalidPassword := usernamePasswordTestProvider(testEmail, "incorrect-password")
-	invalidAccount := usernamePasswordTestProvider("unknown-account@laverse.net", testPassword)
+	invalidAccount := usernamePasswordTestProvider("unknown-account2@laverse.net", testPassword)
 
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
