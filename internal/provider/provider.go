@@ -306,9 +306,10 @@ func loginMethod(d *schema.ResourceData) LoginMethod {
 
 func logoutIfIdentityChanged(ctx context.Context, d *schema.ResourceData, bwClient bwcli.PasswordManagerClient, status *bwcli.Status) error {
 	serverURL := d.Get(schema_definition.AttributeServer).(string)
-	email := d.Get(schema_definition.AttributeProviderEmail).(string)
+	email, emailProvided := d.GetOk(schema_definition.AttributeProviderEmail)
+	vaultBelongsToEmailAndServer := (!emailProvided || status.VaultOfUser(email.(string))) && status.VaultFromServer(serverURL)
 
-	if (status.Status == bwcli.StatusLocked || status.Status == bwcli.StatusUnlocked) && (!status.VaultOfUser(email) || !status.VaultFromServer(serverURL)) {
+	if (status.Status == bwcli.StatusLocked || status.Status == bwcli.StatusUnlocked) && !vaultBelongsToEmailAndServer {
 		status.Status = bwcli.StatusUnauthenticated
 
 		tflog.Warn(ctx, "Logging out as the local Vault belongs to a different identity", map[string]interface{}{"vault_email": status.UserEmail, "vault_server": status.ServerURL, "provider_server": serverURL})
