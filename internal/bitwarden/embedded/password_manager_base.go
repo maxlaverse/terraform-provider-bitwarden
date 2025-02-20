@@ -332,7 +332,7 @@ func decryptItem(obj models.Item, secret AccountSecrets) (*models.Item, error) {
 	for k, f := range obj.PasswordHistory {
 		decPassword, err := decryptStringIfNotEmpty(f.Password, *objectKey)
 		if err != nil {
-			return nil, fmt.Errorf("error decrypting attachment filename: %v", err)
+			return nil, fmt.Errorf("error decrypting password history: %v", err)
 		}
 
 		decPasswordHistory[k] = models.PasswordHistoryItem{
@@ -684,10 +684,9 @@ func encryptItemLogin(objLogin models.Login, objectKey symmetrickey.Key) (*model
 
 func (v *baseVault) getOrDefaultObjectKey(obj models.Item) (*symmetrickey.Key, error) {
 	if len(obj.Key) == 0 {
-		return &v.loginAccount.Secrets.MainKey, nil
+		return getMainKeyForObject(obj, v.loginAccount.Secrets)
 	}
-
-	return symmetrickey.NewFromRawBytesWithEncryptionType([]byte(obj.Key), symmetrickey.AesCbc256_HmacSha256_B64)
+	return symmetrickey.NewFromRawBytes([]byte(obj.Key))
 }
 
 func getMainKeyForObject(obj models.Item, secret AccountSecrets) (*symmetrickey.Key, error) {

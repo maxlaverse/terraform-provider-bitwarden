@@ -269,6 +269,24 @@ resource "bitwarden_attachment" "foo" {
 `
 }
 
+func tfConfigResourceOrganizationAttachment(filepath, organizationID string) string {
+	return `
+resource "bitwarden_item_login" "foo" {
+	provider = bitwarden
+
+	name     = "foo"
+	organization_id = "` + organizationID + `"
+}
+
+resource "bitwarden_attachment" "foo" {
+	provider  = bitwarden
+
+	file      = "` + filepath + `"
+	item_id   = bitwarden_item_login.foo.id
+}
+`
+}
+
 func tfConfigResourceAttachmentFromContent(content string) string {
 	return `
 resource "bitwarden_item_login" "foo" {
