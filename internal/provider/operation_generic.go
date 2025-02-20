@@ -38,6 +38,16 @@ func searchOperation[T any](ctx context.Context, d *schema.ResourceData, clientO
 	return fromObjToSchema(ctx, obj, d)
 }
 
+func searchItemOperation[T any](ctx context.Context, d *schema.ResourceData, clientOperation findOperationFn[T], fromObjToSchema objectToSchemaTransformation[T], attrType models.ItemType) error {
+	filters := append(transformation.ListOptionsFromData(d), bitwarden.WithItemType(int(attrType)))
+
+	obj, err := clientOperation(ctx, filters...)
+	if err != nil {
+		return err
+	}
+	return fromObjToSchema(ctx, obj, d)
+}
+
 func withNilReturn[T any](operation deleteOperationFn[T]) func(ctx context.Context, secret T) (*T, error) {
 	return func(ctx context.Context, secret T) (*T, error) {
 		return nil, operation(ctx, secret)

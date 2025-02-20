@@ -29,9 +29,6 @@ resource "bitwarden_folder" "databases" {
 
 - `id` (String) Identifier.
 
-### Read-Only
-
-
 ## Import
 
 Import is supported using the following syntax:

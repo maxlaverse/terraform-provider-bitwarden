@@ -26,11 +26,6 @@ func ItemObjectToSchema(ctx context.Context, obj *models.Item, d *schema.Resourc
 		return err
 	}
 
-	err = d.Set(schema_definition.AttributeType, obj.Type)
-	if err != nil {
-		return err
-	}
-
 	err = d.Set(schema_definition.AttributeNotes, obj.Notes)
 	if err != nil {
 		return err
@@ -111,71 +106,71 @@ func ItemObjectToSchema(ctx context.Context, obj *models.Item, d *schema.Resourc
 	return nil
 }
 
-func ItemSchemaToObject(ctx context.Context, d *schema.ResourceData) models.Item {
-	var obj models.Item
+func ItemSchemaToObject(attrType models.ItemType) func(ctx context.Context, d *schema.ResourceData) models.Item {
+	return func(ctx context.Context, d *schema.ResourceData) models.Item {
+		var obj models.Item
 
-	obj.ID = d.Id()
-	if v, ok := d.Get(schema_definition.AttributeName).(string); ok {
-		obj.Name = v
-	}
+		obj.ID = d.Id()
 
-	obj.Object = models.ObjectTypeItem
-
-	if v, ok := d.Get(schema_definition.AttributeType).(int); ok {
-		obj.Type = models.ItemType(v)
-	}
-
-	if v, ok := d.Get(schema_definition.AttributeFolderID).(string); ok {
-		obj.FolderID = v
-	}
-
-	if v, ok := d.Get(schema_definition.AttributeFavorite).(bool); ok && v {
-		obj.Favorite = true
-	}
-
-	if v, ok := d.Get(schema_definition.AttributeNotes).(string); ok {
-		obj.Notes = v
-	}
-
-	if v, ok := d.Get(schema_definition.AttributeOrganizationID).(string); ok {
-		obj.OrganizationID = v
-	}
-
-	if v, ok := d.Get(schema_definition.AttributeReprompt).(bool); ok && v {
-		obj.Reprompt = 1
-	}
-
-	if vList, ok := d.Get(schema_definition.AttributeCollectionIDs).([]interface{}); ok {
-		obj.CollectionIds = make([]string, len(vList))
-		for k, v := range vList {
-			obj.CollectionIds[k] = v.(string)
+		if v, ok := d.Get(schema_definition.AttributeName).(string); ok {
+			obj.Name = v
 		}
-	}
 
-	if vList, ok := d.Get(schema_definition.AttributeAttachments).([]interface{}); ok {
-		obj.Attachments = ItemAttachmentStructFromData(vList)
-	}
+		obj.Object = models.ObjectTypeItem
+		obj.Type = attrType
 
-	if v, ok := d.Get(schema_definition.AttributeField).([]interface{}); ok {
-		obj.Fields = ObjectFieldStructFromData(v)
-	}
+		if v, ok := d.Get(schema_definition.AttributeFolderID).(string); ok {
+			obj.FolderID = v
+		}
 
-	if obj.Type == models.ItemTypeLogin {
-		if v, ok := d.Get(schema_definition.AttributeLoginPassword).(string); ok {
-			obj.Login.Password = v
+		if v, ok := d.Get(schema_definition.AttributeFavorite).(bool); ok && v {
+			obj.Favorite = true
 		}
-		if v, ok := d.Get(schema_definition.AttributeLoginTotp).(string); ok {
-			obj.Login.Totp = v
-		}
-		if v, ok := d.Get(schema_definition.AttributeLoginUsername).(string); ok {
-			obj.Login.Username = v
-		}
-		if vList, ok := d.Get(schema_definition.AttributeLoginURIs).([]interface{}); ok {
-			obj.Login.URIs = ObjectLoginURIsFromData(ctx, vList)
-		}
-	}
 
-	return obj
+		if v, ok := d.Get(schema_definition.AttributeNotes).(string); ok {
+			obj.Notes = v
+		}
+
+		if v, ok := d.Get(schema_definition.AttributeOrganizationID).(string); ok {
+			obj.OrganizationID = v
+		}
+
+		if v, ok := d.Get(schema_definition.AttributeReprompt).(bool); ok && v {
+			obj.Reprompt = 1
+		}
+
+		if vList, ok := d.Get(schema_definition.AttributeCollectionIDs).([]interface{}); ok {
+			obj.CollectionIds = make([]string, len(vList))
+			for k, v := range vList {
+				obj.CollectionIds[k] = v.(string)
+			}
+		}
+
+		if vList, ok := d.Get(schema_definition.AttributeAttachments).([]interface{}); ok {
+			obj.Attachments = ItemAttachmentStructFromData(vList)
+		}
+
+		if v, ok := d.Get(schema_definition.AttributeField).([]interface{}); ok {
+			obj.Fields = ObjectFieldStructFromData(v)
+		}
+
+		if obj.Type == models.ItemTypeLogin {
+			if v, ok := d.Get(schema_definition.AttributeLoginPassword).(string); ok {
+				obj.Login.Password = v
+			}
+			if v, ok := d.Get(schema_definition.AttributeLoginTotp).(string); ok {
+				obj.Login.Totp = v
+			}
+			if v, ok := d.Get(schema_definition.AttributeLoginUsername).(string); ok {
+				obj.Login.Username = v
+			}
+			if vList, ok := d.Get(schema_definition.AttributeLoginURIs).([]interface{}); ok {
+				obj.Login.URIs = ObjectLoginURIsFromData(ctx, vList)
+			}
+		}
+
+		return obj
+	}
 }
 
 func ItemFieldDataFromStruct(obj *models.Item) []interface{} {

@@ -127,12 +127,6 @@ func ItemBaseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		AttributeType: {
-			Description: DescriptionInternal,
-			Type:        schema.TypeInt,
-			Computed:    true,
-		},
-
 		AttributeAttachments: {
 			Description: DescriptionAttachments,
 			Type:        schema.TypeList,
