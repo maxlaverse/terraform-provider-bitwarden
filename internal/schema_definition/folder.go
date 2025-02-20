@@ -18,11 +18,6 @@ func FolderSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Computed:    schemaType == DataSource,
 			Required:    schemaType == Resource,
 		},
-		AttributeObject: {
-			Description: DescriptionInternal,
-			Type:        schema.TypeString,
-			Computed:    true,
-		},
 	}
 
 	if schemaType == DataSource {

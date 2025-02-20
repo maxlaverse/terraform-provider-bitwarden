@@ -16,12 +16,7 @@ func OrganizationMemberObjectToSchema(ctx context.Context, obj *models.OrgMember
 
 	d.SetId(obj.ID)
 
-	err := d.Set(schema_definition.AttributeObject, models.ObjectTypeOrgMember)
-	if err != nil {
-		return err
-	}
-
-	err = d.Set(schema_definition.AttributeEmail, obj.Email)
+	err := d.Set(schema_definition.AttributeEmail, obj.Email)
 	if err != nil {
 		return err
 	}

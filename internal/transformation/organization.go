@@ -21,11 +21,6 @@ func OrganizationObjectToSchema(ctx context.Context, obj *models.Organization, d
 		return err
 	}
 
-	err = d.Set(schema_definition.AttributeObject, models.ObjectTypeOrganization)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

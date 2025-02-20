@@ -40,11 +40,9 @@ const (
 	AttributeMember                        = "member"
 	AttributeName                          = "name"
 	AttributeNotes                         = "notes"
-	AttributeObject                        = "object"
 	AttributeOrganizationID                = "organization_id"
 	AttributeReprompt                      = "reprompt"
 	AttributeRevisionDate                  = "revision_date"
-	AttributeType                          = "type"
 
 	// Secret specific attributes
 	AttributeKey       = "key"
@@ -75,7 +73,6 @@ const (
 	DescriptionFilterURL                     = "Filter search results by URL."
 	DescriptionFolderID                      = "Identifier of the folder."
 	DescriptionIdentifier                    = "Identifier."
-	DescriptionInternal                      = "INTERNAL USE"
 	DescriptionItemIdentifier                = "Identifier of the item the attachment belongs to"
 	DescriptionItemAttachmentContent         = "Content of the attachment"
 	DescriptionItemAttachmentFile            = "Path to the content of the attachment."

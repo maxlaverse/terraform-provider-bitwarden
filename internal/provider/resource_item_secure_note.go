@@ -10,10 +10,10 @@ func resourceItemSecureNote() *schema.Resource {
 	return &schema.Resource{
 		Description:   "Manages a secure note item.",
 		CreateContext: withPasswordManager(opItemCreate(models.ItemTypeSecureNote)),
-		ReadContext:   withPasswordManager(opItemReadIgnoreMissing),
-		UpdateContext: withPasswordManager(opItemUpdate),
-		DeleteContext: withPasswordManager(opItemDelete),
-		Importer:      resourceImporter(opItemImport(models.ItemTypeSecureNote)),
+		ReadContext:   withPasswordManager(opItemReadIgnoreMissing(models.ItemTypeSecureNote)),
+		UpdateContext: withPasswordManager(opItemUpdate(models.ItemTypeSecureNote)),
+		DeleteContext: withPasswordManager(opItemDelete(models.ItemTypeSecureNote)),
+		Importer:      resourceImporter(opItemImport),
 		Schema:        schema_definition.ItemBaseSchema(schema_definition.Resource),
 	}
 }

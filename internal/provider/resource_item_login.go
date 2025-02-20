@@ -15,10 +15,10 @@ func resourceItemLogin() *schema.Resource {
 	return &schema.Resource{
 		Description:   "Manages a login item.",
 		CreateContext: withPasswordManager(opItemCreate(models.ItemTypeLogin)),
-		ReadContext:   withPasswordManager(opItemReadIgnoreMissing),
-		UpdateContext: withPasswordManager(opItemUpdate),
-		DeleteContext: withPasswordManager(opItemDelete),
-		Importer:      resourceImporter(opItemImport(models.ItemTypeLogin)),
+		ReadContext:   withPasswordManager(opItemReadIgnoreMissing(models.ItemTypeLogin)),
+		UpdateContext: withPasswordManager(opItemUpdate(models.ItemTypeLogin)),
+		DeleteContext: withPasswordManager(opItemDelete(models.ItemTypeLogin)),
+		Importer:      resourceImporter(opItemImport),
 		Schema:        dataSourceItemSecureNoteSchema,
 	}
 }

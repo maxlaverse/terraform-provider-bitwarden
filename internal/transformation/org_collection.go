@@ -22,11 +22,6 @@ func OrganizationCollectionObjectToSchema(ctx context.Context, obj *models.OrgCo
 		return err
 	}
 
-	err = d.Set(schema_definition.AttributeObject, models.ObjectTypeOrgCollection)
-	if err != nil {
-		return err
-	}
-
 	err = d.Set(schema_definition.AttributeOrganizationID, obj.OrganizationID)
 	if err != nil {
 		return err

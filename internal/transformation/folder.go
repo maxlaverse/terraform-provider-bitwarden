@@ -21,11 +21,6 @@ func FolderObjectToSchema(ctx context.Context, obj *models.Folder, d *schema.Res
 		return err
 	}
 
-	err = d.Set(schema_definition.AttributeObject, models.ObjectTypeFolder)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
