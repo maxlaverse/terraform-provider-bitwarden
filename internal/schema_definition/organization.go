@@ -16,11 +16,6 @@ func OrganizationSchema() map[string]*schema.Schema {
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		AttributeObject: {
-			Description: DescriptionInternal,
-			Type:        schema.TypeString,
-			Computed:    true,
-		},
 		AttributeFilterSearch: {
 			Description:  DescriptionFilterSearch,
 			Type:         schema.TypeString,

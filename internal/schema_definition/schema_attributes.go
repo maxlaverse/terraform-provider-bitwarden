@@ -40,7 +40,6 @@ const (
 	AttributeMember                        = "member"
 	AttributeName                          = "name"
 	AttributeNotes                         = "notes"
-	AttributeObject                        = "object"
 	AttributeOrganizationID                = "organization_id"
 	AttributeReprompt                      = "reprompt"
 	AttributeRevisionDate                  = "revision_date"

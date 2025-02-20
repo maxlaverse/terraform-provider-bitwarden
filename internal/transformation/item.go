@@ -21,11 +21,6 @@ func ItemObjectToSchema(ctx context.Context, obj *models.Item, d *schema.Resourc
 		return err
 	}
 
-	err = d.Set(schema_definition.AttributeObject, models.ObjectTypeItem)
-	if err != nil {
-		return err
-	}
-
 	err = d.Set(schema_definition.AttributeFolderID, obj.FolderID)
 	if err != nil {
 		return err

@@ -11,11 +11,6 @@ func OrgMemberSchema() map[string]*schema.Schema {
 			Type:        schema.TypeString,
 			Optional:    true,
 		},
-		AttributeObject: {
-			Description: DescriptionInternal,
-			Type:        schema.TypeString,
-			Computed:    true,
-		},
 		AttributeOrganizationID: {
 			Description: DescriptionOrganizationID,
 			Type:        schema.TypeString,
