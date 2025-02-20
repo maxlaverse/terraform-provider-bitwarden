@@ -31,6 +31,15 @@ func TestAccDataSourceAttachment(t *testing.T) {
 				Config:      tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt") + tfConfigDataAttachmentInexistentItem(),
 				ExpectError: regexp.MustCompile("Error: object not found"),
 			},
+			{
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceOrganizationAttachment("fixtures/attachment1.txt", testOrganizationID),
+			},
+			{
+				Config: tfConfigPasswordManagerProvider() + tfConfigResourceOrganizationAttachment("fixtures/attachment1.txt", testOrganizationID) + tfConfigDataAttachment(),
+				Check: resource.TestMatchResourceAttr(
+					"data.bitwarden_attachment.foo_data", schema_definition.AttributeAttachmentContent, regexp.MustCompile(`^Hello, I'm a text attachment$`),
+				),
+			},
 		},
 	})
 }

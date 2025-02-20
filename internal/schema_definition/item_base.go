@@ -101,6 +101,7 @@ func ItemBaseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Type:        schema.TypeString,
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
+			ForceNew:    true,
 		},
 		AttributeReprompt: {
 			Description: DescriptionReprompt,
