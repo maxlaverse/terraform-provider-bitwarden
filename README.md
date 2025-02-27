@@ -14,6 +14,7 @@ This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 ---
 
 ## Table of Contents
+
 - [Supported Versions](#supported-versions)
 - [Usage](#usage)
 - [Embedded Client](#embedded-client)
@@ -22,7 +23,9 @@ This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 - [License](#license)
 
 ## Supported Versions
+
 The plugin has been tested and built with the following components:
+
 - [Terraform] v1.9.8 / [OpenTofu] v1.9.0
 - [Bitwarden CLI] v2023.2.0 (when not using the [Embedded Client](#embedded-client))
 - [Go] 1.23.4 (for development)
@@ -40,7 +43,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.13.0"
+      version = ">= 0.13.2"
     }
   }
 }
@@ -80,12 +83,14 @@ data "bitwarden_item_login" "example" {
 See the [examples](./examples/) directory for more examples.
 
 ## Embedded Client
+
 Since version 0.9.0, the provider contains an embedded client that can directly interact with Bitwarden's API, removing the need for a locally installed Bitwarden CLI.
 The embedded client makes the provider faster, easier to use, but it still requires more testing.
 For now, a feature flag needs to be set in order to use it (`experimental.embedded_client`), with the goal of having it the default in v1.0.0.
 
 ## Security Considerations
-When not using the [Embedded Client](#embedded-client), the provider downloads the encrypted Vault locally during *plan* or *apply* operations as would the Bitwarden CLI if you used it directly.
+
+When not using the [Embedded Client](#embedded-client), the provider downloads the encrypted Vault locally during _plan_ or _apply_ operations as would the Bitwarden CLI if you used it directly.
 Currently, the Terraform SDK doesn't offer a way to remove the encrypted Vault once changes have been applied.
 The issue [hashicorp/terraform-plugin-sdk#63] tracks discussions for adding such a feature.
 
@@ -93,6 +98,7 @@ If you want find out more about this file, you can read [Terraform's documentati
 Please note that this file is stored at `<your-project>/.bitwarden/` by default, in order to not interfere with your local Vaults.
 
 ## Developing the Provider
+
 If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
 
 To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
@@ -100,6 +106,7 @@ To compile the provider, run `go install`. This will build the provider and put 
 To generate or update documentation, run `go generate`.
 
 In order to run the full suite of Acceptance tests, start a Vaultwarden server:
+
 ```sh
 $ make server
 ```
@@ -110,8 +117,8 @@ Then run `make testacc`.
 $ make testacc
 ```
 
-
 ## License
+
 Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more information.
 
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
