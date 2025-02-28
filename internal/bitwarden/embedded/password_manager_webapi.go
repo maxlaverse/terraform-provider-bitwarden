@@ -222,7 +222,7 @@ func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename str
 			resObj.Attachments[k].Url = v.Url
 		}
 
-		return remoteObj, compareObjects(*resObj, *remoteObj)
+		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
 	}
 	return resObj, nil
 }
@@ -265,7 +265,7 @@ func (v *webAPIVault) CreateFolder(ctx context.Context, obj models.Folder) (*mod
 			return nil, fmt.Errorf("error getting folder after creation (sync-after-write): %w", err)
 		}
 
-		return remoteObj, compareObjects(*resObj, *remoteObj)
+		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
 	}
 	return resObj, nil
 }
@@ -316,7 +316,7 @@ func (v *webAPIVault) CreateItem(ctx context.Context, obj models.Item) (*models.
 		resObj.CreationDate = remoteObj.CreationDate
 		resObj.RevisionDate = remoteObj.RevisionDate
 
-		return remoteObj, compareObjects(*resObj, *remoteObj)
+		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
 	}
 	return resObj, nil
 }
@@ -393,14 +393,14 @@ func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj mode
 			return nil, fmt.Errorf("error getting collection after creation (sync-after-write): %w", err)
 		}
 
-		return remoteObj, compareObjects(*resObj, *remoteObj)
+		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
 	} else if v.syncAfterWrite && manageMembership {
 		obj.ID = resObj.ID
 
 		// If we had enough permissions to manage memberships, the server will
 		// always return the collection with the Manage flag set to true.
 		obj.Manage = true
-		return resObj, compareObjects(*resObj, obj)
+		return resObj, compareObjectsAfterWrite(ctx, *resObj, obj)
 	}
 	return resObj, err
 
@@ -473,7 +473,7 @@ func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models
 			return nil, fmt.Errorf("error getting collection after edition (sync-after-write): %w", err)
 		}
 
-		return remoteObj, compareObjects(*resObj, *remoteObj)
+		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
 	} else if v.syncAfterWrite && manageMembership {
 		// The server adapts the member list based on the permissions of the
 		// users. Typically, if we set Manage=false but the user is an owner,
@@ -542,7 +542,7 @@ func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, 
 			return "", fmt.Errorf("sync-after-write error: %w", err)
 		}
 
-		return res.Id, compareObjects(orgSecretBeforeSync, v.baseVault.loginAccount.Secrets.OrganizationSecrets[res.Id])
+		return res.Id, compareObjectsAfterWrite(ctx, orgSecretBeforeSync, v.baseVault.loginAccount.Secrets.OrganizationSecrets[res.Id])
 	}
 
 	return res.Id, nil
@@ -587,7 +587,7 @@ func (v *webAPIVault) DeleteAttachment(ctx context.Context, itemId, attachmentId
 			return fmt.Errorf("error getting object after attachment deletion (syncAfterWrite): %w", err)
 		}
 
-		return compareObjects(*resObj, *remoteObj)
+		return compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
 	}
 
 	return nil
@@ -702,7 +702,7 @@ func (v *webAPIVault) EditFolder(ctx context.Context, obj models.Folder) (*model
 		//       these differences in the diff.
 		resObj.RevisionDate = remoteObj.RevisionDate
 
-		return remoteObj, compareObjects(*resObj, *remoteObj)
+		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
 	}
 	return resObj, nil
 }
@@ -763,7 +763,7 @@ func (v *webAPIVault) EditItem(ctx context.Context, obj models.Item) (*models.It
 		//       these differences in the diff.
 		resObj.RevisionDate = remoteObj.RevisionDate
 
-		return remoteObj, compareObjects(*resObj, *remoteObj)
+		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
 	}
 	return resObj, nil
 }
@@ -1274,6 +1274,14 @@ func checkForDuplicateMembers(users []models.OrgCollectionMember) error {
 		if count > 1 {
 			return fmt.Errorf("member ID '%s' was specified twice", memberId)
 		}
+	}
+	return nil
+}
+
+func compareObjectsAfterWrite[T any](ctx context.Context, actual, expected T) error {
+	err := compareObjects(ctx, actual, expected)
+	if err != nil {
+		return fmt.Errorf("server returned different object after write: %w", err)
 	}
 	return nil
 }
