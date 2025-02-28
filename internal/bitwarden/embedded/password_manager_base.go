@@ -1,9 +1,7 @@
 package embedded
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -18,6 +16,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
+	"github.com/wI2L/jsondiff"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -433,7 +432,7 @@ func decryptItemLogin(objLogin models.Login, objectKey symmetrickey.Key) (*model
 	}, nil
 }
 
-func encryptOrgCollection(_ context.Context, obj models.OrgCollection, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.Collection, error) {
+func encryptOrgCollection(ctx context.Context, obj models.OrgCollection, secret AccountSecrets, verifyObjectEncryption bool) (*webapi.Collection, error) {
 	orgKey, err := secret.GetOrganizationKey(obj.OrganizationID)
 	if err != nil {
 		return nil, err
@@ -472,8 +471,10 @@ func encryptOrgCollection(_ context.Context, obj models.OrgCollection, secret Ac
 			return nil, fmt.Errorf("error decrypting collection for verification: %w", err)
 		}
 
-		err = compareObjects(obj, *actualObj)
-		if err != nil {
+		err = compareObjects(ctx, obj, *actualObj)
+		if err != nil && panicOnEncryptionErrors {
+			panic(err)
+		} else if err != nil {
 			return nil, fmt.Errorf("error verifying collection after encryption: %w", err)
 		}
 	}
@@ -482,7 +483,7 @@ func encryptOrgCollection(_ context.Context, obj models.OrgCollection, secret Ac
 
 }
 
-func encryptFolder(_ context.Context, obj models.Folder, secret AccountSecrets, verifyObjectEncryption bool) (*models.Folder, error) {
+func encryptFolder(ctx context.Context, obj models.Folder, secret AccountSecrets, verifyObjectEncryption bool) (*models.Folder, error) {
 	encFolderName, err := encryptAsStringIfNotEmpty(obj.Name, secret.MainKey)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting folder's name: %w", err)
@@ -501,8 +502,10 @@ func encryptFolder(_ context.Context, obj models.Folder, secret AccountSecrets, 
 			return nil, fmt.Errorf("error decrypting folder for verification: %w", err)
 		}
 
-		err = compareObjects(obj, *actualObj)
-		if err != nil {
+		err = compareObjects(ctx, obj, *actualObj)
+		if err != nil && panicOnEncryptionErrors {
+			panic(err)
+		} else if err != nil {
 			return nil, fmt.Errorf("error verifying folder after encryption: %w", err)
 		}
 	}
@@ -510,7 +513,7 @@ func encryptFolder(_ context.Context, obj models.Folder, secret AccountSecrets, 
 	return &encFolder, nil
 }
 
-func encryptItem(_ context.Context, obj models.Item, secret AccountSecrets, verifyObjectEncryption bool) (*models.Item, error) {
+func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, verifyObjectEncryption bool) (*models.Item, error) {
 	objectKey, err := getOrCreateObjectKey(obj)
 	if err != nil {
 		return nil, err
@@ -612,8 +615,10 @@ func encryptItem(_ context.Context, obj models.Item, secret AccountSecrets, veri
 
 		actualObj.Key = ""
 
-		err = compareObjects(obj, *actualObj)
-		if err != nil {
+		err = compareObjects(ctx, obj, *actualObj)
+		if err != nil && panicOnEncryptionErrors {
+			panic(err)
+		} else if err != nil {
 			return nil, fmt.Errorf("error verifying item after encryption: %w", err)
 		}
 	}
@@ -911,34 +916,22 @@ func matchHost(url1, url2 string) (bool, error) {
 	return len(parsedUrl1.Host) > 0 && parsedUrl1.Host == parsedUrl2.Host, nil
 }
 
-func compareObjects[T any](actual, expected T) error {
-	actualJson, err := json.Marshal(actual)
+func compareObjects[T any](_ context.Context, actual, expected T) error {
+	patch, err := jsondiff.Compare(actual, expected)
 	if err != nil {
-		err := fmt.Errorf("error marshalling actual object while comparing: %w", err)
-		if panicOnEncryptionErrors {
-			panic(err)
-		}
-		return err
-	}
-	expectedJson, err := json.Marshal(expected)
-	if err != nil {
-		err := fmt.Errorf("error marshalling expected object while comparing: %w", err)
-		if panicOnEncryptionErrors {
-			panic(err)
-		}
-		return err
+		return fmt.Errorf("error comparing objects: %w", err)
 	}
 
-	if !bytes.Equal(actualJson, expectedJson) {
-		err := fmt.Errorf("object comparison failed")
-		fmt.Printf("Expected: %s\n", string(expectedJson))
-		fmt.Printf("Actual:   %s\n", string(actualJson))
-		if panicOnEncryptionErrors {
-			panic(err)
-		}
-		return err
+	if len(patch) == 0 {
+		return nil
 	}
-	return nil
+
+	differentKeys := make([]string, len(patch))
+	for k, p := range patch {
+		differentKeys[k] = p.Path
+	}
+
+	return fmt.Errorf("different keys at %v", differentKeys)
 }
 
 func cloneDate(t *time.Time) *time.Time {

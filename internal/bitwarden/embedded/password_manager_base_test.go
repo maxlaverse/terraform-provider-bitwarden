@@ -30,8 +30,8 @@ func TestCompareObjects(t *testing.T) {
 	obj3 := models.Item{
 		Name: "test1",
 	}
-	assert.NoError(t, compareObjects(obj1, obj2))
-	assert.Error(t, compareObjects(obj1, obj3))
+	assert.NoError(t, compareObjects(context.Background(), obj1, obj2))
+	assert.Error(t, compareObjects(context.Background(), obj1, obj3))
 }
 
 func TestMatchUrl(t *testing.T) {
