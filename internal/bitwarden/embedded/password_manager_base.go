@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"path"
 	"regexp"
 	"strings"
 	"sync"
@@ -471,10 +472,8 @@ func encryptOrgCollection(ctx context.Context, obj models.OrgCollection, secret 
 			return nil, fmt.Errorf("error decrypting collection for verification: %w", err)
 		}
 
-		err = compareObjects(ctx, obj, *actualObj)
-		if err != nil && panicOnEncryptionErrors {
-			panic(err)
-		} else if err != nil {
+		err = verifyDecryptedObject(ctx, obj, *actualObj)
+		if err != nil {
 			return nil, fmt.Errorf("error verifying collection after encryption: %w", err)
 		}
 	}
@@ -502,10 +501,8 @@ func encryptFolder(ctx context.Context, obj models.Folder, secret AccountSecrets
 			return nil, fmt.Errorf("error decrypting folder for verification: %w", err)
 		}
 
-		err = compareObjects(ctx, obj, *actualObj)
-		if err != nil && panicOnEncryptionErrors {
-			panic(err)
-		} else if err != nil {
+		err = verifyDecryptedObject(ctx, obj, *actualObj)
+		if err != nil {
 			return nil, fmt.Errorf("error verifying folder after encryption: %w", err)
 		}
 	}
@@ -615,10 +612,8 @@ func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, ve
 
 		actualObj.Key = ""
 
-		err = compareObjects(ctx, obj, *actualObj)
-		if err != nil && panicOnEncryptionErrors {
-			panic(err)
-		} else if err != nil {
+		err = verifyDecryptedObject(ctx, obj, *actualObj)
+		if err != nil {
 			return nil, fmt.Errorf("error verifying item after encryption: %w", err)
 		}
 	}
@@ -916,19 +911,34 @@ func matchHost(url1, url2 string) (bool, error) {
 	return len(parsedUrl1.Host) > 0 && parsedUrl1.Host == parsedUrl2.Host, nil
 }
 
-func compareObjects[T any](_ context.Context, actual, expected T) error {
+func verifyDecryptedObject[T any](ctx context.Context, actual, expected T) error {
+	err := compareObjects(ctx, actual, expected)
+	if err != nil && panicOnEncryptionErrors {
+		panic(err)
+	} else if err != nil {
+		return fmt.Errorf("error verifying object after encryption: %w", err)
+	}
+	return nil
+}
+
+func compareObjects[T any](_ context.Context, actual, expected T, ignoreFields ...string) error {
 	patch, err := jsondiff.Compare(actual, expected)
 	if err != nil {
 		return fmt.Errorf("error comparing objects: %w", err)
 	}
 
-	if len(patch) == 0 {
-		return nil
+	differentKeys := []string{}
+Loop:
+	for _, p := range patch {
+		for _, pattern := range ignoreFields {
+			if matched, _ := path.Match(pattern, p.Path); matched {
+				continue Loop
+			}
+		}
+		differentKeys = append(differentKeys, p.Path)
 	}
-
-	differentKeys := make([]string, len(patch))
-	for k, p := range patch {
-		differentKeys[k] = p.Path
+	if len(differentKeys) == 0 {
+		return nil
 	}
 
 	return fmt.Errorf("different keys at %v", differentKeys)

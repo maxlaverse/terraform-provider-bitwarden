@@ -31,7 +31,8 @@ func TestCompareObjects(t *testing.T) {
 		Name: "test1",
 	}
 	assert.NoError(t, compareObjects(context.Background(), obj1, obj2))
-	assert.Error(t, compareObjects(context.Background(), obj1, obj3))
+	assert.EqualError(t, compareObjects(context.Background(), obj1, obj3), "different keys at [/name]")
+	assert.NoError(t, compareObjects(context.Background(), obj1, obj3, "/name"))
 }
 
 func TestMatchUrl(t *testing.T) {

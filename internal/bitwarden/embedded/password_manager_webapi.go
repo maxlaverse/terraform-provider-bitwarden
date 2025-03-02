@@ -81,6 +81,14 @@ func DisableSyncAfterWrite() PasswordManagerOptions {
 	}
 }
 
+// DisableFailOnSyncAfterWriteDiff disables the check for differences between the local and
+// remote objects after a write operation (create, edit, delete).
+func DisableFailOnSyncAfterWriteDiff() PasswordManagerOptions {
+	return func(c bitwarden.PasswordManager) {
+		c.(*webAPIVault).failOnSyncAfterWriteDiff = false
+	}
+}
+
 func WithPasswordManagerHttpOptions(opts ...webapi.Options) PasswordManagerOptions {
 	return func(c bitwarden.PasswordManager) {
 		c.(*webAPIVault).clientOpts = opts
@@ -105,7 +113,8 @@ func NewPasswordManagerClient(serverURL, deviceIdentifier, providerVersion strin
 
 		// Always run Sync() after creating, editing, or deleting an object and verify the result
 		// by comparing the local and remote objects.
-		syncAfterWrite: true,
+		syncAfterWrite:           true,
+		failOnSyncAfterWriteDiff: true,
 	}
 
 	for _, o := range opts {
@@ -126,8 +135,9 @@ type webAPIVault struct {
 	client     webapi.Client
 	clientOpts []webapi.Options
 
-	syncAfterWrite bool
-	serverURL      string
+	syncAfterWrite           bool
+	failOnSyncAfterWriteDiff bool
+	serverURL                string
 }
 
 func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string) (string, error) {
@@ -218,11 +228,7 @@ func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename str
 
 		// The attachment's URL contains a signed token generated on each request. We need to diff
 		// it out if we want the comparison to work.
-		for k, v := range remoteObj.Attachments {
-			resObj.Attachments[k].Url = v.Url
-		}
-
-		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/attachments/*/url")
 	}
 	return resObj, nil
 }
@@ -265,7 +271,7 @@ func (v *webAPIVault) CreateFolder(ctx context.Context, obj models.Folder) (*mod
 			return nil, fmt.Errorf("error getting folder after creation (sync-after-write): %w", err)
 		}
 
-		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj)
 	}
 	return resObj, nil
 }
@@ -313,10 +319,7 @@ func (v *webAPIVault) CreateItem(ctx context.Context, obj models.Item) (*models.
 		// NOTE: The official Bitwarden server returns dates that are a few milliseconds apart
 		//       between the object's creation call and a later retrieval. We need to ignore
 		//       these differences in the diff.
-		resObj.CreationDate = remoteObj.CreationDate
-		resObj.RevisionDate = remoteObj.RevisionDate
-
-		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/creationDate", "/revisionDate")
 	}
 	return resObj, nil
 }
@@ -393,14 +396,11 @@ func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj mode
 			return nil, fmt.Errorf("error getting collection after creation (sync-after-write): %w", err)
 		}
 
-		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj)
 	} else if v.syncAfterWrite && manageMembership {
-		obj.ID = resObj.ID
-
 		// If we had enough permissions to manage memberships, the server will
 		// always return the collection with the Manage flag set to true.
-		obj.Manage = true
-		return resObj, compareObjectsAfterWrite(ctx, *resObj, obj)
+		return resObj, v.verifyObjectAfterWrite(ctx, *resObj, obj, "/id", "/manage")
 	}
 	return resObj, err
 
@@ -473,7 +473,7 @@ func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models
 			return nil, fmt.Errorf("error getting collection after edition (sync-after-write): %w", err)
 		}
 
-		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj)
 	} else if v.syncAfterWrite && manageMembership {
 		// The server adapts the member list based on the permissions of the
 		// users. Typically, if we set Manage=false but the user is an owner,
@@ -542,7 +542,7 @@ func (v *webAPIVault) CreateOrganization(ctx context.Context, organizationName, 
 			return "", fmt.Errorf("sync-after-write error: %w", err)
 		}
 
-		return res.Id, compareObjectsAfterWrite(ctx, orgSecretBeforeSync, v.baseVault.loginAccount.Secrets.OrganizationSecrets[res.Id])
+		return res.Id, v.verifyObjectAfterWrite(ctx, orgSecretBeforeSync, v.baseVault.loginAccount.Secrets.OrganizationSecrets[res.Id])
 	}
 
 	return res.Id, nil
@@ -587,7 +587,7 @@ func (v *webAPIVault) DeleteAttachment(ctx context.Context, itemId, attachmentId
 			return fmt.Errorf("error getting object after attachment deletion (syncAfterWrite): %w", err)
 		}
 
-		return compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
+		return v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj)
 	}
 
 	return nil
@@ -700,9 +700,7 @@ func (v *webAPIVault) EditFolder(ctx context.Context, obj models.Folder) (*model
 		// NOTE: The official Bitwarden server returns dates that are a few milliseconds apart
 		//       between the object's creation call and a later retrieval. We need to ignore
 		//       these differences in the diff.
-		resObj.RevisionDate = remoteObj.RevisionDate
-
-		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/revisionDate")
 	}
 	return resObj, nil
 }
@@ -761,9 +759,7 @@ func (v *webAPIVault) EditItem(ctx context.Context, obj models.Item) (*models.It
 		// NOTE: The official Bitwarden server returns dates that are a few milliseconds apart
 		//       between the object's creation call and a later retrieval. We need to ignore
 		//       these differences in the diff.
-		resObj.RevisionDate = remoteObj.RevisionDate
-
-		return remoteObj, compareObjectsAfterWrite(ctx, *resObj, *remoteObj)
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/revisionDate")
 	}
 	return resObj, nil
 }
@@ -1213,6 +1209,16 @@ func (v *webAPIVault) loadObjectMap(ctx context.Context, cipherMap webapi.SyncRe
 	return nil
 }
 
+func (v *webAPIVault) verifyObjectAfterWrite(ctx context.Context, actual, expected interface{}, ignoreFields ...string) error {
+	err := compareObjects(ctx, actual, expected, ignoreFields...)
+	if err != nil && v.failOnSyncAfterWriteDiff {
+		return fmt.Errorf("server returned different object after write: %w", err)
+	} else if err != nil {
+		tflog.Error(ctx, "server returned different object after write", map[string]interface{}{"error": err})
+	}
+	return nil
+}
+
 type SupportedCipher interface {
 	models.Item | models.Folder | webapi.Collection
 }
@@ -1274,14 +1280,6 @@ func checkForDuplicateMembers(users []models.OrgCollectionMember) error {
 		if count > 1 {
 			return fmt.Errorf("member ID '%s' was specified twice", memberId)
 		}
-	}
-	return nil
-}
-
-func compareObjectsAfterWrite[T any](ctx context.Context, actual, expected T) error {
-	err := compareObjects(ctx, actual, expected)
-	if err != nil {
-		return fmt.Errorf("server returned different object after write: %w", err)
 	}
 	return nil
 }
