@@ -58,7 +58,7 @@ resource "bitwarden_item_login" "administrative-user" {
 - `notes` (String, Sensitive) Notes.
 - `organization_id` (String) Identifier of the organization.
 - `password` (String, Sensitive) Login password.
-- `reprompt` (Boolean) Require master password “re-prompt” when displaying secret in the UI.
+- `reprompt` (Boolean) Require master password 're-prompt' when displaying secret in the UI.
 - `totp` (String, Sensitive) Verification code.
 - `uri` (Block List) URI. (see [below for nested schema](#nestedblock--uri))
 - `username` (String, Sensitive) Login username.

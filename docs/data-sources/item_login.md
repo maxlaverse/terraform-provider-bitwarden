@@ -56,7 +56,7 @@ resource "kubernetes_secret" "vpn_credentials" {
 - `notes` (String, Sensitive) Notes.
 - `organization_id` (String) Identifier of the organization.
 - `password` (String, Sensitive) Login password.
-- `reprompt` (Boolean) Require master password “re-prompt” when displaying secret in the UI.
+- `reprompt` (Boolean) Require master password 're-prompt' when displaying secret in the UI.
 - `revision_date` (String) Last time the item was updated.
 - `totp` (String, Sensitive) Verification code.
 - `uri` (List of Object) URI. (see [below for nested schema](#nestedatt--uri))

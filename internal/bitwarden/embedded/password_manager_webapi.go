@@ -81,11 +81,11 @@ func DisableSyncAfterWrite() PasswordManagerOptions {
 	}
 }
 
-// DisableFailOnSyncAfterWriteDiff disables the check for differences between the local and
+// DisableFailOnSyncAfterWriteVerification disables the check for differences between the local and
 // remote objects after a write operation (create, edit, delete).
-func DisableFailOnSyncAfterWriteDiff() PasswordManagerOptions {
+func DisableFailOnSyncAfterWriteVerification() PasswordManagerOptions {
 	return func(c bitwarden.PasswordManager) {
-		c.(*webAPIVault).failOnSyncAfterWriteDiff = false
+		c.(*webAPIVault).failOnSyncAfterWriteVerification = false
 	}
 }
 
@@ -113,8 +113,8 @@ func NewPasswordManagerClient(serverURL, deviceIdentifier, providerVersion strin
 
 		// Always run Sync() after creating, editing, or deleting an object and verify the result
 		// by comparing the local and remote objects.
-		syncAfterWrite:           true,
-		failOnSyncAfterWriteDiff: true,
+		syncAfterWrite:                   true,
+		failOnSyncAfterWriteVerification: true,
 	}
 
 	for _, o := range opts {
@@ -135,9 +135,9 @@ type webAPIVault struct {
 	client     webapi.Client
 	clientOpts []webapi.Options
 
-	syncAfterWrite           bool
-	failOnSyncAfterWriteDiff bool
-	serverURL                string
+	syncAfterWrite                   bool
+	failOnSyncAfterWriteVerification bool
+	serverURL                        string
 }
 
 func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string) (string, error) {
@@ -1211,8 +1211,13 @@ func (v *webAPIVault) loadObjectMap(ctx context.Context, cipherMap webapi.SyncRe
 
 func (v *webAPIVault) verifyObjectAfterWrite(ctx context.Context, actual, expected interface{}, ignoreFields ...string) error {
 	err := compareObjects(ctx, actual, expected, ignoreFields...)
-	if err != nil && v.failOnSyncAfterWriteDiff {
-		return fmt.Errorf("server returned different object after write: %w", err)
+	if err != nil && v.failOnSyncAfterWriteVerification {
+		return fmt.Errorf(`server returned different object after write!
+After writing an object and re-fetching it, the server returned a slightly different version: %w
+
+To learn more about this issue and how to handle it, please:
+1. Consider reporting affected fields at: https://github.com/maxlaverse/terraform-provider-bitwarden/issues/new
+2. Check the documentation of the 'experimental.disable_sync_after_write_verification' attribute`, err)
 	} else if err != nil {
 		tflog.Error(ctx, "server returned different object after write", map[string]interface{}{"error": err})
 	}
