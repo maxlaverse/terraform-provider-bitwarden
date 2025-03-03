@@ -116,6 +116,11 @@ func New(version string) func() *schema.Provider {
 								Type:        schema.TypeBool,
 								Optional:    true,
 							},
+							schema_definition.AttributeExperimentalDisableSyncAfterWriteVerification: {
+								Description: schema_definition.DescriptionExperimentalDisableSyncAfterWriteVerification,
+								Type:        schema.TypeBool,
+								Optional:    true,
+							},
 						},
 					},
 				},
@@ -361,8 +366,17 @@ func newEmbeddedPasswordManagerClient(ctx context.Context, d *schema.ResourceDat
 		return nil, err
 	}
 
+	opts := []embedded.PasswordManagerOptions{
+		embedded.WithPasswordManagerHttpOptions(buildWebapiOptions(version)...),
+	}
+	if v, hasDisableSyncAfterWriteVerification := d.GetOk(schema_definition.AttributeExperimentalDisableSyncAfterWriteVerification); hasDisableSyncAfterWriteVerification {
+		if v.(bool) {
+			opts = append(opts, embedded.DisableFailOnSyncAfterWriteVerification())
+		}
+	}
+
 	serverURL := d.Get(schema_definition.AttributeServer).(string)
-	return embedded.NewPasswordManagerClient(serverURL, deviceId, version, embedded.WithPasswordManagerHttpOptions(buildWebapiOptions(version)...)), nil
+	return embedded.NewPasswordManagerClient(serverURL, deviceId, version, opts...), nil
 }
 
 func newEmbeddedSecretsManagerClient(ctx context.Context, d *schema.ResourceData, version string) (bitwarden.SecretsManager, error) {
