@@ -1,0 +1,100 @@
+---
+name: Bug Report
+description: File a bug report to help us improve.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees:
+  - maxlaverse
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - id: what-happened
+    type: textarea
+    attributes:
+      label: What happened?
+      description: Also tell us, what did you expect to happen?
+      placeholder: Tell us what you see!
+      value: "A bug happened!"
+    validations:
+      required: true
+  - id: tool_name
+    type: dropdown
+    attributes:
+      label: What tool are you using ?
+      multiple: true
+      options:
+        - Terraform
+        - OpenTofu
+      default: 0
+    validations:
+      required: true
+  - id: tool_version
+    type: input
+    attributes:
+      label: Which version?
+      description: You can run terraform -v or tofu -v to find that out.
+    validations:
+      required: true
+  - id: provider_version
+    type: input
+    attributes:
+      label: Which version of the provider?
+      description: What version of the Bitwarden Terraform provider are you using?
+    validations:
+      required: true
+  - id: resources
+    type: dropdown
+    attributes:
+      label: What resources are affected by this issue?
+      multiple: true
+      options:
+        - the provider itself
+        - bitwarden_attachment
+        - bitwarden_folder
+        - bitwarden_item_login
+        - bitwarden_item_secure_note
+        - bitwarden_org_collection
+        - bitwarden_org_member
+        - bitwarden_organization
+        - bitwarden_project
+        - bitwarden_secret
+    validations:
+      required: true
+  - id: configuration
+    type: textarea
+    attributes:
+      label: Terraform configurations
+      description: Copy-paste your Terraform configurations here. If relevant, include the name of the environment variables you are setting.
+      render: shell
+  - id: logs
+    type: textarea
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      render: shell
+  - id: how_to_reproduce
+    type: textarea
+    attributes:
+      label: How to reproduce the issue
+      description: Please describe how to reproduce the issue.
+  - id: hosting_provider
+    type: dropdown
+    attributes:
+      label: Hosting Provider
+      description: Where is your vault hosted?
+      options:
+        - bitwarden.com
+        - Self-hosted Bitwarden Server
+        - Self-hosted Vaultwarden Server
+        - Other
+      default: 0
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Final check
+      description: Have you verified that you were not pasting any sensitive information, like passwords or API keys?
+      options:
+        - label: All good, I'm ready to submit
+          required: true
