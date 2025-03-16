@@ -319,7 +319,9 @@ func (v *webAPIVault) CreateItem(ctx context.Context, obj models.Item) (*models.
 		// NOTE: The official Bitwarden server returns dates that are a few milliseconds apart
 		//       between the object's creation call and a later retrieval. We need to ignore
 		//       these differences in the diff.
-		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/creationDate", "/revisionDate")
+		// NOTE: The official Bitwarden server don't return the collectionIds in the response
+		//       for items, even if they're actually taken into account.
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/creationDate", "/revisionDate", "/collectionIds/*")
 	}
 	return resObj, nil
 }
