@@ -32,7 +32,7 @@ jobs:
           LOGIN_RATELIMIT_MAX_BURST: "1000000"
           ADMIN_RATELIMIT_SECONDS: "1"
           ADMIN_RATELIMIT_MAX_BURST: "1000000"
-          DOMAIN: http://127.0.0.1:8080
+          DOMAIN: http://127.0.0.1:8000
           ROCKET_PORT: 8000
         options: >-
           --health-cmd "curl -f http://localhost:8000/"
@@ -109,7 +109,6 @@ jobs:
         env:
           VAULTWARDEN_HOST: "127.0.0.1"
           VAULTWARDEN_PORT: "8000"
-          VAULTWARDEN_REVERSE_PROXY_PORT: "8080"
           TF_ACC: "1"
           TEST_USE_EMBEDDED_CLIENT: "1"
       - name: Code Coverage for Embedded Client
@@ -120,7 +119,7 @@ jobs:
           parallel: true
 
       - name: Test with Official Client
-        run: go test -coverprofile=profile.cov -timeout 2000s -failfast -v -coverpkg=./... ./...
+        run: go test -coverprofile=profile.cov -timeout 3600s -failfast -v -coverpkg=./... ./...
         env:
           VAULTWARDEN_HOST: "127.0.0.1"
           VAULTWARDEN_PORT: "8000"

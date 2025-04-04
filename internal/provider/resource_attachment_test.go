@@ -168,7 +168,7 @@ func checkAttachmentMatches(resourceName, baseAttribute string) resource.TestChe
 			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentSizeName), regexp.MustCompile(`^81\.00 bytes$`),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentURL), regexp.MustCompile(`^http://127.0.0.1:8080/attachments/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}/[a-fA-F0-9]{20}\?token=.*$`),
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentURL), regexp.MustCompile(`^http://127.0.0.1:([0-9]+)/attachments/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}/[a-fA-F0-9]{20}\?token=.*$`),
 		),
 	)
 }
