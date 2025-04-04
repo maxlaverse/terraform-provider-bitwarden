@@ -1,0 +1,32 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:1.32.5
+    environment:
+      - I_REALLY_WANT_VOLATILE_STORAGE=true
+      - DISABLE_ICON_DOWNLOAD=true
+      - ADMIN_TOKEN=$$argon2id$$v=19$$m=65540,t=3,p=4$$0NJuWI6OIAMLnr78yl29sogDLb9888xZJIxpMMMR3Qg$$UyL4NjcODl6VVGRaxNhdhZc0rYFFpDFqotOzKjrxngs # test1234
+      - LOGIN_RATELIMIT_SECONDS=1
+      - LOGIN_RATELIMIT_MAX_BURST=1000000
+      - ADMIN_RATELIMIT_SECONDS=1
+      - ADMIN_RATELIMIT_MAX_BURST=1000000
+      - DOMAIN=http://127.0.0.1:8080
+      - ROCKET_PORT=8000
+    tmpfs:
+      - /data
+    networks:
+      - vaultwarden-net
+    ports:
+      - "8000:8000"
+
+  nginx:
+    image: maxlaverse/nginx-vaultwarden
+    ports:
+      - "8080:8080"
+    depends_on:
+      - vaultwarden
+    networks:
+      - vaultwarden-net
+
+networks:
+  vaultwarden-net:
+    driver: bridge

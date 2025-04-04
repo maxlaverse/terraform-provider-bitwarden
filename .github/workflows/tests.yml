@@ -32,14 +32,22 @@ jobs:
           LOGIN_RATELIMIT_MAX_BURST: "1000000"
           ADMIN_RATELIMIT_SECONDS: "1"
           ADMIN_RATELIMIT_MAX_BURST: "1000000"
-        ports:
-          - 8080:80
+          DOMAIN: http://127.0.0.1:8080
+          ROCKET_PORT: 8000
         options: >-
-          --health-cmd "curl -f http://localhost:80/"
+          --health-cmd "curl -f http://localhost:8000/"
           --health-interval 30s
           --health-timeout 10s
           --health-retries 5
           --health-start-period 15s
+        ports:
+          - 8000:8000
+      nginx:
+        image: maxlaverse/nginx-vaultwarden
+        ports:
+          - 8080:8080
+        options: >-
+          --link vaultwarden
 
     steps:
       - id: go-cache-paths
@@ -50,7 +58,7 @@ jobs:
       - id: binaries
         run: |
           echo "LOCAL_BINARIES=$GITHUB_WORKSPACE/bin" >> $GITHUB_OUTPUT
-          echo "BWCLI_VERSION=2023.2.0" >> $GITHUB_OUTPUT
+          echo "BWCLI_VERSION=2025.2.0" >> $GITHUB_OUTPUT
 
       - name: Check out repository code
         uses: actions/checkout@v3
@@ -100,7 +108,8 @@ jobs:
         run: go test -coverprofile=profile.cov -v -race -coverpkg=./... ./...
         env:
           VAULTWARDEN_HOST: "127.0.0.1"
-          VAULTWARDEN_PORT: "8080"
+          VAULTWARDEN_PORT: "8000"
+          VAULTWARDEN_REVERSE_PROXY_PORT: "8080"
           TF_ACC: "1"
           TEST_USE_EMBEDDED_CLIENT: "1"
       - name: Code Coverage for Embedded Client
@@ -111,10 +120,11 @@ jobs:
           parallel: true
 
       - name: Test with Official Client
-        run: go test -coverprofile=profile.cov -timeout 1000s -failfast -v -coverpkg=./... ./...
+        run: go test -coverprofile=profile.cov -timeout 2000s -failfast -v -coverpkg=./... ./...
         env:
           VAULTWARDEN_HOST: "127.0.0.1"
-          VAULTWARDEN_PORT: "8080"
+          VAULTWARDEN_PORT: "8000"
+          VAULTWARDEN_REVERSE_PROXY_PORT: "8080"
           TF_ACC: "1"
       - name: Code Coverage for Official Client
         continue-on-error: true

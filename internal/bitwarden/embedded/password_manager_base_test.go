@@ -387,6 +387,7 @@ func testFullyFilledOrgCollection() models.OrgCollection {
 		Name:           "sensitive-name",
 		Object:         models.ObjectTypeOrgCollection,
 		OrganizationID: orgUuid,
+		Users:          []models.OrgCollectionMember{},
 	}
 	return obj
 }

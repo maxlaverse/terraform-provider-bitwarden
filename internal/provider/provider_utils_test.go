@@ -43,6 +43,7 @@ var testAccountEmailOrgManagerInTestOrgUserId string
 
 var testUsername string
 var testServerURL string
+var testReverseProxyServerURL string
 var testOrganizationID string
 var testCollectionID string
 var testFolderID string
@@ -66,15 +67,20 @@ var userMu sync.Mutex
 func init() {
 	host := os.Getenv("VAULTWARDEN_HOST")
 	port := os.Getenv("VAULTWARDEN_PORT")
+	reverseProxyPort := os.Getenv("VAULTWARDEN_REVERSE_PROXY_PORT")
 
 	if len(host) == 0 {
 		host = "127.0.0.1"
 	}
 	if len(port) == 0 {
-		port = "8080"
+		port = "8000"
+	}
+	if len(reverseProxyPort) == 0 {
+		reverseProxyPort = port
 	}
 
 	testServerURL = fmt.Sprintf("http://%s:%s/", host, port)
+	testReverseProxyServerURL = fmt.Sprintf("http://%s:%s/", host, reverseProxyPort)
 	testUniqueIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 }
 
@@ -205,6 +211,7 @@ func ensureVaultwardenHasUser(t *testing.T) {
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
+	t.Logf("Created test user (main) %s", testEmail)
 
 	testAccountEmailOrgOwner = fmt.Sprintf("test-%s-org-owner@laverse.net", testUniqueIdentifier)
 	kdfConfig = models.KdfConfiguration{
