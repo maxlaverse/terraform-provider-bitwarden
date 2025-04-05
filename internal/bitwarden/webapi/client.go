@@ -382,6 +382,9 @@ func (c *client) GetContentFromURL(ctx context.Context, url string) ([]byte, err
 	}
 
 	resp, err := doRequest[[]byte](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
 	return []byte(*resp), err
 }
 

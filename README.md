@@ -27,7 +27,7 @@ This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 The plugin has been tested and built with the following components:
 
 - [Terraform] v1.9.8 / [OpenTofu] v1.9.0
-- [Bitwarden CLI] v2023.2.0 (when not using the [Embedded Client](#embedded-client))
+- [Bitwarden CLI] v2025.2.0 (when not using the [Embedded Client](#embedded-client))
 - [Go] 1.23.4 (for development)
 - [Docker] 24.0.6 (for development)
 

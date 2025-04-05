@@ -251,7 +251,7 @@ func decryptOrgCollection(obj webapi.Collection, secret AccountSecrets) (*models
 		return nil, fmt.Errorf("error decrypting collection name: %w", err)
 	}
 
-	var users []models.OrgCollectionMember
+	users := []models.OrgCollectionMember{}
 	for _, u := range obj.Users {
 		users = append(users, models.OrgCollectionMember{
 			HidePasswords: u.HidePasswords,

@@ -22,13 +22,13 @@ func TestAccResourceAttachment(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("non-existent"),
+				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("non-existent"),
 				ExpectError:  regexp.MustCompile("no such file or directory"),
 			},
 			// Attachments created from File
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
 						resourceName, schema_definition.AttributeAttachmentFile, regexp.MustCompile(`^34945801b5aed4540ccfde8320ec7c395325e02d$`),
@@ -47,13 +47,13 @@ func TestAccResourceAttachment(t *testing.T) {
 			},
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachmentFromContentWithFilename(),
+				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachmentFromContentWithFilename(),
 				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
 				ExpectError:  regexp.MustCompile("\"file_name\": one of"),
 			},
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachmentFromContent("Hello, I'm a text attachment"),
+				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachmentFromContent("Hello, I'm a text attachment"),
 				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
@@ -67,7 +67,7 @@ func TestAccResourceAttachment(t *testing.T) {
 			},
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachmentFromContent("Hello, I'm a text attachment") + tfConfigDataAttachment(),
+				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachmentFromContent("Hello, I'm a text attachment") + tfConfigDataAttachment(),
 				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
 				Check: resource.TestMatchResourceAttr(
 					"data.bitwarden_attachment.foo_data", schema_definition.AttributeAttachmentContent, regexp.MustCompile(`^Hello, I'm a text attachment$`),
@@ -93,11 +93,11 @@ func TestAccResourceItemAttachmentFields(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 			},
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
 						resourceName, "attachments.#", regexp.MustCompile("^1$"),
@@ -119,18 +119,18 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config: tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					getAttachmentIDs("bitwarden_attachment.foo", &attachmentID, &itemID),
 				),
 			},
 			{
-				Config:             tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config:             tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: false,
 			},
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config: tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				PreConfig: func() {
 					err := bwTestClient(t).DeleteAttachment(context.Background(), itemID, attachmentID)
 					assert.NoError(t, err)
@@ -147,7 +147,7 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 				ExpectNonEmptyPlan: true,
 			},
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config: tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 			},
 		},
 	})
@@ -168,7 +168,7 @@ func checkAttachmentMatches(resourceName, baseAttribute string) resource.TestChe
 			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentSizeName), regexp.MustCompile(`^81\.00 bytes$`),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentURL), regexp.MustCompile(`^http://127.0.0.1:8080/attachments/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}/[a-fA-F0-9]{20}\?token=.*$`),
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentURL), regexp.MustCompile(`^http://127.0.0.1:([0-9]+)/attachments/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}/[a-fA-F0-9]{20}\?token=.*$`),
 		),
 	)
 }
@@ -184,7 +184,7 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
+				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					compareIdentifier(resourceName, &ID, true),
 					resource.TestMatchResourceAttr(
@@ -195,7 +195,7 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 			{
 				// Same content, different filename
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment2a.txt"),
+				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment2a.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					compareIdentifier(resourceName, &ID, false),
 					resource.TestMatchResourceAttr(
@@ -206,7 +206,7 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 			{
 				// Different content
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment2b.txt"),
+				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment2b.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					compareIdentifier(resourceName, &ID, true),
 					resource.TestMatchResourceAttr(
@@ -276,6 +276,9 @@ resource "bitwarden_item_login" "foo" {
 
 	name     = "foo"
 	organization_id = "` + organizationID + `"
+	collection_ids = [
+		"` + testCollectionID + `"
+	]
 }
 
 resource "bitwarden_attachment" "foo" {
@@ -320,4 +323,22 @@ resource "bitwarden_attachment" "foo" {
 	item_id   = bitwarden_item_login.foo.id
 }
 `
+}
+
+func tfConfigAttachmentSpecificPasswordManagerProvider() string {
+	if useEmbeddedClient {
+		return tfConfigPasswordManagerProvider()
+	}
+
+	return fmt.Sprintf(`
+	provider "bitwarden" {
+		master_password = "%s"
+		server          = "%s"
+		email           = "%s"
+
+		experimental {
+			embedded_client = false
+		}
+	}
+`, testPassword, testReverseProxyServerURL, testEmail)
 }
