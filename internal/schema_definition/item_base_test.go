@@ -1,3 +1,5 @@
+//go:build offline
+
 package schema_definition
 
 import (

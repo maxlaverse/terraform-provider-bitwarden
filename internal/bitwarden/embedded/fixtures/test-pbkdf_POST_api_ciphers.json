@@ -2,36 +2,37 @@
     "attachments": null,
     "card": null,
     "collectionIds": [],
-    "creationDate": "2024-11-23T11:28:00.013256Z",
+    "creationDate": "2025-04-05T07:48:21.847740Z",
     "data": {
         "fields": [],
-        "name": "2.X8LpoTT4eL9pL3lHBsrgVg==|vOEbhxl1WA0xkqrP0A/SYgyrcTZuID7O7XiWhgkmMsQ=|00TlxEQQ2kLzaH5RaLAZAHlCE/v93Hx11nR96usHBdw=",
+        "name": "2.GdDVRuMQ1hPJxvARRYlg6Q==|OcoF8Wub7zsfataMDnK+B6oQrbs3zrrKVzpBvEQ3wPg=|A6Al+EmtPSYLLtqwY04d0GJjPEZHe8DXCP3KNopwUo8=",
         "notes": null,
         "passwordHistory": [],
         "uri": null,
-        "username": "2.7IHTbc2ZQ8PIbJA7/24RIQ==|/yvTxBW7hIogydzo7RXV3g==|dDJ6R1VbLxOf3cjfWvY3aVOT3ofpKZUe6MwXIToq0sk="
+        "username": "2.ts9a8Zv2G8ufXw41fHgS1A==|3MuvakWCufKH81UWIC7AMg==|5upr6TU7WORR3v10PSxk7QCxz75Qgt1jppEfduudEp8="
     },
     "deletedDate": null,
     "edit": true,
     "favorite": false,
     "fields": [],
     "folderId": null,
-    "id": "84c577b5-ef70-4560-bb85-4438a9e633e6",
+    "id": "c3869080-ba50-47e4-bef8-190cb1973daa",
     "identity": null,
-    "key": "2.Cq+NqHAShdN0JduR0wqZVA==|09S5+MASQuTfnumF1efnljzmj4bpKhVpwphjxuEXxwTnTJg1f6Xzyt2r4n7qfqOF2/clB6wJZHufXQT0rsZR16dJJ1oz2eWlt4y24sFYvxQ=|RfbCnfvYaH1ZzJHOamG3W/a4saMSQOU3/ynW2Easg2Q=",
+    "key": "2.xolaepmdRR7T7BavoQjkrg==|n5EKPEDpHcC4GVzHyfDiJvkNb69sjmdVvudBuvxx+N5xbfFQwhpVZkigNYKpMrdhrYeLGkBI4zQWV6n3wkssm75BjRpvjui0vS9l5unbJFE=|DOxwMQGmw3PtQOnCQHc/z09jHzqn2J+b3gxM8mOxSlo=",
     "login": {
         "uri": null,
-        "username": "2.7IHTbc2ZQ8PIbJA7/24RIQ==|/yvTxBW7hIogydzo7RXV3g==|dDJ6R1VbLxOf3cjfWvY3aVOT3ofpKZUe6MwXIToq0sk="
+        "username": "2.ts9a8Zv2G8ufXw41fHgS1A==|3MuvakWCufKH81UWIC7AMg==|5upr6TU7WORR3v10PSxk7QCxz75Qgt1jppEfduudEp8="
     },
-    "name": "2.X8LpoTT4eL9pL3lHBsrgVg==|vOEbhxl1WA0xkqrP0A/SYgyrcTZuID7O7XiWhgkmMsQ=|00TlxEQQ2kLzaH5RaLAZAHlCE/v93Hx11nR96usHBdw=",
+    "name": "2.GdDVRuMQ1hPJxvARRYlg6Q==|OcoF8Wub7zsfataMDnK+B6oQrbs3zrrKVzpBvEQ3wPg=|A6Al+EmtPSYLLtqwY04d0GJjPEZHe8DXCP3KNopwUo8=",
     "notes": null,
     "object": "cipherDetails",
     "organizationId": null,
     "organizationUseTotp": true,
     "passwordHistory": [],
     "reprompt": 0,
-    "revisionDate": "2024-11-23T11:28:00.013338Z",
+    "revisionDate": "2025-04-05T07:48:21.847816Z",
     "secureNote": null,
+    "sshKey": null,
     "type": 1,
     "viewPassword": true
 }

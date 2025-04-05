@@ -30,7 +30,8 @@ func MockedClient(t testing.TB, name string) webapi.Client {
 func MockedHTTPClient(t testing.TB, serverUrl string, name string) http.Client {
 	t.Helper()
 
-	client := http.Client{Transport: httpmock.DefaultTransport}
+	mockedTransport := httpmock.NewMockTransport()
+	client := http.Client{Transport: mockedTransport}
 
 	fixturesDir := fixturesDir(t)
 	files, err := os.ReadDir(fixturesDir)
@@ -56,7 +57,7 @@ func MockedHTTPClient(t testing.TB, serverUrl string, name string) http.Client {
 		mockUrl, _ = strings.CutSuffix(mockUrl, ".json")
 		mockUrl = fmt.Sprintf("%s/%s", serverUrl, mockUrl)
 
-		httpmock.RegisterResponder(method, mockUrl,
+		mockedTransport.RegisterResponder(method, mockUrl,
 			func(req *http.Request) (*http.Response, error) {
 				if req.Body != nil {
 					body, err := io.ReadAll(req.Body)

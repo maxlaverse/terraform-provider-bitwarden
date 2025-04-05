@@ -1,3 +1,5 @@
+//go:build offline
+
 package embedded
 
 import (
@@ -28,7 +30,7 @@ func TestCreateTestAccounts(t *testing.T) {
 	t.Skip()
 	createTestAccount(t, Pdkdf2Mocks, models.KdfConfiguration{
 		KdfType:       models.KdfTypePBKDF2_SHA256,
-		KdfIterations: 600000,
+		KdfIterations: 1000,
 	}, true)
 	createTestAccount(t, Argon2Mocks, models.KdfConfiguration{
 		KdfType:        models.KdfTypeArgon2,
@@ -149,6 +151,7 @@ func createOrganizationResources(t *testing.T, account1 string, orgId string) {
 		Object:         models.ObjectTypeOrgCollection,
 		Name:           "org-collection",
 		OrganizationID: orgId,
+		Users:          []models.OrgCollectionMember{},
 	})
 	if err != nil {
 		t.Fatal(err)

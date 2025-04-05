@@ -75,7 +75,7 @@ func init() {
 		VaultFormat: "API",
 		KdfConfig: models.KdfConfiguration{
 			KdfType:       models.KdfTypePBKDF2_SHA256,
-			KdfIterations: 600000,
+			KdfIterations: 1000,
 		},
 		ProtectedSymmetricKey:  resp.Profile.Key,
 		ProtectedRSAPrivateKey: resp.Profile.PrivateKey,

@@ -36,12 +36,15 @@ jobs:
           ROCKET_PORT: 8000
         options: >-
           --health-cmd "curl -f http://localhost:8000/"
-          --health-interval 30s
+          --health-interval 600s
           --health-timeout 10s
-          --health-retries 5
+          --health-retries 10
           --health-start-period 15s
+          --health-start-interval 6s
         ports:
           - 8000:8000
+        volumes:
+          - /dev/shm/vaultwarden-data:/data
       nginx:
         image: maxlaverse/nginx-vaultwarden
         ports:
@@ -66,7 +69,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ">=1.22.0"
+          go-version: ">=1.24.0"
 
       # Cache go build cache, used to speedup go test
       - name: Go Build Cache
@@ -82,33 +85,33 @@ jobs:
           path: ${{ steps.go-cache-paths.outputs.GOMODCACHE }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
-      - name: Binaries Cache
-        uses: actions/cache@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          path: ${{ steps.binaries.outputs.LOCAL_BINARIES }}
-          key: ${{ steps.binaries.outputs.BWCLI_VERSION }}
+          node-version: 23.x
 
-      - name: Download Binaries
+      - name: Install Bitwarden CLI
         run: |
-          echo "${{ steps.binaries.outputs.LOCAL_BINARIES }}" >> $GITHUB_PATH
-          if [[ -d "${{ steps.binaries.outputs.LOCAL_BINARIES }}" ]]; then
-              exit 0
-          fi
-
-          wget https://github.com/bitwarden/clients/releases/download/cli-v${{ steps.binaries.outputs.BWCLI_VERSION }}/bw-linux-${{ steps.binaries.outputs.BWCLI_VERSION }}.zip
-          mkdir -p ${{ steps.binaries.outputs.LOCAL_BINARIES }}
-          unzip bw-linux-${{ steps.binaries.outputs.BWCLI_VERSION }}.zip
-          chmod +x bw
-          mv bw ${{ steps.binaries.outputs.LOCAL_BINARIES }}
+          npm install -g @bitwarden/cli@${{ steps.binaries.outputs.BWCLI_VERSION }}
 
       - name: Build
         run: go build -v ./...
 
-      - name: Test with Embedded Client
-        run: go test -coverprofile=profile.cov -v -race -coverpkg=./... ./...
+      - name: Offline Tests
+        run: go test -coverprofile=profile.cov -v -race -coverpkg=./... ./... --tags offline
         env:
-          VAULTWARDEN_HOST: "127.0.0.1"
-          VAULTWARDEN_PORT: "8000"
+          TF_ACC: "1"
+      - name: Code Coverage for Offline tests
+        continue-on-error: true
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: profile.cov
+          parallel: true
+
+      - name: Test with Embedded Client
+        run: go test -coverprofile=profile.cov -v -race -coverpkg=./... ./... --tags integration
+        env:
+          VAULTWARDEN_URL: "http://127.0.0.1:8000"
           TF_ACC: "1"
           TEST_USE_EMBEDDED_CLIENT: "1"
       - name: Code Coverage for Embedded Client
@@ -119,11 +122,10 @@ jobs:
           parallel: true
 
       - name: Test with Official Client
-        run: go test -coverprofile=profile.cov -timeout 3600s -failfast -v -coverpkg=./... ./...
+        run: go test -coverprofile=profile.cov -timeout 3600s -failfast -v -coverpkg=./... ./...  --tags integration
         env:
-          VAULTWARDEN_HOST: "127.0.0.1"
-          VAULTWARDEN_PORT: "8000"
-          VAULTWARDEN_REVERSE_PROXY_PORT: "8080"
+          VAULTWARDEN_URL: "http://127.0.0.1:8000"
+          VAULTWARDEN_REVERSE_PROXY_URL: "http://127.0.0.1:8080"
           TF_ACC: "1"
       - name: Code Coverage for Official Client
         continue-on-error: true

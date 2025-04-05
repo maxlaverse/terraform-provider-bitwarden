@@ -2,38 +2,39 @@
     "attachments": null,
     "card": null,
     "collectionIds": [
-        "77f6800e-0e3a-4fa6-a06f-4a270d9c3987"
+        "a9fa0375-245d-46c9-8aa3-2ba568420218"
     ],
-    "creationDate": "2024-11-23T11:28:01.038884Z",
+    "creationDate": "2025-04-05T07:48:23.041285Z",
     "data": {
         "fields": [],
-        "name": "2.ZW+T3CxaabqQ2P0uXYUCTw==|qgSRT8uedewGESzAhnTL1EwOxGh1Pwpa1xG7Q5RqE9A=|afjabeFGgaUNYVn/z0JIyW078ODNoa5xOSHmrjsb2Fc=",
+        "name": "2.D1pMTJlvcV5N3TwIZKrz9Q==|8vG4C0VmBZIhH5v3sPACcjDOZXBVVQLQk13zXvzJYGw=|VsBZ4y3cYBLk4kz7GFeZqBEA0ua+10s+UQlRGRUFL+8=",
         "notes": null,
         "passwordHistory": [],
         "uri": null,
-        "username": "2.5yqH61PACUoGT6lTBQFe6w==|O1k6quqWNx1+oy5fpxJWRw==|TTQCfgZiPfOA5TPLpyhPoFE6HJ35rLrSa0xsMVZpJRw="
+        "username": "2.aZ598QTlaXrn5Xku5Z8jaA==|q0atcNVJ87/gOawqodubng==|jtffVwMDCl+gezvOLaUZVI6qHXw0Ojk4v8F2EUHHxjw="
     },
     "deletedDate": null,
     "edit": true,
     "favorite": false,
     "fields": [],
     "folderId": null,
-    "id": "ebc9683c-4ba0-4b9b-ad5d-ca33cab28a30",
+    "id": "7a70ef8f-47b5-4450-a78d-54571f2b24fb",
     "identity": null,
-    "key": "2./ZSiMnh1ziSAV/jlofdkqw==|dh7Wrksa7DUvyazVPIFu4/Kkwfn93ZPzcX8/CBcFMf0anW/sjCp2C8TlMKcUgJ6OIypyIH3Wz9Zqm3qFzmqyHCA1Da6PIgNPhTRp7gvAdLE=|6U1K2RwbJ3/7+WIouo6WtQ7woUn61jnmAXTfcY29o0E=",
+    "key": "2.l3DYB4gJMacEE0va27Fy6w==|QnhhOfKTge4dhbFvbEohxP2g6PNpTvam6kebYdMkDOIy8v7f7hUxl+2oKbmuZoSzH9ZQ8i8ZmTTh9pw+YisUxo3Dfnki1EXtZPM8rGGeDLw=|vqNcvxdbVt0OkzBfUKJGjJjVoo7k9dWv+mwXm6kSwFM=",
     "login": {
         "uri": null,
-        "username": "2.5yqH61PACUoGT6lTBQFe6w==|O1k6quqWNx1+oy5fpxJWRw==|TTQCfgZiPfOA5TPLpyhPoFE6HJ35rLrSa0xsMVZpJRw="
+        "username": "2.aZ598QTlaXrn5Xku5Z8jaA==|q0atcNVJ87/gOawqodubng==|jtffVwMDCl+gezvOLaUZVI6qHXw0Ojk4v8F2EUHHxjw="
     },
-    "name": "2.ZW+T3CxaabqQ2P0uXYUCTw==|qgSRT8uedewGESzAhnTL1EwOxGh1Pwpa1xG7Q5RqE9A=|afjabeFGgaUNYVn/z0JIyW078ODNoa5xOSHmrjsb2Fc=",
+    "name": "2.D1pMTJlvcV5N3TwIZKrz9Q==|8vG4C0VmBZIhH5v3sPACcjDOZXBVVQLQk13zXvzJYGw=|VsBZ4y3cYBLk4kz7GFeZqBEA0ua+10s+UQlRGRUFL+8=",
     "notes": null,
     "object": "cipherDetails",
-    "organizationId": "aec64748-b3b3-4e2d-9c06-a44016b7247e",
+    "organizationId": "93e3cba1-943c-4c1e-a8b1-253a51ca58bd",
     "organizationUseTotp": true,
     "passwordHistory": [],
     "reprompt": 0,
-    "revisionDate": "2024-11-23T11:28:01.039160Z",
+    "revisionDate": "2025-04-05T07:48:23.041683Z",
     "secureNote": null,
+    "sshKey": null,
     "type": 1,
     "viewPassword": true
 }
