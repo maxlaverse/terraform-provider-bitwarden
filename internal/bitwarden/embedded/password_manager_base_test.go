@@ -1,3 +1,5 @@
+//go:build offline
+
 package embedded
 
 import (
@@ -95,7 +97,7 @@ func TestDecryptAccountSecretPbkdf2(t *testing.T) {
 	if !assert.NoError(t, err) {
 		return
 	}
-	assert.Equal(t, "3XHNi037vjxf96adt5vA49ZAf3H6bHuekgemmTGEC0s=", accountSecrets.MasterPasswordHash)
+	assert.Equal(t, "NJ0uDK79BMZShPanVpmJM8efx5VFlij9wzf92Sys59o=", accountSecrets.MasterPasswordHash)
 
 	pemdata := pem.EncodeToMemory(
 		&pem.Block{

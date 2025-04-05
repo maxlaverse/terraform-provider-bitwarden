@@ -28,7 +28,7 @@ The plugin has been tested and built with the following components:
 
 - [Terraform] v1.9.8 / [OpenTofu] v1.9.0
 - [Bitwarden CLI] v2025.2.0 (when not using the [Embedded Client](#embedded-client))
-- [Go] 1.23.4 (for development)
+- [Go] 1.24.1 (for development)
 - [Docker] 24.0.6 (for development)
 
 The provider is likely to work with older versions, but those haven't been tested.

@@ -1,3 +1,5 @@
+//go:build offline
+
 package bwcli
 
 import (

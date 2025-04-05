@@ -10,7 +10,7 @@
             "externalId": null,
             "groups": [],
             "hasMasterPassword": true,
-            "id": "56e7ff93-2054-49dc-8060-49a5b471f3d7",
+            "id": "c546d1ca-55dc-4df9-912f-61ddc1962372",
             "name": "test-pbkdf@laverse.net",
             "object": "organizationUserUserDetails",
             "permissions": {
@@ -34,11 +34,11 @@
             "status": 2,
             "twoFactorEnabled": false,
             "type": 0,
-            "userId": "2d1fec1f-6d6f-4cca-b596-97dd3852392c",
+            "userId": "94901a39-c703-4a49-ad21-a442b2d74826",
             "usesKeyConnector": false
         },
         {
-            "accessAll": true,
+            "accessAll": false,
             "accessSecretsManager": false,
             "avatarColor": null,
             "collections": [],
@@ -46,7 +46,7 @@
             "externalId": null,
             "groups": [],
             "hasMasterPassword": true,
-            "id": "e3088cef-9d0d-418e-b225-787e73e0d32f",
+            "id": "fd5523ec-6f56-412b-a1e8-0e38f42613c5",
             "name": "test-argon2@laverse.net",
             "object": "organizationUserUserDetails",
             "permissions": {
@@ -69,8 +69,8 @@
             "ssoBound": false,
             "status": 1,
             "twoFactorEnabled": false,
-            "type": 0,
-            "userId": "d79664fd-d5f2-462b-b0ab-50bd34c83be5",
+            "type": 1,
+            "userId": "fda12720-5790-45a8-9091-bd7d86fff553",
             "usesKeyConnector": false
         }
     ],

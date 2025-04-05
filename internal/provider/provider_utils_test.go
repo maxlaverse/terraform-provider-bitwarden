@@ -26,7 +26,7 @@ const (
 	testPassword        = "test1234"
 	testDeviceIdentifer = "10a00887-3451-4607-8457-fcbfdc61faaa"
 	testDeviceVersion   = "dev"
-	kdfIterations       = 10000
+	kdfIterations       = 5000
 )
 
 // Generated resources used for testing
@@ -65,22 +65,16 @@ var isUserCreated bool
 var userMu sync.Mutex
 
 func init() {
-	host := os.Getenv("VAULTWARDEN_HOST")
-	port := os.Getenv("VAULTWARDEN_PORT")
-	reverseProxyPort := os.Getenv("VAULTWARDEN_REVERSE_PROXY_PORT")
-
-	if len(host) == 0 {
-		host = "127.0.0.1"
-	}
-	if len(port) == 0 {
-		port = "8000"
-	}
-	if len(reverseProxyPort) == 0 {
-		reverseProxyPort = port
+	testServerURL = os.Getenv("VAULTWARDEN_URL")
+	if len(testServerURL) == 0 {
+		testServerURL = "http://127.0.0.1:8000/"
 	}
 
-	testServerURL = fmt.Sprintf("http://%s:%s/", host, port)
-	testReverseProxyServerURL = fmt.Sprintf("http://%s:%s/", host, reverseProxyPort)
+	testReverseProxyServerURL = os.Getenv("VAULTWARDEN_REVERSE_PROXY_URL")
+	if len(testReverseProxyServerURL) == 0 {
+		testReverseProxyServerURL = testServerURL
+	}
+
 	testUniqueIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 }
 
