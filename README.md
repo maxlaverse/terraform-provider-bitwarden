@@ -9,7 +9,7 @@
 A provider for Terraform/OpenTofu to manage Bitwarden [Password Manager] and [Secrets Manager] resource.
 This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 
-**[Explore the docs on Terraform»][Terraform Registry docs]** &nbsp;&nbsp;&nbsp; or &nbsp;&nbsp;&nbsp; **[Explore the docs on OpenTofu»][OpenTofu Registry docs]**
+**[Explore the docs on Terraform»][Terraform Registry docs]** &nbsp;&nbsp; or &nbsp;&nbsp; **[Explore the docs on OpenTofu»][OpenTofu Registry docs]**
 
 ---
 
@@ -37,6 +37,41 @@ If you encounter issues with recent versions of the Bitwarden CLI, consider tryi
 ## Usage
 
 The complete documentation for this provider can be found on the [Terraform Registry docs].
+
+### Bitwarden Secret
+
+```tf
+terraform {
+  required_providers {
+    bitwarden = {
+      source  = "maxlaverse/bitwarden"
+      version = ">= 0.13.5"
+    }
+  }
+}
+
+# Configure the Bitwarden Provider
+provider "bitwarden" {
+  access_token = "0.client_id.client_secret:dGVzdC1lbmNyeXB0aW9uLWtleQ=="
+}
+
+# Source a project
+data "bitwarden_project" "example" {
+  id = "37a66d6a-96c1-4f04-9a3c-b1fc0135669e"
+}
+
+# Create a Secret
+resource "bitwarden_secret" "example" {
+  project_id = data.bitwarden_project.example.id
+
+  key   = "ACCESS_KEY"
+  value = "THIS-VALUE"
+}
+```
+
+See the [examples](./examples/) directory for more examples.
+
+### Password Manager
 
 ```tf
 terraform {
