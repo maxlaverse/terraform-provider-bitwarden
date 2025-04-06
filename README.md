@@ -9,7 +9,7 @@
 A provider for Terraform/OpenTofu to manage Bitwarden [Password Manager] and [Secrets Manager] resource.
 This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 
-**[Explore the docs »][Terraform Registry docs]**
+**[Explore the docs on Terraform»][Terraform Registry docs]** &nbsp;&nbsp;&nbsp; or &nbsp;&nbsp;&nbsp; **[Explore the docs on OpenTofu»][OpenTofu Registry docs]**
 
 ---
 
@@ -130,4 +130,5 @@ Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more informa
 [Secrets Manager]: https://bitwarden.com/products/secrets-manager/
 [Terraform]: https://www.terraform.io/downloads.html
 [Terraform Registry docs]: https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs
+[OpenTofu Registry docs]: https://search.opentofu.org/provider/maxlaverse/bitwarden/latest
 [Terraform's documentation on Data Storage]: https://bitwarden.com/help/data-storage/#on-your-local-machine
