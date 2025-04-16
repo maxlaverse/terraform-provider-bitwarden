@@ -22,7 +22,7 @@ const (
 	orgUuid = "81cc1652-dc80-472d-909f-9539d057068b"
 )
 
-func TestCompareObjects(t *testing.T) {
+func TestCompareObjectsSimpleKeys(t *testing.T) {
 	obj1 := models.Item{
 		Name: "test",
 	}
@@ -35,6 +35,33 @@ func TestCompareObjects(t *testing.T) {
 	assert.NoError(t, compareObjects(context.Background(), obj1, obj2))
 	assert.EqualError(t, compareObjects(context.Background(), obj1, obj3), "different keys at [/name]")
 	assert.NoError(t, compareObjects(context.Background(), obj1, obj3, "/name"))
+}
+
+func TestCompareObjectsArrays(t *testing.T) {
+	obj1 := models.Item{
+		Name:          "test",
+		CollectionIds: []string{"1"},
+	}
+	obj2 := models.Item{
+		Name:          "test",
+		CollectionIds: []string{"2"},
+	}
+	obj3 := models.Item{
+		Name:          "test1",
+		CollectionIds: nil,
+	}
+	obj4 := models.Item{
+		Name:          "test1",
+		CollectionIds: []string{"1", "2"},
+	}
+	obj5 := models.Item{
+		Name:          "test1",
+		CollectionIds: []string{"2", "1"},
+	}
+	assert.NoError(t, compareObjects(context.Background(), obj1, obj1))
+	assert.EqualError(t, compareObjects(context.Background(), obj1, obj2), "different keys at [/collectionIds/0]")
+	assert.NoError(t, compareObjects(context.Background(), obj3, obj4, "/collectionIds"))
+	assert.NoError(t, compareObjects(context.Background(), obj4, obj5))
 }
 
 func TestMatchUrl(t *testing.T) {

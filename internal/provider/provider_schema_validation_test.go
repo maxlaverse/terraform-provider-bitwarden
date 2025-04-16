@@ -218,3 +218,31 @@ func TestProviderAuth_ThrowsErrorOnMissingServer(t *testing.T) {
 
 	assert.Implements(t, (*bwcli.PasswordManagerClient)(nil), p.Meta())
 }
+
+func TestSyncAfterWriteVerificationDisabled(t *testing.T) {
+	raw := map[string]interface{}{
+		"server":          "http://127.0.0.1/",
+		"email":           "test@laverse.net",
+		"client_id":       "client-id-1234",
+		"client_secret":   "client-secret-5678",
+		"master_password": "master-password-9",
+		"experimental": []interface{}{
+			map[string]interface{}{
+				"embedded_client":                       "true",
+				"disable_sync_after_write_verification": "true",
+			},
+		},
+	}
+
+	p := New(versionTestSkippedLogin)()
+
+	config := terraform.NewResourceConfigRaw(raw)
+	diag := p.Validate(config)
+	assert.False(t, diag.HasError())
+
+	diag = p.Configure(context.Background(), config)
+	assert.False(t, diag.HasError())
+
+	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), p.Meta())
+	assert.True(t, p.Meta().(embedded.PasswordManagerClient).IsSyncAfterWriteVerificationDisabled())
+}

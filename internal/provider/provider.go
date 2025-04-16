@@ -216,20 +216,7 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 }
 
 func useExperimentalEmbeddedClient(d *schema.ResourceData) bool {
-	experimentalFeatures, hasExperimentalFeatures := d.GetOk(schema_definition.AttributeExperimental)
-	if !hasExperimentalFeatures {
-		return false
-	}
-	if hasExperimentalFeatures {
-		if experimentalFeatures.(*schema.Set).Len() == 0 {
-			return false
-		}
-		embeddedClient, hasEmbeddedClient := experimentalFeatures.(*schema.Set).List()[0].(map[string]interface{})[schema_definition.AttributeExperimentalEmbeddedClient]
-		if hasEmbeddedClient && embeddedClient.(bool) {
-			return true
-		}
-	}
-	return false
+	return hasExperimentalFeature(d, schema_definition.AttributeExperimentalEmbeddedClient)
 }
 
 func ensureLoggedInCLIPasswordManager(ctx context.Context, d *schema.ResourceData, bwClient bwcli.PasswordManagerClient) error {
@@ -369,10 +356,9 @@ func newEmbeddedPasswordManagerClient(ctx context.Context, d *schema.ResourceDat
 	opts := []embedded.PasswordManagerOptions{
 		embedded.WithPasswordManagerHttpOptions(buildWebapiOptions(version)...),
 	}
-	if v, hasDisableSyncAfterWriteVerification := d.GetOk(schema_definition.AttributeExperimentalDisableSyncAfterWriteVerification); hasDisableSyncAfterWriteVerification {
-		if v.(bool) {
-			opts = append(opts, embedded.DisableFailOnSyncAfterWriteVerification())
-		}
+
+	if hasExperimentalFeature(d, schema_definition.AttributeExperimentalDisableSyncAfterWriteVerification) {
+		opts = append(opts, embedded.DisableFailOnSyncAfterWriteVerification())
 	}
 
 	serverURL := d.Get(schema_definition.AttributeServer).(string)
@@ -455,4 +441,16 @@ func ensureLoggedInEmbeddedPasswordManager(ctx context.Context, d *schema.Resour
 	}
 
 	return fmt.Errorf("INTERNAL BUG: not enough parameters provided to login (status: 'BUG')")
+}
+
+func hasExperimentalFeature(d *schema.ResourceData, feature string) bool {
+	experimentalFeatures, hasExperimentalFeatures := d.GetOk(schema_definition.AttributeExperimental)
+	if !hasExperimentalFeatures {
+		return false
+	}
+	if experimentalFeatures.(*schema.Set).Len() == 0 {
+		return false
+	}
+
+	return experimentalFeatures.(*schema.Set).List()[0].(map[string]interface{})[feature].(bool)
 }
