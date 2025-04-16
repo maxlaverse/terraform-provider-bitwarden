@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"path"
 	"regexp"
 	"strings"
 	"sync"
@@ -922,19 +921,13 @@ func verifyDecryptedObject[T any](ctx context.Context, actual, expected T) error
 }
 
 func compareObjects[T any](_ context.Context, actual, expected T, ignoreFields ...string) error {
-	patch, err := jsondiff.Compare(actual, expected)
+	patch, err := jsondiff.Compare(actual, expected, jsondiff.Ignores(ignoreFields...), jsondiff.Equivalent())
 	if err != nil {
 		return fmt.Errorf("error comparing objects: %w", err)
 	}
 
 	differentKeys := []string{}
-Loop:
 	for _, p := range patch {
-		for _, pattern := range ignoreFields {
-			if matched, _ := path.Match(pattern, p.Path); matched {
-				continue Loop
-			}
-		}
 		differentKeys = append(differentKeys, p.Path)
 	}
 	if len(differentKeys) == 0 {

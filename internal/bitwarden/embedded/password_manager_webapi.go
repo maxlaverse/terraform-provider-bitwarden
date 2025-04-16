@@ -45,6 +45,7 @@ type PasswordManagerClient interface {
 	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	InviteUser(ctx context.Context, orgId, userEmail string, memberRoleType models.OrgMemberRoleType) error
+	IsSyncAfterWriteVerificationDisabled() bool
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
 	Logout(ctx context.Context) error
@@ -321,7 +322,7 @@ func (v *webAPIVault) CreateItem(ctx context.Context, obj models.Item) (*models.
 		//       these differences in the diff.
 		// NOTE: The official Bitwarden server don't return the collectionIds in the response
 		//       for items, even if they're actually taken into account.
-		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/creationDate", "/revisionDate", "/collectionIds/*")
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/creationDate", "/revisionDate", "/collectionIds")
 	}
 	return resObj, nil
 }
@@ -881,6 +882,10 @@ func (v *webAPIVault) InviteUser(ctx context.Context, orgId, userEmail string, m
 	return v.client.InviteUser(ctx, orgId, req)
 }
 
+func (v *webAPIVault) IsSyncAfterWriteVerificationDisabled() bool {
+	return !v.failOnSyncAfterWriteVerification
+}
+
 func (v *webAPIVault) FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error) {
 	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
 	if !filter.IsValid() {
@@ -1213,15 +1218,17 @@ func (v *webAPIVault) loadObjectMap(ctx context.Context, cipherMap webapi.SyncRe
 
 func (v *webAPIVault) verifyObjectAfterWrite(ctx context.Context, actual, expected interface{}, ignoreFields ...string) error {
 	err := compareObjects(ctx, actual, expected, ignoreFields...)
-	if err != nil && v.failOnSyncAfterWriteVerification {
-		return fmt.Errorf(`server returned different object after write!
+	if err != nil {
+		tflog.Error(ctx, "server returned different object after write", map[string]interface{}{"error": err})
+
+		if v.failOnSyncAfterWriteVerification {
+			return fmt.Errorf(`server returned different object after write!
 After writing an object and re-fetching it, the server returned a slightly different version: %w
 
 To learn more about this issue and how to handle it, please:
 1. Consider reporting affected fields at: https://github.com/maxlaverse/terraform-provider-bitwarden/issues/new
 2. Check the documentation of the 'experimental.disable_sync_after_write_verification' attribute`, err)
-	} else if err != nil {
-		tflog.Error(ctx, "server returned different object after write", map[string]interface{}{"error": err})
+		}
 	}
 	return nil
 }
