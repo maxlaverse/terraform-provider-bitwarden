@@ -3,7 +3,7 @@ default: testacc
 # Run acceptance tests
 .PHONY: testacc docs tffmt
 testacc: clean
-	TF_ACC=1 go test ./... -v $(TESTARGS) -timeout 120m
+	TF_ACC=1 go test --tags="offline integration" ./... -v $(TESTARGS) -timeout 120m
 
 tffmt:
 	terraform fmt  -recursive examples
