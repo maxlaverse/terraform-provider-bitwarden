@@ -152,6 +152,12 @@ Then run `make testacc`.
 $ make testacc
 ```
 
+## Disclaimer
+
+While we strive to ensure the reliability and security of this application, we cannot be held liable for any data loss, unauthorized access, or breaches that may result from the way data is stored or processed by third-party providers. This includes, but is not limited to, unencrypted storage of passwords, attachments, and other user information.
+
+Users are strongly encouraged to perform regular backups of their files and database to mitigate potential data loss. In the event of a loss or security concern, please contact us as soon as possible so we can assist where feasible.
+
 ## License
 
 Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more information.
