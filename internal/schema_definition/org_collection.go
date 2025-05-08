@@ -65,6 +65,12 @@ func membershipElem() *schema.Resource {
 				Optional:    true,
 				Default:     false,
 			},
+			AttributeCollectionMemberManage: {
+				Description: DescriptionCollectionMemberManage,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+			},
 		},
 	}
 }

@@ -42,6 +42,7 @@ type CollectionUser struct {
 	HidePasswords bool   `json:"hidePasswords"`
 	Id            string `json:"id"`
 	ReadOnly      bool   `json:"readOnly"`
+	Manage        bool   `json:"manage"`
 }
 
 type InviteUserRequest struct {

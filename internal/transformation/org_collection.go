@@ -33,6 +33,7 @@ func OrganizationCollectionObjectToSchema(ctx context.Context, obj *models.OrgCo
 			schema_definition.AttributeCollectionMemberHidePasswords: v.HidePasswords,
 			schema_definition.AttributeID:                            v.Id,
 			schema_definition.AttributeCollectionMemberReadOnly:      v.ReadOnly,
+			schema_definition.AttributeCollectionMemberManage:        v.Manage,
 		}
 	}
 
@@ -68,6 +69,7 @@ func OrganizationCollectionToObject(ctx context.Context, d *schema.ResourceData)
 				HidePasswords: v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberHidePasswords].(bool),
 				Id:            v2.(map[string]interface{})[schema_definition.AttributeID].(string),
 				ReadOnly:      v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberReadOnly].(bool),
+				Manage:        v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberManage].(bool),
 			}
 		}
 	}

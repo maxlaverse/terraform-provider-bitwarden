@@ -55,6 +55,7 @@ Required:
 Optional:
 
 - `hide_passwords` (Boolean) [Experimental] Hide passwords.
+- `manage` (Boolean) [Experimental] Can manage the collection.
 - `read_only` (Boolean) [Experimental] Read/Write permissions.
 
 ## Import

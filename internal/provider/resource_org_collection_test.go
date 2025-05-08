@@ -126,6 +126,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 								"id":             testAccountEmailOrgUserInTestOrgUserId,
 								"read_only":      "false",
 								"hide_passwords": "true",
+								"manage":         "false",
 							},
 						),
 					),
