@@ -22,9 +22,9 @@ const (
 
 func TestAccProviderAuthUsernamePassword(t *testing.T) {
 	ensureVaultwardenHasUser(t)
-	validProvider := usernamePasswordTestProvider(testEmail, testPassword)
+	validProvider := usernamePasswordTestProvider(testEmail, testMasterPassword)
 	invalidPassword := usernamePasswordTestProvider(testEmail, "incorrect-password")
-	invalidAccount := usernamePasswordTestProvider("unknown-account@laverse.net", testPassword)
+	invalidAccount := usernamePasswordTestProvider("unknown-account@laverse.net", testMasterPassword)
 
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
@@ -87,13 +87,23 @@ func sessionKeyTestProvider(email, sessionKey string) string {
 }
 
 func usernamePasswordTestProvider(email, password string) string {
+	var useEmbeddedClientStr string
+	if useEmbeddedClient {
+		useEmbeddedClientStr = "true"
+	} else {
+		useEmbeddedClientStr = "false"
+	}
 	return fmt.Sprintf(`
 	provider "bitwarden" {
 		master_password = "%s"
 		server          = "%s"
 		email           = "%s"
+
+		experimental {
+			embedded_client = %s
+		}
 	}
-`, password, testServerURL, email)
+`, password, testServerURL, email, useEmbeddedClientStr)
 }
 
 func checkResourceId() resource.TestCheckFunc {

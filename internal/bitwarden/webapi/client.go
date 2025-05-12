@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	defaultRequestTimeout = 10 * time.Second
+	defaultRequestTimeout = 120 * time.Second
 	maxConcurrentRequests = 4
 	maxRetryAttempts      = 3
 )

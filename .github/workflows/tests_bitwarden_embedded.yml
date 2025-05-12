@@ -1,0 +1,57 @@
+name: Embedded Client with Bitwarden Servers
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - id: go-cache-paths
+        run: |
+          echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "GOMODCACHE=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+
+      - id: binaries
+        run: |
+          echo "LOCAL_BINARIES=$GITHUB_WORKSPACE/bin" >> $GITHUB_OUTPUT
+          echo "BWCLI_VERSION=2025.2.0" >> $GITHUB_OUTPUT
+
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ">=1.24.0"
+
+      # Cache go build cache, used to speedup go test
+      - name: Go Build Cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.go-cache-paths.outputs.GOCACHE }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
+
+      # Cache go mod cache, used to speedup builds
+      - name: Go Mod Cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.go-cache-paths.outputs.GOMODCACHE }}
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+
+      - name: Test with Embedded Client
+        run: go test -coverprofile=profile.cov -v -race -coverpkg=./... ./... --tags integration
+        env:
+          TEST_BACKEND: "official"
+          TEST_PROVIDER_SERVER_URL: "https://vault.bitwarden.com"
+          TEST_PROVIDER_EXPERIMENTAL_EMBEDDED_CLIENT: "1"
+          TEST_PROVIDER_EMAIL: "${{ secrets.BITWARDEN_EMAIL }}"
+          TEST_PROVIDER_MASTER_PASSWORD: "${{ secrets.BITWARDEN_MASTER_PASSWORD }}"
+          TEST_PROVIDER_CLIENT_ID: "${{ secrets.BITWARDEN_CLIENT_ID }}"
+          TEST_PROVIDER_CLIENT_SECRET: "${{ secrets.BITWARDEN_CLIENT_SECRET }}"
+          TEST_COLLECTION_ID: "${{ secrets.BITWARDEN_TEST_COLLECTION_ID }}"
+          TEST_FOLDER_ID: "${{ secrets.BITWARDEN_TEST_FOLDER_ID }}"
+          TEST_ORGANIZATION_ID: "${{ secrets.BITWARDEN_TEST_ORGANIZATION_ID }}"
+          TF_ACC: "1"
+     

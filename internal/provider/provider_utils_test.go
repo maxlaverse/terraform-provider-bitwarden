@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/joho/godotenv"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
@@ -23,14 +24,21 @@ import (
 
 const (
 	// Constants used to interact with a test Vaultwarden instance
-	testPassword        = "test1234"
 	testDeviceIdentifer = "10a00887-3451-4607-8457-fcbfdc61faaa"
 	testDeviceVersion   = "dev"
 	kdfIterations       = 5000
+
+	// Backend types
+	backendOfficial    = "official"
+	backendVaultwarden = "vaultwarden"
 )
 
 // Generated resources used for testing
 var testEmail string
+var testBackend string
+var testMasterPassword = "test1234"
+var testClientID string
+var testClientSecret string
 var testAccountEmailOrgOwner string
 var testAccountEmailOrgUser string
 var testAccountEmailOrgAdmin string
@@ -42,7 +50,7 @@ var testAccountEmailOrgAdminInTestOrgUserId string
 var testAccountEmailOrgManagerInTestOrgUserId string
 
 var testUsername string
-var testServerURL string
+var testServerURL = "http://127.0.0.1:8000/"
 var testReverseProxyServerURL string
 var testOrganizationID string
 var testCollectionID string
@@ -65,24 +73,122 @@ var isUserCreated bool
 var userMu sync.Mutex
 
 func init() {
-	testServerURL = os.Getenv("VAULTWARDEN_URL")
-	if len(testServerURL) == 0 {
-		testServerURL = "http://127.0.0.1:8000/"
+	testBackend = os.Getenv("TEST_BACKEND")
+	if testBackend == "" {
+		fmt.Println("TEST_BACKEND environment variable is not set")
+		os.Exit(1)
 	}
 
-	testReverseProxyServerURL = os.Getenv("VAULTWARDEN_REVERSE_PROXY_URL")
-	if len(testReverseProxyServerURL) == 0 {
+	if testBackend != backendOfficial && testBackend != backendVaultwarden {
+		fmt.Printf("TEST_BACKEND must be either '%s' or '%s', got '%s'\n", backendOfficial, backendVaultwarden, testBackend)
+		os.Exit(1)
+	}
+
+	// Get the project root directory
+	projectRoot, err := getProjectRoot()
+	if err != nil {
+		fmt.Printf("Error getting project root: %v\n", err)
+		os.Exit(1)
+	}
+
+	envFile := filepath.Join(projectRoot, ".env."+testBackend)
+	_ = godotenv.Load(envFile)
+
+	// Load environment variables
+	loadEnvironmentVariables()
+
+	testUniqueIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
+}
+
+// getProjectRoot returns the absolute path to the project root directory
+func getProjectRoot() (string, error) {
+	// Start from the current directory (where the test is running)
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	// Look for go.mod file to identify project root
+	for {
+		if _, err := os.Stat(filepath.Join(currentDir, "go.mod")); err == nil {
+			return currentDir, nil
+		}
+
+		// Move up one directory
+		parent := filepath.Dir(currentDir)
+		if parent == currentDir {
+			return "", fmt.Errorf("could not find project root (go.mod not found)")
+		}
+		currentDir = parent
+	}
+}
+
+// loadEnvironmentVariables loads all environment variables used in tests
+func loadEnvironmentVariables() {
+	if os.Getenv("TEST_PROVIDER_EXPERIMENTAL_EMBEDDED_CLIENT") == "1" {
+		useEmbeddedClient = true
+	}
+
+	if v := os.Getenv("TEST_PROVIDER_MASTER_PASSWORD"); v != "" {
+		testMasterPassword = v
+	}
+
+	if v := os.Getenv("TEST_PROVIDER_EMAIL"); v != "" {
+		testEmail = v
+	}
+
+	if v := os.Getenv("TEST_PROVIDER_CLIENT_ID"); v != "" {
+		testClientID = v
+	}
+
+	if v := os.Getenv("TEST_PROVIDER_CLIENT_SECRET"); v != "" {
+		testClientSecret = v
+	}
+
+	if v := os.Getenv("TEST_PROVIDER_SERVER_URL"); v != "" {
+		testServerURL = v
+	}
+
+	if v := os.Getenv("TEST_PROVIDER_REVERSE_PROXY_URL"); v != "" {
+		testReverseProxyServerURL = v
+	} else {
 		testReverseProxyServerURL = testServerURL
 	}
 
-	testUniqueIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
+	if IsOfficialBackend() {
+		if v := os.Getenv("TEST_COLLECTION_ID"); v != "" {
+			testCollectionID = v
+		}
+		if v := os.Getenv("TEST_FOLDER_ID"); v != "" {
+			testFolderID = v
+		}
+		if v := os.Getenv("TEST_ORGANIZATION_ID"); v != "" {
+			testOrganizationID = v
+		}
+	}
+}
+
+func SkipIfOfficialBackend(t *testing.T, reason string) {
+	if IsOfficialBackend() {
+		t.Skipf("Skipping test as official backend is used: %s", reason)
+	}
+}
+
+func SkipAsNotImplementedForOfficialBackend(t *testing.T) {
+	if IsOfficialBackend() {
+		t.Skipf("Skipping test as the test is not written for official backend yet")
+	}
+}
+
+func IsOfficialBackend() bool {
+	return testBackend == "official"
 }
 
 func ensureVaultwardenConfigured(t *testing.T) {
 	testResourcesMu.Lock()
 	defer testResourcesMu.Unlock()
 
-	if areTestResourcesCreated {
+	if areTestResourcesCreated || IsOfficialBackend() {
 		return
 	}
 
@@ -145,7 +251,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	t.Logf("Invited %s to organization %s (%s)", testAccountEmailOrgManager, testOrganizationID, testAccountEmailOrgManagerInTestOrgUserId)
 
 	webapiClient := webapi.NewClient(testServerURL, embedded.NewDeviceIdentifier(), testDeviceVersion)
-	_, err = webapiClient.LoginWithPassword(ctx, testEmail, testPassword, models.KdfConfiguration{KdfIterations: kdfIterations})
+	_, err = webapiClient.LoginWithPassword(ctx, testEmail, testMasterPassword, models.KdfConfiguration{KdfIterations: kdfIterations})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +292,7 @@ func ensureVaultwardenHasUser(t *testing.T) {
 	userMu.Lock()
 	defer userMu.Unlock()
 
-	if isUserCreated {
+	if isUserCreated || IsOfficialBackend() {
 		return
 	}
 
@@ -201,7 +307,7 @@ func ensureVaultwardenHasUser(t *testing.T) {
 		KdfMemory:      0,
 		KdfParallelism: 0,
 	}
-	err := client.RegisterUser(context.Background(), testUsername, testEmail, testPassword, kdfConfig)
+	err := client.RegisterUser(context.Background(), testUsername, testEmail, testMasterPassword, kdfConfig)
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
@@ -214,7 +320,7 @@ func ensureVaultwardenHasUser(t *testing.T) {
 		KdfMemory:      64,
 		KdfParallelism: 4,
 	}
-	err = client.RegisterUser(context.Background(), testUsername, testAccountEmailOrgOwner, testPassword, kdfConfig)
+	err = client.RegisterUser(context.Background(), testUsername, testAccountEmailOrgOwner, testMasterPassword, kdfConfig)
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
@@ -227,7 +333,7 @@ func ensureVaultwardenHasUser(t *testing.T) {
 		KdfMemory:      64,
 		KdfParallelism: 4,
 	}
-	err = client.RegisterUser(context.Background(), testUsername, testAccountEmailOrgUser, testPassword, kdfConfig)
+	err = client.RegisterUser(context.Background(), testUsername, testAccountEmailOrgUser, testMasterPassword, kdfConfig)
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
@@ -240,7 +346,7 @@ func ensureVaultwardenHasUser(t *testing.T) {
 		KdfMemory:      64,
 		KdfParallelism: 4,
 	}
-	err = client.RegisterUser(context.Background(), testUsername, testAccountEmailOrgAdmin, testPassword, kdfConfig)
+	err = client.RegisterUser(context.Background(), testUsername, testAccountEmailOrgAdmin, testMasterPassword, kdfConfig)
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
@@ -253,7 +359,7 @@ func ensureVaultwardenHasUser(t *testing.T) {
 		KdfMemory:      64,
 		KdfParallelism: 4,
 	}
-	err = client.RegisterUser(context.Background(), testUsername, testAccountEmailOrgManager, testPassword, kdfConfig)
+	err = client.RegisterUser(context.Background(), testUsername, testAccountEmailOrgManager, testMasterPassword, kdfConfig)
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
@@ -271,7 +377,12 @@ func clearTestVault(t *testing.T) {
 
 func bwTestClient(t *testing.T) bitwarden.PasswordManager {
 	client := embedded.NewPasswordManagerClient(testServerURL, testDeviceIdentifer, testDeviceVersion)
-	err := client.LoginWithPassword(context.Background(), testEmail, testPassword)
+	var err error
+	if testClientID != "" {
+		err = client.LoginWithAPIKey(context.Background(), testMasterPassword, testClientID, testClientSecret)
+	} else {
+		err = client.LoginWithPassword(context.Background(), testEmail, testMasterPassword)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,7 +417,12 @@ func bwOfficialTestClient(t *testing.T) bwcli.PasswordManagerClient {
 
 		retries := 0
 		for {
-			err = client.LoginWithPassword(context.Background(), testEmail, testPassword)
+			if testClientID != "" {
+				err = client.LoginWithAPIKey(context.Background(), testMasterPassword, testClientID, testClientSecret)
+			} else {
+				err = client.LoginWithPassword(context.Background(), testEmail, testMasterPassword)
+			}
+
 			if err != nil {
 				// Retry if the user creation hasn't been fully taken into account yet
 				if retries < 3 {
@@ -320,7 +436,7 @@ func bwOfficialTestClient(t *testing.T) bwcli.PasswordManagerClient {
 			break
 		}
 	} else if status.Status == bwcli.StatusLocked {
-		err = client.Unlock(context.Background(), testPassword)
+		err = client.Unlock(context.Background(), testMasterPassword)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -331,14 +447,27 @@ func bwOfficialTestClient(t *testing.T) bwcli.PasswordManagerClient {
 }
 
 func tfConfigPasswordManagerProvider() string {
-	if os.Getenv("TEST_USE_EMBEDDED_CLIENT") == "1" {
-		useEmbeddedClient = true
-	}
-
 	useEmbeddedClientStr := "false"
 	if useEmbeddedClient {
 		useEmbeddedClientStr = "true"
 	}
+
+	if len(testClientID) > 0 && len(testClientSecret) > 0 {
+		return fmt.Sprintf(`
+	provider "bitwarden" {
+		master_password = "%s"
+		server          = "%s"
+		email           = "%s"
+		client_id       = "%s"
+		client_secret   = "%s"
+
+		experimental {
+			embedded_client = %s
+		}
+	}
+`, testMasterPassword, testServerURL, testEmail, testClientID, testClientSecret, useEmbeddedClientStr)
+	}
+
 	return fmt.Sprintf(`
 	provider "bitwarden" {
 		master_password = "%s"
@@ -349,7 +478,7 @@ func tfConfigPasswordManagerProvider() string {
 			embedded_client = %s
 		}
 	}
-`, testPassword, testServerURL, testEmail, useEmbeddedClientStr)
+`, testMasterPassword, testServerURL, testEmail, useEmbeddedClientStr)
 }
 
 func testOrRealSecretsManagerProvider(t *testing.T) (string, func()) {

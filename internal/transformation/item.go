@@ -142,6 +142,10 @@ func ItemSchemaToObject(attrType models.ItemType) func(ctx context.Context, d *s
 		if vList, ok := d.Get(schema_definition.AttributeCollectionIDs).([]interface{}); ok {
 			obj.CollectionIds = make([]string, len(vList))
 			for k, v := range vList {
+				if v == nil {
+					// nil check required for hosted Bitwarden servers
+					continue
+				}
 				obj.CollectionIds[k] = v.(string)
 			}
 		}

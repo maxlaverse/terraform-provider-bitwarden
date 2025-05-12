@@ -1,4 +1,4 @@
-name: Tests
+name: Embedded Client with Vaultwarden Servers
 
 on:
   push:
@@ -45,12 +45,6 @@ jobs:
           - 8000:8000
         volumes:
           - /dev/shm/vaultwarden-data:/data
-      nginx:
-        image: maxlaverse/nginx-vaultwarden
-        ports:
-          - 8080:8080
-        options: >-
-          --link vaultwarden
 
     steps:
       - id: go-cache-paths
@@ -85,59 +79,12 @@ jobs:
           path: ${{ steps.go-cache-paths.outputs.GOMODCACHE }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 23.x
-
-      - name: Install Bitwarden CLI
-        run: |
-          npm install -g @bitwarden/cli@${{ steps.binaries.outputs.BWCLI_VERSION }}
-
-      - name: Build
-        run: go build -v ./...
-
-      - name: Offline Tests
-        run: go test -coverprofile=profile.cov -v -race -coverpkg=./... ./... --tags offline
-        env:
-          TF_ACC: "1"
-      - name: Code Coverage for Offline tests
-        continue-on-error: true
-        uses: shogo82148/actions-goveralls@v1
-        with:
-          path-to-profile: profile.cov
-          parallel: true
 
       - name: Test with Embedded Client
         run: go test -coverprofile=profile.cov -v -race -coverpkg=./... ./... --tags integration
         env:
-          VAULTWARDEN_URL: "http://127.0.0.1:8000"
+          TEST_BACKEND: "vaultwarden"
+          TEST_PROVIDER_SERVER_URL: "http://127.0.0.1:8000"
+          TEST_PROVIDER_EXPERIMENTAL_EMBEDDED_CLIENT: "1"
           TF_ACC: "1"
-          TEST_USE_EMBEDDED_CLIENT: "1"
-      - name: Code Coverage for Embedded Client
-        continue-on-error: true
-        uses: shogo82148/actions-goveralls@v1
-        with:
-          path-to-profile: profile.cov
-          parallel: true
-
-      - name: Test with Official Client
-        run: go test -coverprofile=profile.cov -timeout 3600s -failfast -v -coverpkg=./... ./...  --tags integration
-        env:
-          VAULTWARDEN_URL: "http://127.0.0.1:8000"
-          VAULTWARDEN_REVERSE_PROXY_URL: "http://127.0.0.1:8080"
-          TF_ACC: "1"
-      - name: Code Coverage for Official Client
-        continue-on-error: true
-        uses: shogo82148/actions-goveralls@v1
-        with:
-          path-to-profile: profile.cov
-          parallel: true
-
-  finish:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: shogo82148/actions-goveralls@v1
-        with:
-          parallel-finished: true
+      
