@@ -57,7 +57,7 @@ func membershipElem() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			AttributeID: {
-				Description: DescriptionIdentifier,
+				Description: DescriptionCollectionMemberID,
 				Type:        schema.TypeString,
 				Required:    true,
 			},

@@ -57,6 +57,7 @@ const (
 	DescriptionCollectionIDs                 = "Identifier of the collections the item belongs to."
 	DescriptionCollectionMember              = "[Experimental] Member (Users) of a collection."
 	DescriptionCollectionMemberGroup         = "[Experimental] Member Groups of a collection."
+	DescriptionCollectionMemberID            = "[Experimental] Unique Identifier (UUID) of the user or group member."
 	DescriptionCollectionMemberReadOnly      = "[Experimental] Read/Write permissions."
 	DescriptionCollectionMemberHidePasswords = "[Experimental] Hide passwords."
 	DescriptionCollectionMemberManage        = "[Experimental] Can manage the collection."
