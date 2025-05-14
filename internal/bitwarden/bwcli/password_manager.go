@@ -129,8 +129,7 @@ func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item,
 }
 
 func (c *client) CreateOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
-	obj.Groups = []interface{}{}
-	if len(obj.Users) > 0 {
+	if len(obj.Users) > 0 || len(obj.Groups) > 0 {
 		return nil, fmt.Errorf("managing collection memberships is only supported by the embedded client")
 	}
 	return createObject(ctx, c, obj, models.ObjectTypeOrgCollection)
@@ -176,8 +175,7 @@ func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, e
 }
 
 func (c *client) EditOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
-	obj.Groups = []interface{}{}
-	if len(obj.Users) > 0 {
+	if len(obj.Users) > 0 || len(obj.Groups) > 0 {
 		return nil, fmt.Errorf("managing collection memberships is only supported by the embedded client")
 	}
 	return editGenericObject(ctx, c, obj, obj.Object, obj.ID)

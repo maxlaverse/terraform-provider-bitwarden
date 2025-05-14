@@ -207,6 +207,6 @@ type OrgCollection struct {
 	Object         ObjectType            `json:"object,omitempty"`
 	OrganizationID string                `json:"organizationId"`
 	Users          []OrgCollectionMember `json:"users"`
-	Groups         []interface{}         `json:"groups"` // Required but not used when creating collections using the CLI
+	Groups         []OrgCollectionMember `json:"groups"` // Required but not used when creating collections using the CLI
 	Manage         bool                  `json:"-"`
 }
