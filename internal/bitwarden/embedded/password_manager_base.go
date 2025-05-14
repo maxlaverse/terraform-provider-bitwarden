@@ -495,10 +495,6 @@ func encryptOrgCollection(ctx context.Context, obj models.OrgCollection, secret 
 			return nil, fmt.Errorf("error decrypting collection for verification: %w", err)
 		}
 
-		tflog.Info(ctx, fmt.Sprintf("DIFF objects"), map[string]interface{}{
-			"orig":      obj,
-			"decrypted": *actualObj,
-		})
 		err = verifyDecryptedObject(ctx, obj, *actualObj)
 		if err != nil {
 			return nil, fmt.Errorf("error verifying collection after encryption: %w", err)
@@ -940,6 +936,12 @@ func matchHost(url1, url2 string) (bool, error) {
 
 func verifyDecryptedObject[T any](ctx context.Context, actual, expected T) error {
 	err := compareObjects(ctx, actual, expected)
+	if err != nil {
+		tflog.Trace(ctx, fmt.Sprintf("verifyDecryptedObject: error object details."), map[string]interface{}{
+			"actual":   actual,
+			"expected": expected,
+		})
+	}
 	if err != nil && panicOnEncryptionErrors {
 		panic(err)
 	} else if err != nil {
