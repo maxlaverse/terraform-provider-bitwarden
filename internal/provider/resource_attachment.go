@@ -58,7 +58,8 @@ func resourceAttachment() *schema.Resource {
 		Description: "Manages an item attachment.",
 		CustomizeDiff: func(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
 
-			// Commented code below was used to learn how values would come in through CustomizeDiff.
+			// ** Start of code used to learn how values would come in through CustomizeDiff.
+			// This section can be removed or kept for debugging purposes.
 			// 1) List every key that has a diff (state vs plan):
 			changed := d.GetChangedKeysPrefix("")
 			tflog.Trace(ctx, "🔍 CustomizeDiff: changed keys", map[string]interface{}{
@@ -108,7 +109,16 @@ func resourceAttachment() *schema.Resource {
 				"old": hashOldValue,
 				"new": hashNewValue,
 			})
-			// if there is a change, return as the update will happen without additional checking.
+
+			// ** End of code used to learn how values would come in through CustomizeDiff.
+
+			// Code below is to determine if the file on disk has changed.
+			// Since `content_hash` can be computed not just explicitly entered by the user, we need to check
+			// if the file on disk has changed. This is because the computed value is not created prior to the
+			// diff check.
+
+			// First, check if there is a change in the content values. If so, the file will be re-read so no need to
+			// compute a hash.
 			if filePathOldValue != filePathNewValue {
 				return nil
 			}
@@ -119,16 +129,18 @@ func resourceAttachment() *schema.Resource {
 				return nil
 			}
 
-			// if we got to here, check if the file on disk has been updated. file specified as content does not need
-			// this check, as it will be different and auto trigger an update.
+			// If we got to here, we need to check if the file on disk has been updated.
+			// We should only need to check the file-based method - as specifying content will not hit this issue.
 			if filePathOldValue != "" && hashOldValue != "" {
 				fileOnDiskHash := fileHash(filePathOldValue)
-				tflog.Debug(ctx, fmt.Sprintf("✅✅ FORCED fileOnDiskHash:"), map[string]interface{}{
+				tflog.Trace(ctx, fmt.Sprintf("✅✅ FORCED fileOnDiskHash:"), map[string]interface{}{
 					"fileOnDiskHash": fileOnDiskHash,
 					"hashOldValue":   hashOldValue,
 				})
+				// since we already checked that New/Old hashes are the same, we can use either new/old in compare.
 				if fileOnDiskHash != hashOldValue {
-					// hashes are different, force new.
+					// File and existing hashes are different, force new. We need to first set the value to the
+					// new hash, or it won't allow us to ForceNew (replace) the attachment.
 					setNewErr := d.SetNew(schema_definition.AttributeAttachmentDataHash, fileOnDiskHash)
 					if setNewErr != nil {
 						tflog.Warn(ctx, fmt.Sprintf("SetNew failed for %q: %s", schema_definition.AttributeAttachmentDataHash, setNewErr))
