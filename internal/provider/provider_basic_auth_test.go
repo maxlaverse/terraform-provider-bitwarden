@@ -42,11 +42,13 @@ func TestAccProviderAuthUsernamePassword(t *testing.T) {
 			}, {
 				Config:      invalidPassword + testResource,
 				ExpectError: regexp.MustCompile("Invalid master password"),
+				SkipFunc:    func() (bool, error) { return useEmbeddedClient, nil },
 			}, {
 				// We need to finish with a valid example if we don't want the TestStep to
 				// fail on post-destroy.
-				Config: validProvider + testResource,
-				Check:  checkResourceId(),
+				Config:   validProvider + testResource,
+				Check:    checkResourceId(),
+				SkipFunc: func() (bool, error) { return useEmbeddedClient, nil },
 			},
 		},
 	})
