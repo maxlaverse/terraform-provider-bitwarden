@@ -118,4 +118,11 @@ jobs:
       - uses: ./.github/actions/setup-test
       - name: Run tests
         run: mage test:integrationOfficialWithEmbeddedClient
-     
+        env:
+          TEST_PROVIDER_EMAIL: "${{ secrets.BITWARDEN_EMAIL }}"
+          TEST_PROVIDER_MASTER_PASSWORD: "${{ secrets.BITWARDEN_MASTER_PASSWORD }}"
+          TEST_PROVIDER_CLIENT_ID: "${{ secrets.BITWARDEN_CLIENT_ID }}"
+          TEST_PROVIDER_CLIENT_SECRET: "${{ secrets.BITWARDEN_CLIENT_SECRET }}"
+          TEST_COLLECTION_ID: "${{ secrets.BITWARDEN_TEST_COLLECTION_ID }}"
+          TEST_FOLDER_ID: "${{ secrets.BITWARDEN_TEST_FOLDER_ID }}"
+          TEST_ORGANIZATION_ID: "${{ secrets.BITWARDEN_TEST_ORGANIZATION_ID }}"
