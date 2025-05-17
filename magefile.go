@@ -77,7 +77,7 @@ func (t Test) IntegrationPwdOfficialWithEmbeddedClientArgs(testPattern string) e
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Password Manager integration tests with embedded client on official bitwarden.com instances...")
-	args := []string{"test", "./...", "--tags", "integration", "-v", "-race", "-timeout", "20m"}
+	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race", "-timeout", "20m"}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern)
 	}
@@ -99,7 +99,7 @@ func (t Test) IntegrationBwsOfficialArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on official bitwarden.com instances...")
-	args := []string{"test", "./...", "--tags", "integrationBws", "-v", "-race", "-timeout", "20m"}
+	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integrationBws", "-v", "-race", "-timeout", "20m"}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern)
 	}
@@ -121,7 +121,7 @@ func (t Test) IntegrationBwsMockedArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on mocked backend...")
-	args := []string{"test", "./...", "--tags", "integrationBws", "-v", "-race", "-timeout", "20m"}
+	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integrationBws", "-v", "-race", "-timeout", "20m"}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern)
 	}
@@ -143,7 +143,7 @@ func (t Test) IntegrationPwdVaultwardenWithEmbeddedClientArgs(testPattern string
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running integration tests with embedded client on locally running Vaultwarden...")
-	args := []string{"test", "./...", "--tags", "integration", "-v", "-race", "-timeout", "10m"}
+	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race", "-timeout", "10m"}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern)
 	}
@@ -165,7 +165,7 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running integration tests with CLI on locally running Vaultwarden...")
-	args := []string{"test", "./...", "--tags", "integration", "-v", "-race", "-timeout", "60m"}
+	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race", "-timeout", "60m"}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern)
 	}
@@ -183,7 +183,7 @@ func (Test) Offline() error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running offline tests...")
-	cmd := exec.Command("go", "test", "./...", "--tags", "offline", "-v", "-race", "-timeout", "30s")
+	cmd := exec.Command("go", "test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "offline", "-v", "-race", "-timeout", "30s")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
