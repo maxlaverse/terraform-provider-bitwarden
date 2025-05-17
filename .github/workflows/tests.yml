@@ -128,6 +128,8 @@ jobs:
   password_manager_bitwarden_embedded:
     runs-on: ubuntu-latest
 
+    # Only runs after the Secrets Manager to prevent rate limiting on login.
+    needs: [secrets_manager_bitwarden]
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
@@ -142,6 +144,7 @@ jobs:
           TEST_COLLECTION_ID: "${{ secrets.BITWARDEN_TEST_COLLECTION_ID }}"
           TEST_FOLDER_ID: "${{ secrets.BITWARDEN_TEST_FOLDER_ID }}"
           TEST_ORGANIZATION_ID: "${{ secrets.BITWARDEN_TEST_ORGANIZATION_ID }}"
+          TEST_SELF_USER_ID: "${{ secrets.BITWARDEN_TEST_SELF_USER_ID }}"
       - name: Code Coverage
         continue-on-error: true
         uses: shogo82148/actions-goveralls@v1
