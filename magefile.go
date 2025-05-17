@@ -7,13 +7,23 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/magefile/mage/mg"
 )
 
 type Test mg.Namespace
+type Setup mg.Namespace
 
-// Installs the dependencies for the project.
+func Build() error {
+	mg.Deps(InstallDeps)
+
+	fmt.Println("Building the provider...")
+	cmd := exec.Command("go", "build")
+	return cmd.Run()
+}
+
+// Install the dependencies for the project.
 func InstallDeps() error {
 	fmt.Println("Installing dependencies...")
 	cmd := exec.Command("go", "mod", "download")
@@ -65,7 +75,7 @@ func (t Test) IntegrationOfficialWithEmbeddedClientArgs(testPattern string) erro
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "TEST_BACKEND=official", "TEST_PROVIDER_EXPERIMENTAL_EMBEDDED_CLIENT=1")
+	cmd.Env = append(cmd.Env, "TF_ACC=1", "TEST_BACKEND=official", "TEST_PROVIDER_SERVER_URL=https://vault.bitwarden.com", "TEST_PROVIDER_EXPERIMENTAL_EMBEDDED_CLIENT=1")
 	return cmd.Run()
 }
 
@@ -127,7 +137,7 @@ func (Test) Offline() error {
 	return cmd.Run()
 }
 
-// Generates and formats the documentation for the project.
+// Generate and formats the documentation for the project.
 func GenerateDocumentation() error {
 	fmt.Println("Generating documentation...")
 	cmd := exec.Command("go", "run", "github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.19.0")
@@ -142,7 +152,7 @@ func GenerateDocumentation() error {
 	return cmd.Run()
 }
 
-// Starts a Vaultwarden instance to run tests against.
+// Start a Vaultwarden instance to run tests against.
 func Vaultwarden() error {
 	fmt.Println("Starting Vaultwarden and Nginx reverse proxy...")
 	cmd := exec.Command("docker-compose", "up")
@@ -151,7 +161,7 @@ func Vaultwarden() error {
 	return cmd.Run()
 }
 
-// Removes local copies of test Vaults and clears the test results cache.
+// Remove local copies of test Vaults and clears the test results cache.
 func Clean() error {
 	fmt.Println("Cleaning...")
 	os.RemoveAll("internal/provider/.bitwarden/data.json")
@@ -160,4 +170,50 @@ func Clean() error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// Install Install the development version of the provider to ~/.terraformrc
+func (Setup) Install() error {
+	fmt.Println("Installing the development version of the provider...")
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	workDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	terraformrcPath := filepath.Join(homeDir, ".terraformrc")
+
+	// Check if file exists
+	if _, err := os.Stat(terraformrcPath); err == nil {
+		fmt.Printf("File %s already exists. Do you want to overwrite it? [y/N]: ", terraformrcPath)
+		var response string
+		fmt.Scanln(&response)
+		if response != "y" && response != "Y" {
+			return fmt.Errorf("operation cancelled by user")
+		}
+	}
+
+	content := fmt.Sprintf(`provider_installation {
+	dev_overrides {
+		"maxlaverse/bitwarden" = "%s"
+	}
+	direct {}
+}`, workDir)
+
+	return os.WriteFile(terraformrcPath, []byte(content), 0644)
+}
+
+// Removes the entire ~/.terraformrc file.
+func (Setup) Uninstall() error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	terraformrcPath := filepath.Join(homeDir, ".terraformrc")
+	return os.Remove(terraformrcPath)
 }
