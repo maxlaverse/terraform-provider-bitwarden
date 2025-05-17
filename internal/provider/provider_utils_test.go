@@ -506,7 +506,7 @@ func spawnTestSecretsManager(t *testing.T) (string, func()) {
 }
 
 func tfConfigSecretsManagerProvider() (string, bool) {
-	accessToken := os.Getenv("TEST_REAL_BWS_ACCESS_TOKEN")
+	accessToken := os.Getenv("TEST_PROVIDER_ACCESS_TOKEN")
 	return fmt.Sprintf(`
 	provider "bitwarden" {
 		access_token = "%s"

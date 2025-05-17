@@ -39,17 +39,27 @@ func (t Test) All() error {
 		return err
 	}
 
-	err = t.IntegrationVaultwardenWithEmbeddedClient()
+	err = t.IntegrationPwdVaultwardenWithEmbeddedClient()
 	if err != nil {
 		return err
 	}
 
-	err = t.IntegrationOfficialWithEmbeddedClient()
+	err = t.IntegrationPwdOfficialWithEmbeddedClient()
 	if err != nil {
 		return err
 	}
 
-	err = t.IntegrationVaultwardenWithCLI()
+	err = t.IntegrationBwsOfficial()
+	if err != nil {
+		return err
+	}
+
+	err = t.IntegrationBwsMocked()
+	if err != nil {
+		return err
+	}
+
+	err = t.IntegrationPwdVaultwardenWithCLI()
 	if err != nil {
 		return err
 	}
@@ -57,16 +67,16 @@ func (t Test) All() error {
 	return nil
 }
 
-// Run the integration tests with the embedded client on the official bitwarden.com backend.
-func (t Test) IntegrationOfficialWithEmbeddedClient() error {
-	return t.IntegrationOfficialWithEmbeddedClientArgs("")
+// Run Password Manager integration tests with embedded client on bitwarden.com.
+func (t Test) IntegrationPwdOfficialWithEmbeddedClient() error {
+	return t.IntegrationPwdOfficialWithEmbeddedClientArgs("")
 }
 
-// Run certain integration tests with the embedded client on the official bitwarden.com backend.
-func (t Test) IntegrationOfficialWithEmbeddedClientArgs(testPattern string) error {
+// Like test:integrationPwdOfficialWithEmbeddedClient but with a test pattern.
+func (t Test) IntegrationPwdOfficialWithEmbeddedClientArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
-	fmt.Println("Running integration tests with embedded client on official bitwarden.com backend...")
+	fmt.Println("Running Password Manager integration tests with embedded client on official bitwarden.com instances...")
 	args := []string{"test", "./...", "--tags", "integration", "-v", "-race", "-timeout", "20m"}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern)
@@ -79,13 +89,57 @@ func (t Test) IntegrationOfficialWithEmbeddedClientArgs(testPattern string) erro
 	return cmd.Run()
 }
 
-// Run the integration tests with the embedded client on a locally running Vaultwarden instance.
-func (t Test) IntegrationVaultwardenWithEmbeddedClient() error {
-	return t.IntegrationVaultwardenWithEmbeddedClientArgs("")
+// Run Bitwarden Secrets integration tests with embedded client on bitwarden.com.
+func (t Test) IntegrationBwsOfficial() error {
+	return t.IntegrationBwsOfficialArgs("")
 }
 
-// Run certain integration tests with the embedded client on a locally running Vaultwarden instance.
-func (Test) IntegrationVaultwardenWithEmbeddedClientArgs(testPattern string) error {
+// Like test:integrationBwsOfficial but with a test pattern.
+func (t Test) IntegrationBwsOfficialArgs(testPattern string) error {
+	mg.Deps(InstallDeps)
+
+	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on official bitwarden.com instances...")
+	args := []string{"test", "./...", "--tags", "integrationBws", "-v", "-race", "-timeout", "20m"}
+	if testPattern != "" {
+		args = append(args, "-run", testPattern)
+	}
+	cmd := exec.Command("go", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "TF_ACC=1", "TEST_BACKEND=official")
+	return cmd.Run()
+}
+
+// Run Bitwarden Secrets integration tests with embedded client on mocked backend.
+func (t Test) IntegrationBwsMocked() error {
+	return t.IntegrationBwsMockedArgs("")
+}
+
+// Run certain Bitwarden Secrets integration tests with embedded client on mocked backend.
+func (t Test) IntegrationBwsMockedArgs(testPattern string) error {
+	mg.Deps(InstallDeps)
+
+	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on mocked backend...")
+	args := []string{"test", "./...", "--tags", "integrationBws", "-v", "-race", "-timeout", "20m"}
+	if testPattern != "" {
+		args = append(args, "-run", testPattern)
+	}
+	cmd := exec.Command("go", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "TF_ACC=1", "TEST_BACKEND=vaultwarden")
+	return cmd.Run()
+}
+
+// Run Password Manager integration tests with embedded client on locally running Vaultwarden instance.
+func (t Test) IntegrationPwdVaultwardenWithEmbeddedClient() error {
+	return t.IntegrationPwdVaultwardenWithEmbeddedClientArgs("")
+}
+
+// Like test:integrationPwdVaultwardenWithEmbeddedClient but with a test pattern.
+func (t Test) IntegrationPwdVaultwardenWithEmbeddedClientArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running integration tests with embedded client on locally running Vaultwarden...")
@@ -101,13 +155,13 @@ func (Test) IntegrationVaultwardenWithEmbeddedClientArgs(testPattern string) err
 	return cmd.Run()
 }
 
-// Run the integration tests with the CLI on a locally running Vaultwarden instance.
-func (t Test) IntegrationVaultwardenWithCLI() error {
-	return t.IntegrationVaultwardenWithCLIArgs("")
+// Run Password Manager integration tests with CLI on locally running Vaultwarden instance.
+func (t Test) IntegrationPwdVaultwardenWithCLI() error {
+	return t.IntegrationPwdVaultwardenWithCLIArgs("")
 }
 
-// Run certain integration tests with the CLI on a locally running Vaultwarden instance.
-func (Test) IntegrationVaultwardenWithCLIArgs(testPattern string) error {
+// Like test:integrationPwdVaultwardenWithCLI but with a test pattern.
+func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running integration tests with CLI on locally running Vaultwarden...")
@@ -124,7 +178,7 @@ func (Test) IntegrationVaultwardenWithCLIArgs(testPattern string) error {
 	return cmd.Run()
 }
 
-// Run the tests not requiring a running Bitwarden-compatible backend.
+// Run tests not requiring a running Bitwarden-compatible backend.
 func (Test) Offline() error {
 	mg.Deps(InstallDeps)
 

@@ -159,7 +159,7 @@ The provider includes several types of tests:
    a. With the Embedded Client against the official Bitwarden instance. This requires Bitwarden credentials and object identifiers in `.env.official` file (see [.env.official-example](./.env.official-example)):
 
    ```sh
-   $ mage test:integrationOfficialWithEmbeddedClient
+   $ mage test:integrationPwdOfficialWithEmbeddedClient
    ```
 
    b. With the Embedded Client against a local Vaultwarden instance. First ensure start Vaultwarden locally:
@@ -168,7 +168,7 @@ The provider includes several types of tests:
    ```
    Then, run the tests:
    ```sh
-   $ mage test:integrationVaultwardenWithEmbeddedClient
+   $ mage test:integrationPwdVaultwardenWithEmbeddedClient
    ```
 
    c. With the Bitwarden CLI against a local Vaultwarden instance. First ensure start Vaultwarden locally:
@@ -177,7 +177,7 @@ The provider includes several types of tests:
    ```
    Then, run the tests:
    ```sh
-   $ mage test:integrationVaultwardenWithCLI
+   $ mage test:integrationPwdVaultwardenWithCLI
    ```
 
 3. **Run All Tests**: To run the complete test suite:
