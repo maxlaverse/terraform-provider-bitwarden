@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -920,6 +922,15 @@ func verifyDecryptedObject[T any](ctx context.Context, actual, expected T) error
 	return nil
 }
 
+// compareObjects compares two objects of the same type, ignoring specified fields.
+// The ignoreFields parameter accepts paths in either:
+//   - RFC6901 JSON pointer format (e.g., "/attachments/0/url")
+//   - Golang path.Match pattern (e.g., "/attachments/*/url")
+//
+// Examples:
+//   - "/revisionDate" - ignores the revisionDate field
+//   - "/attachments/*/url" - ignores the url field in all attachments
+//   - "/collectionIds" - ignores the collectionIds array
 func compareObjects[T any](_ context.Context, actual, expected T, ignoreFields ...string) error {
 	patch, err := jsondiff.Compare(actual, expected, jsondiff.Ignores(ignoreFields...), jsondiff.Equivalent())
 	if err != nil {
@@ -928,7 +939,13 @@ func compareObjects[T any](_ context.Context, actual, expected T, ignoreFields .
 
 	differentKeys := []string{}
 	for _, p := range patch {
-		differentKeys = append(differentKeys, p.Path)
+		matchedWildcardRule := slices.ContainsFunc(ignoreFields, func(pattern string) bool {
+			matched, _ := path.Match(pattern, p.Path)
+			return matched
+		})
+		if !matchedWildcardRule {
+			differentKeys = append(differentKeys, p.Path)
+		}
 	}
 	if len(differentKeys) == 0 {
 		return nil
