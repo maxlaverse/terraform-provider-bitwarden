@@ -16,9 +16,21 @@ on:
       - "*.go"
       - "go.*"
   workflow_dispatch:
+    inputs:
+      job_to_run:
+        description: "Select which job to run"
+        required: true
+        default: "offline"
+        type: choice
+        options:
+          - offline
+          - vaultwarden_cli
+          - vaultwarden_embedded
+          - bitwarden_embedded
 
 jobs:
   offline:
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.job_to_run == 'offline'
     runs-on: ubuntu-latest
 
     steps:
@@ -29,6 +41,7 @@ jobs:
         run: mage test:offline
 
   vaultwarden_cli:
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.job_to_run == 'vaultwarden_cli'
     runs-on: ubuntu-latest
 
     services:
@@ -73,6 +86,7 @@ jobs:
 
 
   vaultwarden_embedded:
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.job_to_run == 'vaultwarden_embedded'
     runs-on: ubuntu-latest
 
     services:
@@ -110,7 +124,7 @@ jobs:
 
 
   bitwarden_embedded:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job_to_run == 'bitwarden_embedded'
     runs-on: ubuntu-latest
 
     steps:
