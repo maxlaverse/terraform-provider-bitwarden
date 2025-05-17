@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  test_offline:
+  offline:
     runs-on: ubuntu-latest
 
     steps:
@@ -28,7 +28,7 @@ jobs:
       - name: Run tests
         run: mage test:offline
 
-  test_vaultwarden_cli:
+  vaultwarden_cli:
     runs-on: ubuntu-latest
 
     services:
@@ -72,7 +72,7 @@ jobs:
         run: mage test:integrationVaultwardenWithCLI
 
 
-  test_vaultwarden_embedded:
+  vaultwarden_embedded:
     runs-on: ubuntu-latest
 
     services:
@@ -109,7 +109,7 @@ jobs:
       
 
 
-  test_bitwarden_official:
+  bitwarden_official:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
