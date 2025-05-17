@@ -353,11 +353,17 @@ func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj mode
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
+	err = v.checkMembersExistence(ctx, obj.OrganizationID, obj.Users)
+	if err != nil {
+		return nil, err
+	}
+
 	if !v.objectsLoaded() {
 		return nil, models.ErrVaultLocked
 	}
 
 	manageMembership := len(obj.Users) > 0
+	obj.Manage = manageMembership
 
 	encObj, err := encryptOrgCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 	if err != nil {
@@ -419,6 +425,11 @@ func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models
 
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
+
+	err = v.checkMembersExistence(ctx, obj.OrganizationID, obj.Users)
+	if err != nil {
+		return nil, err
+	}
 
 	if !v.objectsLoaded() {
 		return nil, models.ErrVaultLocked
@@ -1230,6 +1241,21 @@ After writing an object and re-fetching it, the server returned a slightly diffe
 To learn more about this issue and how to handle it, please:
 1. Consider reporting affected fields at: https://github.com/maxlaverse/terraform-provider-bitwarden/issues/new
 2. Check the documentation of the 'experimental.disable_sync_after_write_verification' attribute`, err)
+		}
+	}
+	return nil
+}
+
+func (v *webAPIVault) checkMembersExistence(ctx context.Context, orgId string, users []models.OrgCollectionMember) error {
+	err := v.ensureUsersLoadedForOrg(ctx, orgId)
+	if err != nil {
+		return fmt.Errorf("error getting users for org: %w", err)
+	}
+
+	for _, user := range users {
+		_, err := v.organizationMembers.FindMemberByID(orgId, user.Id)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
