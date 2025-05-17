@@ -29,6 +29,7 @@ The plugin has been tested and built with the following components:
 - [Terraform] v1.9.8 / [OpenTofu] v1.9.0
 - [Bitwarden CLI] v2025.2.0 (when not using the [Embedded Client](#embedded-client))
 - [Go] 1.24.1 (for development)
+- [Mage] 1.15.0 (for development)
 - [Docker] 24.0.6 (for development)
 
 The provider is likely to work with older versions, but those haven't been tested.
@@ -136,20 +137,59 @@ Please note that this file is stored at `<your-project>/.bitwarden/` by default,
 
 If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
 
+### Building the Provider
+
 To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
 
-To generate or update documentation, run `go generate`.
+### Documentation
 
-In order to run the full suite of Acceptance tests, start a Vaultwarden server:
+To generate or update documentation, run:
 
 ```sh
-$ make server
+$ mage generateDocumentation
 ```
 
-Then run `make testacc`.
+### Running Tests
+
+The provider includes several types of tests:
+
+1. **Offline Tests**: Run tests that don't require a Bitwarden backend:
+   ```sh
+   $ mage test:offline
+   ```
+
+2. **Integration Tests**: There are three types of integration tests:
+
+   a. With embedded client on official Bitwarden backend:
+   ```sh
+   $ mage test:integrationOfficialWithEmbeddedClient
+   ```
+
+   b. With embedded client on local Vaultwarden:
+   ```sh
+   # First ensure a local Vaultwarden server is running:
+   $ mage vaultwarden
+   # Then:
+   $ mage test:integrationVaultwardenWithEmbeddedClient
+   ```
+
+   c. With CLI on local Vaultwarden:
+   ```sh
+   # First ensure a local Vaultwarden server is running:
+   $ mage vaultwarden
+   # Then:
+   $ mage test:integrationVaultwardenWithCLI
+   ```
+
+3. **Run All Tests**: To run the complete test suite:
+   ```sh
+   $ mage test:all
+   ```
+
+To clean up test artifacts and clear the test cache:
 
 ```sh
-$ make testacc
+$ mage clean
 ```
 
 ## Disclaimer
@@ -166,6 +206,7 @@ Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more informa
 [Docker]: https://www.docker.com/products/docker-desktop
 [Go]: https://golang.org/doc/install
 [hashicorp/terraform-plugin-sdk#63]: https://github.com/hashicorp/terraform-plugin-sdk/issues/63
+[Mage]: https://magefile.org/
 [OpenTofu]: https://opentofu.org/
 [Password Manager]: https://bitwarden.com/products/personal/
 [Secrets Manager]: https://bitwarden.com/products/secrets-manager/

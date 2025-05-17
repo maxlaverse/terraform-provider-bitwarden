@@ -3,7 +3,7 @@ data "bitwarden_organization" "terraform" {
   search = "Terraform"
 }
 data "bitwarden_org_member" "john" {
-  email          = "john@example.com"
+  email           = "john@example.com"
   organization_id = data.bitwarden_organization.terraform.id
 }
 

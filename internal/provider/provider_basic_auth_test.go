@@ -21,6 +21,8 @@ const (
 )
 
 func TestAccProviderAuthUsernamePassword(t *testing.T) {
+	SkipIfOfficialBackend(t, "Skipping test because official backend asks for a code to be sent to the email address")
+
 	ensureVaultwardenHasUser(t)
 	validProvider := usernamePasswordTestProvider(testEmail, testMasterPassword)
 	invalidPassword := usernamePasswordTestProvider(testEmail, "incorrect-password")

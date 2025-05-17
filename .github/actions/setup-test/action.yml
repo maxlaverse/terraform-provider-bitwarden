@@ -1,39 +1,27 @@
-name: Unit Tests
+name: 'Setup Test Environment'
+description: 'Sets up the test environment'
 
-on:
-  push:
-    branches: [main]
-    paths:
-      - "tools/**"
-      - "internal/**"
-      - "*.go"
-      - "go.*"
-  pull_request:
-    branches: [main]
-    paths:
-      - "tools/**"
-      - "internal/**"
-      - "*.go"
-      - "go.*"
-  workflow_dispatch:
+inputs:
+  installCLI:
+    description: 'Install Bitwarden CLI'
+    required: false
+    default: 'false'
+    type: boolean
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
+runs:
+  using: "composite"
+  steps:
       - id: go-cache-paths
+        shell: bash
         run: |
           echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_OUTPUT
           echo "GOMODCACHE=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
 
       - id: binaries
+        shell: bash
         run: |
           echo "LOCAL_BINARIES=$GITHUB_WORKSPACE/bin" >> $GITHUB_OUTPUT
           echo "BWCLI_VERSION=2025.2.0" >> $GITHUB_OUTPUT
-
-      - name: Check out repository code
-        uses: actions/checkout@v3
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -54,20 +42,19 @@ jobs:
           path: ${{ steps.go-cache-paths.outputs.GOMODCACHE }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
-      # - name: Setup Node.js
-      #   uses: actions/setup-node@v4
-      #   with:
-      #     node-version: 23.x
+      - name: Setup Node.js
+        if: ${{ inputs.installCLI }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 23.x
 
-      # - name: Install Bitwarden CLI
-      #   run: |
-      #     npm install -g @bitwarden/cli@${{ steps.binaries.outputs.BWCLI_VERSION }}
+      - name: Install Bitwarden CLI
+        if: ${{ inputs.installCLI }}
+        shell: bash
+        run: |
+          npm install -g @bitwarden/cli@${{ steps.binaries.outputs.BWCLI_VERSION }}
 
-      - name: Build
-        run: go build -v ./...
-
-      - name: Offline Tests
-        run: go test -coverprofile=profile.cov -v -race -coverpkg=./... ./... --tags offline
-        env:
-          TF_ACC: "1"
-          TEST_BACKEND: "vaultwarden" # TODO: remove
+      - name: Install Mage
+        shell: bash
+        run: |
+          go install github.com/magefile/mage@v1.15.0

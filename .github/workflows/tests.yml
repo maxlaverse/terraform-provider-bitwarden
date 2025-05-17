@@ -1,0 +1,122 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/**"
+      - "internal/**"
+      - "*.go"
+      - "go.*"
+  pull_request:
+    branches: [main]
+    paths:
+      - "tools/**"
+      - "internal/**"
+      - "*.go"
+      - "go.*"
+  workflow_dispatch:
+
+jobs:
+  test_offline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - uses: ./.github/actions/setup-test
+      - name: Run tests
+        run: mage test:offline
+
+  test_vaultwarden_cli:
+    runs-on: ubuntu-latest
+
+    services:
+      vaultwarden:
+        image: vaultwarden/server:1.32.5
+        env:
+          ADMIN_TOKEN: test1234
+          I_REALLY_WANT_VOLATILE_STORAGE: "true"
+          DISABLE_ICON_DOWNLOAD: "true"
+          LOGIN_RATELIMIT_SECONDS: "1"
+          LOGIN_RATELIMIT_MAX_BURST: "1000000"
+          ADMIN_RATELIMIT_SECONDS: "1"
+          ADMIN_RATELIMIT_MAX_BURST: "1000000"
+          DOMAIN: http://127.0.0.1:8000
+          ROCKET_PORT: 8000
+        options: >-
+          --health-cmd "curl -f http://localhost:8000/"
+          --health-interval 600s
+          --health-timeout 10s
+          --health-retries 10
+          --health-start-period 15s
+          --health-start-interval 6s
+        ports:
+          - 8000:8000
+        volumes:
+          - /dev/shm/vaultwarden-data:/data
+      nginx:
+        image: maxlaverse/nginx-vaultwarden
+        ports:
+          - 8080:8080
+        options: >-
+          --link vaultwarden
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - uses: ./.github/actions/setup-test
+        with:
+          installCLI: true
+      - name: Run tests
+        run: mage test:integrationVaultwardenWithCLI
+
+
+  test_vaultwarden_embedded:
+    runs-on: ubuntu-latest
+
+    services:
+      vaultwarden:
+        image: vaultwarden/server:1.32.5
+        env:
+          ADMIN_TOKEN: test1234
+          I_REALLY_WANT_VOLATILE_STORAGE: "true"
+          DISABLE_ICON_DOWNLOAD: "true"
+          LOGIN_RATELIMIT_SECONDS: "1"
+          LOGIN_RATELIMIT_MAX_BURST: "1000000"
+          ADMIN_RATELIMIT_SECONDS: "1"
+          ADMIN_RATELIMIT_MAX_BURST: "1000000"
+          DOMAIN: http://127.0.0.1:8000
+          ROCKET_PORT: 8000
+        options: >-
+          --health-cmd "curl -f http://localhost:8000/"
+          --health-interval 600s
+          --health-timeout 10s
+          --health-retries 10
+          --health-start-period 15s
+          --health-start-interval 6s
+        ports:
+          - 8000:8000
+        volumes:
+          - /dev/shm/vaultwarden-data:/data
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - uses: ./.github/actions/setup-test
+      - name: Run tests
+        run: mage test:integrationVaultwardenWithEmbeddedClient
+      
+
+
+  test_bitwarden_official:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - uses: ./.github/actions/setup-test
+      - name: Run tests
+        run: mage test:integrationOfficialWithEmbeddedClient
+     

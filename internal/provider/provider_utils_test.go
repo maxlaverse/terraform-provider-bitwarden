@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -397,12 +396,7 @@ func bwOfficialTestClient(t *testing.T) bwcli.PasswordManagerClient {
 		t.Fatal(err)
 	}
 
-	bwExec, err := exec.LookPath("bw")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	client := bwcli.NewPasswordManagerClient(bwExec, bwcli.DisableRetryBackoff(), bwcli.WithAppDataDir(vault))
+	client := bwcli.NewPasswordManagerClient(bwcli.DisableRetryBackoff(), bwcli.WithAppDataDir(vault))
 	status, err := client.Status(context.Background())
 	if err != nil {
 		t.Fatal(err)
