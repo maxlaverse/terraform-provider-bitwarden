@@ -201,26 +201,6 @@ func TestProviderAuthForPasswordManager_ThrowsErrorOnMissingEmail(t *testing.T) 
 	}
 }
 
-func TestProviderAuth_ThrowsErrorOnMissingServer(t *testing.T) {
-	t.Skip("Test seems invalid - Skipping")
-
-	raw := map[string]interface{}{
-		"email":           "test@laverse.net",
-		"master_password": "master-password-9",
-	}
-
-	p := New(versionTestSkippedLogin)()
-
-	config := terraform.NewResourceConfigRaw(raw)
-	diag := p.Validate(config)
-	assert.False(t, diag.HasError())
-
-	diag = p.Configure(context.Background(), config)
-	assert.False(t, diag.HasError())
-
-	assert.Implements(t, (*bwcli.PasswordManagerClient)(nil), p.Meta())
-}
-
 func TestSyncAfterWriteVerificationDisabled(t *testing.T) {
 	raw := map[string]interface{}{
 		"server":          "http://127.0.0.1/",
