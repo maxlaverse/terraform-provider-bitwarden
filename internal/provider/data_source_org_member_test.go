@@ -10,6 +10,8 @@ import (
 )
 
 func TestAccDataSourceOrgMemberAttribute(t *testing.T) {
+	SkipAsNotImplementedForOfficialBackend(t)
+
 	ensureVaultwardenConfigured(t)
 
 	if !useEmbeddedClient {

@@ -48,10 +48,8 @@ type PasswordManagerClient interface {
 	Unlock(ctx context.Context, password string) error
 }
 
-func NewPasswordManagerClient(execPath string, opts ...Options) PasswordManagerClient {
-	c := &client{
-		execPath: execPath,
-	}
+func NewPasswordManagerClient(opts ...Options) PasswordManagerClient {
+	c := &client{}
 
 	for _, o := range opts {
 		o(c)
@@ -66,7 +64,6 @@ type client struct {
 	appDataDir          string
 	disableSync         bool
 	disableRetryBackoff bool
-	execPath            string
 	extraCACertsPath    string
 	newCommand          command.NewFn
 	sessionKey          string
@@ -444,7 +441,7 @@ func (c *client) Sync(ctx context.Context) error {
 }
 
 func (c *client) cmd(args ...string) command.Command {
-	return c.newCommand(c.execPath, args...).AppendEnv(c.env())
+	return c.newCommand("bw", args...).AppendEnv(c.env())
 }
 
 func (c *client) cmdWithSession(args ...string) command.Command {

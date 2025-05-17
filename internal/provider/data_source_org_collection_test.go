@@ -16,15 +16,24 @@ func TestAccDataSourceOrgCollection(t *testing.T) {
 
 	resourceName := "data.bitwarden_org_collection.foo_data"
 
+	var nameAssertion resource.TestCheckFunc
+	if IsOfficialBackend() {
+		nameAssertion = resource.TestCheckResourceAttr(
+			resourceName, schema_definition.AttributeName, "Default collection",
+		)
+	} else {
+		nameAssertion = resource.TestMatchResourceAttr(
+			resourceName, schema_definition.AttributeName, regexp.MustCompile("^coll-([0-9]{6})$"),
+		)
+	}
+
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigPasswordManagerProvider() + tfConfigDataOrgCollection(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestMatchResourceAttr(
-						resourceName, schema_definition.AttributeName, regexp.MustCompile("^coll-([0-9]{6})$"),
-					),
+					nameAssertion,
 					resource.TestMatchResourceAttr(
 						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
 					),

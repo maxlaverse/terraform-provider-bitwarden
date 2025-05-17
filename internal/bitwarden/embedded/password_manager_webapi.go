@@ -272,7 +272,7 @@ func (v *webAPIVault) CreateFolder(ctx context.Context, obj models.Folder) (*mod
 			return nil, fmt.Errorf("error getting folder after creation (sync-after-write): %w", err)
 		}
 
-		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj)
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/revisionDate")
 	}
 	return resObj, nil
 }
@@ -762,7 +762,9 @@ func (v *webAPIVault) EditItem(ctx context.Context, obj models.Item) (*models.It
 		// NOTE: The official Bitwarden server returns dates that are a few milliseconds apart
 		//       between the object's creation call and a later retrieval. We need to ignore
 		//       these differences in the diff.
-		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/revisionDate")
+		// NOTE: The official Bitwarden server don't return the collectionIds in the response
+		//       for items, even if they're actually taken into account.
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/revisionDate", "/collectionIds")
 	}
 	return resObj, nil
 }

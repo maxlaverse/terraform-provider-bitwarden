@@ -1,0 +1,69 @@
+name: 'Setup Test Environment'
+description: 'Sets up the test environment'
+
+inputs:
+  installCLI:
+    description: 'Install Bitwarden CLI'
+    required: false
+    default: 'false'
+    type: boolean
+  bwcliVersion:
+    description: 'Version of Bitwarden CLI to install'
+    required: false
+    default: '2025.2.0'
+    type: string
+  goVersion:
+    description: 'Version of Go to install'
+    required: false
+    default: '1.24.0'
+    type: string
+  nodeVersion:
+    description: 'Version of Node.js to install'
+    required: false
+    default: '23.x'
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+      - id: go-cache-paths
+        shell: bash
+        run: |
+          echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "GOMODCACHE=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ">=${{ inputs.goVersion }}"
+
+      # Cache go build cache, used to speedup go test
+      - name: Go Build Cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.go-cache-paths.outputs.GOCACHE }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
+
+      # Cache go mod cache, used to speedup builds
+      - name: Go Mod Cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.go-cache-paths.outputs.GOMODCACHE }}
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+
+      - name: Setup Node.js
+        if: ${{ inputs.installCLI }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+
+      - name: Install Bitwarden CLI
+        if: ${{ inputs.installCLI }}
+        shell: bash
+        run: |
+          npm install -g @bitwarden/cli@${{ inputs.bwcliVersion }}
+
+      - name: Install Mage
+        shell: bash
+        run: |
+          go install github.com/magefile/mage@v1.15.0
