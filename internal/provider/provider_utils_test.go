@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -102,24 +104,12 @@ func init() {
 // getProjectRoot returns the absolute path to the project root directory
 func getProjectRoot() (string, error) {
 	// Start from the current directory (where the test is running)
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("failed to get current directory: %w", err)
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("unable to get caller information")
 	}
-
-	// Look for go.mod file to identify project root
-	for {
-		if _, err := os.Stat(filepath.Join(currentDir, "go.mod")); err == nil {
-			return currentDir, nil
-		}
-
-		// Move up one directory
-		parent := filepath.Dir(currentDir)
-		if parent == currentDir {
-			return "", fmt.Errorf("could not find project root (go.mod not found)")
-		}
-		currentDir = parent
-	}
+	currentDir := filepath.Dir(file)
+	return path.Join(currentDir, "../../"), nil
 }
 
 // loadEnvironmentVariables loads all environment variables used in tests
