@@ -57,7 +57,7 @@ func (t Test) IntegrationOfficialWithEmbeddedClientArgs(testPattern string) erro
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running integration tests with embedded client on official bitwarden.com backend...")
-	args := []string{"test", "./...", "--tags", "integration", "-v", "-race", "-timeout", "120m"}
+	args := []string{"test", "./...", "--tags", "integration", "-v", "-race", "-timeout", "20m"}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern)
 	}
@@ -79,7 +79,7 @@ func (Test) IntegrationVaultwardenWithEmbeddedClientArgs(testPattern string) err
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running integration tests with embedded client on locally running Vaultwarden...")
-	args := []string{"test", "./...", "--tags", "integration", "-v", "-race", "-timeout", "120m"}
+	args := []string{"test", "./...", "--tags", "integration", "-v", "-race", "-timeout", "10m"}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern)
 	}
@@ -101,7 +101,7 @@ func (Test) IntegrationVaultwardenWithCLIArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running integration tests with CLI on locally running Vaultwarden...")
-	args := []string{"test", "./...", "--tags", "integration", "-v", "-race", "-timeout", "120m"}
+	args := []string{"test", "./...", "--tags", "integration", "-v", "-race", "-timeout", "60m"}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern)
 	}
