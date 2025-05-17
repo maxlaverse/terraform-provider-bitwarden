@@ -668,63 +668,97 @@ func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, r
 }
 
 func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *http.Request) (*T, error) {
-	logRequest(ctx, httpReq)
+	reqBody := readAndRestoreRequestBody(ctx, httpReq)
 
-	resp, err := httpClient.Do(httpReq)
+	httpResp, err := httpClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("error doing request to '%s': %w", httpReq.URL, err)
 	}
-	defer resp.Body.Close()
+	defer httpResp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(httpResp.Body)
+	logRequestAndResponse(ctx, httpReq, reqBody, httpResp, respBody)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body from '%s %s': %w", httpReq.Method, httpReq.URL, err)
 	}
 
-	debugInfo := map[string]interface{}{"status_code": resp.StatusCode, "url": httpReq.URL.RequestURI(), "body": string(body), "headers": resp.Header}
-	tflog.Trace(ctx, "Response from Bitwarden server", debugInfo)
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("bad response status code for '%s %s': %d!=200, body:%s", httpReq.Method, httpReq.URL, resp.StatusCode, string(body))
+	if httpResp.StatusCode != 200 {
+		if strings.Contains(httpResp.Header.Get("Content-Type"), "application/json") {
+			var errResp ErrorResponse
+			err = json.Unmarshal(respBody, &errResp)
+			if err == nil && errResp.Object == "error" {
+				return nil, &HTTPError{
+					StatusCode: httpResp.StatusCode,
+					Message:    fmt.Sprintf("the server returned an error: \"%s\"", errResp.Message),
+				}
+			}
+		}
+		return nil, &HTTPError{
+			StatusCode: httpResp.StatusCode,
+			Message:    fmt.Sprintf("bad response status code for '%s %s': %d!=200, body:%s", httpReq.Method, httpReq.URL, httpResp.StatusCode, string(respBody)),
+		}
 	}
 
 	var res T
 	if _, ok := any(&res).(*[]byte); ok {
-		return any(&body).(*T), nil
+		return any(&respBody).(*T), nil
 	}
 
-	if len(body) == 0 {
+	if len(respBody) == 0 {
 		return nil, nil
 	}
-	err = json.Unmarshal(body, &res)
+	err = json.Unmarshal(respBody, &res)
 	if err != nil {
-		fmt.Printf("Body to unmarshall: %s\n", string(body))
+		fmt.Printf("Body to unmarshall: %s\n", string(respBody))
 		return nil, fmt.Errorf("error unmarshalling response from '%s': %w", httpReq.URL, err)
 	}
 
 	return &res, nil
 }
 
-func logRequest(ctx context.Context, httpReq *http.Request) {
-	debugInfo := map[string]interface{}{
-		"url":     httpReq.URL.RequestURI(),
-		"method":  httpReq.Method,
-		"headers": httpReq.Header,
+func logRequestAndResponse(ctx context.Context, httpReq *http.Request, reqBody []byte, httpResp *http.Response, respBody []byte) {
+	requestInfo := map[string]interface{}{}
+	responseInfo := map[string]interface{}{}
+
+	if httpReq != nil {
+		requestInfo["url"] = httpReq.URL.RequestURI()
+		requestInfo["method"] = httpReq.Method
+		requestInfo["headers"] = httpReq.Header
+		if len(reqBody) > 0 {
+			requestInfo["body"] = string(reqBody)
+		}
 	}
 
-	if httpReq.Body != nil {
-		bodyCopy, newBody, err := readAndRestoreBody(httpReq.Body)
-		if err != nil {
-			tflog.Trace(ctx, "Unable to re-read request body", map[string]interface{}{"error": err})
+	if httpResp != nil {
+		responseInfo["status_code"] = httpResp.StatusCode
+		responseInfo["headers"] = httpResp.Header
+		if len(respBody) > 0 {
+			responseInfo["body"] = string(respBody)
 		}
-		httpReq.Body = newBody
-		debugInfo["body"] = string(bodyCopy)
+	}
+
+	debugInfo := map[string]interface{}{
+		"request":  requestInfo,
+		"response": responseInfo,
 	}
 
 	tflog.Trace(ctx, "Request to Bitwarden server ", debugInfo)
 }
 
-func readAndRestoreBody(rc io.ReadCloser) ([]byte, io.ReadCloser, error) {
+func readAndRestoreRequestBody(ctx context.Context, httpReq *http.Request) []byte {
+	if httpReq.Body == nil {
+		return nil
+	}
+
+	bodyCopy, newBody, err := readReader(httpReq.Body)
+	if err != nil {
+		tflog.Trace(ctx, "Unable to re-read request body", map[string]interface{}{"error": err})
+	}
+	httpReq.Body = newBody
+	return bodyCopy
+}
+
+func readReader(rc io.ReadCloser) ([]byte, io.ReadCloser, error) {
 	var buf bytes.Buffer
 
 	tee := io.TeeReader(rc, &buf)
