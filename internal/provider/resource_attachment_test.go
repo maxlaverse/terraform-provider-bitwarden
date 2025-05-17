@@ -15,7 +15,7 @@ import (
 )
 
 func TestAccResourceAttachment(t *testing.T) {
-	SkipIfOfficialBackend(t, "Attachments require Premium status")
+	SkipIfOfficialBackend(t, "Testing Attachments requires a Premium account.")
 
 	ensureVaultwardenConfigured(t)
 
@@ -88,7 +88,7 @@ func TestAccResourceAttachment(t *testing.T) {
 }
 
 func TestAccResourceItemAttachmentFields(t *testing.T) {
-	SkipIfOfficialBackend(t, "Attachments require Premium status")
+	SkipIfOfficialBackend(t, "Testing Attachments requires a Premium account.")
 
 	ensureVaultwardenConfigured(t)
 
@@ -116,7 +116,7 @@ func TestAccResourceItemAttachmentFields(t *testing.T) {
 }
 
 func TestAccMissingAttachmentIsRecreated(t *testing.T) {
-	SkipIfOfficialBackend(t, "Attachments require Premium status")
+	SkipIfOfficialBackend(t, "Testing Attachments requires a Premium account.")
 
 	ensureVaultwardenConfigured(t)
 
@@ -162,7 +162,7 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 }
 
 func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
-	SkipIfOfficialBackend(t, "Attachments require Premium status")
+	SkipIfOfficialBackend(t, "Testing Attachments requires a Premium account.")
 
 	ensureVaultwardenConfigured(t)
 

@@ -54,7 +54,7 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 }
 
 func TestAccResourceItemLoginMany(t *testing.T) {
-	SkipIfOfficialBackend(t, "Creating many items is too slow on the official bitwarden")
+	SkipIfOfficialBackend(t, "Creating many items is too slow on the official bitwarden instances.")
 
 	if !useEmbeddedClient {
 		t.Skip("Skipping test because using the official client to create many items is too slow")

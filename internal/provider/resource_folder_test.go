@@ -11,8 +11,6 @@ import (
 )
 
 func TestAccResourceFolder(t *testing.T) {
-	SkipAsNotImplementedForOfficialBackend(t)
-
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "bitwarden_folder.foo"

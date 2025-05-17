@@ -19,10 +19,6 @@ var New = func(binary string, args ...string) Command {
 	}
 }
 
-var LookupPath = func(binary string) (string, error) {
-	return exec.LookPath(binary)
-}
-
 type command struct {
 	binary string
 	args   []string
