@@ -192,4 +192,4 @@ jobs:
         continue-on-error: true
         uses: shogo82148/actions-goveralls@v1
         with:
-          parallel-finish: true
+          parallel-finished: true
