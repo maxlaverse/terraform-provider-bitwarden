@@ -10,6 +10,7 @@ services:
       - ADMIN_RATELIMIT_SECONDS=1
       - ADMIN_RATELIMIT_MAX_BURST=1000000
       - DOMAIN=http://127.0.0.1:8000
+      - ORG_GROUPS_ENABLED=true
       - ROCKET_PORT=8000
     tmpfs:
       - /data

@@ -77,9 +77,11 @@ func (t Test) IntegrationPwdOfficialWithEmbeddedClientArgs(testPattern string) e
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Password Manager integration tests with embedded client on official bitwarden.com instances...")
-	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race", "-timeout", "20m"}
+	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race"}
 	if testPattern != "" {
-		args = append(args, "-run", testPattern)
+		args = append(args, "-run", testPattern, "-timeout", "1m")
+	} else {
+		args = append(args, "-timeout", "20m")
 	}
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
@@ -99,9 +101,11 @@ func (t Test) IntegrationBwsOfficialArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on official bitwarden.com instances...")
-	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integrationBws", "-v", "-race", "-timeout", "20m"}
+	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integrationBws", "-v", "-race"}
 	if testPattern != "" {
-		args = append(args, "-run", testPattern)
+		args = append(args, "-run", testPattern, "-timeout", "1m")
+	} else {
+		args = append(args, "-timeout", "20m")
 	}
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
@@ -121,9 +125,11 @@ func (t Test) IntegrationBwsMockedArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on mocked backend...")
-	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integrationBws", "-v", "-race", "-timeout", "20m"}
+	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integrationBws", "-v", "-race"}
 	if testPattern != "" {
-		args = append(args, "-run", testPattern)
+		args = append(args, "-run", testPattern, "-timeout", "30s")
+	} else {
+		args = append(args, "-timeout", "20m")
 	}
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
@@ -143,9 +149,11 @@ func (t Test) IntegrationPwdVaultwardenWithEmbeddedClientArgs(testPattern string
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running integration tests with embedded client on locally running Vaultwarden...")
-	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race", "-timeout", "10m"}
+	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race"}
 	if testPattern != "" {
-		args = append(args, "-run", testPattern)
+		args = append(args, "-run", testPattern, "-timeout", "30s")
+	} else {
+		args = append(args, "-timeout", "10m")
 	}
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
@@ -165,9 +173,11 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running integration tests with CLI on locally running Vaultwarden...")
-	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race", "-timeout", "60m"}
+	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race"}
 	if testPattern != "" {
-		args = append(args, "-run", testPattern)
+		args = append(args, "-run", testPattern, "-timeout", "1m")
+	} else {
+		args = append(args, "-timeout", "60m")
 	}
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
@@ -201,7 +211,7 @@ func (Test) OfflineArgs(testPattern string) error {
 }
 
 // Generate and formats the documentation for the project.
-func GenerateDocumentation() error {
+func Docs() error {
 	fmt.Println("Generating documentation...")
 	cmd := exec.Command("go", "run", "github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.19.0")
 	cmd.Stdout = os.Stdout

@@ -210,3 +210,12 @@ type OrgCollection struct {
 	Groups         []interface{}         `json:"groups"` // Required but not used when creating collections using the CLI
 	Manage         bool                  `json:"-"`
 }
+
+type Group struct {
+	AccessAll      bool                  `json:"accessAll"`
+	Collections    []OrgCollectionMember `json:"collections"`
+	ID             string                `json:"id,omitempty"`
+	Name           string                `json:"name,omitempty"`
+	OrganizationID string                `json:"organizationId"`
+	Users          []OrgCollectionMember `json:"users"`
+}
