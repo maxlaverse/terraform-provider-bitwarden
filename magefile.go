@@ -179,11 +179,20 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 }
 
 // Run tests not requiring a running Bitwarden-compatible backend.
-func (Test) Offline() error {
+func (t Test) Offline() error {
+	return t.OfflineArgs("")
+}
+
+// Like test:offline but with a test pattern.
+func (Test) OfflineArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running offline tests...")
-	cmd := exec.Command("go", "test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "offline", "-v", "-race", "-timeout", "30s")
+	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "offline", "-v", "-race", "-timeout", "30s"}
+	if testPattern != "" {
+		args = append(args, "-run", testPattern)
+	}
+	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()

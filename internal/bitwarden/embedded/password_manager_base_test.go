@@ -64,6 +64,35 @@ func TestCompareObjectsArrays(t *testing.T) {
 	assert.NoError(t, compareObjects(context.Background(), obj4, obj5))
 }
 
+func TestCompareNestedObjects(t *testing.T) {
+	obj1 := models.Item{
+		Attachments: []models.Attachment{
+			{
+				Url: "https://example.com/test1",
+				ID:  "1",
+			},
+		},
+	}
+	obj2 := models.Item{
+		Attachments: []models.Attachment{
+			{
+				Url: "https://example.com/test2",
+				ID:  "1",
+			},
+		},
+	}
+	obj3 := models.Item{
+		Attachments: []models.Attachment{
+			{
+				Url: "https://example.com/test1",
+				ID:  "2",
+			},
+		},
+	}
+	assert.NoError(t, compareObjects(context.Background(), obj1, obj2, "/attachments/*/url"))
+	assert.Error(t, compareObjects(context.Background(), obj1, obj3, "/attachments/*/url"))
+}
+
 func TestMatchUrl(t *testing.T) {
 	testCases := []struct {
 		loginUri        models.LoginURI
