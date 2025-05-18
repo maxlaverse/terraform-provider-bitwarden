@@ -12,7 +12,7 @@ import (
 )
 
 func TestResourceSecretSchema(t *testing.T) {
-	tfProvider, _ := tfConfigSecretsManagerProvider()
+	tfProvider := tfConfigSecretsManagerProvider()
 
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,

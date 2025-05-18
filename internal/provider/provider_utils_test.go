@@ -173,7 +173,7 @@ func SkipAsNotImplementedForOfficialBackend(t *testing.T) {
 }
 
 func IsOfficialBackend() bool {
-	return testBackend == "official"
+	return testBackend == backendOfficial
 }
 
 func ensureVaultwardenConfigured(t *testing.T) {
@@ -469,8 +469,8 @@ func tfConfigPasswordManagerProvider() string {
 }
 
 func testOrRealSecretsManagerProvider(t *testing.T) (string, func()) {
-	tfProvider, defined := tfConfigSecretsManagerProvider()
-	if defined {
+	tfProvider := tfConfigSecretsManagerProvider()
+	if IsOfficialBackend() {
 		t.Logf("Using real Bitwarden Secrets Manager")
 		stop := func() {}
 		return tfProvider, stop
@@ -508,7 +508,7 @@ func spawnTestSecretsManager(t *testing.T) (string, func()) {
 	return providerConfiguration, stop
 }
 
-func tfConfigSecretsManagerProvider() (string, bool) {
+func tfConfigSecretsManagerProvider() string {
 	accessToken := os.Getenv("TEST_PROVIDER_ACCESS_TOKEN")
 	return fmt.Sprintf(`
 	provider "bitwarden" {
@@ -518,7 +518,7 @@ func tfConfigSecretsManagerProvider() (string, bool) {
 			embedded_client = true
 		}
 	}
-`, accessToken), len(accessToken) > 0
+`, accessToken)
 }
 
 func getObjectID(n string, objectId *string) resource.TestCheckFunc {
