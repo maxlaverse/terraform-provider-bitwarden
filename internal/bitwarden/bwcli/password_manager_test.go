@@ -4,6 +4,7 @@ package bwcli
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
@@ -154,4 +155,12 @@ func TestErrorContainsCommand(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.ErrorContains(t, err, "unable to parse result of 'list org-collections', error: 'unexpected end of JSON input', output: ''")
 	}
+}
+
+func TestSettingAppDataDir(t *testing.T) {
+	pwWithCustomAppDataDir := NewPasswordManagerClient(WithAppDataDir("custom_app_dir")).(*client)
+	assert.Contains(t, pwWithCustomAppDataDir.env(), "BITWARDENCLI_APPDATA_DIR=custom_app_dir")
+
+	pwWithoutCustomAppDataDir := NewPasswordManagerClient().(*client)
+	assert.NotContains(t, strings.Join(pwWithoutCustomAppDataDir.env(), " "), "BITWARDENCLI_APPDATA_DIR")
 }
