@@ -195,7 +195,7 @@ $ mage clean
 To generate or update documentation, run:
 
 ```sh
-$ mage generateDocumentation
+$ mage docs
 ```
 
 ## Disclaimer

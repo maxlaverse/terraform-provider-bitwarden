@@ -56,6 +56,7 @@ var testReverseProxyServerURL string
 var testOrganizationID string
 var testCollectionID string
 var testFolderID string
+var testGroupID string
 var testUniqueIdentifier string
 var useEmbeddedClient bool
 
@@ -270,6 +271,23 @@ func ensureVaultwardenConfigured(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("Created Folder '%s' (%s)", testFolderName, testFolderID)
+
+	testGroupName := fmt.Sprintf("group-%s-bar", testUniqueIdentifier)
+	group, err := bwClient.CreateGroup(ctx, models.Group{
+		OrganizationID: testOrganizationID,
+		Name:           testGroupName,
+		Collections:    []models.OrgCollectionMember{},
+		Users:          []models.OrgCollectionMember{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testGroupID = group.ID
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Created Group '%s' (%s)", testGroupName, testGroupID)
 
 	err = bwClient.Sync(ctx)
 	if err != nil {
