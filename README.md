@@ -26,7 +26,7 @@ This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 
 The plugin has been tested with the following components:
 
-- [Terraform] v1.9.8 / [OpenTofu] v1.9.0
+- [Terraform] v1.11.4 / [OpenTofu] v1.9.0
 - [Bitwarden CLI] v2025.2.0 (when not using the [Embedded Client](#embedded-client))
 
 The provider is likely to work with older versions, but those haven't necessarily been tested.
@@ -135,7 +135,6 @@ Please note that this file is stored at `<your-project>/.bitwarden/` by default,
 If you wish to work on the provider, you need the following software:
 - [Go] 1.24.1
 - [Mage] 1.15.0
-- [Docker] 24.0.6
 - [Docker Compose] 2.35.0
 
 Mage is a make/rake-like build tool using Go. You can list all available targets by running `mage` 
