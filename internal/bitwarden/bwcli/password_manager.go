@@ -451,8 +451,10 @@ func (c *client) cmdWithSession(args ...string) command.Command {
 func (c *client) env() []string {
 	defaultEnv := []string{
 		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
-		fmt.Sprintf("BITWARDENCLI_APPDATA_DIR=%s", c.appDataDir),
 		"BW_NOINTERACTION=true",
+	}
+	if len(c.appDataDir) > 0 {
+		defaultEnv = append(defaultEnv, fmt.Sprintf("BITWARDENCLI_APPDATA_DIR=%s", c.appDataDir))
 	}
 	if len(c.extraCACertsPath) > 0 {
 		return append(defaultEnv, fmt.Sprintf("NODE_EXTRA_CA_CERTS=%s", c.extraCACertsPath))
