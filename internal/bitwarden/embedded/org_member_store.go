@@ -31,7 +31,7 @@ func (m OrgMemberStore) FindMemberByID(orgId, memberId string) (*models.OrgMembe
 		}
 	}
 
-	return nil, fmt.Errorf("no member found with email '%s' in organization '%s' (org exists: %t)", orgId, memberId, ok)
+	return nil, fmt.Errorf("no member found with memberId '%s' in organization '%s' (org exists: %t)", orgId, memberId, ok)
 }
 
 func (m OrgMemberStore) FindMemberByEmail(orgId, userEmail string) (*models.OrgMember, error) {

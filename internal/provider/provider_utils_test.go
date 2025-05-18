@@ -154,6 +154,9 @@ func loadEnvironmentVariables() {
 		if v := os.Getenv("TEST_ORGANIZATION_ID"); v != "" {
 			testOrganizationID = v
 		}
+		if v := os.Getenv("TEST_SELF_USER_ID"); v != "" {
+			testAccountEmailOrgOwnerInTestOrgUserId = v
+		}
 	}
 }
 

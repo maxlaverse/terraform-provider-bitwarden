@@ -189,6 +189,7 @@ type Attachment struct {
 type OrgCollectionMember struct {
 	HidePasswords bool   `json:"hidePasswords"`
 	Id            string `json:"id"`
+	Manage        bool   `json:"manage"`
 	ReadOnly      bool   `json:"readOnly"`
 }
 

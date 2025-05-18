@@ -90,4 +90,5 @@ Read-Only:
 
 - `hide_passwords` (Boolean)
 - `id` (String)
+- `manage` (Boolean)
 - `read_only` (Boolean)

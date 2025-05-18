@@ -258,6 +258,7 @@ func decryptOrgCollection(obj webapi.Collection, secret AccountSecrets) (*models
 			HidePasswords: u.HidePasswords,
 			Id:            u.Id,
 			ReadOnly:      u.ReadOnly,
+			Manage:        u.Manage,
 		})
 	}
 
@@ -456,6 +457,7 @@ func encryptOrgCollection(ctx context.Context, obj models.OrgCollection, secret 
 			HidePasswords: orgMember.HidePasswords,
 			Id:            orgMember.Id,
 			ReadOnly:      orgMember.ReadOnly,
+			Manage:        orgMember.Manage,
 		}
 	}
 	encObj := webapi.Collection{
