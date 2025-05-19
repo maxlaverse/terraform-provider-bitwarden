@@ -136,6 +136,8 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
+        with:
+          deviceIdentifier: ${{ secrets.BITWARDEN_DEVICE_IDENTIFIER }}
       - name: Run tests
         run: mage test:integrationPwdOfficialWithEmbeddedClient
         env:
@@ -161,6 +163,8 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
+        with:
+          deviceIdentifier: ${{ secrets.BWS_DEVICE_IDENTIFIER }}
       - name: Run tests
         run: mage test:integrationBwsOfficial
         env:

@@ -27,6 +27,10 @@ inputs:
     required: false
     default: '1.11.4'
     type: string
+  deviceIdentifier:
+    description: 'Device Identifier'
+    required: false
+    type: string
 
 runs:
   using: "composite"
@@ -77,3 +81,11 @@ runs:
         shell: bash
         run: |
           go install github.com/magefile/mage@v1.15.0
+
+      - name: Store Device Identifier
+        if: ${{ inputs.deviceIdentifier }}
+        shell: bash
+        run: |
+          mkdir -p ./internal/provider/.bitwarden
+          echo -ne "${{ inputs.deviceIdentifier }}" > ./internal/provider/.bitwarden/device_identifier
+
