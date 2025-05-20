@@ -208,9 +208,19 @@ func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename str
 		return nil, fmt.Errorf("error creating attachment: %w", err)
 	}
 
-	err = v.client.CreateObjectAttachmentData(ctx, itemId, resp.AttachmentId, data)
-	if err != nil {
-		return nil, fmt.Errorf("error creating attachment data: %w", err)
+	switch resp.FileUploadType {
+	case models.FileUploadTypeDirect:
+		err = v.client.CreateObjectAttachmentData(ctx, itemId, resp.AttachmentId, data)
+		if err != nil {
+			return nil, fmt.Errorf("error creating attachment data: %w", err)
+		}
+	case models.FileUploadTypeAzure:
+		err = v.client.UploadContentToUrl(ctx, webapi.CloudStorageProviderAzure, resp.Url, data)
+		if err != nil {
+			return nil, fmt.Errorf("error uploading data to Azure: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported file upload type: %d", resp.FileUploadType)
 	}
 
 	resObj, err := decryptItem((*resp).CipherResponse, v.loginAccount.Secrets)
@@ -233,7 +243,7 @@ func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename str
 
 		// The attachment's URL contains a signed token generated on each request. We need to diff
 		// it out if we want the comparison to work.
-		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/attachments/*/url")
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/attachments/*/url", "/revisionDate")
 	}
 	return resObj, nil
 }
@@ -633,7 +643,7 @@ func (v *webAPIVault) DeleteAttachment(ctx context.Context, itemId, attachmentId
 			return fmt.Errorf("error getting object after attachment deletion (syncAfterWrite): %w", err)
 		}
 
-		return v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj)
+		return v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/revisionDate")
 	}
 
 	return nil

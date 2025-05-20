@@ -86,6 +86,13 @@ const (
 	ObjectUserKey                 ObjectType = "userKey"
 )
 
+type FileUploadType int
+
+const (
+	FileUploadTypeDirect FileUploadType = 0
+	FileUploadTypeAzure  FileUploadType = 1
+)
+
 const (
 	DateLayout = "2006-01-02T15:04:05.000Z"
 )

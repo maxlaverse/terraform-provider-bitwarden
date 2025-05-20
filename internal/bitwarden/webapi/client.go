@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,12 @@ const (
 	defaultRequestTimeout = 120 * time.Second
 	maxConcurrentRequests = 4
 	maxRetryAttempts      = 3
+)
+
+type CloudStorageProvider string
+
+const (
+	CloudStorageProviderAzure CloudStorageProvider = "azure"
 )
 
 type Client interface {
@@ -70,6 +77,7 @@ type Client interface {
 	PreLogin(context.Context, string) (*PreloginResponse, error)
 	RegisterUser(ctx context.Context, req SignupRequest) error
 	Sync(ctx context.Context) (*SyncResponse, error)
+	UploadContentToUrl(ctx context.Context, provider CloudStorageProvider, url string, data []byte) error
 }
 
 func NewClient(serverURL, deviceIdentifier, providerVersion string, opts ...Options) Client {
@@ -77,7 +85,8 @@ func NewClient(serverURL, deviceIdentifier, providerVersion string, opts ...Opti
 		device:    DeviceInformation(deviceIdentifier, providerVersion),
 		serverURL: strings.TrimSuffix(serverURL, "/"),
 		httpClient: &http.Client{
-			Transport: NewRetryRoundTripper(maxConcurrentRequests, maxRetryAttempts, defaultRequestTimeout),
+			Transport:     NewRetryRoundTripper(maxConcurrentRequests, maxRetryAttempts, defaultRequestTimeout),
+			CheckRedirect: handleRedirect,
 		},
 	}
 	for _, o := range opts {
@@ -99,7 +108,7 @@ func (c *client) ClearSession() {
 }
 
 func (c *client) ConfirmOrganizationUser(ctx context.Context, orgID, orgUserId, key string) error {
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/users/%s/confirm", c.serverURL, orgID, orgUserId), ConfirmUserRequest{Key: key})
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/users/%s/confirm", c.serverURL, orgID, orgUserId), ConfirmUserRequest{Key: key})
 	if err != nil {
 		return fmt.Errorf("error preparing organization user confirmation request: %w", err)
 	}
@@ -109,7 +118,7 @@ func (c *client) ConfirmOrganizationUser(ctx context.Context, orgID, orgUserId, 
 }
 
 func (c *client) CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/folders", c.serverURL), obj)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/folders", c.serverURL), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing folder create request: %w", err)
 	}
@@ -118,7 +127,7 @@ func (c *client) CreateFolder(ctx context.Context, obj models.Folder) (*models.F
 }
 
 func (c *client) CreateGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/groups", c.serverURL, obj.OrganizationID), obj)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/groups", c.serverURL, obj.OrganizationID), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing group create request: %w", err)
 	}
@@ -134,9 +143,9 @@ func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item,
 			Cipher:        obj,
 			CollectionIds: obj.CollectionIds,
 		}
-		httpReq, err = c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/ciphers/create", c.serverURL), cipherCreationRequest)
+		httpReq, err = c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/ciphers/create", c.serverURL), cipherCreationRequest)
 	} else {
-		httpReq, err = c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/ciphers", c.serverURL), obj)
+		httpReq, err = c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/ciphers", c.serverURL), obj)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error preparing object create request: %w", err)
@@ -146,7 +155,7 @@ func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item,
 }
 
 func (c *client) CreateObjectAttachment(ctx context.Context, itemId string, data []byte, req AttachmentRequestData) (*CreateObjectAttachmentResponse, error) {
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/ciphers/%s/attachment/v2", c.serverURL, itemId), req)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/ciphers/%s/attachment/v2", c.serverURL, itemId), req)
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshall attachment creation request: %w", err)
 	}
@@ -173,7 +182,7 @@ func (c *client) CreateObjectAttachmentData(ctx context.Context, itemId, attachm
 		return fmt.Errorf("error closing writer: %w", err)
 	}
 
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/ciphers/%s/attachment/%s", c.serverURL, itemId, attachmentId), requestBody.Bytes())
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/ciphers/%s/attachment/%s", c.serverURL, itemId, attachmentId), requestBody.Bytes())
 	if err != nil {
 		return fmt.Errorf("error preparing attachment create request: %w", err)
 	}
@@ -185,7 +194,7 @@ func (c *client) CreateObjectAttachmentData(ctx context.Context, itemId, attachm
 }
 
 func (c *client) CreateOrganization(ctx context.Context, req CreateOrganizationRequest) (*CreateOrganizationResponse, error) {
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations", c.serverURL), req)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations", c.serverURL), req)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing organization creation request: %w", err)
 	}
@@ -194,7 +203,7 @@ func (c *client) CreateOrganization(ctx context.Context, req CreateOrganizationR
 }
 
 func (c *client) CreateOrganizationCollection(ctx context.Context, orgId string, req Collection) (*Collection, error) {
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/collections", c.serverURL, orgId), req)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/collections", c.serverURL, orgId), req)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing organization collection creation request: %w", err)
 	}
@@ -206,7 +215,7 @@ func (c *client) CreateProject(ctx context.Context, project models.Project) (*mo
 	projectCreationRequest := CreateProjectRequest{
 		Name: project.Name,
 	}
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/projects", c.serverURL, project.OrganizationID), projectCreationRequest)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/projects", c.serverURL, project.OrganizationID), projectCreationRequest)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing secret creation request: %w", err)
 	}
@@ -221,7 +230,7 @@ func (c *client) CreateSecret(ctx context.Context, secret models.Secret) (*Secre
 		Note:       secret.Note,
 		ProjectIDs: []string{secret.ProjectID},
 	}
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/secrets", c.serverURL, secret.OrganizationID), cipherCreationRequest)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/secrets", c.serverURL, secret.OrganizationID), cipherCreationRequest)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing secret creation request: %w", err)
 	}
@@ -230,7 +239,7 @@ func (c *client) CreateSecret(ctx context.Context, secret models.Secret) (*Secre
 }
 
 func (c *client) DeleteFolder(ctx context.Context, objID string) error {
-	httpReq, err := c.prepareRequest(ctx, "DELETE", fmt.Sprintf("%s/api/folders/%s", c.serverURL, objID), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "DELETE", fmt.Sprintf("%s/api/folders/%s", c.serverURL, objID), nil)
 	if err != nil {
 		return fmt.Errorf("error preparing folder deletion request: %w", err)
 	}
@@ -240,7 +249,7 @@ func (c *client) DeleteFolder(ctx context.Context, objID string) error {
 }
 
 func (c *client) DeleteGroup(ctx context.Context, obj models.Group) error {
-	httpReq, err := c.prepareRequest(ctx, "DELETE", fmt.Sprintf("%s/api/organizations/%s/groups/%s", c.serverURL, obj.OrganizationID, obj.ID), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "DELETE", fmt.Sprintf("%s/api/organizations/%s/groups/%s", c.serverURL, obj.OrganizationID, obj.ID), nil)
 	if err != nil {
 		return fmt.Errorf("error preparing group deletion request: %w", err)
 	}
@@ -250,7 +259,7 @@ func (c *client) DeleteGroup(ctx context.Context, obj models.Group) error {
 }
 
 func (c *client) DeleteObject(ctx context.Context, objID string) error {
-	httpReq, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/ciphers/%s/delete", c.serverURL, objID), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/ciphers/%s/delete", c.serverURL, objID), nil)
 	if err != nil {
 		return fmt.Errorf("error preparing object deletion request: %w", err)
 	}
@@ -260,7 +269,7 @@ func (c *client) DeleteObject(ctx context.Context, objID string) error {
 }
 
 func (c *client) DeleteObjectAttachment(ctx context.Context, itemId, attachmentId string) error {
-	httpReq, err := c.prepareRequest(ctx, "DELETE", fmt.Sprintf("%s/api/ciphers/%s/attachment/%s", c.serverURL, itemId, attachmentId), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "DELETE", fmt.Sprintf("%s/api/ciphers/%s/attachment/%s", c.serverURL, itemId, attachmentId), nil)
 	if err != nil {
 		return fmt.Errorf("error preparing object attachment deletion request: %w", err)
 	}
@@ -270,7 +279,7 @@ func (c *client) DeleteObjectAttachment(ctx context.Context, itemId, attachmentI
 }
 
 func (c *client) DeleteOrganizationCollection(ctx context.Context, orgID, collectionID string) error {
-	httpReq, err := c.prepareRequest(ctx, "DELETE", fmt.Sprintf("%s/api/organizations/%s/collections/%s", c.serverURL, orgID, collectionID), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "DELETE", fmt.Sprintf("%s/api/organizations/%s/collections/%s", c.serverURL, orgID, collectionID), nil)
 	if err != nil {
 		return fmt.Errorf("error preparing organization collection deletion request: %w", err)
 	}
@@ -281,7 +290,7 @@ func (c *client) DeleteOrganizationCollection(ctx context.Context, orgID, collec
 
 func (c *client) DeleteProject(ctx context.Context, projectId string) error {
 	IDs := []string{projectId}
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/projects/delete", c.serverURL), IDs)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/projects/delete", c.serverURL), IDs)
 	if err != nil {
 		return fmt.Errorf("error preparing project deletion request: %w", err)
 	}
@@ -292,7 +301,7 @@ func (c *client) DeleteProject(ctx context.Context, projectId string) error {
 
 func (c *client) DeleteSecret(ctx context.Context, secretId string) error {
 	IDs := []string{secretId}
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/secrets/delete", c.serverURL), IDs)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/secrets/delete", c.serverURL), IDs)
 	if err != nil {
 		return fmt.Errorf("error preparing secret deletion request: %w", err)
 	}
@@ -302,7 +311,7 @@ func (c *client) DeleteSecret(ctx context.Context, secretId string) error {
 }
 
 func (c *client) GetCipherAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/ciphers/%s/attachment/%s", c.serverURL, itemId, attachmentId), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/ciphers/%s/attachment/%s", c.serverURL, itemId, attachmentId), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing item attachment retrieval request: %w", err)
 	}
@@ -310,7 +319,7 @@ func (c *client) GetCipherAttachment(ctx context.Context, itemId, attachmentId s
 }
 
 func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
-	req, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/folders/%s", c.serverURL, obj.ID), obj)
+	req, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/folders/%s", c.serverURL, obj.ID), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing folder edition request: %w", err)
 	}
@@ -319,7 +328,7 @@ func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Fol
 }
 
 func (c *client) EditGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
-	httpReq, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/organizations/%s/groups/%s", c.serverURL, obj.OrganizationID, obj.ID), obj)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/organizations/%s/groups/%s", c.serverURL, obj.OrganizationID, obj.ID), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing group edition request: %w", err)
 	}
@@ -328,7 +337,7 @@ func (c *client) EditGroup(ctx context.Context, obj models.Group) (*models.Group
 }
 
 func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
-	req, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/ciphers/%s", c.serverURL, obj.ID), obj)
+	req, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/ciphers/%s", c.serverURL, obj.ID), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing item edition request: %w", err)
 	}
@@ -341,7 +350,7 @@ func (c *client) EditItemCollections(ctx context.Context, objId string, collecti
 		CollectionIDs []string `json:"collectionIds"`
 	}
 
-	req, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/ciphers/%s/collections_v2", c.serverURL, objId), CollectionChange{
+	req, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/ciphers/%s/collections_v2", c.serverURL, objId), CollectionChange{
 		CollectionIDs: collectionIds,
 	})
 	if err != nil {
@@ -352,7 +361,7 @@ func (c *client) EditItemCollections(ctx context.Context, objId string, collecti
 }
 
 func (c *client) EditOrganizationCollection(ctx context.Context, orgId, objId string, obj Collection) (*Collection, error) {
-	req, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/organizations/%s/collections/%s", c.serverURL, orgId, objId), obj)
+	req, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/organizations/%s/collections/%s", c.serverURL, orgId, objId), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing collection edition request: %w", err)
 	}
@@ -364,7 +373,7 @@ func (c *client) EditProject(ctx context.Context, project models.Project) (*mode
 	projectEditionRequest := CreateProjectRequest{
 		Name: project.Name,
 	}
-	httpReq, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/projects/%s", c.serverURL, project.ID), projectEditionRequest)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/projects/%s", c.serverURL, project.ID), projectEditionRequest)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing project edition request: %w", err)
 	}
@@ -379,7 +388,7 @@ func (c *client) EditSecret(ctx context.Context, secret models.Secret) (*Secret,
 		Note:       secret.Note,
 		ProjectIDs: []string{secret.ProjectID},
 	}
-	httpReq, err := c.prepareRequest(ctx, "PUT", fmt.Sprintf("%s/api/secrets/%s", c.serverURL, secret.ID), cipherCreationRequest)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/secrets/%s", c.serverURL, secret.ID), cipherCreationRequest)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing secret edition request: %w", err)
 	}
@@ -399,7 +408,7 @@ func (c *client) GetAPIKey(ctx context.Context, username, password string, kdfCo
 
 	hashedPassword := crypto.HashPassword(password, *preloginKey, false)
 	obj := ApiKeyRequest{MasterPasswordHash: hashedPassword}
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/accounts/api-key", c.serverURL), obj)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/accounts/api-key", c.serverURL), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing api key retrieval request: %w", err)
 	}
@@ -408,10 +417,11 @@ func (c *client) GetAPIKey(ctx context.Context, username, password string, kdfCo
 }
 
 func (c *client) GetContentFromURL(ctx context.Context, url string) ([]byte, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", url, nil)
+	httpReq, err := c.prepareGenericRequest(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing raw URL retrieval request: %w", err)
 	}
+	httpReq.Header.Add("Accept", "*/*")
 
 	resp, err := doRequest[[]byte](ctx, c.httpClient, httpReq)
 	if err != nil {
@@ -421,7 +431,7 @@ func (c *client) GetContentFromURL(ctx context.Context, url string) ([]byte, err
 }
 
 func (c *client) GetOrganizationCollections(ctx context.Context, orgID string) ([]Collection, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/collections/details", c.serverURL, orgID), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/collections/details", c.serverURL, orgID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing collection retrieval request: %w", err)
 	}
@@ -434,7 +444,7 @@ func (c *client) GetOrganizationCollections(ctx context.Context, orgID string) (
 }
 
 func (c *client) GetGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/groups/%s/details", c.serverURL, obj.OrganizationID, obj.ID), obj)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/groups/%s/details", c.serverURL, obj.OrganizationID, obj.ID), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing group retrieval request: %w", err)
 	}
@@ -443,7 +453,7 @@ func (c *client) GetGroup(ctx context.Context, obj models.Group) (*models.Group,
 }
 
 func (c *client) GetProfile(ctx context.Context) (*Profile, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/accounts/profile", c.serverURL), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/accounts/profile", c.serverURL), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing config retrieval request: %w", err)
 	}
@@ -452,7 +462,7 @@ func (c *client) GetProfile(ctx context.Context) (*Profile, error) {
 }
 
 func (c *client) GetProject(ctx context.Context, projectId string) (*models.Project, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/projects/%s", c.serverURL, projectId), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/projects/%s", c.serverURL, projectId), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing project retrieval request: %w", err)
 	}
@@ -461,7 +471,7 @@ func (c *client) GetProject(ctx context.Context, projectId string) (*models.Proj
 }
 
 func (c *client) GetProjects(ctx context.Context, orgId string) ([]models.Project, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/projects", c.serverURL, orgId), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/projects", c.serverURL, orgId), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing projects retrieval request: %w", err)
 	}
@@ -477,7 +487,7 @@ func (c *client) GetProjects(ctx context.Context, orgId string) ([]models.Projec
 }
 
 func (c *client) GetSecret(ctx context.Context, secretId string) (*Secret, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/secrets/%s", c.serverURL, secretId), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/secrets/%s", c.serverURL, secretId), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing secret retrieval request: %w", err)
 	}
@@ -486,7 +496,7 @@ func (c *client) GetSecret(ctx context.Context, secretId string) (*Secret, error
 }
 
 func (c *client) GetSecrets(ctx context.Context, orgId string) ([]SecretSummary, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/secrets", c.serverURL, orgId), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/secrets", c.serverURL, orgId), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing secrets retrieval request: %w", err)
 	}
@@ -499,7 +509,7 @@ func (c *client) GetSecrets(ctx context.Context, orgId string) ([]SecretSummary,
 }
 
 func (c *client) GetUserPublicKey(ctx context.Context, userId string) ([]byte, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/users/%s/public-key", c.serverURL, userId), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/users/%s/public-key", c.serverURL, userId), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing user public key retrieval request: %w", err)
 	}
@@ -512,7 +522,7 @@ func (c *client) GetUserPublicKey(ctx context.Context, userId string) ([]byte, e
 }
 
 func (c *client) GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/users", c.serverURL, orgId), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/users", c.serverURL, orgId), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing organization user list retrieval request: %w", err)
 	}
@@ -525,7 +535,7 @@ func (c *client) GetOrganizationUsers(ctx context.Context, orgId string) ([]Orga
 }
 
 func (c *client) InviteUser(ctx context.Context, orgId string, inviteRequest InviteUserRequest) error {
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/users/invite", c.serverURL, orgId), inviteRequest)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/users/invite", c.serverURL, orgId), inviteRequest)
 	if err != nil {
 		return fmt.Errorf("error preparing user invitation request: %w", err)
 	}
@@ -541,7 +551,7 @@ func (c *client) LoginWithAccessToken(ctx context.Context, clientId, clientSecre
 	form.Add("client_secret", clientSecret)
 	form.Add("grant_type", "client_credentials")
 
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing login with access token request: %w", err)
 	}
@@ -577,7 +587,7 @@ func (c *client) LoginWithPassword(ctx context.Context, username, password strin
 	form.Add("deviceIdentifier", c.device.official.deviceIdentifier)
 	form.Add("deviceName", c.device.official.deviceName)
 
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing login with password request: %w", err)
 	}
@@ -623,7 +633,7 @@ func (c *client) LoginWithAPIKey(ctx context.Context, clientId, clientSecret str
 	form.Add("deviceIdentifier", c.device.deviceIdentifier)
 	form.Add("deviceName", c.device.deviceName)
 
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing login with api key request: %w", err)
 	}
@@ -637,7 +647,7 @@ func (c *client) LoginWithAPIKey(ctx context.Context, clientId, clientSecret str
 }
 
 func (c *client) PreLogin(ctx context.Context, username string) (*PreloginResponse, error) {
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/identity/accounts/prelogin", c.serverURL), PreloginRequest{Email: username})
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/identity/accounts/prelogin", c.serverURL), PreloginRequest{Email: username})
 	if err != nil {
 		return nil, fmt.Errorf("error preparing prelogin request: %w", err)
 	}
@@ -646,7 +656,7 @@ func (c *client) PreLogin(ctx context.Context, username string) (*PreloginRespon
 }
 
 func (c *client) RegisterUser(ctx context.Context, signupRequest SignupRequest) error {
-	httpReq, err := c.prepareRequest(ctx, "POST", fmt.Sprintf("%s/api/accounts/register", c.serverURL), signupRequest)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/accounts/register", c.serverURL), signupRequest)
 	if err != nil {
 		return fmt.Errorf("error preparing registration request: %w", err)
 	}
@@ -656,7 +666,7 @@ func (c *client) RegisterUser(ctx context.Context, signupRequest SignupRequest) 
 }
 
 func (c *client) Sync(ctx context.Context) (*SyncResponse, error) {
-	httpReq, err := c.prepareRequest(ctx, "GET", fmt.Sprintf("%s/api/sync?excludeDomains=true", c.serverURL), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/sync?excludeDomains=true", c.serverURL), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing config retrieval request: %w", err)
 	}
@@ -664,7 +674,41 @@ func (c *client) Sync(ctx context.Context) (*SyncResponse, error) {
 	return doRequest[SyncResponse](ctx, c.httpClient, httpReq)
 }
 
-func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, reqBody interface{}) (*http.Request, error) {
+func (c *client) UploadContentToUrl(ctx context.Context, provider CloudStorageProvider, url string, data []byte) error {
+	if provider != CloudStorageProviderAzure {
+		return fmt.Errorf("unsupported cloud storage provider: %s", provider)
+	}
+
+	httpReq, err := c.prepareGenericRequest(ctx, "PUT", url, data)
+	if err != nil {
+		return fmt.Errorf("error preparing content upload to url request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Length", strconv.Itoa(len(data)))
+	httpReq.Header.Set("x-ms-blob-type", "BlockBlob")
+	httpReq.Header.Set("x-ms-date", time.Now().UTC().Format(time.RFC1123))
+	httpReq.Header.Set("x-ms-version", "2020-04-08")
+
+	_, err = doRequest[[]byte](ctx, c.httpClient, httpReq)
+	return err
+}
+
+func (c *client) prepareAuthenticatedRequest(ctx context.Context, reqMethod, reqUrl string, reqBody interface{}) (*http.Request, error) {
+	httpReq, err := c.prepareGenericRequest(ctx, reqMethod, reqUrl, reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq.Header.Set("Accept", "application/json")
+	httpReq.Header.Set("bitwarden-client-version", c.device.official.deviceVersion)
+	if len(c.sessionAccessToken) > 0 {
+		httpReq.Header.Add("authorization", fmt.Sprintf("Bearer %s", c.sessionAccessToken))
+	}
+
+	return httpReq, nil
+}
+
+func (c *client) prepareGenericRequest(ctx context.Context, reqMethod, reqUrl string, reqBody interface{}) (*http.Request, error) {
 	var httpReq *http.Request
 	var err error
 
@@ -694,11 +738,6 @@ func (c *client) prepareRequest(ctx context.Context, reqMethod, reqUrl string, r
 	if err != nil {
 		return nil, fmt.Errorf("error preparing http request: %w", err)
 	}
-	if len(c.sessionAccessToken) > 0 {
-		httpReq.Header.Add("authorization", fmt.Sprintf("Bearer %s", c.sessionAccessToken))
-	}
-	httpReq.Header.Set("Accept", "application/json")
-	httpReq.Header.Set("bitwarden-client-version", c.device.official.deviceVersion)
 
 	if reqMethod == "GET" {
 		httpReq.Header.Set("Cache-Control", "no-store")
@@ -739,7 +778,7 @@ func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *htt
 		return nil, fmt.Errorf("error reading response body from '%s %s': %w", httpReq.Method, httpReq.URL, err)
 	}
 
-	if httpResp.StatusCode != 200 {
+	if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
 		if strings.Contains(httpResp.Header.Get("Content-Type"), "application/json") {
 			var errResp ErrorResponse
 			err = json.Unmarshal(respBody, &errResp)
@@ -833,4 +872,11 @@ func readReader(rc io.ReadCloser) ([]byte, io.ReadCloser, error) {
 
 func isResponseBodyClosedTimeout(err error) bool {
 	return strings.Contains(err.Error(), "http2: response body closed")
+}
+
+func handleRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) > 0 && req.URL.Host != via[0].URL.Host {
+		req.Header.Del("Authorization")
+	}
+	return nil
 }
