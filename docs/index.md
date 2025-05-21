@@ -116,9 +116,10 @@ provider "bitwarden" {
   client_id       = "my-client-id"
   client_secret   = "my-client-secret"
 
-  # Specify a server url when using a self-hosted version of Bitwarden
-  # or similar (e.g. Vaultwarden).
-  # server = "https://vault.myserver.org"
+  # Specify a server URL when using a self-hosted version of Bitwarden
+  # or similar (e.g., Vaultwarden), or the European instances:
+  #
+  # server = "https://vault.bitwarden.eu"
 
   # If you have the opportunity, you can try out the embedded client which
   # removes the need for a locally installed Bitwarden CLI. Please note that

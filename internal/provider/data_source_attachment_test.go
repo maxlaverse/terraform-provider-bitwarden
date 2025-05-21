@@ -11,7 +11,7 @@ import (
 )
 
 func TestAccDataSourceAttachment(t *testing.T) {
-	SkipIfOfficialBackend(t, "Testing Attachments requires a Premium account.")
+	SkipIfNonPremiumTestAccount(t)
 
 	ensureVaultwardenConfigured(t)
 

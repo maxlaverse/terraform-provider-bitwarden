@@ -146,8 +146,8 @@ func findObject[T any](ctx context.Context, store map[string]interface{}, objTyp
 	}
 
 	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
-	if !filter.IsValid() {
-		return nil, fmt.Errorf("invalid filter options")
+	if !filter.HasSearchFilter() {
+		return nil, fmt.Errorf("missing search filter")
 	}
 
 	foundObjects := []T{}

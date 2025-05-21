@@ -27,7 +27,8 @@ import (
 
 // This is only used to generate test data
 func TestCreateTestAccounts(t *testing.T) {
-	t.Skip()
+	t.Skip("Skipping test as it's only used to generate test data")
+
 	createTestAccount(t, Pdkdf2Mocks, models.KdfConfiguration{
 		KdfType:       models.KdfTypePBKDF2_SHA256,
 		KdfIterations: 1000,
@@ -44,7 +45,8 @@ func TestCreateTestAccounts(t *testing.T) {
 }
 
 func TestCreateAccessTokenLoginMock(t *testing.T) {
-	t.Skip()
+	t.Skip("Skipping test as it's only used to generate test data")
+
 	accessTokenEncryptionKey, err := base64.StdEncoding.DecodeString("dGVzdC1lbmNyeXB0aW9uLWtleQ==")
 	if err != nil {
 		t.Fatal(err)

@@ -15,7 +15,7 @@ import (
 )
 
 func TestAccResourceAttachment(t *testing.T) {
-	SkipIfNonPremiumTestAccount(t, "Testing Attachments requires a Premium account.")
+	SkipIfNonPremiumTestAccount(t)
 
 	ensureVaultwardenConfigured(t)
 
@@ -88,7 +88,7 @@ func TestAccResourceAttachment(t *testing.T) {
 }
 
 func TestAccResourceItemAttachmentFields(t *testing.T) {
-	SkipIfNonPremiumTestAccount(t, "Testing Attachments requires a Premium account.")
+	SkipIfNonPremiumTestAccount(t)
 
 	ensureVaultwardenConfigured(t)
 
@@ -116,7 +116,7 @@ func TestAccResourceItemAttachmentFields(t *testing.T) {
 }
 
 func TestAccMissingAttachmentIsRecreated(t *testing.T) {
-	SkipIfNonPremiumTestAccount(t, "Testing Attachments requires a Premium account.")
+	SkipIfNonPremiumTestAccount(t)
 
 	ensureVaultwardenConfigured(t)
 
@@ -162,7 +162,7 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 }
 
 func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
-	SkipIfNonPremiumTestAccount(t, "Testing Attachments requires a Premium account.")
+	SkipIfNonPremiumTestAccount(t)
 
 	ensureVaultwardenConfigured(t)
 

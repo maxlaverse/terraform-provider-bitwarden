@@ -141,14 +141,15 @@ jobs:
       - name: Run tests
         run: mage test:integrationPwdOfficialWithEmbeddedClient
         env:
-          TEST_PROVIDER_EMAIL: "${{ secrets.BITWARDEN_EMAIL }}"
-          TEST_PROVIDER_MASTER_PASSWORD: "${{ secrets.BITWARDEN_MASTER_PASSWORD }}"
-          TEST_PROVIDER_CLIENT_ID: "${{ secrets.BITWARDEN_CLIENT_ID }}"
-          TEST_PROVIDER_CLIENT_SECRET: "${{ secrets.BITWARDEN_CLIENT_SECRET }}"
-          TEST_COLLECTION_ID: "${{ secrets.BITWARDEN_TEST_COLLECTION_ID }}"
-          TEST_FOLDER_ID: "${{ secrets.BITWARDEN_TEST_FOLDER_ID }}"
-          TEST_ORGANIZATION_ID: "${{ secrets.BITWARDEN_TEST_ORGANIZATION_ID }}"
-          TEST_SELF_USER_ID: "${{ secrets.BITWARDEN_TEST_SELF_USER_ID }}"
+          TEST_PASSWORD_MANAGER_EMAIL: "${{ secrets.BITWARDEN_EMAIL }}"
+          TEST_PASSWORD_MANAGER_MASTER_PASSWORD: "${{ secrets.BITWARDEN_MASTER_PASSWORD }}"
+          TEST_PASSWORD_MANAGER_CLIENT_ID: "${{ secrets.BITWARDEN_CLIENT_ID }}"
+          TEST_PASSWORD_MANAGER_CLIENT_SECRET: "${{ secrets.BITWARDEN_CLIENT_SECRET }}"
+          TEST_PASSWORD_MANAGER_ACCOUNT_TYPE: "premium"
+          TEST_PASSWORD_MANAGER_COLLECTION_ID: "${{ secrets.BITWARDEN_TEST_COLLECTION_ID }}"
+          TEST_PASSWORD_MANAGER_FOLDER_ID: "${{ secrets.BITWARDEN_TEST_FOLDER_ID }}"
+          TEST_PASSWORD_MANAGER_ORGANIZATION_ID: "${{ secrets.BITWARDEN_TEST_ORGANIZATION_ID }}"
+          TEST_PASSWORD_MANAGER_ORGANIZATION_USER_ID: "${{ secrets.BITWARDEN_TEST_SELF_USER_ID }}"
       - name: Code Coverage
         continue-on-error: true
         uses: shogo82148/actions-goveralls@v1
@@ -168,7 +169,7 @@ jobs:
       - name: Run tests
         run: mage test:integrationBwsOfficial
         env:
-          TEST_PROVIDER_ACCESS_TOKEN: "${{ secrets.BWS_ACCESS_TOKEN }}"
+          TEST_SECRETS_MANAGER_ACCESS_TOKEN: "${{ secrets.BWS_ACCESS_TOKEN }}"
       - name: Code Coverage
         continue-on-error: true
         uses: shogo82148/actions-goveralls@v1

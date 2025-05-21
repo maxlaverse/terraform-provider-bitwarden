@@ -10,19 +10,15 @@ import (
 )
 
 func TestAccDataSourceOrgMemberAttribute(t *testing.T) {
-	SkipAsNotImplementedForOfficialBackend(t)
+	SkipIfOfficialCLI(t, "org members are not supported on the official CLI")
 
 	ensureVaultwardenConfigured(t)
-
-	if !useEmbeddedClient {
-		t.Skip("Skipping test because official client doesn't support org members")
-	}
 
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigDataOrgMembers(),
+				Config: tfConfigPasswordManagerProvider() + tfConfigDataOrgOwner(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						"data.bitwarden_org_member.org_owner", "id", testAccountEmailOrgOwnerInTestOrgUserId,
@@ -34,8 +30,15 @@ func TestAccDataSourceOrgMemberAttribute(t *testing.T) {
 						"data.bitwarden_org_member.org_owner", "email", testAccountEmailOrgOwner,
 					),
 					resource.TestCheckResourceAttr(
-						"data.bitwarden_org_member.org_owner", "name", fmt.Sprintf("test-%s", testUniqueIdentifier),
+						"data.bitwarden_org_member.org_owner", "name", testAccountNameOrgOwner,
 					),
+				),
+			}, {
+				Config: tfConfigPasswordManagerProvider() + tfConfigDataOrgMembers(),
+				SkipFunc: func() (bool, error) {
+					return IsOfficialBackend(), nil
+				},
+				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						"data.bitwarden_org_member.org_admin", "id", testAccountEmailOrgAdminInTestOrgUserId,
 					),
@@ -78,7 +81,7 @@ func TestAccDataSourceOrgMemberAttribute(t *testing.T) {
 	})
 }
 
-func tfConfigDataOrgMembers() string {
+func tfConfigDataOrgOwner() string {
 	return fmt.Sprintf(`
 data "bitwarden_org_member" "org_owner" {
 	provider	= bitwarden
@@ -87,6 +90,13 @@ data "bitwarden_org_member" "org_owner" {
 	email = "%s"
 }
 
+`,
+		testOrganizationID, testAccountEmailOrgOwner,
+	)
+}
+
+func tfConfigDataOrgMembers() string {
+	return fmt.Sprintf(`
 data "bitwarden_org_member" "org_admin" {
 	provider	= bitwarden
 	organization_id = "%s"
@@ -116,7 +126,6 @@ data "bitwarden_org_member" "org_user_by_id" {
 }
 
 `,
-		testOrganizationID, testAccountEmailOrgOwner,
 		testOrganizationID, testAccountEmailOrgAdmin,
 		testOrganizationID, testAccountEmailOrgManager,
 		testOrganizationID, testAccountEmailOrgUser,

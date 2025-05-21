@@ -995,8 +995,8 @@ func (v *webAPIVault) IsSyncAfterWriteVerificationDisabled() bool {
 
 func (v *webAPIVault) FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error) {
 	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
-	if !filter.IsValid() {
-		return nil, fmt.Errorf("invalid filter options")
+	if !filter.HasSearchFilter() {
+		return nil, fmt.Errorf("missing search filter")
 	}
 
 	// Write lock is needed since we eventually load the organization members.
@@ -1015,8 +1015,8 @@ func (v *webAPIVault) FindOrganizationMember(ctx context.Context, options ...bit
 
 func (v *webAPIVault) FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error) {
 	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
-	if !filter.IsValid() {
-		return nil, fmt.Errorf("invalid filter options")
+	if !filter.HasSearchFilter() {
+		return nil, fmt.Errorf("missing search filter")
 	}
 
 	// Write lock is needed since we eventually load collections.
