@@ -19,7 +19,7 @@ func TestAccDataSourceOrganizationAttributes(t *testing.T) {
 	var nameAssertion resource.TestCheckFunc
 	if IsOfficialBackend() {
 		nameAssertion = resource.TestCheckResourceAttr(
-			resourceName, schema_definition.AttributeName, "MyTestOrganization",
+			resourceName, schema_definition.AttributeName, "TestOrganization",
 		)
 	} else {
 		nameAssertion = resource.TestMatchResourceAttr(

@@ -87,7 +87,7 @@ func (t Test) IntegrationPwdOfficialWithEmbeddedClientArgs(testPattern string) e
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=official", "TEST_PROVIDER_SERVER_URL=https://vault.bitwarden.com", "TEST_PROVIDER_EXPERIMENTAL_EMBEDDED_CLIENT=1")
+	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=official", "TEST_PROVIDER_SERVER_URL=https://vault.bitwarden.eu", "TEST_PROVIDER_EXPERIMENTAL_EMBEDDED_CLIENT=1")
 	return cmd.Run()
 }
 
@@ -111,7 +111,7 @@ func (t Test) IntegrationBwsOfficialArgs(testPattern string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=official")
+	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=official", "TEST_PROVIDER_SERVER_URL=https://vault.bitwarden.eu")
 	return cmd.Run()
 }
 

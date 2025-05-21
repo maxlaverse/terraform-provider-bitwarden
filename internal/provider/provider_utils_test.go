@@ -27,7 +27,7 @@ const (
 	// Constants used to interact with a test Vaultwarden instance
 	testDeviceIdentifer = "10a00887-3451-4607-8457-fcbfdc61faaa"
 	testDeviceVersion   = "dev"
-	kdfIterations       = 5000
+	testKdfIterations   = 5000
 
 	// Backend types
 	backendOfficial    = "official"
@@ -167,6 +167,10 @@ func SkipIfOfficialBackend(t *testing.T, reason string) {
 	}
 }
 
+func SkipIfNonPremiumTestAccount(t *testing.T, reason string) {
+	// TODO: Implement this
+}
+
 func SkipAsNotImplementedForOfficialBackend(t *testing.T) {
 	if IsOfficialBackend() {
 		t.Skipf("Skipping test as the test is not written for official backend yet")
@@ -244,7 +248,7 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	t.Logf("Invited %s to organization %s (%s)", testAccountEmailOrgManager, testOrganizationID, testAccountEmailOrgManagerInTestOrgUserId)
 
 	webapiClient := webapi.NewClient(testServerURL, embedded.NewDeviceIdentifier(), testDeviceVersion)
-	_, err = webapiClient.LoginWithPassword(ctx, testEmail, testMasterPassword, models.KdfConfiguration{KdfIterations: kdfIterations})
+	_, err = webapiClient.LoginWithPassword(ctx, testEmail, testMasterPassword, models.KdfConfiguration{KdfIterations: testKdfIterations})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,7 +317,7 @@ func ensureVaultwardenHasUser(t *testing.T) {
 	testEmail = fmt.Sprintf("test-%s@laverse.net", testUniqueIdentifier)
 	kdfConfig := models.KdfConfiguration{
 		KdfType:        models.KdfTypePBKDF2_SHA256,
-		KdfIterations:  kdfIterations,
+		KdfIterations:  testKdfIterations,
 		KdfMemory:      0,
 		KdfParallelism: 0,
 	}
@@ -531,12 +535,12 @@ func tfConfigSecretsManagerProvider() string {
 	return fmt.Sprintf(`
 	provider "bitwarden" {
 		access_token = "%s"
-
+		server = "%s"
 		experimental {
 			embedded_client = true
 		}
 	}
-`, accessToken)
+`, accessToken, testServerURL)
 }
 
 func getObjectID(n string, objectId *string) resource.TestCheckFunc {

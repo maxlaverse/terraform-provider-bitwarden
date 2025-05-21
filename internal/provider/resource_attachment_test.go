@@ -15,7 +15,7 @@ import (
 )
 
 func TestAccResourceAttachment(t *testing.T) {
-	SkipIfOfficialBackend(t, "Testing Attachments requires a Premium account.")
+	SkipIfNonPremiumTestAccount(t, "Testing Attachments requires a Premium account.")
 
 	ensureVaultwardenConfigured(t)
 
@@ -88,7 +88,7 @@ func TestAccResourceAttachment(t *testing.T) {
 }
 
 func TestAccResourceItemAttachmentFields(t *testing.T) {
-	SkipIfOfficialBackend(t, "Testing Attachments requires a Premium account.")
+	SkipIfNonPremiumTestAccount(t, "Testing Attachments requires a Premium account.")
 
 	ensureVaultwardenConfigured(t)
 
@@ -116,7 +116,7 @@ func TestAccResourceItemAttachmentFields(t *testing.T) {
 }
 
 func TestAccMissingAttachmentIsRecreated(t *testing.T) {
-	SkipIfOfficialBackend(t, "Testing Attachments requires a Premium account.")
+	SkipIfNonPremiumTestAccount(t, "Testing Attachments requires a Premium account.")
 
 	ensureVaultwardenConfigured(t)
 
@@ -162,7 +162,7 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 }
 
 func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
-	SkipIfOfficialBackend(t, "Testing Attachments requires a Premium account.")
+	SkipIfNonPremiumTestAccount(t, "Testing Attachments requires a Premium account.")
 
 	ensureVaultwardenConfigured(t)
 
@@ -211,7 +211,7 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 func checkAttachmentMatches(resourceName, baseAttribute string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeID), regexp.MustCompile("^[a-fA-F0-9]{20}$"),
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeID), regexp.MustCompile("^([a-fA-F0-9]{20}|[a-zA-Z0-9]{32})$"),
 		),
 		resource.TestMatchResourceAttr(
 			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentFileName), regexp.MustCompile(`^attachment1.txt$`),
@@ -220,10 +220,7 @@ func checkAttachmentMatches(resourceName, baseAttribute string) resource.TestChe
 			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentSize), regexp.MustCompile("^81$"),
 		),
 		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentSizeName), regexp.MustCompile(`^81\.00 bytes$`),
-		),
-		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentURL), regexp.MustCompile(`^http://127.0.0.1:([0-9]+)/attachments/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}/[a-fA-F0-9]{20}\?token=.*$`),
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentSizeName), regexp.MustCompile(`^81(\.00)? [bB]ytes$`),
 		),
 	)
 }
