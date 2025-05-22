@@ -9,6 +9,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -21,17 +22,30 @@ type RetryRoundTripper struct {
 	Transport      http.RoundTripper
 
 	concurrentRequestsSem *semaphore.Weighted
-	maxLowLevelRetries    int
+	maxRetries            int
 	requestTimeout        time.Duration
 }
 
-// maxLowLevelRetries is the maximum number of retries for low-level errors (e.g. timeouts).
-// A value of 0 means no retries.
-func NewRetryRoundTripper(maxConcurrentRequests int, maxLowLevelRetries int, requestTimeout time.Duration) *RetryRoundTripper {
+// List of status codes that are considered retryable depending on the method.
+var retryableStatusCodes = []int{
+	http.StatusTooManyRequests,
+	http.StatusServiceUnavailable,
+}
+
+var retryBackoffFactor = 2
+
+// NewRetryRoundTripper creates a new retry-capable HTTP transport.
+//
+// Parameters:
+//   - maxConcurrentRequests: Maximum number of concurrent requests allowed
+//   - maxRetries: Maximum number of retries for low-level errors (e.g. timeouts) and
+//     bad status codes (e.g. 503). A value of 0 means no retries.
+//   - requestTimeout: Timeout duration that applies to individual request attempts
+func NewRetryRoundTripper(maxConcurrentRequests int, maxRetries int, requestTimeout time.Duration) *RetryRoundTripper {
 	return &RetryRoundTripper{
 		Transport:             http.DefaultTransport,
 		concurrentRequestsSem: semaphore.NewWeighted(int64(maxConcurrentRequests)),
-		maxLowLevelRetries:    maxLowLevelRetries,
+		maxRetries:            maxRetries,
 		requestTimeout:        requestTimeout,
 	}
 }
@@ -52,85 +66,98 @@ func (rrt *RetryRoundTripper) RoundTrip(httpReq *http.Request) (*http.Response, 
 			return nil, err
 		}
 
-		if !shouldRetry || rrt.DisableRetries {
+		if !shouldRetry {
 			return resp, nil
 		}
 	}
 }
 
-func (rrt *RetryRoundTripper) doRequest(ctx context.Context, httpReq *http.Request, attemptNumber int) (*http.Response, bool, error) {
-	ctx, cancel := context.WithTimeout(ctx, rrt.requestTimeout)
+func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *http.Request, attemptNumber int) (*http.Response, bool, error) {
+	reqCtx, cancel := context.WithTimeout(originalCtx, rrt.requestTimeout)
 	defer cancel()
 
-	resp, err := rrt.Transport.RoundTrip(httpReq.WithContext(ctx))
+	resp, err := rrt.Transport.RoundTrip(httpReq.WithContext(reqCtx))
 
-	// Successfully got an HTTP response that is not a 429
-	if err == nil && resp.StatusCode != http.StatusTooManyRequests {
-		// We read the body as we're cancelling the context when leaving the function.
-		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			return resp, false, fmt.Errorf("failed to read response body in round tripper: %w", err)
+	isSuccessful := err == nil && !slices.Contains(retryableStatusCodes, resp.StatusCode)
+
+	// If the request was successful, we return without additional logging.
+	// We preserve the response body as exiting the method cancels the context.
+	if isSuccessful {
+		if readErr := preserveResponseBody(resp); readErr != nil {
+			return resp, false, fmt.Errorf("%w (and additionally %w)", err, readErr)
 		}
-
-		resp.Body = io.NopCloser(bytes.NewReader(body))
-		return resp, false, nil
+		return resp, false, err
 	}
+
+	// At this point, there was a problem. We need to check if it's retryable,
+	// and we want to log information in any case.
+	isDialError := err != nil && isDialError(err)
+	isRetriableHttpStatusCode := httpReq.Method == http.MethodGet && err == nil && slices.Contains(retryableStatusCodes, resp.StatusCode)
+	isRetriableReadTimeout := httpReq.Method == http.MethodGet && (isReadTimeout(err))
+	isLastPossibleAttempt := attemptNumber >= rrt.maxRetries-1 || rrt.DisableRetries
 
 	debugInfo := map[string]interface{}{
-		"url":            httpReq.URL.RequestURI(),
-		"method":         httpReq.Method,
-		"attempt_number": attemptNumber,
-		"is_retryable":   false,
+		"url":                           httpReq.URL.RequestURI(),
+		"method":                        httpReq.Method,
+		"attempt_number":                attemptNumber,
+		"is_last_attempt":               isLastPossibleAttempt,
+		"is_retriable_http_status_code": isRetriableHttpStatusCode,
+		"is_retriable_read_timeout":     isRetriableReadTimeout,
 	}
 
-	// Got a low-level error, or a 429 HTTP response. We're returning the error
-	// so let's not log anything additional.
-	if err != nil && !rrt.isRetryableError(err, attemptNumber, httpReq.Method) {
-		tflog.Info(ctx, "retry_round_tripper", debugInfo)
-		return nil, false, err
+	// If the request is not retryable, we preserve the response body, log and return.
+	if isLastPossibleAttempt || (!isDialError && !isRetriableHttpStatusCode && !isRetriableReadTimeout) {
+		tflog.Info(originalCtx, "retry_round_tripper", debugInfo)
+		readErr := preserveResponseBody(resp)
+		if readErr != nil {
+			err = fmt.Errorf("%w (and additionally %w)", err, readErr)
+		}
+		return resp, false, err
 	}
 
-	// Retryable request that had a response. A body is present, throw it away.
-	io.ReadAll(resp.Body)
-	resp.Body.Close()
-
-	var waitDuration time.Duration
-	debugInfo["is_retryable"] = true
+	// We're going to retry the request, and therefore should throw away the
+	// response body of the previous attempt if it exists.
+	if resp != nil && resp.Body != nil {
+		io.ReadAll(resp.Body)
+		resp.Body.Close()
+	}
 
 	if err != nil {
 		debugInfo["error"] = err
-		waitDuration = backoff(attemptNumber)
-	} else if resp.StatusCode == http.StatusTooManyRequests {
+	}
+	if resp != nil {
 		debugInfo["status_code"] = resp.StatusCode
 		debugInfo["status_message"] = resp.Status
+	}
+
+	// Try to find the best waiting duration, either from the response headers
+	// or from the backoff function.
+	var waitDuration time.Duration
+	if resp != nil && resp.StatusCode == http.StatusTooManyRequests {
 		waitDuration = tryToReadWaitDurationFromHeaders(resp)
+	} else {
+		waitDuration = backoff(attemptNumber)
 	}
 
 	debugInfo["wait_duration_sec"] = waitDuration.Seconds()
-	tflog.Info(ctx, "retry_round_tripper", debugInfo)
+	tflog.Info(originalCtx, "retry_round_tripper", debugInfo)
 
-	return resp, true, sleepWithContext(ctx, waitDuration)
-}
-
-func (rrt *RetryRoundTripper) isRetryableError(err error, attemptNumber int, httpMethod string) bool {
-	if err == nil {
-		return false
-	}
-
-	if attemptNumber >= rrt.maxLowLevelRetries-1 {
-		return false
-	}
-	if isConnectTimeout(err) {
-		return true
-	}
-	if isReadTimeout(err) && httpMethod == http.MethodGet {
-		return true
-	}
-	return false
+	return resp, true, sleepWithContext(originalCtx, waitDuration)
 }
 
 func tryToReadWaitDurationFromHeaders(resp *http.Response) time.Duration {
+	rateLimitResetRaw := resp.Header.Get("X-Rate-Limit-Reset")
+
+	if len(rateLimitResetRaw) != 0 {
+		resetTime, err := time.Parse(time.RFC3339Nano, rateLimitResetRaw)
+		if err == nil {
+			waitDuration := time.Until(resetTime)
+			if waitDuration > 0 {
+				return waitDuration
+			}
+		}
+	}
+
 	retryAfterRaw := resp.Header.Get("X-Retry-After")
 	if len(retryAfterRaw) != 0 {
 		retryAfter, err := strconv.ParseInt(retryAfterRaw, 10, 64)
@@ -141,9 +168,9 @@ func tryToReadWaitDurationFromHeaders(resp *http.Response) time.Duration {
 	return 0
 }
 
-func isConnectTimeout(err error) bool {
+func isDialError(err error) bool {
 	var netErr net.Error
-	if errors.As(err, &netErr) && netErr.Timeout() {
+	if errors.As(err, &netErr) {
 		opErr, ok := netErr.(*net.OpError)
 		if ok && opErr.Op == "dial" {
 			return true
@@ -165,7 +192,7 @@ func isReadTimeout(err error) bool {
 
 func backoff(attempt int) time.Duration {
 	maxInterval := 30 * time.Second
-	delay := time.Duration(math.Pow(2, float64(attempt))) * time.Second
+	delay := time.Duration(math.Pow(float64(retryBackoffFactor), float64(attempt))) * time.Second
 	if delay > maxInterval {
 		delay = maxInterval
 	}
@@ -180,4 +207,20 @@ func sleepWithContext(ctx context.Context, duration time.Duration) error {
 	case <-time.After(duration):
 		return nil
 	}
+}
+
+// preserveResponseBody reads the response body and creates a new reader for it.
+// This is necessary because the response body can only be read once.
+func preserveResponseBody(resp *http.Response) error {
+	if resp == nil || resp.Body == nil {
+		return nil
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("failed to read response body in round tripper: %w", err)
+	}
+	resp.Body = io.NopCloser(bytes.NewReader(body))
+	return nil
 }
