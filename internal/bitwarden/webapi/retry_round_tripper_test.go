@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -251,9 +252,13 @@ type mockTransport struct {
 	responses []*http.Response
 	errors    []error
 	index     int
+	mu        sync.Mutex
 }
 
 func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if m.index >= len(m.responses) {
 		return nil, errors.New("no more responses")
 	}
