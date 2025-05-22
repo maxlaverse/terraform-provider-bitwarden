@@ -100,11 +100,11 @@ func init() {
 	envFile := filepath.Join(projectRoot, ".env."+testBackend)
 	_ = godotenv.Load(envFile)
 
-	// Load environment variables
-	loadEnvironmentVariables()
-
 	testUniqueIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 	testAccountNameOrgOwner = fmt.Sprintf("test-%s", testUniqueIdentifier)
+
+	// Load environment variables
+	loadEnvironmentVariables()
 }
 
 // getProjectRoot returns the absolute path to the project root directory
