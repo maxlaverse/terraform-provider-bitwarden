@@ -66,7 +66,7 @@ func (rrt *RetryRoundTripper) RoundTrip(httpReq *http.Request) (*http.Response, 
 			return nil, err
 		}
 
-		if !shouldRetry || rrt.DisableRetries {
+		if !shouldRetry {
 			return resp, nil
 		}
 	}
@@ -94,13 +94,15 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	isDialError := err != nil && isDialError(err)
 	isRetriableHttpStatusCode := httpReq.Method == http.MethodGet && err == nil && slices.Contains(retryableStatusCodes, resp.StatusCode)
 	isRetriableReadTimeout := httpReq.Method == http.MethodGet && (isReadTimeout(err))
-	isLastPossibleAttempt := attemptNumber >= rrt.maxRetries-1
+	isLastPossibleAttempt := attemptNumber >= rrt.maxRetries-1 || rrt.DisableRetries
 
 	debugInfo := map[string]interface{}{
-		"url":            httpReq.URL.RequestURI(),
-		"method":         httpReq.Method,
-		"attempt_number": attemptNumber,
-		"is_retryable":   false,
+		"url":                           httpReq.URL.RequestURI(),
+		"method":                        httpReq.Method,
+		"attempt_number":                attemptNumber,
+		"is_last_attempt":               isLastPossibleAttempt,
+		"is_retriable_http_status_code": isRetriableHttpStatusCode,
+		"is_retriable_read_timeout":     isRetriableReadTimeout,
 	}
 
 	// If the request is not retryable, we preserve the response body, log and return.
@@ -112,8 +114,6 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 		}
 		return resp, false, err
 	}
-
-	debugInfo["is_retryable"] = true
 
 	// We're going to retry the request, and therefore should throw away the
 	// response body of the previous attempt if it exists.
