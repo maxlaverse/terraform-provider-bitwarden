@@ -144,7 +144,7 @@ func loadEnvironmentVariables() {
 		testAccountType = v
 	}
 
-	if v := os.Getenv("TEST_PASSWORD_MANAGER_SERVER_URL"); v != "" {
+	if v := os.Getenv("TEST_SERVER_URL"); v != "" {
 		testServerURL = v
 	}
 
@@ -157,6 +157,8 @@ func loadEnvironmentVariables() {
 	// When using the official backend, we reuse existing resources rather than creating new ones
 	// to avoid hitting free account limits on organizations and collections.
 	if IsOfficialBackend() {
+		testAccountEmailOrgOwner = testEmail
+
 		if v := os.Getenv("TEST_PASSWORD_MANAGER_COLLECTION_ID"); v != "" {
 			testCollectionID = v
 		}
@@ -169,9 +171,7 @@ func loadEnvironmentVariables() {
 		if v := os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_USER_ID"); v != "" {
 			testAccountEmailOrgOwnerInTestOrgUserId = v
 		}
-		if v := os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_USER_EMAIL"); v != "" {
-			testAccountEmailOrgOwner = v
-		}
+
 		if v := os.Getenv("TEST_PASSWORD_MANAGER_USER_NAME"); v != "" {
 			testAccountNameOrgOwner = v
 		}

@@ -889,9 +889,19 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 		return nil, models.ErrVaultLocked
 	}
 
+	// Check if the item exists beforehand, in order to differentiate between
+	// missing attachments, and missing items.
+	_, err := getObject(v.objectStore, models.Item{ID: itemId, Object: models.ObjectTypeItem})
+	if err != nil {
+		return nil, err
+	}
+
 	res, err := v.client.GetCipherAttachment(ctx, itemId, attachmentId)
 	if err != nil {
 		if strings.Contains(err.Error(), "Attachment doesn't exist") {
+			return nil, models.ErrAttachmentNotFound
+		}
+		if httpErr, ok := webapi.IsHTTPError(err); ok && httpErr.GetStatusCode() == 404 {
 			return nil, models.ErrAttachmentNotFound
 		}
 		if strings.Contains(err.Error(), "Cipher doesn't exist") {

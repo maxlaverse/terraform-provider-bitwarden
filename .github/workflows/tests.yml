@@ -145,10 +145,12 @@ jobs:
           TEST_PASSWORD_MANAGER_MASTER_PASSWORD: "${{ secrets.BITWARDEN_MASTER_PASSWORD }}"
           TEST_PASSWORD_MANAGER_CLIENT_ID: "${{ secrets.BITWARDEN_CLIENT_ID }}"
           TEST_PASSWORD_MANAGER_CLIENT_SECRET: "${{ secrets.BITWARDEN_CLIENT_SECRET }}"
+          TEST_SERVER_URL: "https://vault.bitwarden.eu"
           TEST_PASSWORD_MANAGER_COLLECTION_ID: "${{ secrets.BITWARDEN_TEST_COLLECTION_ID }}"
           TEST_PASSWORD_MANAGER_FOLDER_ID: "${{ secrets.BITWARDEN_TEST_FOLDER_ID }}"
           TEST_PASSWORD_MANAGER_ORGANIZATION_ID: "${{ secrets.BITWARDEN_TEST_ORGANIZATION_ID }}"
           TEST_PASSWORD_MANAGER_ORGANIZATION_USER_ID: "${{ secrets.BITWARDEN_TEST_SELF_USER_ID }}"
+          TEST_PASSWORD_MANAGER_USER_NAME: "${{ secrets.BITWARDEN_TEST_SELF_USER_NAME }}"
       - name: Code Coverage
         continue-on-error: true
         uses: shogo82148/actions-goveralls@v1
@@ -169,6 +171,7 @@ jobs:
         run: mage test:integrationBwsOfficial
         env:
           TEST_SECRETS_MANAGER_ACCESS_TOKEN: "${{ secrets.BWS_ACCESS_TOKEN }}"
+          TEST_SERVER_URL: "https://vault.bitwarden.eu"
       - name: Code Coverage
         continue-on-error: true
         uses: shogo82148/actions-goveralls@v1
