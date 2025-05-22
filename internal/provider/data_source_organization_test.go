@@ -16,15 +16,24 @@ func TestAccDataSourceOrganizationAttributes(t *testing.T) {
 
 	resourceName := "data.bitwarden_organization.foo_data"
 
+	var nameAssertion resource.TestCheckFunc
+	if IsOfficialBackend() {
+		nameAssertion = resource.TestCheckResourceAttr(
+			resourceName, schema_definition.AttributeName, "TestOrganization",
+		)
+	} else {
+		nameAssertion = resource.TestMatchResourceAttr(
+			resourceName, schema_definition.AttributeName, regexp.MustCompile("^org-([0-9]{6})$"),
+		)
+	}
+
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigPasswordManagerProvider() + tfConfigDataOrganization(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestMatchResourceAttr(
-						resourceName, schema_definition.AttributeName, regexp.MustCompile("^org-([0-9]{6})$"),
-					),
+					nameAssertion,
 					resource.TestMatchResourceAttr(
 						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
 					),

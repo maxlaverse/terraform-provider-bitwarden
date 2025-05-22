@@ -31,11 +31,11 @@ type AttachmentRequestData struct {
 }
 
 type CreateObjectAttachmentResponse struct {
-	AttachmentId   string            `json:"attachmentId"`
-	CipherResponse models.Item       `json:"cipherResponse"`
-	FileUploadType int               `json:"fileUploadType"`
-	Object         models.ObjectType `json:"object"`
-	Url            string            `json:"url"`
+	AttachmentId   string                `json:"attachmentId"`
+	CipherResponse models.Item           `json:"cipherResponse"`
+	FileUploadType models.FileUploadType `json:"fileUploadType"`
+	Object         models.ObjectType     `json:"object"`
+	Url            string                `json:"url"`
 }
 
 type CollectionMember struct {
@@ -286,4 +286,13 @@ type CollectionAccessResponse struct {
 	ContinuationToken string            `json:"continuationToken"`
 	Data              []Collection      `json:"data"`
 	Object            models.ObjectType `json:"object"`
+}
+
+type ErrorResponse struct {
+	Message               string        `json:"message"`
+	ValidationErrors      []interface{} `json:"validationErrors"`
+	ExceptionMessage      string        `json:"exceptionMessage"`
+	ExceptionStackTrace   interface{}   `json:"exceptionStackTrace"`
+	InnerExceptionMessage string        `json:"innerExceptionMessage"`
+	Object                string        `json:"object"`
 }

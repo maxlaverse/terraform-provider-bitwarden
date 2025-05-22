@@ -16,13 +16,16 @@ type PasswordManagerClient interface {
 	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error)
 	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Item, error)
 	CreateFolder(context.Context, models.Folder) (*models.Folder, error)
+	CreateGroup(context.Context, models.Group) (*models.Group, error)
 	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteFolder(context.Context, models.Folder) error
+	DeleteGroup(context.Context, models.Group) error
 	DeleteItem(context.Context, models.Item) error
 	DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error
 	EditFolder(context.Context, models.Folder) (*models.Folder, error)
+	EditGroup(context.Context, models.Group) (*models.Group, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	FindFolder(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Folder, error)
@@ -32,6 +35,7 @@ type PasswordManagerClient interface {
 	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	GetFolder(context.Context, models.Folder) (*models.Folder, error)
+	GetGroup(context.Context, models.Group) (*models.Group, error)
 	GetItem(context.Context, models.Item) (*models.Item, error)
 	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
 	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
@@ -48,10 +52,8 @@ type PasswordManagerClient interface {
 	Unlock(ctx context.Context, password string) error
 }
 
-func NewPasswordManagerClient(execPath string, opts ...Options) PasswordManagerClient {
-	c := &client{
-		execPath: execPath,
-	}
+func NewPasswordManagerClient(opts ...Options) PasswordManagerClient {
+	c := &client{}
 
 	for _, o := range opts {
 		o(c)
@@ -66,7 +68,6 @@ type client struct {
 	appDataDir          string
 	disableSync         bool
 	disableRetryBackoff bool
-	execPath            string
 	extraCACertsPath    string
 	newCommand          command.NewFn
 	sessionKey          string
@@ -124,6 +125,10 @@ func (c *client) CreateFolder(ctx context.Context, obj models.Folder) (*models.F
 	return createObject(ctx, c, obj, models.ObjectTypeFolder)
 }
 
+func (c *client) CreateGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
+	return nil, fmt.Errorf("creating groups is only supported by the embedded client")
+}
+
 func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
 	return createObject(ctx, c, obj, models.ObjectTypeItem)
 }
@@ -168,6 +173,10 @@ func createObject[T any](ctx context.Context, c *client, obj T, objectType model
 
 func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
 	return editGenericObject(ctx, c, obj, obj.Object, obj.ID)
+}
+
+func (c *client) EditGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
+	return nil, fmt.Errorf("editing groups is only supported by the embedded client")
 }
 
 func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
@@ -227,6 +236,10 @@ func (c *client) GetAttachment(ctx context.Context, itemId, attachmentId string)
 
 func (c *client) GetFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
 	return getObject(ctx, c, obj, obj.Object, obj.ID)
+}
+
+func (c *client) GetGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
+	return nil, fmt.Errorf("getting groups is only supported by the embedded client")
 }
 
 func (c *client) GetItem(ctx context.Context, obj models.Item) (*models.Item, error) {
@@ -379,6 +392,10 @@ func (c *client) DeleteFolder(ctx context.Context, obj models.Folder) error {
 	return err
 }
 
+func (c *client) DeleteGroup(ctx context.Context, obj models.Group) error {
+	return fmt.Errorf("deleting groups is only supported by the embedded client")
+}
+
 func (c *client) DeleteItem(ctx context.Context, obj models.Item) error {
 	_, err := c.cmdWithSession("delete", string(models.ObjectTypeItem), obj.ID).Run(ctx)
 	return err
@@ -442,7 +459,7 @@ func (c *client) Sync(ctx context.Context) error {
 }
 
 func (c *client) cmd(args ...string) command.Command {
-	return c.newCommand(c.execPath, args...).AppendEnv(c.env())
+	return c.newCommand("bw", args...).AppendEnv(c.env())
 }
 
 func (c *client) cmdWithSession(args ...string) command.Command {
@@ -452,8 +469,10 @@ func (c *client) cmdWithSession(args ...string) command.Command {
 func (c *client) env() []string {
 	defaultEnv := []string{
 		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
-		fmt.Sprintf("BITWARDENCLI_APPDATA_DIR=%s", c.appDataDir),
 		"BW_NOINTERACTION=true",
+	}
+	if len(c.appDataDir) > 0 {
+		defaultEnv = append(defaultEnv, fmt.Sprintf("BITWARDENCLI_APPDATA_DIR=%s", c.appDataDir))
 	}
 	if len(c.extraCACertsPath) > 0 {
 		return append(defaultEnv, fmt.Sprintf("NODE_EXTRA_CA_CERTS=%s", c.extraCACertsPath))

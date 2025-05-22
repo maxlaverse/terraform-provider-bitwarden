@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -339,12 +338,7 @@ func newCLIPasswordManagerClient(d *schema.ResourceData, version string) (bwcli.
 		opts = append(opts, bwcli.DisableRetryBackoff())
 	}
 
-	bwExecutable, err := exec.LookPath("bw")
-	if err != nil {
-		return nil, err
-	}
-
-	return bwcli.NewPasswordManagerClient(bwExecutable, opts...), nil
+	return bwcli.NewPasswordManagerClient(opts...), nil
 }
 
 func newEmbeddedPasswordManagerClient(ctx context.Context, d *schema.ResourceData, version string) (bitwarden.PasswordManager, error) {

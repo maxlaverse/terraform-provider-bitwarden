@@ -14,6 +14,8 @@ import (
 )
 
 func TestAccResourceOrgCollection(t *testing.T) {
+	SkipIfOfficialBackend(t, "Bitwarden has stopped accepting the creation of collections without a member with manage permissions")
+
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "bitwarden_org_collection.foo_org_col"
@@ -65,7 +67,45 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 	resourceName := "bitwarden_org_collection.foo_org_col"
 	var objectID string
 
-	if useEmbeddedClient {
+	if IsOfficialBackend() {
+		resource.Test(t, resource.TestCase{
+			ProviderFactories: providerFactories,
+			Steps: []resource.TestStep{
+				// Simplified test for creating a collection on Bitwarden's server (for now)
+				{
+					ResourceName: resourceName,
+					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionWithOurSelves("org-col-bar"),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(
+							resourceName, schema_definition.AttributeName, "org-col-bar",
+						),
+						resource.TestMatchResourceAttr(
+							resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
+						),
+						resource.TestCheckResourceAttr(
+							resourceName, "member.#", "1",
+						),
+						resource.TestCheckTypeSetElemNestedAttrs(
+							resourceName, "member.*", map[string]string{
+								"id":             testAccountEmailOrgOwnerInTestOrgUserId,
+								"read_only":      "false",
+								"hide_passwords": "false",
+								"manage":         "true",
+							},
+						),
+
+						getObjectID(resourceName, &objectID),
+					),
+				},
+				{
+					ResourceName:      resourceName,
+					ImportStateIdFunc: orgCollectionImportID(resourceName),
+					ImportState:       true,
+					ImportStateVerify: false,
+				},
+			},
+		})
+	} else if useEmbeddedClient {
 		resource.Test(t, resource.TestCase{
 			ProviderFactories: providerFactories,
 			Steps: []resource.TestStep{
@@ -269,6 +309,23 @@ func tfConfigResourceOrgCollectionSingleMember(name string) string {
 	
 	member {
 		id = "%s"
+	}
+}
+`, testOrganizationID, name, testAccountEmailOrgOwnerInTestOrgUserId)
+}
+
+func tfConfigResourceOrgCollectionWithOurSelves(name string) string {
+	return fmt.Sprintf(`
+	resource "bitwarden_org_collection" "foo_org_col" {
+	provider	= bitwarden
+
+	organization_id = "%s"
+
+	name     = "%s"
+
+	member {
+		id = "%s"
+		manage = true
 	}
 }
 `, testOrganizationID, name, testAccountEmailOrgOwnerInTestOrgUserId)

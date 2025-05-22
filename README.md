@@ -24,14 +24,12 @@ This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 
 ## Supported Versions
 
-The plugin has been tested and built with the following components:
+The plugin has been tested with the following components:
 
-- [Terraform] v1.9.8 / [OpenTofu] v1.9.0
+- [Terraform] v1.11.4 / [OpenTofu] v1.9.0
 - [Bitwarden CLI] v2025.2.0 (when not using the [Embedded Client](#embedded-client))
-- [Go] 1.24.1 (for development)
-- [Docker] 24.0.6 (for development)
 
-The provider is likely to work with older versions, but those haven't been tested.
+The provider is likely to work with older versions, but those haven't necessarily been tested.
 If you encounter issues with recent versions of the Bitwarden CLI, consider trying out the [Embedded Client](#embedded-client).
 
 ## Usage
@@ -120,8 +118,8 @@ See the [examples](./examples/) directory for more examples.
 ## Embedded Client
 
 Since version 0.9.0, the provider contains an embedded client that can directly interact with Bitwarden's API, removing the need for a locally installed Bitwarden CLI.
-The embedded client makes the provider faster, easier to use, but it still requires more testing.
-For now, a feature flag needs to be set in order to use it (`experimental.embedded_client`), with the goal of having it the default in v1.0.0.
+The embedded client makes the provider faster, easier to use, but it still requires more testing and feedback.
+For now, a feature flag needs to be set in order to use it (`experimental.embedded_client`).
 
 ## Security Considerations
 
@@ -134,22 +132,70 @@ Please note that this file is stored at `<your-project>/.bitwarden/` by default,
 
 ## Developing the Provider
 
-If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
+If you wish to work on the provider, you need the following software:
+- [Go] 1.24.1
+- [Mage] 1.15.0
+- [Docker Compose] 2.35.0
 
-To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
+Mage is a make/rake-like build tool using Go. You can list all available targets by running `mage` 
 
-To generate or update documentation, run `go generate`.
+### Building the Provider
 
-In order to run the full suite of Acceptance tests, start a Vaultwarden server:
+To compile the provider, run `mage build`.
+You can then instruct Terraform use your compiled version of the provider by running `mage setup:install`.
+
+### Running Tests
+
+The provider includes several types of tests:
+
+1. **Offline Tests**: Run tests that don't require a Bitwarden backend (e.g. schema validation, unit tests):
+   ```sh
+   $ mage test:offline
+   ```
+
+2. **Integration Tests**: There are three types of integration tests:
+
+   a. With the Embedded Client against the official Bitwarden instance. This requires Bitwarden credentials and object identifiers in `.env.official` file (see [.env.official-example](./.env.official-example)):
+
+   ```sh
+   $ mage test:integrationPwdOfficialWithEmbeddedClient
+   ```
+
+   b. With the Embedded Client against a local Vaultwarden instance. First ensure start Vaultwarden locally:
+   ```sh
+   $ mage vaultwarden
+   ```
+   Then, run the tests:
+   ```sh
+   $ mage test:integrationPwdVaultwardenWithEmbeddedClient
+   ```
+
+   c. With the Bitwarden CLI against a local Vaultwarden instance. First ensure start Vaultwarden locally:
+   ```sh
+   $ mage vaultwarden
+   ```
+   Then, run the tests:
+   ```sh
+   $ mage test:integrationPwdVaultwardenWithCLI
+   ```
+
+3. **Run All Tests**: To run the complete test suite:
+   ```sh
+   $ mage test:all
+   ```
+
+To clean up test artifacts and clear the test cache:
 
 ```sh
-$ make server
+$ mage clean
 ```
 
-Then run `make testacc`.
+### Documentation
+
+To generate or update documentation, run:
 
 ```sh
-$ make testacc
+$ mage docs
 ```
 
 ## Disclaimer
@@ -164,8 +210,10 @@ Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more informa
 
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
 [Docker]: https://www.docker.com/products/docker-desktop
+[Docker Compose]: https://docs.docker.com/compose/install/
 [Go]: https://golang.org/doc/install
 [hashicorp/terraform-plugin-sdk#63]: https://github.com/hashicorp/terraform-plugin-sdk/issues/63
+[Mage]: https://magefile.org/
 [OpenTofu]: https://opentofu.org/
 [Password Manager]: https://bitwarden.com/products/personal/
 [Secrets Manager]: https://bitwarden.com/products/secrets-manager/

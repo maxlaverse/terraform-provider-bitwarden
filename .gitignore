@@ -46,3 +46,4 @@ internal/provider/.bitwarden/
 
 # Terraform Workspace
 debug/
+.env.*
