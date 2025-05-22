@@ -785,7 +785,7 @@ func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *htt
 			if err == nil && errResp.Object == "error" {
 				return nil, &HTTPError{
 					StatusCode: httpResp.StatusCode,
-					Message:    fmt.Sprintf("the server returned an error: \"%s\"", errResp.Message),
+					Message:    fmt.Sprintf("the server returned an error: \"%s\" (%d)", errResp.Message, httpResp.StatusCode),
 				}
 			}
 		}
