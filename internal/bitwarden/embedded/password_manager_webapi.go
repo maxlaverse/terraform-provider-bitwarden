@@ -399,7 +399,7 @@ func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj mode
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
-	err = v.checkMembersExistence(ctx, obj.OrganizationID, obj.Users)
+	err := v.checkMembersExistence(ctx, obj.OrganizationID, obj.Users)
 	if err != nil {
 		return nil, err
 	}
@@ -476,7 +476,7 @@ func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
-	err = v.checkMembersExistence(ctx, obj.OrganizationID, obj.Users)
+	err := v.checkMembersExistence(ctx, obj.OrganizationID, obj.Users)
 	if err != nil {
 		return nil, err
 	}
