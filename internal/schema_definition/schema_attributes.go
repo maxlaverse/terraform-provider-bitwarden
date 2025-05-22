@@ -39,6 +39,7 @@ const (
 	AttributeLoginURIsValue                = "value"
 	AttributeLoginTotp                     = "totp"
 	AttributeMember                        = "member"
+	AttributeMemberGroup                   = "member_group"
 	AttributeName                          = "name"
 	AttributeNotes                         = "notes"
 	AttributeOrganizationID                = "organization_id"
@@ -54,7 +55,9 @@ const (
 	// Data-source and Resource field descriptions
 	DescriptionAttachments                   = "List of item attachments."
 	DescriptionCollectionIDs                 = "Identifier of the collections the item belongs to."
-	DescriptionCollectionMember              = "[Experimental] Member of a collection."
+	DescriptionCollectionMember              = "[Experimental] Member (Users) of a collection."
+	DescriptionCollectionMemberGroup         = "[Experimental] Member Groups of a collection."
+	DescriptionCollectionMemberID            = "[Experimental] Unique Identifier (UUID) of the user or group member."
 	DescriptionCollectionMemberReadOnly      = "[Experimental] Read/Write permissions."
 	DescriptionCollectionMemberHidePasswords = "[Experimental] Hide passwords."
 	DescriptionCollectionMemberManage        = "[Experimental] Can manage the collection."

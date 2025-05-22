@@ -38,7 +38,7 @@ type CreateObjectAttachmentResponse struct {
 	Url            string                `json:"url"`
 }
 
-type CollectionUser struct {
+type CollectionMember struct {
 	HidePasswords bool   `json:"hidePasswords"`
 	Id            string `json:"id"`
 	ReadOnly      bool   `json:"readOnly"`
@@ -168,18 +168,18 @@ type CollectionResponseItem struct {
 }
 
 type Collection struct {
-	Assigned       bool              `json:"assigned"`
-	ExternalId     string            `json:"externalId"`
-	Groups         []string          `json:"groups"`
-	HidePasswords  bool              `json:"hidePasswords"` // Missing in get collections
-	Id             string            `json:"id"`
-	Manage         bool              `json:"manage"`
-	Name           string            `json:"name"`
-	Object         models.ObjectType `json:"object"`
-	OrganizationId string            `json:"organizationId"`
-	ReadOnly       bool              `json:"readOnly"` // Missing in get collections
-	Unmanaged      bool              `json:"unmanaged"`
-	Users          []CollectionUser  `json:"users"`
+	Assigned       bool               `json:"assigned"`
+	ExternalId     string             `json:"externalId"`
+	Groups         []CollectionMember `json:"groups"`
+	HidePasswords  bool               `json:"hidePasswords"` // Missing in get collections
+	Id             string             `json:"id"`
+	Manage         bool               `json:"manage"`
+	Name           string             `json:"name"`
+	Object         models.ObjectType  `json:"object"`
+	OrganizationId string             `json:"organizationId"`
+	ReadOnly       bool               `json:"readOnly"` // Missing in get collections
+	Unmanaged      bool               `json:"unmanaged"`
+	Users          []CollectionMember `json:"users"`
 }
 
 type CreateCipherRequest struct {

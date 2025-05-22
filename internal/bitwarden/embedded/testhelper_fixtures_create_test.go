@@ -152,6 +152,7 @@ func createOrganizationResources(t *testing.T, account1 string, orgId string) {
 		Name:           "org-collection",
 		OrganizationID: orgId,
 		Users:          []models.OrgCollectionMember{},
+		Groups:         []models.OrgCollectionMember{},
 	})
 	if err != nil {
 		t.Fatal(err)
