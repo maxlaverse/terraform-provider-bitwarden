@@ -32,6 +32,8 @@ const (
 	// Backend types
 	backendOfficial    = "official"
 	backendVaultwarden = "vaultwarden"
+
+	accountTypePremium = "premium"
 )
 
 // Generated resources used for testing
@@ -40,6 +42,8 @@ var testBackend string
 var testMasterPassword = "test1234"
 var testClientID string
 var testClientSecret string
+var testAccountType = accountTypePremium
+var testAccountNameOrgOwner string
 var testAccountEmailOrgOwner string
 var testAccountEmailOrgUser string
 var testAccountEmailOrgAdmin string
@@ -96,10 +100,11 @@ func init() {
 	envFile := filepath.Join(projectRoot, ".env."+testBackend)
 	_ = godotenv.Load(envFile)
 
+	testUniqueIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
+	testAccountNameOrgOwner = fmt.Sprintf("test-%s", testUniqueIdentifier)
+
 	// Load environment variables
 	loadEnvironmentVariables()
-
-	testUniqueIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 }
 
 // getProjectRoot returns the absolute path to the project root directory
@@ -115,48 +120,60 @@ func getProjectRoot() (string, error) {
 
 // loadEnvironmentVariables loads all environment variables used in tests
 func loadEnvironmentVariables() {
-	if os.Getenv("TEST_PROVIDER_EXPERIMENTAL_EMBEDDED_CLIENT") == "1" {
+	if os.Getenv("TEST_EXPERIMENTAL_EMBEDDED_CLIENT") == "1" {
 		useEmbeddedClient = true
 	}
 
-	if v := os.Getenv("TEST_PROVIDER_MASTER_PASSWORD"); v != "" {
+	if v := os.Getenv("TEST_PASSWORD_MANAGER_MASTER_PASSWORD"); v != "" {
 		testMasterPassword = v
 	}
 
-	if v := os.Getenv("TEST_PROVIDER_EMAIL"); v != "" {
+	if v := os.Getenv("TEST_PASSWORD_MANAGER_EMAIL"); v != "" {
 		testEmail = v
 	}
 
-	if v := os.Getenv("TEST_PROVIDER_CLIENT_ID"); v != "" {
+	if v := os.Getenv("TEST_PASSWORD_MANAGER_CLIENT_ID"); v != "" {
 		testClientID = v
 	}
 
-	if v := os.Getenv("TEST_PROVIDER_CLIENT_SECRET"); v != "" {
+	if v := os.Getenv("TEST_PASSWORD_MANAGER_CLIENT_SECRET"); v != "" {
 		testClientSecret = v
 	}
 
-	if v := os.Getenv("TEST_PROVIDER_SERVER_URL"); v != "" {
+	if v := os.Getenv("TEST_PASSWORD_MANAGER_ACCOUNT_TYPE"); v != "" {
+		testAccountType = v
+	}
+
+	if v := os.Getenv("TEST_SERVER_URL"); v != "" {
 		testServerURL = v
 	}
 
-	if v := os.Getenv("TEST_PROVIDER_REVERSE_PROXY_URL"); v != "" {
+	if v := os.Getenv("TEST_REVERSE_PROXY_URL"); v != "" {
 		testReverseProxyServerURL = v
 	} else {
 		testReverseProxyServerURL = testServerURL
 	}
 
+	// When using the official backend, we reuse existing resources rather than creating new ones
+	// to avoid hitting free account limits on organizations and collections.
 	if IsOfficialBackend() {
-		if v := os.Getenv("TEST_COLLECTION_ID"); v != "" {
+		testAccountEmailOrgOwner = testEmail
+
+		if v := os.Getenv("TEST_PASSWORD_MANAGER_COLLECTION_ID"); v != "" {
 			testCollectionID = v
 		}
-		if v := os.Getenv("TEST_FOLDER_ID"); v != "" {
+		if v := os.Getenv("TEST_PASSWORD_MANAGER_FOLDER_ID"); v != "" {
 			testFolderID = v
 		}
-		if v := os.Getenv("TEST_ORGANIZATION_ID"); v != "" {
+		if v := os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_ID"); v != "" {
 			testOrganizationID = v
 		}
-		if v := os.Getenv("TEST_SELF_USER_ID"); v != "" {
+		if v := os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_USER_ID"); v != "" {
 			testAccountEmailOrgOwnerInTestOrgUserId = v
+		}
+
+		if v := os.Getenv("TEST_PASSWORD_MANAGER_USER_NAME"); v != "" {
+			testAccountNameOrgOwner = v
 		}
 	}
 }
@@ -167,13 +184,15 @@ func SkipIfOfficialBackend(t *testing.T, reason string) {
 	}
 }
 
-func SkipIfNonPremiumTestAccount(t *testing.T, reason string) {
-	// TODO: Implement this
+func SkipIfNonPremiumTestAccount(t *testing.T) {
+	if testAccountType != accountTypePremium {
+		t.Skip("Skipping test as non-premium test account is used")
+	}
 }
 
-func SkipAsNotImplementedForOfficialBackend(t *testing.T) {
-	if IsOfficialBackend() {
-		t.Skipf("Skipping test as the test is not written for official backend yet")
+func SkipIfOfficialCLI(t *testing.T, reason string) {
+	if !useEmbeddedClient {
+		t.Skipf("Skipping test as official CLI is used: %s", reason)
 	}
 }
 
@@ -531,7 +550,7 @@ func spawnTestSecretsManager(t *testing.T) (string, func()) {
 }
 
 func tfConfigSecretsManagerProvider() string {
-	accessToken := os.Getenv("TEST_PROVIDER_ACCESS_TOKEN")
+	accessToken := os.Getenv("TEST_SECRETS_MANAGER_ACCESS_TOKEN")
 	return fmt.Sprintf(`
 	provider "bitwarden" {
 		access_token = "%s"
