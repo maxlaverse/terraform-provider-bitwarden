@@ -13,11 +13,6 @@ Manages an organization collection.
 ## Example Usage
 
 ```terraform
-variable "BW_GROUP_ID" {
-  type        = string
-  description = "Static UUID for a Bitwarden Group"
-}
-
 data "bitwarden_organization" "terraform" {
   search = "Terraform"
 }
@@ -43,7 +38,8 @@ resource "bitwarden_org_collection" "generated" {
     manage         = true
   }
   member_group {
-    id             = var.BW_GROUP_ID
+    # Extracting the raw UUID4 string id representing a group via the `bw` cli or Web UI can also be used here.
+    id             = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
     hide_passwords = false
     read_only      = false
     manage         = true
