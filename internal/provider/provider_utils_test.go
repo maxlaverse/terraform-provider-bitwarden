@@ -32,6 +32,8 @@ const (
 	// Backend types
 	backendOfficial    = "official"
 	backendVaultwarden = "vaultwarden"
+
+	accountTypePremium = "premium"
 )
 
 // Generated resources used for testing
@@ -40,7 +42,7 @@ var testBackend string
 var testMasterPassword = "test1234"
 var testClientID string
 var testClientSecret string
-var testAccountType string
+var testAccountType = accountTypePremium
 var testAccountNameOrgOwner string
 var testAccountEmailOrgOwner string
 var testAccountEmailOrgUser string
@@ -183,7 +185,7 @@ func SkipIfOfficialBackend(t *testing.T, reason string) {
 }
 
 func SkipIfNonPremiumTestAccount(t *testing.T) {
-	if testAccountType != "premium" {
+	if testAccountType != accountTypePremium {
 		t.Skip("Skipping test as non-premium test account is used")
 	}
 }
