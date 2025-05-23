@@ -37,7 +37,7 @@ resource "local_sensitive_file" "vpn_key_file" {
 }
 
 resource "bitwarden_attachment" "dynamic_key_from_disk" {
-  file = local_sensitive_file.vpn_key_file.filename
+  dynamic_file = local_sensitive_file.vpn_key_file.filename
   # (Optional) Hash specified ensures the file is reuploaded if it is recalculated.
   content_hash = local_sensitive_file.vpn_key_file.content_sha1
   item_id      = bitwarden_item_login.vpn_credentials.id

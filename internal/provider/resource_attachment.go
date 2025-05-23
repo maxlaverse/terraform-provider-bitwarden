@@ -6,46 +6,59 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
+	"strings"
 )
 
 func resourceAttachment() *schema.Resource {
 	resourceAttachmentSchema := schema_definition.AttachmentSchema()
 	resourceAttachmentSchema[schema_definition.AttributeAttachmentFile] = &schema.Schema{
-		Description:   schema_definition.DescriptionItemAttachmentFile,
+		Description:      schema_definition.DescriptionItemAttachmentFile,
+		Type:             schema.TypeString,
+		Optional:         true,
+		ConflictsWith:    []string{schema_definition.AttributeAttachmentContent, schema_definition.AttributeAttachmentDynamicFile},
+		AtLeastOneOf:     []string{schema_definition.AttributeAttachmentContent, schema_definition.AttributeAttachmentDynamicFile},
+		ForceNew:         true,
+		ValidateDiagFunc: fileHashComputable,
+		StateFunc:        fileHash,
+	}
+
+	resourceAttachmentSchema[schema_definition.AttributeAttachmentDynamicFile] = &schema.Schema{
+		Description:   schema_definition.DescriptionItemAttachmentDynamicFile,
 		Type:          schema.TypeString,
 		Optional:      true,
-		ConflictsWith: []string{schema_definition.AttributeAttachmentContent},
-		AtLeastOneOf:  []string{schema_definition.AttributeAttachmentContent},
+		ConflictsWith: []string{schema_definition.AttributeAttachmentContent, schema_definition.AttributeAttachmentFile},
+		AtLeastOneOf:  []string{schema_definition.AttributeAttachmentContent, schema_definition.AttributeAttachmentFile},
 		ForceNew:      true,
 	}
 
 	resourceAttachmentSchema[schema_definition.AttributeAttachmentContent] = &schema.Schema{
-		Description:   schema_definition.DescriptionItemAttachmentFile,
+		Description:   schema_definition.DescriptionItemAttachmentContent,
 		Type:          schema.TypeString,
 		Optional:      true,
 		RequiredWith:  []string{schema_definition.AttributeAttachmentContent},
-		ConflictsWith: []string{schema_definition.AttributeAttachmentFile},
-		AtLeastOneOf:  []string{schema_definition.AttributeAttachmentFile},
+		ConflictsWith: []string{schema_definition.AttributeAttachmentFile, schema_definition.AttributeAttachmentDynamicFile},
+		AtLeastOneOf:  []string{schema_definition.AttributeAttachmentFile, schema_definition.AttributeAttachmentDynamicFile},
 		ForceNew:      true,
+		StateFunc:     contentHash,
 	}
 	resourceAttachmentSchema[schema_definition.AttributeAttachmentFileName] = &schema.Schema{
 		Description:   schema_definition.DescriptionItemAttachmentFileName,
 		Type:          schema.TypeString,
 		RequiredWith:  []string{schema_definition.AttributeAttachmentContent},
-		ConflictsWith: []string{schema_definition.AttributeAttachmentFile},
+		ConflictsWith: []string{schema_definition.AttributeAttachmentFile, schema_definition.AttributeAttachmentDynamicFile},
 		ComputedWhen:  []string{schema_definition.AttributeAttachmentFile},
-		AtLeastOneOf:  []string{schema_definition.AttributeAttachmentFile},
+		AtLeastOneOf:  []string{schema_definition.AttributeAttachmentFile, schema_definition.AttributeAttachmentDynamicFile},
 		ForceNew:      true,
 		Optional:      true,
 		Computed:      true,
 	}
 	resourceAttachmentSchema[schema_definition.AttributeAttachmentDataHash] = &schema.Schema{
-		Description:  schema_definition.DescriptionItemAttachmentDataHash,
-		Type:         schema.TypeString,
-		Optional:     true,
-		AtLeastOneOf: []string{schema_definition.AttributeAttachmentContent, schema_definition.AttributeAttachmentFile},
-		ForceNew:     true,
-		Computed:     true,
+		Description:   schema_definition.DescriptionItemAttachmentDataHash,
+		Type:          schema.TypeString,
+		Optional:      true,
+		ConflictsWith: []string{schema_definition.AttributeAttachmentContent, schema_definition.AttributeAttachmentFile},
+		ForceNew:      true,
+		Computed:      true,
 	}
 	resourceAttachmentSchema[schema_definition.AttributeAttachmentItemID] = &schema.Schema{
 		Description: schema_definition.DescriptionItemIdentifier,
@@ -91,24 +104,6 @@ func resourceAttachment() *schema.Resource {
 			}
 
 			tflog.Trace(ctx, "✅ CustomizeDiff dump complete", nil)
-			//confFilePath, fileSpecified := d.GetOk(schema_definition.AttributeAttachmentFile)
-			filePathOldValue, filePathNewValue := d.GetChange(schema_definition.AttributeAttachmentFile)
-			tflog.Trace(ctx, fmt.Sprintf("🔄🔄 FORCED for %q", schema_definition.AttributeAttachmentFile), map[string]interface{}{
-				"old": filePathOldValue,
-				"new": filePathNewValue,
-			})
-			//confContent, contentSpecified := d.GetOk(schema_definition.AttributeAttachmentContent)
-			contentOldValue, contentNewValue := d.GetChange(schema_definition.AttributeAttachmentContent)
-			tflog.Trace(ctx, fmt.Sprintf("🔄🔄 FORCED for %q", schema_definition.AttributeAttachmentContent), map[string]interface{}{
-				"old": contentOldValue,
-				"new": contentNewValue,
-			})
-			//confHash, hashSpecified := d.GetOk(schema_definition.AttributeAttachmentDataHash)
-			hashOldValue, hashNewValue := d.GetChange(schema_definition.AttributeAttachmentDataHash)
-			tflog.Trace(ctx, fmt.Sprintf("🔄🔄 FORCED diff for %q", schema_definition.AttributeAttachmentDataHash), map[string]interface{}{
-				"old": hashOldValue,
-				"new": hashNewValue,
-			})
 
 			// ** End of code used to learn how values would come in through CustomizeDiff.
 
@@ -117,31 +112,53 @@ func resourceAttachment() *schema.Resource {
 			// if the file on disk has changed. This is because the computed value is not created prior to the
 			// diff check.
 
-			// First, check if there is a change in the content values. If so, the file will be re-read so no need to
-			// compute a hash.
-			if filePathOldValue != filePathNewValue {
+			//confFilePath, fileSpecified := d.GetOk(schema_definition.AttributeAttachmentFile)
+			dynamicFilePathOldValue, dynamicFilePathNewValue := d.GetChange(schema_definition.AttributeAttachmentDynamicFile)
+			tflog.Trace(ctx, fmt.Sprintf("🔄🔄 FORCED diff for %q", schema_definition.AttributeAttachmentDynamicFile), map[string]interface{}{
+				"old": dynamicFilePathOldValue,
+				"new": dynamicFilePathNewValue,
+			})
+			//confHash, hashSpecified := d.GetOk(schema_definition.AttributeAttachmentDataHash)
+			hashOldValue, hashNewValue := d.GetChange(schema_definition.AttributeAttachmentDataHash)
+			tflog.Trace(ctx, fmt.Sprintf("🔄🔄 FORCED diff for %q", schema_definition.AttributeAttachmentDataHash), map[string]interface{}{
+				"old": hashOldValue,
+				"new": hashNewValue,
+			})
+
+			// First, check if there is a change in the dynamic file name values. If so, the file will be re-read no matter what, so just return.
+			if dynamicFilePathOldValue != dynamicFilePathNewValue {
 				return nil
 			}
-			if contentOldValue != contentNewValue {
+
+			// Next check if 'new hash' is set to ignore. if so, ensure 'new hash' is the 'old hash' so no changes are made due to hash value.
+			if strings.EqualFold(hashNewValue.(string), "ignore") {
+				tflog.Trace(ctx, fmt.Sprintf("Got Ignore hash value, setting new hash to old hash (%s) and ignoring dynamic_file changes.", hashOldValue), nil)
+				setNewErr := d.SetNew(schema_definition.AttributeAttachmentDataHash, hashOldValue)
+				if setNewErr != nil {
+					tflog.Warn(ctx, fmt.Sprintf("SetNew failed for %q: %s", schema_definition.AttributeAttachmentDataHash, setNewErr))
+				}
+				// Pop out here so we don't check the file on disk in the rest of the function.
 				return nil
 			}
+
+			// Next, check if hash has changed - if so there will already be a diff, so return.
 			if hashOldValue != hashNewValue {
 				return nil
 			}
 
 			// If we got to here, we need to check if the file on disk has been updated.
-			// We should only need to check the file-based method - as specifying content will not hit this issue.
-			if filePathOldValue != "" && hashOldValue != "" {
-				fileOnDiskHash := fileHash(filePathOldValue)
-				tflog.Trace(ctx, fmt.Sprintf("✅✅ FORCED fileOnDiskHash:"), map[string]interface{}{
-					"fileOnDiskHash": fileOnDiskHash,
-					"hashOldValue":   hashOldValue,
+			// We should only need to check the dynamic file method.
+			if dynamicFilePathOldValue != "" && hashOldValue != "" {
+				dynamicFileOnDiskHash := fileHash(dynamicFilePathOldValue)
+				tflog.Trace(ctx, fmt.Sprintf("✅✅ FORCED dynamicFileOnDiskHash:"), map[string]interface{}{
+					"dynamicFileOnDiskHash": dynamicFileOnDiskHash,
+					"hashOldValue":          hashOldValue,
 				})
 				// since we already checked that New/Old hashes are the same, we can use either new/old in compare.
-				if fileOnDiskHash != hashOldValue {
+				if dynamicFileOnDiskHash != hashOldValue {
 					// File and existing hashes are different, force new. We need to first set the value to the
 					// new hash, or it won't allow us to ForceNew (replace) the attachment.
-					setNewErr := d.SetNew(schema_definition.AttributeAttachmentDataHash, fileOnDiskHash)
+					setNewErr := d.SetNew(schema_definition.AttributeAttachmentDataHash, dynamicFileOnDiskHash)
 					if setNewErr != nil {
 						tflog.Warn(ctx, fmt.Sprintf("SetNew failed for %q: %s", schema_definition.AttributeAttachmentDataHash, setNewErr))
 					}

@@ -31,26 +31,22 @@ func opAttachmentCreate(ctx context.Context, d *schema.ResourceData, bwClient bi
 	filePath, fileSpecified := d.GetOk(schema_definition.AttributeAttachmentFile)
 	content, contentSpecified := d.GetOk(schema_definition.AttributeAttachmentContent)
 	fileName, fileNameSpecified := d.GetOk(schema_definition.AttributeAttachmentFileName)
+	dynamicFilePath, dynamicFileSpecified := d.GetOk(schema_definition.AttributeAttachmentDynamicFile)
 	_, hashSpecified := d.GetOk(schema_definition.AttributeAttachmentDataHash)
+
 	if fileSpecified {
-		if !hashSpecified {
-			// if hash not explicitly set, populate it.
-			hashErr := d.Set(schema_definition.AttributeAttachmentDataHash, fileHash(filePath))
-			if hashErr != nil {
-				return diag.FromErr(hashErr)
-			}
-		}
-		// Create the Attachment
 		obj, err = bwClient.CreateAttachmentFromFile(ctx, itemId, filePath.(string))
-	} else if contentSpecified && fileNameSpecified {
+	} else if dynamicFileSpecified {
 		if !hashSpecified {
 			// if hash not explicitly set, populate it.
-			hashErr := d.Set(schema_definition.AttributeAttachmentDataHash, contentHash(content))
+			hashErr := d.Set(schema_definition.AttributeAttachmentDataHash, fileHash(dynamicFilePath))
 			if hashErr != nil {
 				return diag.FromErr(hashErr)
 			}
 		}
 		// Create the Attachment
+		obj, err = bwClient.CreateAttachmentFromFile(ctx, itemId, dynamicFilePath.(string))
+	} else if contentSpecified && fileNameSpecified {
 		obj, err = bwClient.CreateAttachmentFromContent(ctx, itemId, fileName.(string), []byte(content.(string)))
 	} else {
 		err = errors.New("BUG: either file or content&file_name should be specified")
@@ -100,7 +96,8 @@ func opAttachmentRead(ctx context.Context, d *schema.ResourceData, bwClient bitw
 		return diag.FromErr(err)
 	}
 
-	// Read is used for datasource, so set hash value automatically
+	// Read is used for datasource, so set hash value automatically. Since datasource is content/file/dynamic upload
+	// agnostic, always calculate the hash as it can be useful even if not using the dynamic upload feature.
 	hashErr := d.Set(schema_definition.AttributeAttachmentDataHash, contentHash(string(content)))
 	if hashErr != nil {
 		return diag.FromErr(hashErr)
@@ -113,21 +110,13 @@ func opAttachmentRead(ctx context.Context, d *schema.ResourceData, bwClient bitw
 
 func opAttachmentReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
-	filePath, fileSpecified := d.GetOk(schema_definition.AttributeAttachmentFile)
-	content, contentSpecified := d.GetOk(schema_definition.AttributeAttachmentContent)
-	_, fileNameSpecified := d.GetOk(schema_definition.AttributeAttachmentFileName)
+	dynamicFilePath, dynamicFileSpecified := d.GetOk(schema_definition.AttributeAttachmentDynamicFile)
 	_, hashSpecified := d.GetOk(schema_definition.AttributeAttachmentDataHash)
-	if !hashSpecified {
-		if fileSpecified {
-			hashErr := d.Set(schema_definition.AttributeAttachmentDataHash, fileHash(filePath))
-			if hashErr != nil {
-				return diag.FromErr(hashErr)
-			}
-		} else if contentSpecified && fileNameSpecified {
-			hashErr := d.Set(schema_definition.AttributeAttachmentDataHash, contentHash(content))
-			if hashErr != nil {
-				return diag.FromErr(hashErr)
-			}
+	if dynamicFileSpecified && !hashSpecified {
+		// if dynamic_file is specified, but hash is not, populate it.
+		hashErr := d.Set(schema_definition.AttributeAttachmentDataHash, fileHash(dynamicFilePath))
+		if hashErr != nil {
+			return diag.FromErr(hashErr)
 		}
 	}
 	obj, err := bwClient.GetItem(ctx, models.Item{ID: itemId, Object: models.ObjectTypeItem})

@@ -52,7 +52,7 @@ resource "local_sensitive_file" "vpn_key_file" {
 }
 
 resource "bitwarden_attachment" "dynamic_key_from_disk" {
-  file = local_sensitive_file.vpn_key_file.filename
+  dynamic_file = local_sensitive_file.vpn_key_file.filename
   # (Optional) Hash specified ensures the file is reuploaded if it is recalculated.
   content_hash = local_sensitive_file.vpn_key_file.content_sha1
   item_id      = bitwarden_item_login.vpn_credentials.id
@@ -73,8 +73,9 @@ resource "bitwarden_attachment" "dynamic_key_from_content" {
 
 ### Optional
 
-- `content` (String) Path to the content of the attachment.
-- `content_hash` (String) Calculated SHA1 hash of the attachment. This can be specified to ensure update of attachment if changed on disk.
+- `content` (String) Content of the attachment
+- `content_hash` (String) Calculated SHA1 hash of the attachment uploaded from `dynamic_file`. This can be specified to ensure update of attachment if `dynamic_file` changes on disk. Also, a special value `ignore` can be specified, and the attachment will not be updated when `content_hash` changes are detected.
+- `dynamic_file` (String) File Path to the attachment, for use when it may not be known or created until apply.
 - `file` (String) Path to the content of the attachment.
 - `file_name` (String) File name. This is required if specifying `content` in a resource.
 
