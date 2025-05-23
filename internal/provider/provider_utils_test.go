@@ -61,6 +61,7 @@ var testOrganizationID string
 var testCollectionID string
 var testFolderID string
 var testGroupID string
+var testGroupName string
 var testUniqueIdentifier string
 var useEmbeddedClient bool
 
@@ -301,8 +302,8 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	}
 	t.Logf("Created Folder '%s' (%s)", testFolderName, testFolderID)
 
-	testGroupName := fmt.Sprintf("group-%s-bar", testUniqueIdentifier)
-	group, err := bwClient.CreateGroup(ctx, models.Group{
+	testGroupName = fmt.Sprintf("group-%s-bar", testUniqueIdentifier)
+	group, err := bwClient.CreateOrganizationGroup(ctx, models.OrgGroup{
 		OrganizationID: testOrganizationID,
 		Name:           testGroupName,
 		Collections:    []models.OrgCollectionMember{},
