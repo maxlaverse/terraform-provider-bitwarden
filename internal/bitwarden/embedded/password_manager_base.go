@@ -353,6 +353,11 @@ func decryptItem(obj models.Item, secret AccountSecrets) (*models.Item, error) {
 		decKey = string(objectKey.Key)
 	}
 
+	sshKey, err := decryptItemSSHKey(obj.SSHKey, *objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting ssh key: %w", err)
+	}
+
 	return &models.Item{
 		Attachments:         decAttachments,
 		CollectionIds:       obj.CollectionIds,
@@ -376,6 +381,7 @@ func decryptItem(obj models.Item, secret AccountSecrets) (*models.Item, error) {
 		SecureNote: models.SecureNote{
 			Type: obj.SecureNote.Type,
 		},
+		SSHKey:       *sshKey,
 		Type:         obj.Type,
 		ViewPassword: obj.ViewPassword,
 	}, nil
@@ -437,6 +443,29 @@ func decryptItemLogin(objLogin models.Login, objectKey symmetrickey.Key) (*model
 		Password: decPassword,
 		Totp:     decTotp,
 		URIs:     decUris,
+	}, nil
+}
+
+func decryptItemSSHKey(obj models.SSHKey, objectKey symmetrickey.Key) (*models.SSHKey, error) {
+	decPrivateKey, err := decryptStringIfNotEmpty(obj.PrivateKey, objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting ssh private key: %w", err)
+	}
+
+	decPublicKey, err := decryptStringIfNotEmpty(obj.PublicKey, objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting ssh public key: %w", err)
+	}
+
+	decKeyFingerprint, err := decryptStringIfNotEmpty(obj.KeyFingerprint, objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting ssh key fingerprint: %w", err)
+	}
+
+	return &models.SSHKey{
+		PrivateKey:     decPrivateKey,
+		PublicKey:      decPublicKey,
+		KeyFingerprint: decKeyFingerprint,
 	}, nil
 }
 
@@ -597,6 +626,11 @@ func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, ve
 		}
 	}
 
+	encSSHKey, err := encryptItemSSHKey(obj.SSHKey, *objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting ssh key: %w", err)
+	}
+
 	encObj := models.Item{
 		Attachments:         encAttachments,
 		CollectionIds:       obj.CollectionIds,
@@ -620,6 +654,7 @@ func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, ve
 		SecureNote: models.SecureNote{
 			Type: obj.SecureNote.Type,
 		},
+		SSHKey:       *encSSHKey,
 		Type:         obj.Type,
 		ViewPassword: obj.ViewPassword,
 	}
@@ -701,6 +736,28 @@ func encryptItemLogin(objLogin models.Login, objectKey symmetrickey.Key) (*model
 		Password: encPassword,
 		Totp:     encTotp,
 		URIs:     encUris,
+	}, nil
+}
+
+func encryptItemSSHKey(obj models.SSHKey, objectKey symmetrickey.Key) (*models.SSHKey, error) {
+	encPrivateKey, err := encryptAsStringIfNotEmpty(obj.PrivateKey, objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting ssh private key: %w", err)
+	}
+
+	encPublicKey, err := encryptAsStringIfNotEmpty(obj.PublicKey, objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting ssh public key: %w", err)
+	}
+	encKeyFingerprint, err := encryptAsStringIfNotEmpty(obj.KeyFingerprint, objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting ssh key fingerprint: %w", err)
+	}
+
+	return &models.SSHKey{
+		PrivateKey:     encPrivateKey,
+		PublicKey:      encPublicKey,
+		KeyFingerprint: encKeyFingerprint,
 	}, nil
 }
 

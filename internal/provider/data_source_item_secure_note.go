@@ -7,9 +7,14 @@ import (
 )
 
 func dataSourceItemSecureNote() *schema.Resource {
+	itemSecureNoteSchema := schema_definition.ItemBaseSchema(schema_definition.DataSource)
+	for k, v := range schema_definition.SecureNoteSchema(schema_definition.DataSource) {
+		itemSecureNoteSchema[k] = v
+	}
+
 	return &schema.Resource{
 		Description: "Use this data source to get information on an existing secure note item.",
 		ReadContext: withPasswordManager(opItemRead(models.ItemTypeSecureNote)),
-		Schema:      schema_definition.ItemBaseSchema(schema_definition.DataSource),
+		Schema:      itemSecureNoteSchema,
 	}
 }

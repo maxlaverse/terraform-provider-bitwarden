@@ -184,6 +184,12 @@ func SkipIfOfficialBackend(t *testing.T, reason string) {
 	}
 }
 
+func SkipIfVaultwardenBackend(t *testing.T) {
+	if testBackend == backendVaultwarden {
+		t.Skip("Skipping test as vaultwarden backend is used")
+	}
+}
+
 func SkipIfNonPremiumTestAccount(t *testing.T) {
 	if testAccountType != accountTypePremium {
 		t.Skip("Skipping test as non-premium test account is used")

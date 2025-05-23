@@ -206,7 +206,10 @@ func tfConfigResourceItemLogin(source string) string {
 
 func checkItemLogin(resourceName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
-		checkItemGeneral(resourceName),
+		checkItemBase(resourceName),
+		resource.TestMatchResourceAttr(
+			resourceName, schema_definition.AttributeFavorite, regexp.MustCompile("^true"),
+		),
 		resource.TestMatchResourceAttr(
 			resourceName, schema_definition.AttributeLoginUsername, regexp.MustCompile("^test-username$"),
 		),
