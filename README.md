@@ -28,6 +28,8 @@ The plugin has been tested with the following components:
 
 - [Terraform] v1.11.4 / [OpenTofu] v1.9.0
 - [Bitwarden CLI] v2025.2.0 (when not using the [Embedded Client](#embedded-client))
+- [Vaultwarden] v1.32.5
+- official [bitwarden.com] servers
 
 The provider is likely to work with older versions, but those haven't necessarily been tested.
 If you encounter issues with recent versions of the Bitwarden CLI, consider trying out the [Embedded Client](#embedded-client).
@@ -221,3 +223,5 @@ Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more informa
 [Terraform Registry docs]: https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs
 [OpenTofu Registry docs]: https://search.opentofu.org/provider/maxlaverse/bitwarden/latest
 [Terraform's documentation on Data Storage]: https://bitwarden.com/help/data-storage/#on-your-local-machine
+[Vaultwarden]: https://www.vaultwarden.net/
+[bitwarden.com]: https://bitwarden.com
