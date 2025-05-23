@@ -15,7 +15,7 @@ import (
 
 func TestCreateObjectEncoding(t *testing.T) {
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwidHlwZSI6MX0": `{}`,
+		"create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwic3NoS2V5Ijp7fSwidHlwZSI6MX0": `{}`,
 	})
 	defer removeMocks(t)
 
@@ -34,7 +34,7 @@ func TestCreateObjectEncoding(t *testing.T) {
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
-		assert.Equal(t, "create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwidHlwZSI6MX0", commandsExecuted()[0])
+		assert.Equal(t, "create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwic3NoS2V5Ijp7fSwidHlwZSI6MX0", commandsExecuted()[0])
 	}
 }
 

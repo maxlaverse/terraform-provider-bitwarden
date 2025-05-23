@@ -32,6 +32,7 @@ const (
 	AttributeFilterOrganizationID          = "filter_organization_id"
 	AttributeFilterSearch                  = "search"
 	AttributeFilterURL                     = "filter_url"
+	AttributeSSHKeyKeyFingerprint          = "key_fingerprint"
 	AttributeLoginPassword                 = "password"
 	AttributeLoginUsername                 = "username"
 	AttributeLoginURIs                     = "uri"
@@ -42,6 +43,8 @@ const (
 	AttributeName                          = "name"
 	AttributeNotes                         = "notes"
 	AttributeOrganizationID                = "organization_id"
+	AttributeSSHKeyPrivateKey              = "private_key"
+	AttributeSSHKeyPublicKey               = "public_key"
 	AttributeReprompt                      = "reprompt"
 	AttributeRevisionDate                  = "revision_date"
 
@@ -82,6 +85,7 @@ const (
 	DescriptionItemAttachmentSize            = "Size in bytes"
 	DescriptionItemAttachmentSizeName        = "Size as string"
 	DescriptionItemAttachmentURL             = "URL"
+	DescriptionKeyFingerprint                = "Key fingerprint."
 	DescriptionLoginPassword                 = "Login password."
 	DescriptionLoginUri                      = "URI."
 	DescriptionLoginUriMatch                 = "URI Match"
@@ -91,6 +95,8 @@ const (
 	DescriptionName                          = "Name."
 	DescriptionNotes                         = "Notes."
 	DescriptionOrganizationID                = "Identifier of the organization."
+	DescriptionPrivateKey                    = "Private key."
+	DescriptionPublicKey                     = "Public key."
 	DescriptionReprompt                      = "Require master password 're-prompt' when displaying secret in the UI."
 	DescriptionRevisionDate                  = "Last time the item was updated."
 

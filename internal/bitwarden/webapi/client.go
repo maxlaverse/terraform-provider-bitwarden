@@ -139,6 +139,7 @@ func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item,
 	var err error
 	var httpReq *http.Request
 	if len(obj.CollectionIds) != 0 {
+		// if len(obj.CollectionIds) != 0 || obj.Type == models.ItemTypeSSHKey {
 		cipherCreationRequest := CreateCipherRequest{
 			Cipher:        obj,
 			CollectionIds: obj.CollectionIds,
