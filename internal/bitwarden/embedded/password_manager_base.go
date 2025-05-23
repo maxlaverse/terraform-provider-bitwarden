@@ -24,6 +24,11 @@ import (
 
 var (
 	panicOnEncryptionErrors = false
+
+	// objectKeyEncryption is a flag that can be set to true to have object-specific
+	// encryption keys for items. It used to be enabled by default but isn't anymore.
+	// Eventually we need to let the user decide whether to use object-specific keys or not.
+	objectKeyEncryption = true
 )
 
 type BaseVault interface {
@@ -514,19 +519,31 @@ func encryptFolder(ctx context.Context, obj models.Folder, secret AccountSecrets
 }
 
 func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, verifyObjectEncryption bool) (*models.Item, error) {
-	objectKey, err := getOrCreateObjectKey(obj)
-	if err != nil {
-		return nil, err
-	}
-
 	mainKey, err := getMainKeyForObject(obj, secret)
 	if err != nil {
 		return nil, err
 	}
 
-	encObjectKey, err := crypto.EncryptAsString(objectKey.Key, *mainKey)
-	if err != nil {
-		return nil, fmt.Errorf("error encrypting item object key: %w", err)
+	var objectKey *symmetrickey.Key
+	var encObjectKey string
+
+	hasCipherKey := len(obj.Key) > 0
+	if hasCipherKey || objectKeyEncryption {
+		if hasCipherKey {
+			objectKey, err = symmetrickey.NewFromRawBytesWithEncryptionType([]byte(obj.Key), symmetrickey.AesCbc256_HmacSha256_B64)
+		} else {
+			objectKey, err = keybuilder.CreateObjectKey()
+		}
+		if err != nil {
+			return nil, fmt.Errorf("error creating object key: %w", err)
+		}
+
+		encObjectKey, err = crypto.EncryptAsString(objectKey.Key, *mainKey)
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting item object key: %w", err)
+		}
+	} else {
+		objectKey = mainKey
 	}
 
 	encLogin, err := encryptItemLogin(obj.Login, *objectKey)
@@ -613,7 +630,9 @@ func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, ve
 			return nil, fmt.Errorf("error decrypting item for verification: %w", err)
 		}
 
-		actualObj.Key = ""
+		if objectKeyEncryption {
+			actualObj.Key = ""
+		}
 
 		err = verifyDecryptedObject(ctx, obj, *actualObj)
 		if err != nil {
@@ -701,29 +720,20 @@ func getMainKeyForObject(obj models.Item, secret AccountSecrets) (*symmetrickey.
 }
 
 func getObjectKey(obj models.Item, secret AccountSecrets) (*symmetrickey.Key, error) {
-	objectKey, err := getMainKeyForObject(obj, secret)
+	mainKey, err := getMainKeyForObject(obj, secret)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(obj.Key) > 0 {
-		decryptedObjectKey, err := decryptStringAsKey(obj.Key, *objectKey)
-		if err != nil {
-			return nil, fmt.Errorf("error decrypting object key: %w", err)
-		}
-		objectKey = decryptedObjectKey
+	if len(obj.Key) == 0 {
+		return mainKey, nil
 	}
-	return objectKey, nil
-}
 
-func getOrCreateObjectKey(obj models.Item) (*symmetrickey.Key, error) {
-	var objectKeyBytes []byte
-	if len(obj.Key) > 0 {
-		objectKeyBytes = []byte(obj.Key)
-		return symmetrickey.NewFromRawBytesWithEncryptionType(objectKeyBytes, symmetrickey.AesCbc256_HmacSha256_B64)
-	} else {
-		return keybuilder.CreateObjectKey()
+	decryptedObjectKey, err := decryptStringAsKey(obj.Key, *mainKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting object key: %w", err)
 	}
+	return decryptedObjectKey, nil
 }
 
 func objKey(obj any) string {
