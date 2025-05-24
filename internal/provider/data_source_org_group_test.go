@@ -11,6 +11,7 @@ import (
 
 func TestAccDataSourceOrgGroupAttribute(t *testing.T) {
 	SkipIfOfficialBackend(t, "org groups require a higher license to be tested")
+	SkipIfOfficialCLI(t, "org groups are not supported by the official CLI")
 
 	ensureVaultwardenConfigured(t)
 

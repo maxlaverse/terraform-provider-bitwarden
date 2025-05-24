@@ -98,8 +98,8 @@ func init() {
 		os.Exit(1)
 	}
 
-	envFile := filepath.Join(projectRoot, ".env."+testBackend)
-	_ = godotenv.Load(envFile)
+	_ = godotenv.Load(filepath.Join(projectRoot, ".env."+testBackend))
+	_ = godotenv.Load(filepath.Join(projectRoot, ".env"))
 
 	testUniqueIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 	testAccountNameOrgOwner = fmt.Sprintf("test-%s", testUniqueIdentifier)
