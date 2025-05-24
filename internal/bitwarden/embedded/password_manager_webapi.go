@@ -247,18 +247,9 @@ func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename str
 		if err != nil {
 			return nil, err
 		}
-		return attachementFromObject(remoteObj, resp.AttachmentId)
+		return attachmentFromObject(remoteObj, resp.AttachmentId)
 	}
-	return attachementFromObject(resObj, resp.AttachmentId)
-}
-
-func attachementFromObject(obj *models.Item, attachmentId string) (*models.Attachment, error) {
-	for _, attachment := range obj.Attachments {
-		if attachment.ID == attachmentId {
-			return &attachment, nil
-		}
-	}
-	return nil, models.ErrAttachmentNotFound
+	return attachmentFromObject(resObj, resp.AttachmentId)
 }
 
 func (v *webAPIVault) CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
@@ -1380,6 +1371,15 @@ func (v *webAPIVault) checkMembersExistence(ctx context.Context, orgId string, u
 		}
 	}
 	return nil
+}
+
+func attachmentFromObject(obj *models.Item, attachmentId string) (*models.Attachment, error) {
+	for _, attachment := range obj.Attachments {
+		if attachment.ID == attachmentId {
+			return &attachment, nil
+		}
+	}
+	return nil, models.ErrAttachmentNotFound
 }
 
 type SupportedCipher interface {

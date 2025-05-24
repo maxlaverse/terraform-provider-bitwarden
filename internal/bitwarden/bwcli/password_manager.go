@@ -103,6 +103,11 @@ func DisableRetryBackoff() Options {
 }
 
 func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, filePath string) (*models.Attachment, error) {
+	// The CLI returns the entire item after adding an attachment to it. There is no way to know
+	// which attachment was added, besides comparing the list of attachments before and after the
+	// creation.
+	// For the comparison to work, we need to lock the attachment creation to avoid race condition
+	// when called in parallel on the same item.
 	c.attachmentCreationMutex.Lock()
 	defer c.attachmentCreationMutex.Unlock()
 
@@ -122,6 +127,10 @@ func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, fi
 		return nil, err
 	}
 
+	// NOTE(maxime): there is no need to sync after creating an item as the
+	// creation issued an API call on the Vault directly which refreshes the
+	// local cache.
+
 	newAttachmentIDs := getAttachmentIDs(*obj)
 	attachmentsRemoved, attachmentsAdded := compareLists(existingAttachmentIDs, newAttachmentIDs)
 	if len(attachmentsAdded) == 0 {
@@ -132,15 +141,12 @@ func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, fi
 		return nil, errors.New("BUG: at least one attachment removed")
 	}
 
-	// NOTE(maxime): there is no need to sync after creating an item as the
-	// creation issued an API call on the Vault directly which refreshes the
-	// local cache.
 	for _, attachment := range obj.Attachments {
 		if attachment.ID == attachmentsAdded[0] {
 			return &attachment, nil
 		}
 	}
-	return nil, errors.New("BUG: no attachment found after creation")
+	return nil, errors.New("BUG: lost track of the attachment")
 }
 
 func (c *client) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error) {
