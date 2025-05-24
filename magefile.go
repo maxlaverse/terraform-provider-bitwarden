@@ -151,7 +151,7 @@ func (t Test) IntegrationPwdVaultwardenWithEmbeddedClientArgs(testPattern string
 	fmt.Println("Running integration tests with embedded client on locally running Vaultwarden...")
 	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race"}
 	if testPattern != "" {
-		args = append(args, "-run", testPattern, "-timeout", "30s")
+		args = append(args, "-run", testPattern, "-timeout", "60s")
 	} else {
 		args = append(args, "-timeout", "10m")
 	}
@@ -175,7 +175,7 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	fmt.Println("Running integration tests with CLI on locally running Vaultwarden...")
 	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race"}
 	if testPattern != "" {
-		args = append(args, "-run", testPattern, "-timeout", "1m")
+		args = append(args, "-run", testPattern, "-timeout", "2m")
 	} else {
 		args = append(args, "-timeout", "60m")
 	}

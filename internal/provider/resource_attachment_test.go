@@ -77,6 +77,19 @@ func TestAccResourceAttachment(t *testing.T) {
 					"data.bitwarden_attachment.foo_data", schema_definition.AttributeAttachmentContent, regexp.MustCompile(`^Hello, I'm a text attachment$`),
 				),
 			},
+			// Creating multiple attachments at once
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceMultiAttachment(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"bitwarden_attachment.foo", "file_name", "attachment1.txt",
+					),
+					resource.TestCheckResourceAttr(
+						"bitwarden_attachment.foo1", "file_name", "attachment2a.txt",
+					),
+				),
+			},
 			{
 				ResourceName:      resourceName,
 				ImportStateIdFunc: attachmentImportID(resourceName, "bitwarden_item_login.foo"),
@@ -348,4 +361,28 @@ func tfConfigAttachmentSpecificPasswordManagerProvider() string {
 		}
 	}
 `, testMasterPassword, testReverseProxyServerURL, testEmail)
+}
+
+func tfConfigResourceMultiAttachment() string {
+	return `
+resource "bitwarden_item_login" "foo" {
+	provider = bitwarden
+
+	name     = "foo"
+}
+
+resource "bitwarden_attachment" "foo" {
+	provider  = bitwarden
+
+	file	 = "fixtures/attachment1.txt"
+	item_id   = bitwarden_item_login.foo.id
+}
+
+resource "bitwarden_attachment" "foo1" {
+	provider  = bitwarden
+
+	file	 = "fixtures/attachment2a.txt"
+	item_id   = bitwarden_item_login.foo.id
+}
+`
 }
