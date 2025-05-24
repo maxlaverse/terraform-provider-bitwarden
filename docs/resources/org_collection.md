@@ -17,6 +17,11 @@ data "bitwarden_organization" "terraform" {
   search = "Terraform"
 }
 
+data "bitwarden_org_member" "john" {
+  email           = "john@example.com"
+  organization_id = data.bitwarden_organization.terraform.id
+}
+
 resource "bitwarden_org_collection" "infrastructure" {
   name            = "Infrastructure Passwords"
   organization_id = data.bitwarden_organization.terraform.id
@@ -27,7 +32,17 @@ resource "bitwarden_org_collection" "generated" {
   organization_id = data.bitwarden_organization.terraform.id
 
   member {
-    email = "devops@example.com"
+    id             = data.bitwarden_org_member.john.id
+    hide_passwords = false
+    read_only      = false
+    manage         = true
+  }
+  member_group {
+    # Extracting the raw UUID4 string id representing a group via the `bw` cli or Web UI can also be used here.
+    id             = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+    hide_passwords = false
+    read_only      = false
+    manage         = true
   }
 }
 ```
@@ -43,14 +58,29 @@ resource "bitwarden_org_collection" "generated" {
 ### Optional
 
 - `id` (String) Identifier.
-- `member` (Block Set) [Experimental] Member of a collection. (see [below for nested schema](#nestedblock--member))
+- `member` (Block Set) [Experimental] Member (Users) of a collection. (see [below for nested schema](#nestedblock--member))
+- `member_group` (Block Set) [Experimental] Member Groups of a collection. (see [below for nested schema](#nestedblock--member_group))
 
 <a id="nestedblock--member"></a>
 ### Nested Schema for `member`
 
 Required:
 
-- `id` (String) Identifier.
+- `id` (String) [Experimental] Unique Identifier (UUID) of the user or group member.
+
+Optional:
+
+- `hide_passwords` (Boolean) [Experimental] Hide passwords.
+- `manage` (Boolean) [Experimental] Can manage the collection.
+- `read_only` (Boolean) [Experimental] Read/Write permissions.
+
+
+<a id="nestedblock--member_group"></a>
+### Nested Schema for `member_group`
+
+Required:
+
+- `id` (String) [Experimental] Unique Identifier (UUID) of the user or group member.
 
 Optional:
 
