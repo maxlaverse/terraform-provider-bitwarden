@@ -226,7 +226,7 @@ type OrgCollection struct {
 	Manage         bool                  `json:"-"`
 }
 
-type Group struct {
+type OrgGroup struct {
 	AccessAll      bool                  `json:"accessAll"`
 	Collections    []OrgCollectionMember `json:"collections"`
 	ID             string                `json:"id,omitempty"`

@@ -36,23 +36,22 @@ type Client interface {
 	ClearSession()
 	ConfirmOrganizationUser(ctx context.Context, orgID, orgUserID, key string) error
 	CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
-	CreateGroup(context.Context, models.Group) (*models.Group, error)
 	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateObjectAttachment(ctx context.Context, itemId string, data []byte, req AttachmentRequestData) (*CreateObjectAttachmentResponse, error)
 	CreateObjectAttachmentData(ctx context.Context, itemId, attachmentId string, data []byte) error
 	CreateOrganization(ctx context.Context, req CreateOrganizationRequest) (*CreateOrganizationResponse, error)
 	CreateOrganizationCollection(ctx context.Context, orgId string, req Collection) (*Collection, error)
+	CreateOrganizationGroup(context.Context, models.OrgGroup) (*models.OrgGroup, error)
 	CreateProject(ctx context.Context, project models.Project) (*models.Project, error)
 	CreateSecret(ctx context.Context, secret models.Secret) (*Secret, error)
 	DeleteFolder(ctx context.Context, objID string) error
-	DeleteGroup(ctx context.Context, obj models.Group) error
 	DeleteObject(ctx context.Context, objID string) error
 	DeleteObjectAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteOrganizationCollection(ctx context.Context, orgID, collectionID string) error
+	DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error
 	DeleteProject(ctx context.Context, projectId string) error
 	DeleteSecret(ctx context.Context, secretId string) error
 	EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
-	EditGroup(ctx context.Context, obj models.Group) (*models.Group, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditItemCollections(ctx context.Context, objId string, collectionIds []string) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, orgId, objId string, obj Collection) (*Collection, error)
@@ -63,7 +62,8 @@ type Client interface {
 	GetContentFromURL(ctx context.Context, url string) ([]byte, error)
 	GetCipherAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
 	GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error)
-	GetGroup(ctx context.Context, group models.Group) (*models.Group, error)
+	GetOrganizationGroup(ctx context.Context, group models.OrgGroup) (*models.OrgGroup, error)
+	GetOrganizationGroups(ctx context.Context, orgId string) ([]OrganizationGroupDetails, error)
 	GetProfile(context.Context) (*Profile, error)
 	GetProject(ctx context.Context, projectId string) (*models.Project, error)
 	GetProjects(ctx context.Context, orgId string) ([]models.Project, error)
@@ -126,13 +126,13 @@ func (c *client) CreateFolder(ctx context.Context, obj models.Folder) (*models.F
 	return doRequest[models.Folder](ctx, c.httpClient, httpReq)
 }
 
-func (c *client) CreateGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
+func (c *client) CreateOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
 	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/groups", c.serverURL, obj.OrganizationID), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing group create request: %w", err)
 	}
 
-	return doRequest[models.Group](ctx, c.httpClient, httpReq)
+	return doRequest[models.OrgGroup](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
@@ -249,7 +249,7 @@ func (c *client) DeleteFolder(ctx context.Context, objID string) error {
 	return err
 }
 
-func (c *client) DeleteGroup(ctx context.Context, obj models.Group) error {
+func (c *client) DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error {
 	httpReq, err := c.prepareAuthenticatedRequest(ctx, "DELETE", fmt.Sprintf("%s/api/organizations/%s/groups/%s", c.serverURL, obj.OrganizationID, obj.ID), nil)
 	if err != nil {
 		return fmt.Errorf("error preparing group deletion request: %w", err)
@@ -326,15 +326,6 @@ func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Fol
 	}
 
 	return doRequest[models.Folder](ctx, c.httpClient, req)
-}
-
-func (c *client) EditGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
-	httpReq, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/organizations/%s/groups/%s", c.serverURL, obj.OrganizationID, obj.ID), obj)
-	if err != nil {
-		return nil, fmt.Errorf("error preparing group edition request: %w", err)
-	}
-
-	return doRequest[models.Group](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
@@ -444,13 +435,39 @@ func (c *client) GetOrganizationCollections(ctx context.Context, orgID string) (
 	return resp.Data, nil
 }
 
-func (c *client) GetGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
+func (c *client) GetOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
 	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/groups/%s/details", c.serverURL, obj.OrganizationID, obj.ID), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing group retrieval request: %w", err)
 	}
 
-	return doRequest[models.Group](ctx, c.httpClient, httpReq)
+	return doRequest[models.OrgGroup](ctx, c.httpClient, httpReq)
+}
+
+func (c *client) GetOrganizationGroups(ctx context.Context, orgId string) ([]OrganizationGroupDetails, error) {
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/groups", c.serverURL, orgId), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing group retrieval request: %w", err)
+	}
+
+	resp, err := doRequest[OrganizationGroupList](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
+}
+
+func (c *client) GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error) {
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/users", c.serverURL, orgId), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing organization user list retrieval request: %w", err)
+	}
+
+	resp, err := doRequest[OrganizationUserList](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
 }
 
 func (c *client) GetProfile(ctx context.Context) (*Profile, error) {
@@ -520,19 +537,6 @@ func (c *client) GetUserPublicKey(ctx context.Context, userId string) ([]byte, e
 		return nil, err
 	}
 	return []byte(resp.PublicKey), nil
-}
-
-func (c *client) GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error) {
-	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/users", c.serverURL, orgId), nil)
-	if err != nil {
-		return nil, fmt.Errorf("error preparing organization user list retrieval request: %w", err)
-	}
-
-	resp, err := doRequest[OrganizationUserList](ctx, c.httpClient, httpReq)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Data, nil
 }
 
 func (c *client) InviteUser(ctx context.Context, orgId string, inviteRequest InviteUserRequest) error {
