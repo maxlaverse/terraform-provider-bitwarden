@@ -9,6 +9,7 @@ func OrgGroupSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 		AttributeID: {
 			Description: DescriptionIdentifier,
 			Type:        schema.TypeString,
+			Computed:    schemaType == Resource,
 			Optional:    true,
 		},
 		AttributeOrganizationID: {
@@ -19,17 +20,12 @@ func OrgGroupSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 		AttributeName: {
 			Description: DescriptionName,
 			Type:        schema.TypeString,
-			Computed:    true,
+			Computed:    schemaType == DataSource,
+			Optional:    schemaType == Resource,
 		},
 	}
 
 	if schemaType == DataSource {
-		base[AttributeFilterOrganizationID] = &schema.Schema{
-			Description: DescriptionFilterOrganizationID,
-			Type:        schema.TypeString,
-			Optional:    true,
-		}
-
 		base[AttributeFilterName] = &schema.Schema{
 			Description:  DescriptionFilterName,
 			Type:         schema.TypeString,

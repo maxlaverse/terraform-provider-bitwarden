@@ -16,7 +16,8 @@ Use this data source to get information on an existing organization group.
 data "bitwarden_organization" "terraform" {
   search = "Terraform"
 }
-data "bitwarden_org_group" "terraform" {
+
+data "bitwarden_org_group" "engineers" {
   organization_id = data.bitwarden_organization.terraform.id
   filter_name     = "Engineers"
 }
@@ -32,7 +33,6 @@ data "bitwarden_org_group" "terraform" {
 ### Optional
 
 - `filter_name` (String) Filter search results by name.
-- `filter_organization_id` (String) Filter search results by organization ID.
 - `id` (String) Identifier.
 
 ### Read-Only

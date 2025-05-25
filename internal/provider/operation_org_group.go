@@ -15,7 +15,7 @@ func opOrganizationGroupRead(ctx context.Context, d *schema.ResourceData, bwClie
 	if _, idProvided := d.GetOk(schema_definition.AttributeID); !idProvided {
 		orgId := d.Get(schema_definition.AttributeOrganizationID).(string)
 
-		// Per schema, if the ID is not provided then the email has.
+		// Per schema, if the ID is not provided then the name has.
 		nameFilter := d.Get(schema_definition.AttributeFilterName).(string)
 
 		obj, err := bwClient.FindOrganizationGroup(ctx, bitwarden.WithOrganizationID(orgId), bitwarden.WithSearch(nameFilter))
