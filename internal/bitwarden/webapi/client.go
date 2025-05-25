@@ -561,7 +561,7 @@ func (c *client) LoginWithAccessToken(ctx context.Context, clientId, clientSecre
 		return nil, fmt.Errorf("error preparing login with access token request: %w", err)
 	}
 
-	tokenResp, err := doRequestWithRetries[MachineTokenResponse](ctx, c.httpClient, httpReq)
+	tokenResp, err := doRequest[MachineTokenResponse](ctx, c.httpClient, httpReq)
 	if err != nil {
 		return nil, err
 	}
@@ -605,7 +605,7 @@ func (c *client) LoginWithPassword(ctx context.Context, username, password strin
 	httpReq.Header.Set("auth-email", base64.RawURLEncoding.EncodeToString([]byte(username)))
 	httpReq.Header.Set("bitwarden-client-name", "cli")
 
-	tokenResp, err := doRequestWithRetries[TokenResponse](ctx, c.httpClient, httpReq)
+	tokenResp, err := doRequest[TokenResponse](ctx, c.httpClient, httpReq)
 	if err != nil {
 		return nil, err
 	}
@@ -643,7 +643,7 @@ func (c *client) LoginWithAPIKey(ctx context.Context, clientId, clientSecret str
 		return nil, fmt.Errorf("error preparing login with api key request: %w", err)
 	}
 
-	tokenResp, err := doRequestWithRetries[TokenResponse](ctx, c.httpClient, httpReq)
+	tokenResp, err := doRequest[TokenResponse](ctx, c.httpClient, httpReq)
 	if err != nil {
 		return nil, err
 	}
@@ -752,22 +752,6 @@ func (c *client) prepareGenericRequest(ctx context.Context, reqMethod, reqUrl st
 	return httpReq, nil
 }
 
-// There seem to be a different type of rate limiting on /identity/connect/token which simply
-// closes the connection after a few seconds. This is a workaround to retry this type of requests.
-func doRequestWithRetries[T any](ctx context.Context, httpClient *http.Client, httpReq *http.Request) (*T, error) {
-	var err error
-	var resp *T
-	for i := 0; i < maxRetryAttempts; i++ {
-		resp, err = doRequest[T](ctx, httpClient, httpReq)
-		if err == nil || !isResponseBodyClosedTimeout(err) {
-			break
-		}
-		time.Sleep(backoff(i))
-	}
-
-	return resp, err
-}
-
 func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *http.Request) (*T, error) {
 	reqBody := readAndRestoreRequestBody(ctx, httpReq)
 
@@ -873,10 +857,6 @@ func readReader(rc io.ReadCloser) ([]byte, io.ReadCloser, error) {
 		return nil, nil, err
 	}
 	return body, io.NopCloser(bytes.NewReader(buf.Bytes())), nil
-}
-
-func isResponseBodyClosedTimeout(err error) bool {
-	return strings.Contains(err.Error(), "http2: response body closed")
 }
 
 func handleRedirect(req *http.Request, via []*http.Request) error {

@@ -24,13 +24,13 @@ import (
 type PasswordManagerClient interface {
 	BaseVault
 	ConfirmInvite(ctx context.Context, orgId, userEmail string) (string, error)
+	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error)
+	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Attachment, error)
 	CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	CreateItem(ctx context.Context, obj models.Item) (*models.Item, error)
 	CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	CreateOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
-	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error)
-	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Item, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteFolder(ctx context.Context, obj models.Folder) error
 	DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error
@@ -173,14 +173,14 @@ func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string
 	return orgUser.ID, v.client.ConfirmOrganizationUser(ctx, orgId, orgUser.ID, string(orgKey))
 }
 
-func (v *webAPIVault) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error) {
+func (v *webAPIVault) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error) {
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
 	return v.createAttachment(ctx, itemId, filename, content)
 }
 
-func (v *webAPIVault) CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Item, error) {
+func (v *webAPIVault) CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Attachment, error) {
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
@@ -193,7 +193,7 @@ func (v *webAPIVault) CreateAttachmentFromFile(ctx context.Context, itemId, file
 	return v.createAttachment(ctx, itemId, filename, data)
 }
 
-func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error) {
+func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error) {
 	if !v.objectsLoaded() {
 		return nil, models.ErrVaultLocked
 	}
@@ -243,9 +243,13 @@ func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename str
 
 		// The attachment's URL contains a signed token generated on each request. We need to diff
 		// it out if we want the comparison to work.
-		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/attachments/*/url", "/revisionDate")
+		err = v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/attachments/*/url", "/revisionDate")
+		if err != nil {
+			return nil, err
+		}
+		return attachmentFromObject(remoteObj, resp.AttachmentId)
 	}
-	return resObj, nil
+	return attachmentFromObject(resObj, resp.AttachmentId)
 }
 
 func (v *webAPIVault) CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
@@ -1378,6 +1382,15 @@ func (v *webAPIVault) checkMembersExistence(ctx context.Context, orgId string, u
 		}
 	}
 	return nil
+}
+
+func attachmentFromObject(obj *models.Item, attachmentId string) (*models.Attachment, error) {
+	for _, attachment := range obj.Attachments {
+		if attachment.ID == attachmentId {
+			return &attachment, nil
+		}
+	}
+	return nil, models.ErrAttachmentNotFound
 }
 
 type SupportedCipher interface {

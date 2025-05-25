@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
@@ -13,8 +15,8 @@ import (
 )
 
 type PasswordManagerClient interface {
-	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error)
-	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Item, error)
+	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error)
+	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Attachment, error)
 	CreateFolder(context.Context, models.Folder) (*models.Folder, error)
 	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
@@ -65,12 +67,13 @@ func NewPasswordManagerClient(opts ...Options) PasswordManagerClient {
 }
 
 type client struct {
-	appDataDir          string
-	disableSync         bool
-	disableRetryBackoff bool
-	extraCACertsPath    string
-	newCommand          command.NewFn
-	sessionKey          string
+	appDataDir              string
+	disableSync             bool
+	disableRetryBackoff     bool
+	extraCACertsPath        string
+	newCommand              command.NewFn
+	sessionKey              string
+	attachmentCreationMutex sync.Mutex
 }
 
 type Options func(c bitwarden.PasswordManager)
@@ -99,13 +102,26 @@ func DisableRetryBackoff() Options {
 	}
 }
 
-func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, filePath string) (*models.Item, error) {
+func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, filePath string) (*models.Attachment, error) {
+	// The CLI returns the entire item after adding an attachment to it. There is no way to know
+	// which attachment was added, besides comparing the list of attachments before and after the
+	// creation.
+	// For the comparison to work, we need to lock the attachment creation to avoid race condition
+	// when called in parallel on the same item.
+	c.attachmentCreationMutex.Lock()
+	defer c.attachmentCreationMutex.Unlock()
+
+	obj, err := getObject(ctx, c, models.Item{ID: itemId, Object: models.ObjectTypeItem}, models.ObjectTypeItem, itemId)
+	if err != nil {
+		return nil, err
+	}
+	existingAttachmentIDs := getAttachmentIDs(*obj)
+
 	out, err := c.cmdWithSession("create", string(models.ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var obj models.Item
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
 		return nil, err
@@ -114,10 +130,26 @@ func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, fi
 	// NOTE(maxime): there is no need to sync after creating an item as the
 	// creation issued an API call on the Vault directly which refreshes the
 	// local cache.
-	return &obj, nil
+
+	newAttachmentIDs := getAttachmentIDs(*obj)
+	attachmentsRemoved, attachmentsAdded := compareLists(existingAttachmentIDs, newAttachmentIDs)
+	if len(attachmentsAdded) == 0 {
+		return nil, errors.New("BUG: no new attachment found after creation")
+	} else if len(attachmentsAdded) > 1 {
+		return nil, errors.New("BUG: more than one attachment created")
+	} else if len(attachmentsRemoved) > 0 {
+		return nil, errors.New("BUG: at least one attachment removed")
+	}
+
+	for _, attachment := range obj.Attachments {
+		if attachment.ID == attachmentsAdded[0] {
+			return &attachment, nil
+		}
+	}
+	return nil, errors.New("BUG: lost track of the attachment")
 }
 
-func (c *client) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error) {
+func (c *client) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error) {
 	return nil, fmt.Errorf("creating attachments from content is only supported by the embedded client")
 }
 
@@ -507,4 +539,37 @@ func applyFiltersToArgs(args *[]string, options ...bitwarden.ListObjectsOption) 
 	if filters.UrlFilter != "" {
 		*args = append(*args, "--url", filters.UrlFilter)
 	}
+}
+
+func compareLists(listA, listB []string) ([]string, []string) {
+	items := make(map[string]uint8, len(listA)+len(listB))
+
+	for _, item := range listA {
+		items[item] |= 1
+	}
+	for _, item := range listB {
+		items[item] |= 2
+	}
+
+	onlyInA := make([]string, 0, len(listA))
+	onlyInB := make([]string, 0, len(listB))
+
+	for item, status := range items {
+		switch status {
+		case 1:
+			onlyInA = append(onlyInA, item)
+		case 2:
+			onlyInB = append(onlyInB, item)
+		}
+	}
+
+	return onlyInA, onlyInB
+}
+
+func getAttachmentIDs(obj models.Item) []string {
+	attachmentIDs := []string{}
+	for _, attachment := range obj.Attachments {
+		attachmentIDs = append(attachmentIDs, attachment.ID)
+	}
+	return attachmentIDs
 }
