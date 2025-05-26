@@ -118,7 +118,7 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	// We're going to retry the request, and therefore should throw away the
 	// response body of the previous attempt if it exists.
 	if resp != nil && resp.Body != nil {
-		io.ReadAll(resp.Body)
+		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 	}
 
@@ -142,7 +142,7 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	debugInfo["wait_duration_sec"] = waitDuration.Seconds()
 	tflog.Info(originalCtx, "retry_round_tripper", debugInfo)
 
-	return resp, true, sleepWithContext(originalCtx, waitDuration)
+	return nil, true, sleepWithContext(originalCtx, waitDuration)
 }
 
 func tryToReadWaitDurationFromHeaders(resp *http.Response) time.Duration {
