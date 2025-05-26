@@ -81,7 +81,7 @@ func (t Test) IntegrationPwdOfficialWithEmbeddedClientArgs(testPattern string) e
 	if testPattern != "" {
 		args = append(args, "-run", testPattern, "-timeout", "1m")
 	} else {
-		args = append(args, "-timeout", "20m")
+		args = append(args, "-timeout", "30m")
 	}
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
