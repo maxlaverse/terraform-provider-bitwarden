@@ -61,6 +61,7 @@ var testOrganizationID string
 var testCollectionID string
 var testFolderID string
 var testGroupID string
+var testGroupName string
 var testUniqueIdentifier string
 var useEmbeddedClient bool
 
@@ -97,8 +98,8 @@ func init() {
 		os.Exit(1)
 	}
 
-	envFile := filepath.Join(projectRoot, ".env."+testBackend)
-	_ = godotenv.Load(envFile)
+	_ = godotenv.Load(filepath.Join(projectRoot, ".env."+testBackend))
+	_ = godotenv.Load(filepath.Join(projectRoot, ".env"))
 
 	testUniqueIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 	testAccountNameOrgOwner = fmt.Sprintf("test-%s", testUniqueIdentifier)
@@ -301,8 +302,8 @@ func ensureVaultwardenConfigured(t *testing.T) {
 	}
 	t.Logf("Created Folder '%s' (%s)", testFolderName, testFolderID)
 
-	testGroupName := fmt.Sprintf("group-%s-bar", testUniqueIdentifier)
-	group, err := bwClient.CreateGroup(ctx, models.Group{
+	testGroupName = fmt.Sprintf("group-%s-bar", testUniqueIdentifier)
+	group, err := bwClient.CreateOrganizationGroup(ctx, models.OrgGroup{
 		OrganizationID: testOrganizationID,
 		Name:           testGroupName,
 		Collections:    []models.OrgCollectionMember{},

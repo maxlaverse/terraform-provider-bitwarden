@@ -131,6 +131,7 @@ func New(version string) func() *schema.Provider {
 				"bitwarden_item_secure_note": dataSourceItemSecureNote(),
 				"bitwarden_item_ssh_key":     dataSourceItemSSHKey(),
 				"bitwarden_org_collection":   dataSourceOrgCollection(),
+				"bitwarden_org_group":        dataSourceOrgGroup(),
 				"bitwarden_org_member":       dataSourceOrgMember(),
 				"bitwarden_organization":     dataSourceOrganization(),
 				"bitwarden_project":          dataSourceProject(),
