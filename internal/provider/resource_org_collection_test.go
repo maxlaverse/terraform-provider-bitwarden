@@ -5,7 +5,7 @@ package provider
 import (
 	"fmt"
 	"regexp"
-	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -26,7 +26,7 @@ func TestAccResourceOrgCollection(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionNoMembers("org-col-bar"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar", false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						resourceName, schema_definition.AttributeName, "org-col-bar",
@@ -40,7 +40,7 @@ func TestAccResourceOrgCollection(t *testing.T) {
 			// Renaming collection
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionNoMembers("org-col-new-name-bar"),
+				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-new-name-bar", false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						resourceName, schema_definition.AttributeName, "org-col-new-name-bar",
@@ -71,10 +71,10 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 		resource.Test(t, resource.TestCase{
 			ProviderFactories: providerFactories,
 			Steps: []resource.TestStep{
-				// Simplified test for creating a collection on Bitwarden's server (for now)
+				// 1. Create an org-collection with ourself as the only member
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionWithOurSelves("org-col-bar"),
+					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar", true),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
 							resourceName, schema_definition.AttributeName, "org-col-bar",
@@ -97,6 +97,63 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 						getObjectID(resourceName, &objectID),
 					),
 				},
+				// 2. Add another member to the collection
+				{
+					ResourceName: resourceName,
+					Config: tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar", true,
+						memberBlock(testAccountEmailOrgUserInTestOrgUserId, nil),
+					),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(
+							resourceName, schema_definition.AttributeName, "org-col-bar",
+						),
+						resource.TestMatchResourceAttr(
+							resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
+						),
+						resource.TestCheckResourceAttr(
+							resourceName, "member.#", "2",
+						),
+						resource.TestCheckTypeSetElemNestedAttrs(
+							resourceName, "member.*", map[string]string{
+								"id":             testAccountEmailOrgOwnerInTestOrgUserId,
+								"read_only":      "false",
+								"hide_passwords": "false",
+								"manage":         "true",
+							},
+						),
+						resource.TestCheckTypeSetElemNestedAttrs(
+							resourceName, "member.*", map[string]string{
+								"id":             testAccountEmailOrgUserInTestOrgUserId,
+								"read_only":      "false",
+								"hide_passwords": "false",
+							},
+						),
+
+						getObjectID(resourceName, &objectID),
+					),
+				},
+				// 3. Remove the other member from the collection
+				{
+					ResourceName: resourceName,
+					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar", true),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(
+							resourceName, schema_definition.AttributeName, "org-col-bar",
+						),
+						resource.TestCheckResourceAttr(
+							resourceName, "member.#", "1",
+						),
+						resource.TestCheckTypeSetElemNestedAttrs(
+							resourceName, "member.*", map[string]string{
+								"id":             testAccountEmailOrgOwnerInTestOrgUserId,
+								"read_only":      "false",
+								"hide_passwords": "false",
+								"manage":         "true",
+							},
+						),
+					),
+				},
+				// 4. Import the collection
 				{
 					ResourceName:      resourceName,
 					ImportStateIdFunc: orgCollectionImportID(resourceName),
@@ -105,13 +162,13 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				},
 			},
 		})
-	} else if useEmbeddedClient {
+	} else if IsVaultwardenBackend() && useEmbeddedClient {
 		resource.Test(t, resource.TestCase{
 			ProviderFactories: providerFactories,
 			Steps: []resource.TestStep{
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionNoMembers("org-col-bar"),
+					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar", false),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
 							resourceName, schema_definition.AttributeName, "org-col-bar",
@@ -125,7 +182,9 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// 2. Adding one member
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionSingleMember("org-col-bar"),
+					Config: tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar", false,
+						memberBlock(testAccountEmailOrgUserInTestOrgUserId, nil),
+					),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
 							resourceName, schema_definition.AttributeName, "org-col-bar",
@@ -138,7 +197,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 						),
 						resource.TestCheckTypeSetElemNestedAttrs(
 							resourceName, "member.*", map[string]string{
-								"id":             testAccountEmailOrgOwnerInTestOrgUserId,
+								"id":             testAccountEmailOrgUserInTestOrgUserId,
 								"read_only":      "false",
 								"hide_passwords": "false",
 							},
@@ -150,7 +209,13 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// 3. Adding a second member with permission set 1
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionTwoMembers("org-col-bar", false, true),
+					Config: tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar", false,
+						memberBlock(testAccountEmailOrgUserInTestOrgUserId, nil),
+						memberBlock(testAccountEmailOrgManagerInTestOrgUserId, map[string]string{
+							"read_only":      "false",
+							"hide_passwords": "true",
+						}),
+					),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
 							resourceName, schema_definition.AttributeName, "org-col-bar",
@@ -163,7 +228,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 						),
 						resource.TestCheckTypeSetElemNestedAttrs(
 							resourceName, "member.*", map[string]string{
-								"id":             testAccountEmailOrgUserInTestOrgUserId,
+								"id":             testAccountEmailOrgManagerInTestOrgUserId,
 								"read_only":      "false",
 								"hide_passwords": "true",
 								"manage":         "false",
@@ -174,7 +239,13 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// 4. Changing second member to permissions set 2
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionTwoMembers("org-col-bar", true, false),
+					Config: tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar", false,
+						memberBlock(testAccountEmailOrgUserInTestOrgUserId, nil),
+						memberBlock(testAccountEmailOrgManagerInTestOrgUserId, map[string]string{
+							"read_only":      "true",
+							"hide_passwords": "false",
+						}),
+					),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
 							resourceName, schema_definition.AttributeName, "org-col-bar",
@@ -187,7 +258,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 						),
 						resource.TestCheckTypeSetElemNestedAttrs(
 							resourceName, "member.*", map[string]string{
-								"id":             testAccountEmailOrgUserInTestOrgUserId,
+								"id":             testAccountEmailOrgManagerInTestOrgUserId,
 								"read_only":      "true",
 								"hide_passwords": "false",
 							},
@@ -197,7 +268,9 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// 5. Removing permissions
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionSingleMember("org-col-bar"),
+					Config: tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar", false,
+						memberBlock(testAccountEmailOrgUserInTestOrgUserId, nil),
+					),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
 							resourceName, schema_definition.AttributeName, "org-col-bar",
@@ -210,7 +283,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 						),
 						resource.TestCheckTypeSetElemNestedAttrs(
 							resourceName, "member.*", map[string]string{
-								"id":             testAccountEmailOrgOwnerInTestOrgUserId,
+								"id":             testAccountEmailOrgUserInTestOrgUserId,
 								"read_only":      "false",
 								"hide_passwords": "false",
 							},
@@ -231,7 +304,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionNoMembers("org-col-bar"),
+					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar", false),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
 							resourceName, schema_definition.AttributeName, "org-col-bar",
@@ -245,7 +318,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// Adding one member
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollectionSingleMember("org-col-bar"),
+					Config:       tfConfigPasswordManagerProvider() + tfConfigResourceOrgCollection("org-col-bar", true),
 					ExpectError:  regexp.MustCompile("managing collection memberships is only supported by the embedded client"),
 				},
 			},
@@ -264,7 +337,15 @@ func orgCollectionImportID(resourceName string) func(s *terraform.State) (string
 	}
 }
 
-func tfConfigResourceOrgCollectionTwoMembers(name string, readOnly, hidePasswords bool) string {
+func tfConfigResourceOrgCollection(name string, includeOurselves bool, members ...string) string {
+	var allMembers []string
+	if includeOurselves {
+		allMembers = append(allMembers, memberBlock(testAccountEmailOrgOwnerInTestOrgUserId, map[string]string{
+			"manage": "true",
+		}))
+	}
+	allMembers = append(allMembers, members...)
+
 	return fmt.Sprintf(`
 	resource "bitwarden_org_collection" "foo_org_col" {
 	provider	= bitwarden
@@ -272,61 +353,17 @@ func tfConfigResourceOrgCollectionTwoMembers(name string, readOnly, hidePassword
 	organization_id = "%s"
 
 	name     = "%s"
-	
-	member {
-		id = "%s"
-		read_only = %s
-		hide_passwords = %s
+	%s
+}
+`, testOrganizationID, name, strings.Join(allMembers, "\n\t"))
+}
+
+func memberBlock(id string, attrs map[string]string) string {
+	var block strings.Builder
+	block.WriteString(fmt.Sprintf("\n\tmember {\n\t\tid = \"%s\"", id))
+	for k, v := range attrs {
+		block.WriteString(fmt.Sprintf("\n\t\t%s = %s", k, v))
 	}
-
-	member {
-		id = "%s"
-	}
-}
-`, testOrganizationID, name, testAccountEmailOrgUserInTestOrgUserId, strconv.FormatBool(readOnly), strconv.FormatBool(hidePasswords), testAccountEmailOrgOwnerInTestOrgUserId)
-}
-
-func tfConfigResourceOrgCollectionNoMembers(name string) string {
-	return fmt.Sprintf(`
-	resource "bitwarden_org_collection" "foo_org_col" {
-	provider	= bitwarden
-
-	organization_id = "%s"
-
-	name     = "%s"
-}
-`, testOrganizationID, name)
-}
-
-func tfConfigResourceOrgCollectionSingleMember(name string) string {
-	return fmt.Sprintf(`
-	resource "bitwarden_org_collection" "foo_org_col" {
-	provider	= bitwarden
-
-	organization_id = "%s"
-
-	name     = "%s"
-	
-	member {
-		id = "%s"
-	}
-}
-`, testOrganizationID, name, testAccountEmailOrgOwnerInTestOrgUserId)
-}
-
-func tfConfigResourceOrgCollectionWithOurSelves(name string) string {
-	return fmt.Sprintf(`
-	resource "bitwarden_org_collection" "foo_org_col" {
-	provider	= bitwarden
-
-	organization_id = "%s"
-
-	name     = "%s"
-
-	member {
-		id = "%s"
-		manage = true
-	}
-}
-`, testOrganizationID, name, testAccountEmailOrgOwnerInTestOrgUserId)
+	block.WriteString("\n\t}")
+	return block.String()
 }
