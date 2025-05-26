@@ -83,7 +83,7 @@ const (
 	DescriptionItemIdentifier                = "Identifier of the item the attachment belongs to"
 	DescriptionItemAttachmentContent         = "Content of the attachment"
 	DescriptionItemAttachmentFile            = "Path to the content of the attachment."
-	DescriptionItemAttachmentFileName        = "File name"
+	DescriptionItemAttachmentFileName        = "File name. Required if specifying `content` in a resource."
 	DescriptionItemAttachmentSize            = "Size in bytes"
 	DescriptionItemAttachmentSizeName        = "Size as string"
 	DescriptionItemAttachmentURL             = "URL"

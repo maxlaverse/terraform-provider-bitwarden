@@ -18,7 +18,7 @@ func resourceAttachment() *schema.Resource {
 		StateFunc:        fileHash,
 	}
 	resourceAttachmentSchema[schema_definition.AttributeAttachmentContent] = &schema.Schema{
-		Description:   schema_definition.DescriptionItemAttachmentFile,
+		Description:   schema_definition.DescriptionItemAttachmentContent,
 		Type:          schema.TypeString,
 		Optional:      true,
 		RequiredWith:  []string{schema_definition.AttributeAttachmentContent},
