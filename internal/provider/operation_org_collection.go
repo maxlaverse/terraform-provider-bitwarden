@@ -26,7 +26,11 @@ func opOrganizationCollectionImport(ctx context.Context, d *schema.ResourceData,
 		return nil, fmt.Errorf("invalid ID specified, should be in the format <organization_id>/<collection_id>: '%s'", d.Id())
 	}
 	d.SetId(split[1])
-	d.Set(schema_definition.AttributeOrganizationID, split[0])
+
+	err := d.Set(schema_definition.AttributeOrganizationID, split[0])
+	if err != nil {
+		return nil, err
+	}
 
 	return []*schema.ResourceData{d}, nil
 }

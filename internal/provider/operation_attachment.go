@@ -54,7 +54,12 @@ func opAttachmentImport(ctx context.Context, d *schema.ResourceData, meta interf
 		return nil, fmt.Errorf("invalid ID specified, should be in the format <item_id>/<attachment_id>: '%s'", d.Id())
 	}
 	d.SetId(split[0])
-	d.Set(schema_definition.AttributeAttachmentItemID, split[1])
+
+	err := d.Set(schema_definition.AttributeAttachmentItemID, split[1])
+	if err != nil {
+		return nil, err
+	}
+
 	return []*schema.ResourceData{d}, nil
 }
 
