@@ -46,9 +46,9 @@ resource "bitwarden_attachment" "vpn_config_from_file" {
 
 ### Optional
 
-- `content` (String) Path to the content of the attachment.
+- `content` (String) Content of the attachment
 - `file` (String) Path to the content of the attachment.
-- `file_name` (String) File name
+- `file_name` (String) File name. Required if specifying `content` in a resource.
 
 ### Read-Only
 
