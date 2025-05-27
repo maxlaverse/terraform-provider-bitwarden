@@ -70,6 +70,13 @@ var useEmbeddedClient bool
 // to create a provider server to which the CLI can reattach.
 var providerFactories = map[string]func() (*schema.Provider, error){
 	"bitwarden": func() (*schema.Provider, error) {
+		if IsOfficialBackend() {
+			// Errors are expected when testing against bitwarden.com, and retrying
+			// helps make tests stable.
+			return New(versionTestDefault)(), nil
+		}
+
+		// Errors are unexpected when using a local instance, and should be surfaced
 		return New(versionTestDisabledRetries)(), nil
 	},
 }

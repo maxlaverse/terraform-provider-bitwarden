@@ -27,6 +27,7 @@ const (
 )
 
 const (
+	versionTestDefault         = ""
 	versionTestDisabledRetries = "--disable-retries--"
 	versionTestSkippedLogin    = "--skip-login--"
 )

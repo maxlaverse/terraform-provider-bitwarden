@@ -83,10 +83,7 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	// If the request was successful, we return without additional logging.
 	// We preserve the response body as exiting the method cancels the context.
 	if isSuccessful {
-		if readErr := preserveResponseBody(resp); readErr != nil {
-			return resp, false, fmt.Errorf("%w (and additionally %w)", err, readErr)
-		}
-		return resp, false, err
+		return resp, false, preserveResponseBody(resp)
 	}
 
 	// At this point, there was a problem. We need to check if it's retryable,
@@ -109,8 +106,10 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	if isLastPossibleAttempt || (!isDialError && !isRetriableHttpStatusCode && !isRetriableReadTimeout) {
 		tflog.Info(originalCtx, "retry_round_tripper", debugInfo)
 		readErr := preserveResponseBody(resp)
-		if readErr != nil {
+		if readErr != nil && err != nil {
 			err = fmt.Errorf("%w (and additionally %w)", err, readErr)
+		} else if readErr != nil {
+			err = readErr
 		}
 		return resp, false, err
 	}
@@ -118,7 +117,7 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	// We're going to retry the request, and therefore should throw away the
 	// response body of the previous attempt if it exists.
 	if resp != nil && resp.Body != nil {
-		io.ReadAll(resp.Body)
+		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 	}
 
@@ -142,7 +141,7 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	debugInfo["wait_duration_sec"] = waitDuration.Seconds()
 	tflog.Info(originalCtx, "retry_round_tripper", debugInfo)
 
-	return resp, true, sleepWithContext(originalCtx, waitDuration)
+	return nil, true, sleepWithContext(originalCtx, waitDuration)
 }
 
 func tryToReadWaitDurationFromHeaders(resp *http.Response) time.Duration {
