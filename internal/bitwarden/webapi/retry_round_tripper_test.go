@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBackoff(t *testing.T) {
+func TestRetryRoundTripper_Backoff(t *testing.T) {
 	testData := map[int]time.Duration{
 		1: 2 * time.Second,
 		2: 4 * time.Second,
@@ -196,7 +196,7 @@ func TestRetryRoundTripper_NonGetRequest(t *testing.T) {
 	assert.Equal(t, 1, transport.index)
 }
 
-func TestIsConnectTimeout(t *testing.T) {
+func TestRetryRoundTripper_IsConnectTimeout(t *testing.T) {
 	lowerBackoffFactor()
 	defer lowerBackoffFactor()
 
