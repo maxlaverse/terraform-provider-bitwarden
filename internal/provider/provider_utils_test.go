@@ -176,8 +176,12 @@ func loadEnvironmentVariables() {
 		if v := os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_ID"); v != "" {
 			testOrganizationID = v
 		}
-		if v := os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_USER_ID"); v != "" {
+		if v := os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_MEMBER_ID"); v != "" {
 			testAccountEmailOrgOwnerInTestOrgUserId = v
+		}
+
+		if v := os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_OTHER_MEMBER_ID"); v != "" {
+			testAccountEmailOrgUserInTestOrgUserId = v
 		}
 
 		if v := os.Getenv("TEST_PASSWORD_MANAGER_USER_NAME"); v != "" {
@@ -212,6 +216,10 @@ func SkipIfOfficialCLI(t *testing.T, reason string) {
 
 func IsOfficialBackend() bool {
 	return testBackend == backendOfficial
+}
+
+func IsVaultwardenBackend() bool {
+	return testBackend == backendVaultwarden
 }
 
 func ensureVaultwardenConfigured(t *testing.T) {
