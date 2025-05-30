@@ -1,0 +1,1 @@
+$ terraform import bitwarden_item_login.example <login_item_id>

@@ -36,17 +36,7 @@ func ItemObjectToSchema(ctx context.Context, obj *models.Item, d *schema.Resourc
 		return err
 	}
 
-	err = d.Set(schema_definition.AttributeFavorite, obj.Favorite)
-	if err != nil {
-		return err
-	}
-
 	err = d.Set(schema_definition.AttributeCollectionIDs, obj.CollectionIds)
-	if err != nil {
-		return err
-	}
-
-	err = d.Set(schema_definition.AttributeAttachments, ItemAttachmentsFromStruct(obj.Attachments))
 	if err != nil {
 		return err
 	}
@@ -82,7 +72,20 @@ func ItemObjectToSchema(ctx context.Context, obj *models.Item, d *schema.Resourc
 		}
 	}
 
-	if obj.Type == models.ItemTypeLogin {
+	if obj.Type == models.ItemTypeLogin || obj.Type == models.ItemTypeSecureNote {
+		err = d.Set(schema_definition.AttributeAttachments, ItemAttachmentsFromStruct(obj.Attachments))
+		if err != nil {
+			return err
+		}
+
+		err = d.Set(schema_definition.AttributeFavorite, obj.Favorite)
+		if err != nil {
+			return err
+		}
+	}
+
+	switch obj.Type {
+	case models.ItemTypeLogin:
 		err = d.Set(schema_definition.AttributeLoginPassword, obj.Login.Password)
 		if err != nil {
 			return err
@@ -99,6 +102,21 @@ func ItemObjectToSchema(ctx context.Context, obj *models.Item, d *schema.Resourc
 		}
 
 		err = d.Set(schema_definition.AttributeLoginURIs, objectLoginURIsFromStruct(ctx, obj.Login.URIs))
+		if err != nil {
+			return err
+		}
+	case models.ItemTypeSSHKey:
+		err = d.Set(schema_definition.AttributeSSHKeyPrivateKey, obj.SSHKey.PrivateKey)
+		if err != nil {
+			return err
+		}
+
+		err = d.Set(schema_definition.AttributeSSHKeyPublicKey, obj.SSHKey.PublicKey)
+		if err != nil {
+			return err
+		}
+
+		err = d.Set(schema_definition.AttributeSSHKeyKeyFingerprint, obj.SSHKey.KeyFingerprint)
 		if err != nil {
 			return err
 		}
@@ -123,10 +141,6 @@ func ItemSchemaToObject(attrType models.ItemType) func(ctx context.Context, d *s
 			obj.FolderID = v
 		}
 
-		if v, ok := d.Get(schema_definition.AttributeFavorite).(bool); ok && v {
-			obj.Favorite = true
-		}
-
 		if v, ok := d.Get(schema_definition.AttributeNotes).(string); ok {
 			obj.Notes = v
 		}
@@ -146,15 +160,22 @@ func ItemSchemaToObject(attrType models.ItemType) func(ctx context.Context, d *s
 			}
 		}
 
-		if vList, ok := d.Get(schema_definition.AttributeAttachments).([]interface{}); ok {
-			obj.Attachments = ItemAttachmentStructFromData(vList)
-		}
-
 		if v, ok := d.Get(schema_definition.AttributeField).([]interface{}); ok {
 			obj.Fields = ObjectFieldStructFromData(v)
 		}
 
-		if obj.Type == models.ItemTypeLogin {
+		if obj.Type == models.ItemTypeLogin || obj.Type == models.ItemTypeSecureNote {
+			if v, ok := d.Get(schema_definition.AttributeFavorite).(bool); ok && v {
+				obj.Favorite = true
+			}
+
+			if vList, ok := d.Get(schema_definition.AttributeAttachments).([]interface{}); ok {
+				obj.Attachments = ItemAttachmentStructFromData(vList)
+			}
+		}
+
+		switch obj.Type {
+		case models.ItemTypeLogin:
 			if v, ok := d.Get(schema_definition.AttributeLoginPassword).(string); ok {
 				obj.Login.Password = v
 			}
@@ -166,6 +187,16 @@ func ItemSchemaToObject(attrType models.ItemType) func(ctx context.Context, d *s
 			}
 			if vList, ok := d.Get(schema_definition.AttributeLoginURIs).([]interface{}); ok {
 				obj.Login.URIs = ObjectLoginURIsFromData(ctx, vList)
+			}
+		case models.ItemTypeSSHKey:
+			if v, ok := d.Get(schema_definition.AttributeSSHKeyPrivateKey).(string); ok {
+				obj.SSHKey.PrivateKey = v
+			}
+			if v, ok := d.Get(schema_definition.AttributeSSHKeyPublicKey).(string); ok {
+				obj.SSHKey.PublicKey = v
+			}
+			if v, ok := d.Get(schema_definition.AttributeSSHKeyKeyFingerprint).(string); ok {
+				obj.SSHKey.KeyFingerprint = v
 			}
 		}
 

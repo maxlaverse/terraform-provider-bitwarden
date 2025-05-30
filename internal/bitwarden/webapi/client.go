@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	defaultRequestTimeout = 120 * time.Second
+	defaultRequestTimeout = 10 * time.Second
 	maxConcurrentRequests = 4
 	maxRetryAttempts      = 3
 )
@@ -36,23 +36,22 @@ type Client interface {
 	ClearSession()
 	ConfirmOrganizationUser(ctx context.Context, orgID, orgUserID, key string) error
 	CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
-	CreateGroup(context.Context, models.Group) (*models.Group, error)
 	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateObjectAttachment(ctx context.Context, itemId string, data []byte, req AttachmentRequestData) (*CreateObjectAttachmentResponse, error)
 	CreateObjectAttachmentData(ctx context.Context, itemId, attachmentId string, data []byte) error
 	CreateOrganization(ctx context.Context, req CreateOrganizationRequest) (*CreateOrganizationResponse, error)
 	CreateOrganizationCollection(ctx context.Context, orgId string, req Collection) (*Collection, error)
+	CreateOrganizationGroup(context.Context, models.OrgGroup) (*models.OrgGroup, error)
 	CreateProject(ctx context.Context, project models.Project) (*models.Project, error)
 	CreateSecret(ctx context.Context, secret models.Secret) (*Secret, error)
 	DeleteFolder(ctx context.Context, objID string) error
-	DeleteGroup(ctx context.Context, obj models.Group) error
 	DeleteObject(ctx context.Context, objID string) error
 	DeleteObjectAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteOrganizationCollection(ctx context.Context, orgID, collectionID string) error
+	DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error
 	DeleteProject(ctx context.Context, projectId string) error
 	DeleteSecret(ctx context.Context, secretId string) error
 	EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
-	EditGroup(ctx context.Context, obj models.Group) (*models.Group, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditItemCollections(ctx context.Context, objId string, collectionIds []string) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, orgId, objId string, obj Collection) (*Collection, error)
@@ -63,7 +62,8 @@ type Client interface {
 	GetContentFromURL(ctx context.Context, url string) ([]byte, error)
 	GetCipherAttachment(ctx context.Context, itemId, attachmentId string) (*models.Attachment, error)
 	GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error)
-	GetGroup(ctx context.Context, group models.Group) (*models.Group, error)
+	GetOrganizationGroup(ctx context.Context, group models.OrgGroup) (*models.OrgGroup, error)
+	GetOrganizationGroups(ctx context.Context, orgId string) ([]OrganizationGroupDetails, error)
 	GetProfile(context.Context) (*Profile, error)
 	GetProject(ctx context.Context, projectId string) (*models.Project, error)
 	GetProjects(ctx context.Context, orgId string) ([]models.Project, error)
@@ -126,19 +126,20 @@ func (c *client) CreateFolder(ctx context.Context, obj models.Folder) (*models.F
 	return doRequest[models.Folder](ctx, c.httpClient, httpReq)
 }
 
-func (c *client) CreateGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
+func (c *client) CreateOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
 	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/groups", c.serverURL, obj.OrganizationID), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing group create request: %w", err)
 	}
 
-	return doRequest[models.Group](ctx, c.httpClient, httpReq)
+	return doRequest[models.OrgGroup](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
 	var err error
 	var httpReq *http.Request
 	if len(obj.CollectionIds) != 0 {
+		// if len(obj.CollectionIds) != 0 || obj.Type == models.ItemTypeSSHKey {
 		cipherCreationRequest := CreateCipherRequest{
 			Cipher:        obj,
 			CollectionIds: obj.CollectionIds,
@@ -248,7 +249,7 @@ func (c *client) DeleteFolder(ctx context.Context, objID string) error {
 	return err
 }
 
-func (c *client) DeleteGroup(ctx context.Context, obj models.Group) error {
+func (c *client) DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error {
 	httpReq, err := c.prepareAuthenticatedRequest(ctx, "DELETE", fmt.Sprintf("%s/api/organizations/%s/groups/%s", c.serverURL, obj.OrganizationID, obj.ID), nil)
 	if err != nil {
 		return fmt.Errorf("error preparing group deletion request: %w", err)
@@ -325,15 +326,6 @@ func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Fol
 	}
 
 	return doRequest[models.Folder](ctx, c.httpClient, req)
-}
-
-func (c *client) EditGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
-	httpReq, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/organizations/%s/groups/%s", c.serverURL, obj.OrganizationID, obj.ID), obj)
-	if err != nil {
-		return nil, fmt.Errorf("error preparing group edition request: %w", err)
-	}
-
-	return doRequest[models.Group](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
@@ -443,13 +435,39 @@ func (c *client) GetOrganizationCollections(ctx context.Context, orgID string) (
 	return resp.Data, nil
 }
 
-func (c *client) GetGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
+func (c *client) GetOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
 	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/groups/%s/details", c.serverURL, obj.OrganizationID, obj.ID), obj)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing group retrieval request: %w", err)
 	}
 
-	return doRequest[models.Group](ctx, c.httpClient, httpReq)
+	return doRequest[models.OrgGroup](ctx, c.httpClient, httpReq)
+}
+
+func (c *client) GetOrganizationGroups(ctx context.Context, orgId string) ([]OrganizationGroupDetails, error) {
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/groups", c.serverURL, orgId), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing group retrieval request: %w", err)
+	}
+
+	resp, err := doRequest[OrganizationGroupList](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
+}
+
+func (c *client) GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error) {
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/users", c.serverURL, orgId), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing organization user list retrieval request: %w", err)
+	}
+
+	resp, err := doRequest[OrganizationUserList](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
 }
 
 func (c *client) GetProfile(ctx context.Context) (*Profile, error) {
@@ -521,19 +539,6 @@ func (c *client) GetUserPublicKey(ctx context.Context, userId string) ([]byte, e
 	return []byte(resp.PublicKey), nil
 }
 
-func (c *client) GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error) {
-	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/users", c.serverURL, orgId), nil)
-	if err != nil {
-		return nil, fmt.Errorf("error preparing organization user list retrieval request: %w", err)
-	}
-
-	resp, err := doRequest[OrganizationUserList](ctx, c.httpClient, httpReq)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Data, nil
-}
-
 func (c *client) InviteUser(ctx context.Context, orgId string, inviteRequest InviteUserRequest) error {
 	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/organizations/%s/users/invite", c.serverURL, orgId), inviteRequest)
 	if err != nil {
@@ -556,7 +561,7 @@ func (c *client) LoginWithAccessToken(ctx context.Context, clientId, clientSecre
 		return nil, fmt.Errorf("error preparing login with access token request: %w", err)
 	}
 
-	tokenResp, err := doRequestWithRetries[MachineTokenResponse](ctx, c.httpClient, httpReq)
+	tokenResp, err := doRequest[MachineTokenResponse](ctx, c.httpClient, httpReq)
 	if err != nil {
 		return nil, err
 	}
@@ -600,7 +605,7 @@ func (c *client) LoginWithPassword(ctx context.Context, username, password strin
 	httpReq.Header.Set("auth-email", base64.RawURLEncoding.EncodeToString([]byte(username)))
 	httpReq.Header.Set("bitwarden-client-name", "cli")
 
-	tokenResp, err := doRequestWithRetries[TokenResponse](ctx, c.httpClient, httpReq)
+	tokenResp, err := doRequest[TokenResponse](ctx, c.httpClient, httpReq)
 	if err != nil {
 		return nil, err
 	}
@@ -638,7 +643,7 @@ func (c *client) LoginWithAPIKey(ctx context.Context, clientId, clientSecret str
 		return nil, fmt.Errorf("error preparing login with api key request: %w", err)
 	}
 
-	tokenResp, err := doRequestWithRetries[TokenResponse](ctx, c.httpClient, httpReq)
+	tokenResp, err := doRequest[TokenResponse](ctx, c.httpClient, httpReq)
 	if err != nil {
 		return nil, err
 	}
@@ -747,22 +752,6 @@ func (c *client) prepareGenericRequest(ctx context.Context, reqMethod, reqUrl st
 	return httpReq, nil
 }
 
-// There seem to be a different type of rate limiting on /identity/connect/token which simply
-// closes the connection after a few seconds. This is a workaround to retry this type of requests.
-func doRequestWithRetries[T any](ctx context.Context, httpClient *http.Client, httpReq *http.Request) (*T, error) {
-	var err error
-	var resp *T
-	for i := 0; i < maxRetryAttempts; i++ {
-		resp, err = doRequest[T](ctx, httpClient, httpReq)
-		if err == nil || !isResponseBodyClosedTimeout(err) {
-			break
-		}
-		time.Sleep(backoff(i))
-	}
-
-	return resp, err
-}
-
 func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *http.Request) (*T, error) {
 	reqBody := readAndRestoreRequestBody(ctx, httpReq)
 
@@ -785,7 +774,7 @@ func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *htt
 			if err == nil && errResp.Object == "error" {
 				return nil, &HTTPError{
 					StatusCode: httpResp.StatusCode,
-					Message:    fmt.Sprintf("the server returned an error: \"%s\"", errResp.Message),
+					Message:    fmt.Sprintf("the server returned an error: \"%s\" (%d)", errResp.Message, httpResp.StatusCode),
 				}
 			}
 		}
@@ -868,10 +857,6 @@ func readReader(rc io.ReadCloser) ([]byte, io.ReadCloser, error) {
 		return nil, nil, err
 	}
 	return body, io.NopCloser(bytes.NewReader(buf.Bytes())), nil
-}
-
-func isResponseBodyClosedTimeout(err error) bool {
-	return strings.Contains(err.Error(), "http2: response body closed")
 }
 
 func handleRedirect(req *http.Request, via []*http.Request) error {

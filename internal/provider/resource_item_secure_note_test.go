@@ -4,9 +4,11 @@ package provider
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 func TestAccResourceItemSecureNote(t *testing.T) {
@@ -21,7 +23,7 @@ func TestAccResourceItemSecureNote(t *testing.T) {
 			{
 				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemSecureNote(),
 				Check: resource.ComposeTestCheckFunc(
-					checkItemGeneral(resourceName),
+					checkItemSecureNote(resourceName),
 					getObjectID(resourceName, &objectID),
 				),
 			},
@@ -64,4 +66,12 @@ func tfConfigResourceItemSecureNote() string {
 		}
 	}
 `, testOrganizationID, testCollectionID, testFolderID)
+}
+
+func checkItemSecureNote(resourceName string) resource.TestCheckFunc {
+	return resource.ComposeTestCheckFunc(
+		resource.TestMatchResourceAttr(
+			resourceName, schema_definition.AttributeFavorite, regexp.MustCompile("^true"),
+		),
+	)
 }

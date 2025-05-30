@@ -11,7 +11,7 @@ import (
 )
 
 func TestAccDataSourceAttachment(t *testing.T) {
-	SkipIfOfficialBackend(t, "Testing Attachments requires a Premium account.")
+	SkipIfNonPremiumTestAccount(t)
 
 	ensureVaultwardenConfigured(t)
 
@@ -37,12 +37,20 @@ func TestAccDataSourceAttachment(t *testing.T) {
 			},
 			{
 				Config: tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceOrganizationAttachment("fixtures/attachment1.txt", testOrganizationID),
+				SkipFunc: func() (bool, error) {
+					// Organization attachments are not support with 'free' and 'premium' plans.
+					return IsOfficialBackend(), nil
+				},
 			},
 			{
 				Config: tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceOrganizationAttachment("fixtures/attachment1.txt", testOrganizationID) + tfConfigDataAttachment(),
 				Check: resource.TestMatchResourceAttr(
 					"data.bitwarden_attachment.foo_data", schema_definition.AttributeAttachmentContent, regexp.MustCompile(`^Hello, I'm a text attachment$`),
 				),
+				SkipFunc: func() (bool, error) {
+					// Organization attachments are not support with 'free' and 'premium' plans.
+					return IsOfficialBackend(), nil
+				},
 			},
 		},
 	})
@@ -76,7 +84,7 @@ data "bitwarden_attachment" "foo_data" {
 	provider	= bitwarden
 
 	id 			= bitwarden_attachment.foo.id
-	item_id 	= 0123456789
+	item_id 	= "71767b68-b385-4440-878c-b2e500bfcff9"
 }
 `
 }

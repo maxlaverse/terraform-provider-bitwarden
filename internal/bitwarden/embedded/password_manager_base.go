@@ -24,6 +24,11 @@ import (
 
 var (
 	panicOnEncryptionErrors = false
+
+	// objectKeyEncryption is a flag that can be set to true to have object-specific
+	// encryption keys for items. It used to be enabled by default but isn't anymore.
+	// Eventually we need to let the user decide whether to use object-specific keys or not.
+	objectKeyEncryption = true
 )
 
 type BaseVault interface {
@@ -59,6 +64,11 @@ type baseVault struct {
 	// their user information. This allows us to reference members by their
 	// email for example.
 	organizationMembers OrgMemberStore
+
+	// organizationGroups stores the groups of an organization alongside
+	// their group information. This allows us to reference groups by their
+	// name for example.
+	organizationGroups OrgGroupStore
 }
 
 func (v *baseVault) GetItem(ctx context.Context, obj models.Item) (*models.Item, error) {
@@ -146,8 +156,8 @@ func findObject[T any](ctx context.Context, store map[string]interface{}, objTyp
 	}
 
 	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
-	if !filter.IsValid() {
-		return nil, fmt.Errorf("invalid filter options")
+	if !filter.HasSearchFilter() {
+		return nil, fmt.Errorf("missing search filter")
 	}
 
 	foundObjects := []T{}
@@ -180,6 +190,7 @@ func (v *baseVault) clearObjectStore(ctx context.Context) {
 	v.collectionDetailsLoadedForOrg = make(map[string]bool)
 	v.objectStore = make(map[string]interface{})
 	v.organizationMembers = NewOrgMemberStore()
+	v.organizationGroups = NewOrgGroupStore()
 }
 
 func (v *baseVault) deleteObjectFromStore(ctx context.Context, obj any) {
@@ -359,6 +370,11 @@ func decryptItem(obj models.Item, secret AccountSecrets) (*models.Item, error) {
 		decKey = string(objectKey.Key)
 	}
 
+	sshKey, err := decryptItemSSHKey(obj.SSHKey, *objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting ssh key: %w", err)
+	}
+
 	return &models.Item{
 		Attachments:         decAttachments,
 		CollectionIds:       obj.CollectionIds,
@@ -382,6 +398,7 @@ func decryptItem(obj models.Item, secret AccountSecrets) (*models.Item, error) {
 		SecureNote: models.SecureNote{
 			Type: obj.SecureNote.Type,
 		},
+		SSHKey:       *sshKey,
 		Type:         obj.Type,
 		ViewPassword: obj.ViewPassword,
 	}, nil
@@ -443,6 +460,29 @@ func decryptItemLogin(objLogin models.Login, objectKey symmetrickey.Key) (*model
 		Password: decPassword,
 		Totp:     decTotp,
 		URIs:     decUris,
+	}, nil
+}
+
+func decryptItemSSHKey(obj models.SSHKey, objectKey symmetrickey.Key) (*models.SSHKey, error) {
+	decPrivateKey, err := decryptStringIfNotEmpty(obj.PrivateKey, objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting ssh private key: %w", err)
+	}
+
+	decPublicKey, err := decryptStringIfNotEmpty(obj.PublicKey, objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting ssh public key: %w", err)
+	}
+
+	decKeyFingerprint, err := decryptStringIfNotEmpty(obj.KeyFingerprint, objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting ssh key fingerprint: %w", err)
+	}
+
+	return &models.SSHKey{
+		PrivateKey:     decPrivateKey,
+		PublicKey:      decPublicKey,
+		KeyFingerprint: decKeyFingerprint,
 	}, nil
 }
 
@@ -536,19 +576,31 @@ func encryptFolder(ctx context.Context, obj models.Folder, secret AccountSecrets
 }
 
 func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, verifyObjectEncryption bool) (*models.Item, error) {
-	objectKey, err := getOrCreateObjectKey(obj)
-	if err != nil {
-		return nil, err
-	}
-
 	mainKey, err := getMainKeyForObject(obj, secret)
 	if err != nil {
 		return nil, err
 	}
 
-	encObjectKey, err := crypto.EncryptAsString(objectKey.Key, *mainKey)
-	if err != nil {
-		return nil, fmt.Errorf("error encrypting item object key: %w", err)
+	var objectKey *symmetrickey.Key
+	var encObjectKey string
+
+	hasCipherKey := len(obj.Key) > 0
+	if hasCipherKey || objectKeyEncryption {
+		if hasCipherKey {
+			objectKey, err = symmetrickey.NewFromRawBytesWithEncryptionType([]byte(obj.Key), symmetrickey.AesCbc256_HmacSha256_B64)
+		} else {
+			objectKey, err = keybuilder.CreateObjectKey()
+		}
+		if err != nil {
+			return nil, fmt.Errorf("error creating object key: %w", err)
+		}
+
+		encObjectKey, err = crypto.EncryptAsString(objectKey.Key, *mainKey)
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting item object key: %w", err)
+		}
+	} else {
+		objectKey = mainKey
 	}
 
 	encLogin, err := encryptItemLogin(obj.Login, *objectKey)
@@ -602,6 +654,11 @@ func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, ve
 		}
 	}
 
+	encSSHKey, err := encryptItemSSHKey(obj.SSHKey, *objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting ssh key: %w", err)
+	}
+
 	encObj := models.Item{
 		Attachments:         encAttachments,
 		CollectionIds:       obj.CollectionIds,
@@ -625,6 +682,7 @@ func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, ve
 		SecureNote: models.SecureNote{
 			Type: obj.SecureNote.Type,
 		},
+		SSHKey:       *encSSHKey,
 		Type:         obj.Type,
 		ViewPassword: obj.ViewPassword,
 	}
@@ -635,7 +693,9 @@ func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, ve
 			return nil, fmt.Errorf("error decrypting item for verification: %w", err)
 		}
 
-		actualObj.Key = ""
+		if objectKeyEncryption {
+			actualObj.Key = ""
+		}
 
 		err = verifyDecryptedObject(ctx, obj, *actualObj)
 		if err != nil {
@@ -707,6 +767,28 @@ func encryptItemLogin(objLogin models.Login, objectKey symmetrickey.Key) (*model
 	}, nil
 }
 
+func encryptItemSSHKey(obj models.SSHKey, objectKey symmetrickey.Key) (*models.SSHKey, error) {
+	encPrivateKey, err := encryptAsStringIfNotEmpty(obj.PrivateKey, objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting ssh private key: %w", err)
+	}
+
+	encPublicKey, err := encryptAsStringIfNotEmpty(obj.PublicKey, objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting ssh public key: %w", err)
+	}
+	encKeyFingerprint, err := encryptAsStringIfNotEmpty(obj.KeyFingerprint, objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("error encrypting ssh key fingerprint: %w", err)
+	}
+
+	return &models.SSHKey{
+		PrivateKey:     encPrivateKey,
+		PublicKey:      encPublicKey,
+		KeyFingerprint: encKeyFingerprint,
+	}, nil
+}
+
 func (v *baseVault) getOrDefaultObjectKey(obj models.Item) (*symmetrickey.Key, error) {
 	if len(obj.Key) == 0 {
 		return getMainKeyForObject(obj, v.loginAccount.Secrets)
@@ -723,29 +805,20 @@ func getMainKeyForObject(obj models.Item, secret AccountSecrets) (*symmetrickey.
 }
 
 func getObjectKey(obj models.Item, secret AccountSecrets) (*symmetrickey.Key, error) {
-	objectKey, err := getMainKeyForObject(obj, secret)
+	mainKey, err := getMainKeyForObject(obj, secret)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(obj.Key) > 0 {
-		decryptedObjectKey, err := decryptStringAsKey(obj.Key, *objectKey)
-		if err != nil {
-			return nil, fmt.Errorf("error decrypting object key: %w", err)
-		}
-		objectKey = decryptedObjectKey
+	if len(obj.Key) == 0 {
+		return mainKey, nil
 	}
-	return objectKey, nil
-}
 
-func getOrCreateObjectKey(obj models.Item) (*symmetrickey.Key, error) {
-	var objectKeyBytes []byte
-	if len(obj.Key) > 0 {
-		objectKeyBytes = []byte(obj.Key)
-		return symmetrickey.NewFromRawBytesWithEncryptionType(objectKeyBytes, symmetrickey.AesCbc256_HmacSha256_B64)
-	} else {
-		return keybuilder.CreateObjectKey()
+	decryptedObjectKey, err := decryptStringAsKey(obj.Key, *mainKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decrypting object key: %w", err)
 	}
+	return decryptedObjectKey, nil
 }
 
 func objKey(obj any) string {

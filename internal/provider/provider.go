@@ -27,6 +27,7 @@ const (
 )
 
 const (
+	versionTestDefault         = ""
 	versionTestDisabledRetries = "--disable-retries--"
 	versionTestSkippedLogin    = "--skip-login--"
 )
@@ -129,7 +130,9 @@ func New(version string) func() *schema.Provider {
 				"bitwarden_folder":           dataSourceFolder(),
 				"bitwarden_item_login":       dataSourceItemLogin(),
 				"bitwarden_item_secure_note": dataSourceItemSecureNote(),
+				"bitwarden_item_ssh_key":     dataSourceItemSSHKey(),
 				"bitwarden_org_collection":   dataSourceOrgCollection(),
+				"bitwarden_org_group":        dataSourceOrgGroup(),
 				"bitwarden_org_member":       dataSourceOrgMember(),
 				"bitwarden_organization":     dataSourceOrganization(),
 				"bitwarden_project":          dataSourceProject(),
@@ -140,6 +143,7 @@ func New(version string) func() *schema.Provider {
 				"bitwarden_folder":           resourceFolder(),
 				"bitwarden_item_login":       resourceItemLogin(),
 				"bitwarden_item_secure_note": resourceItemSecureNote(),
+				"bitwarden_item_ssh_key":     resourceItemSSHKey(),
 				"bitwarden_org_collection":   resourceOrgCollection(),
 				"bitwarden_project":          resourceProject(),
 				"bitwarden_secret":           resourceSecret(),

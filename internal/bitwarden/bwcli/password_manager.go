@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
@@ -13,31 +15,31 @@ import (
 )
 
 type PasswordManagerClient interface {
-	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error)
-	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Item, error)
+	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error)
+	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Attachment, error)
 	CreateFolder(context.Context, models.Folder) (*models.Folder, error)
-	CreateGroup(context.Context, models.Group) (*models.Group, error)
 	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	CreateOrganizationGroup(context.Context, models.OrgGroup) (*models.OrgGroup, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteFolder(context.Context, models.Folder) error
-	DeleteGroup(context.Context, models.Group) error
 	DeleteItem(context.Context, models.Item) error
 	DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error
+	DeleteOrganizationGroup(context.Context, models.OrgGroup) error
 	EditFolder(context.Context, models.Folder) (*models.Folder, error)
-	EditGroup(context.Context, models.Group) (*models.Group, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	FindFolder(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Folder, error)
 	FindItem(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Item, error)
 	FindOrganization(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Organization, error)
+	FindOrganizationGroup(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgGroup, error)
 	FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error)
 	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	GetFolder(context.Context, models.Folder) (*models.Folder, error)
-	GetGroup(context.Context, models.Group) (*models.Group, error)
 	GetItem(context.Context, models.Item) (*models.Item, error)
 	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
+	GetOrganizationGroup(context.Context, models.OrgGroup) (*models.OrgGroup, error)
 	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	GetSessionKey() string
@@ -65,12 +67,13 @@ func NewPasswordManagerClient(opts ...Options) PasswordManagerClient {
 }
 
 type client struct {
-	appDataDir          string
-	disableSync         bool
-	disableRetryBackoff bool
-	extraCACertsPath    string
-	newCommand          command.NewFn
-	sessionKey          string
+	appDataDir              string
+	disableSync             bool
+	disableRetryBackoff     bool
+	extraCACertsPath        string
+	newCommand              command.NewFn
+	sessionKey              string
+	attachmentCreationMutex sync.Mutex
 }
 
 type Options func(c bitwarden.PasswordManager)
@@ -99,13 +102,26 @@ func DisableRetryBackoff() Options {
 	}
 }
 
-func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, filePath string) (*models.Item, error) {
+func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, filePath string) (*models.Attachment, error) {
+	// The CLI returns the entire item after adding an attachment to it. There is no way to know
+	// which attachment was added, besides comparing the list of attachments before and after the
+	// creation.
+	// For the comparison to work, we need to lock the attachment creation to avoid race condition
+	// when called in parallel on the same item.
+	c.attachmentCreationMutex.Lock()
+	defer c.attachmentCreationMutex.Unlock()
+
+	obj, err := getObject(ctx, c, models.Item{ID: itemId, Object: models.ObjectTypeItem}, models.ObjectTypeItem, itemId)
+	if err != nil {
+		return nil, err
+	}
+	existingAttachmentIDs := getAttachmentIDs(*obj)
+
 	out, err := c.cmdWithSession("create", string(models.ObjectTypeAttachment), "--itemid", itemId, "--file", filePath).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var obj models.Item
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
 		return nil, err
@@ -114,10 +130,26 @@ func (c *client) CreateAttachmentFromFile(ctx context.Context, itemId string, fi
 	// NOTE(maxime): there is no need to sync after creating an item as the
 	// creation issued an API call on the Vault directly which refreshes the
 	// local cache.
-	return &obj, nil
+
+	newAttachmentIDs := getAttachmentIDs(*obj)
+	attachmentsRemoved, attachmentsAdded := compareLists(existingAttachmentIDs, newAttachmentIDs)
+	if len(attachmentsAdded) == 0 {
+		return nil, errors.New("BUG: no new attachment found after creation")
+	} else if len(attachmentsAdded) > 1 {
+		return nil, errors.New("BUG: more than one attachment created")
+	} else if len(attachmentsRemoved) > 0 {
+		return nil, errors.New("BUG: at least one attachment removed")
+	}
+
+	for _, attachment := range obj.Attachments {
+		if attachment.ID == attachmentsAdded[0] {
+			return &attachment, nil
+		}
+	}
+	return nil, errors.New("BUG: lost track of the attachment")
 }
 
-func (c *client) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error) {
+func (c *client) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error) {
 	return nil, fmt.Errorf("creating attachments from content is only supported by the embedded client")
 }
 
@@ -125,7 +157,7 @@ func (c *client) CreateFolder(ctx context.Context, obj models.Folder) (*models.F
 	return createObject(ctx, c, obj, models.ObjectTypeFolder)
 }
 
-func (c *client) CreateGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
+func (c *client) CreateOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
 	return nil, fmt.Errorf("creating groups is only supported by the embedded client")
 }
 
@@ -173,10 +205,6 @@ func createObject[T any](ctx context.Context, c *client, obj T, objectType model
 
 func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
 	return editGenericObject(ctx, c, obj, obj.Object, obj.ID)
-}
-
-func (c *client) EditGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
-	return nil, fmt.Errorf("editing groups is only supported by the embedded client")
 }
 
 func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
@@ -238,16 +266,16 @@ func (c *client) GetFolder(ctx context.Context, obj models.Folder) (*models.Fold
 	return getObject(ctx, c, obj, obj.Object, obj.ID)
 }
 
-func (c *client) GetGroup(ctx context.Context, obj models.Group) (*models.Group, error) {
-	return nil, fmt.Errorf("getting groups is only supported by the embedded client")
-}
-
 func (c *client) GetItem(ctx context.Context, obj models.Item) (*models.Item, error) {
 	return getObject(ctx, c, obj, obj.Object, obj.ID)
 }
 
 func (c *client) GetOrganization(ctx context.Context, obj models.Organization) (*models.Organization, error) {
 	return getObject(ctx, c, obj, obj.Object, obj.ID)
+}
+
+func (c *client) GetOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
+	return nil, fmt.Errorf("getting groups is only supported by the embedded client")
 }
 
 func (c *client) GetOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error) {
@@ -311,6 +339,10 @@ func (c *client) FindItem(ctx context.Context, options ...bitwarden.ListObjectsO
 
 func (c *client) FindOrganization(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Organization, error) {
 	return findGenericObject[models.Organization](ctx, c, models.ObjectTypeOrganization, options...)
+}
+
+func (c *client) FindOrganizationGroup(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgGroup, error) {
+	return nil, fmt.Errorf("find organization groups is only supported by the embedded client")
 }
 
 func (c *client) FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error) {
@@ -392,7 +424,7 @@ func (c *client) DeleteFolder(ctx context.Context, obj models.Folder) error {
 	return err
 }
 
-func (c *client) DeleteGroup(ctx context.Context, obj models.Group) error {
+func (c *client) DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error {
 	return fmt.Errorf("deleting groups is only supported by the embedded client")
 }
 
@@ -505,4 +537,37 @@ func applyFiltersToArgs(args *[]string, options ...bitwarden.ListObjectsOption) 
 	if filters.UrlFilter != "" {
 		*args = append(*args, "--url", filters.UrlFilter)
 	}
+}
+
+func compareLists(listA, listB []string) ([]string, []string) {
+	items := make(map[string]uint8, len(listA)+len(listB))
+
+	for _, item := range listA {
+		items[item] |= 1
+	}
+	for _, item := range listB {
+		items[item] |= 2
+	}
+
+	onlyInA := make([]string, 0, len(listA))
+	onlyInB := make([]string, 0, len(listB))
+
+	for item, status := range items {
+		switch status {
+		case 1:
+			onlyInA = append(onlyInA, item)
+		case 2:
+			onlyInB = append(onlyInB, item)
+		}
+	}
+
+	return onlyInA, onlyInB
+}
+
+func getAttachmentIDs(obj models.Item) []string {
+	attachmentIDs := []string{}
+	for _, attachment := range obj.Attachments {
+		attachmentIDs = append(attachmentIDs, attachment.ID)
+	}
+	return attachmentIDs
 }

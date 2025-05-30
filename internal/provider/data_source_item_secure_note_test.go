@@ -22,7 +22,7 @@ func TestAccDataSourceItemSecureNote(t *testing.T) {
 			},
 			{
 				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemSecureNote() + tfConfigDataItemSecureNote(),
-				Check:  checkItemGeneral(resourceName),
+				Check:  checkItemSecureNote(resourceName),
 			},
 		},
 	})

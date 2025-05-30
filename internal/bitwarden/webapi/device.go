@@ -30,7 +30,7 @@ func DeviceInformation(deviceId, providerVersion string) deviceInfoWithOfficialF
 	// Still, we're going to strongly encourage users to rely on the API key authentication, since
 	// it's the only officially supported way to authenticate.
 	var correspondingOfficialDeviceType, correspondingOfficialDeviceName string
-	correspondingOfficialDeviceVersion := "2024.9.0"
+	correspondingOfficialDeviceVersion := "2025.5.0"
 
 	switch os := runtime.GOOS; os {
 	case "windows":

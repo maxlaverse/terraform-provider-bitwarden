@@ -11,31 +11,31 @@ const (
 )
 
 type PasswordManager interface {
-	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error)
-	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Item, error)
+	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error)
+	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Attachment, error)
 	CreateFolder(context.Context, models.Folder) (*models.Folder, error)
-	CreateGroup(context.Context, models.Group) (*models.Group, error)
 	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	CreateOrganizationGroup(context.Context, models.OrgGroup) (*models.OrgGroup, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteFolder(context.Context, models.Folder) error
-	DeleteGroup(context.Context, models.Group) error
 	DeleteItem(context.Context, models.Item) error
 	DeleteOrganizationCollection(context.Context, models.OrgCollection) error
+	DeleteOrganizationGroup(context.Context, models.OrgGroup) error
 	EditFolder(context.Context, models.Folder) (*models.Folder, error)
-	EditGroup(context.Context, models.Group) (*models.Group, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	FindFolder(ctx context.Context, options ...ListObjectsOption) (*models.Folder, error)
 	FindItem(ctx context.Context, options ...ListObjectsOption) (*models.Item, error)
 	FindOrganization(ctx context.Context, options ...ListObjectsOption) (*models.Organization, error)
+	FindOrganizationGroup(ctx context.Context, options ...ListObjectsOption) (*models.OrgGroup, error)
 	FindOrganizationMember(ctx context.Context, options ...ListObjectsOption) (*models.OrgMember, error)
 	FindOrganizationCollection(ctx context.Context, options ...ListObjectsOption) (*models.OrgCollection, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	GetFolder(context.Context, models.Folder) (*models.Folder, error)
-	GetGroup(context.Context, models.Group) (*models.Group, error)
 	GetItem(context.Context, models.Item) (*models.Item, error)
 	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
+	GetOrganizationGroup(context.Context, models.OrgGroup) (*models.OrgGroup, error)
 	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error

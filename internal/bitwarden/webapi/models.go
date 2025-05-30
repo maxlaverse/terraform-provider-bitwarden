@@ -72,6 +72,22 @@ type OrganizationUserList struct {
 	Object models.ObjectType         `json:"object"`
 }
 
+type OrganizationGroupList struct {
+	Data   []OrganizationGroupDetails `json:"data"`
+	Object models.ObjectType          `json:"object"`
+}
+
+type OrganizationGroupDetails struct {
+	AccessAll      bool              `json:"accessAll"`
+	Collections    []Collection      `json:"collections"`
+	Email          string            `json:"email"`
+	ExternalId     string            `json:"externalId"`
+	Id             string            `json:"id"`
+	Name           string            `json:"name"`
+	Object         models.ObjectType `json:"object"`
+	OrganizationId string            `json:"organizationId"`
+}
+
 type OrganizationUserDetails struct {
 	AccessAll            bool              `json:"accessAll"`
 	AccessSecretsManager bool              `json:"accessSecretsManager"`

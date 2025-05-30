@@ -40,12 +40,6 @@ func ItemBaseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
 		},
-		AttributeFavorite: {
-			Description: DescriptionFavorite,
-			Type:        schema.TypeBool,
-			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
-		},
 		AttributeField: {
 			Description: DescriptionField,
 			Type:        schema.TypeList,
@@ -128,14 +122,6 @@ func ItemBaseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Type:        schema.TypeString,
 			Computed:    true,
 		},
-		AttributeAttachments: {
-			Description: DescriptionAttachments,
-			Type:        schema.TypeList,
-			Elem: &schema.Resource{
-				Schema: AttachmentSchema(),
-			},
-			Computed: true,
-		},
 	}
 
 	if schemaType == DataSource {
@@ -165,34 +151,4 @@ func ItemBaseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 		}
 	}
 	return base
-}
-
-func AttachmentSchema() map[string]*schema.Schema {
-	return map[string]*schema.Schema{
-		AttributeID: {
-			Description: DescriptionIdentifier,
-			Type:        schema.TypeString,
-			Computed:    true,
-		},
-		AttributeAttachmentFileName: {
-			Description: DescriptionItemAttachmentFileName,
-			Type:        schema.TypeString,
-			Computed:    true,
-		},
-		AttributeAttachmentSize: {
-			Description: DescriptionItemAttachmentSize,
-			Type:        schema.TypeString,
-			Computed:    true,
-		},
-		AttributeAttachmentSizeName: {
-			Description: DescriptionItemAttachmentSizeName,
-			Type:        schema.TypeString,
-			Computed:    true,
-		},
-		AttributeAttachmentURL: {
-			Description: DescriptionItemAttachmentURL,
-			Type:        schema.TypeString,
-			Computed:    true,
-		},
-	}
 }

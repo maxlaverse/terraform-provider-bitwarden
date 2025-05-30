@@ -55,10 +55,8 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 
 func TestAccResourceItemLoginMany(t *testing.T) {
 	SkipIfOfficialBackend(t, "Creating many items is too slow on the official bitwarden instances.")
+	SkipIfOfficialCLI(t, "Creating many items is too slow on the official CLI")
 
-	if !useEmbeddedClient {
-		t.Skip("Skipping test because using the official client to create many items is too slow")
-	}
 	ensureVaultwardenConfigured(t)
 
 	resource.Test(t, resource.TestCase{
@@ -208,7 +206,10 @@ func tfConfigResourceItemLogin(source string) string {
 
 func checkItemLogin(resourceName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
-		checkItemGeneral(resourceName),
+		checkItemBase(resourceName),
+		resource.TestMatchResourceAttr(
+			resourceName, schema_definition.AttributeFavorite, regexp.MustCompile("^true"),
+		),
 		resource.TestMatchResourceAttr(
 			resourceName, schema_definition.AttributeLoginUsername, regexp.MustCompile("^test-username$"),
 		),

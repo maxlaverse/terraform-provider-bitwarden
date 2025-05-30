@@ -81,13 +81,13 @@ func (t Test) IntegrationPwdOfficialWithEmbeddedClientArgs(testPattern string) e
 	if testPattern != "" {
 		args = append(args, "-run", testPattern, "-timeout", "1m")
 	} else {
-		args = append(args, "-timeout", "20m")
+		args = append(args, "-timeout", "30m")
 	}
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=official", "TEST_PROVIDER_SERVER_URL=https://vault.bitwarden.eu", "TEST_PROVIDER_EXPERIMENTAL_EMBEDDED_CLIENT=1")
+	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
 	return cmd.Run()
 }
 
@@ -111,7 +111,7 @@ func (t Test) IntegrationBwsOfficialArgs(testPattern string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=official", "TEST_PROVIDER_SERVER_URL=https://vault.bitwarden.eu")
+	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=official")
 	return cmd.Run()
 }
 
@@ -151,7 +151,7 @@ func (t Test) IntegrationPwdVaultwardenWithEmbeddedClientArgs(testPattern string
 	fmt.Println("Running integration tests with embedded client on locally running Vaultwarden...")
 	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race"}
 	if testPattern != "" {
-		args = append(args, "-run", testPattern, "-timeout", "30s")
+		args = append(args, "-run", testPattern, "-timeout", "60s")
 	} else {
 		args = append(args, "-timeout", "10m")
 	}
@@ -159,7 +159,7 @@ func (t Test) IntegrationPwdVaultwardenWithEmbeddedClientArgs(testPattern string
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_PROVIDER_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_PROVIDER_EXPERIMENTAL_EMBEDDED_CLIENT=1")
+	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
 	return cmd.Run()
 }
 
@@ -175,7 +175,7 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	fmt.Println("Running integration tests with CLI on locally running Vaultwarden...")
 	args := []string{"test", "-coverprofile=profile.cov", "-coverpkg=./...", "./...", "--tags", "integration", "-v", "-race"}
 	if testPattern != "" {
-		args = append(args, "-run", testPattern, "-timeout", "1m")
+		args = append(args, "-run", testPattern, "-timeout", "2m")
 	} else {
 		args = append(args, "-timeout", "60m")
 	}
@@ -183,8 +183,8 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TEST_PROVIDER_REVERSE_PROXY_URL=http://127.0.0.1:8080")
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_PROVIDER_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_PROVIDER_EXPERIMENTAL_EMBEDDED_CLIENT=0")
+	cmd.Env = append(cmd.Env, "TEST_REVERSE_PROXY_URL=http://127.0.0.1:8080")
+	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
 	return cmd.Run()
 }
 

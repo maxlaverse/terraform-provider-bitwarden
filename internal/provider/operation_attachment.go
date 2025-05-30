@@ -22,12 +22,9 @@ import (
 func opAttachmentCreate(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
 
-	existingAttachments, err := listExistingAttachments(ctx, bwClient, itemId)
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	var obj *models.Attachment
+	var err error
 
-	var obj *models.Item
 	filePath, fileSpecified := d.GetOk(schema_definition.AttributeAttachmentFile)
 	content, contentSpecified := d.GetOk(schema_definition.AttributeAttachmentContent)
 	fileName, fileNameSpecified := d.GetOk(schema_definition.AttributeAttachmentFileName)
@@ -42,16 +39,7 @@ func opAttachmentCreate(ctx context.Context, d *schema.ResourceData, bwClient bi
 		return diag.FromErr(err)
 	}
 
-	attachmentsRemoved, attachmentsAdded := compareLists(existingAttachments, obj.Attachments)
-	if len(attachmentsAdded) == 0 {
-		return diag.FromErr(errors.New("BUG: no attachment found after creation"))
-	} else if len(attachmentsAdded) > 1 {
-		return diag.FromErr(errors.New("BUG: more than one attachment created"))
-	} else if len(attachmentsRemoved) > 1 {
-		return diag.FromErr(errors.New("BUG: at least one attachment removed"))
-	}
-
-	return diag.FromErr(transformation.AttachmentObjectToSchema(ctx, attachmentsAdded[0], d))
+	return diag.FromErr(transformation.AttachmentObjectToSchema(ctx, *obj, d))
 }
 
 func opAttachmentDelete(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
@@ -66,7 +54,12 @@ func opAttachmentImport(ctx context.Context, d *schema.ResourceData, meta interf
 		return nil, fmt.Errorf("invalid ID specified, should be in the format <item_id>/<attachment_id>: '%s'", d.Id())
 	}
 	d.SetId(split[0])
-	d.Set(schema_definition.AttributeAttachmentItemID, split[1])
+
+	err := d.Set(schema_definition.AttributeAttachmentItemID, split[1])
+	if err != nil {
+		return nil, err
+	}
+
 	return []*schema.ResourceData{d}, nil
 }
 
@@ -107,35 +100,6 @@ func opAttachmentReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, 
 	// attachment as deleted.
 	d.SetId("")
 	return diag.Diagnostics{}
-}
-
-func listExistingAttachments(ctx context.Context, client bitwarden.PasswordManager, itemId string) ([]models.Attachment, error) {
-	obj, err := client.GetItem(ctx, models.Item{ID: itemId, Object: models.ObjectTypeItem})
-	if err != nil {
-		return nil, err
-	}
-	return obj.Attachments, nil
-}
-
-func compareLists(listA []models.Attachment, listB []models.Attachment) ([]models.Attachment, []models.Attachment) {
-	return itemsOnlyInSecondList(listB, listA), itemsOnlyInSecondList(listA, listB)
-}
-
-func itemsOnlyInSecondList(firstList []models.Attachment, secondList []models.Attachment) []models.Attachment {
-	result := []models.Attachment{}
-	for _, secondAttachment := range secondList {
-		found := false
-		for _, firstAttachment := range firstList {
-			if firstAttachment.ID == secondAttachment.ID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			result = append(result, secondAttachment)
-		}
-	}
-	return result
 }
 
 func fileSha1Sum(filepath string) (string, error) {

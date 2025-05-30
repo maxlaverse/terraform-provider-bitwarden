@@ -22,6 +22,7 @@ type ItemType int
 const (
 	ItemTypeLogin      ItemType = 1
 	ItemTypeSecureNote ItemType = 2
+	ItemTypeSSHKey     ItemType = 5
 )
 
 type KdfType int
@@ -128,6 +129,12 @@ type SecureNote struct {
 	Type int `json:"type,omitempty"`
 }
 
+type SSHKey struct {
+	PrivateKey     string `json:"privateKey,omitempty"`
+	PublicKey      string `json:"publicKey,omitempty"`
+	KeyFingerprint string `json:"keyFingerprint,omitempty"`
+}
+
 type ApiKey struct {
 	ClientID     string
 	ClientSecret string
@@ -154,6 +161,7 @@ type Item struct {
 	Reprompt            int                   `json:"reprompt,omitempty"`
 	RevisionDate        *time.Time            `json:"revisionDate,omitempty"`
 	SecureNote          SecureNote            `json:"secureNote,omitempty"`
+	SSHKey              SSHKey                `json:"sshKey,omitempty"`
 	Type                ItemType              `json:"type,omitempty"`
 	ViewPassword        bool                  `json:"viewPassword,omitempty"`
 }
@@ -218,7 +226,7 @@ type OrgCollection struct {
 	Manage         bool                  `json:"-"`
 }
 
-type Group struct {
+type OrgGroup struct {
 	AccessAll      bool                  `json:"accessAll"`
 	Collections    []OrgCollectionMember `json:"collections"`
 	ID             string                `json:"id,omitempty"`

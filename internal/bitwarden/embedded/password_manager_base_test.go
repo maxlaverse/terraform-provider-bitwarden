@@ -403,6 +403,13 @@ func TestEncryptItem(t *testing.T) {
 	assert.Equal(t, true, objectToEncrypt.ViewPassword)
 	assert.Equal(t, true, newObj.ViewPassword)
 
+	assert.Equal(t, "sensitive-ssh-private-key", objectToEncrypt.SSHKey.PrivateKey)
+	assertEncryptedValueOf(t, "sensitive-ssh-private-key", newObj.SSHKey.PrivateKey, *r)
+	assert.Equal(t, "sensitive-ssh-public-key", objectToEncrypt.SSHKey.PublicKey)
+	assertEncryptedValueOf(t, "sensitive-ssh-public-key", newObj.SSHKey.PublicKey, *r)
+	assert.Equal(t, "sensitive-ssh-key-fingerprint", objectToEncrypt.SSHKey.KeyFingerprint)
+	assertEncryptedValueOf(t, "sensitive-ssh-key-fingerprint", newObj.SSHKey.KeyFingerprint, *r)
+
 	newOut, err := json.Marshal(newObj)
 	if err != nil {
 		t.Fatal(err)
@@ -522,6 +529,11 @@ func testFullyFilledItem() models.Item {
 		RevisionDate: &revisionDate,
 		SecureNote: models.SecureNote{
 			Type: 3,
+		},
+		SSHKey: models.SSHKey{
+			PrivateKey:     "sensitive-ssh-private-key",
+			PublicKey:      "sensitive-ssh-public-key",
+			KeyFingerprint: "sensitive-ssh-key-fingerprint",
 		},
 		Type:         models.ItemTypeLogin,
 		ViewPassword: true,
