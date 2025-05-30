@@ -40,7 +40,7 @@ func TestCreateObjectEncoding(t *testing.T) {
 
 func TestCreateOrgCollection(t *testing.T) {
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"create org-collection eyJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpbXX0 --organizationid org-id": `{}`,
+		"create org-collection eyJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ --organizationid org-id": `{}`,
 	})
 	defer removeMocks(t)
 
@@ -53,13 +53,13 @@ func TestCreateOrgCollection(t *testing.T) {
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
-		assert.Equal(t, "create org-collection eyJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpbXX0 --organizationid org-id", commandsExecuted()[0])
+		assert.Equal(t, "create org-collection eyJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ --organizationid org-id", commandsExecuted()[0])
 	}
 }
 
 func TestEditOrgCollection(t *testing.T) {
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"edit org-collection 1234 --organizationid org-id eyJpZCI6IjEyMzQiLCJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpbXX0": `{}`,
+		"edit org-collection 1234 --organizationid org-id eyJpZCI6IjEyMzQiLCJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ": `{}`,
 		"sync": `{}`,
 	})
 	defer removeMocks(t)
@@ -74,7 +74,7 @@ func TestEditOrgCollection(t *testing.T) {
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 2) {
-		assert.Equal(t, "edit org-collection 1234 --organizationid org-id eyJpZCI6IjEyMzQiLCJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpbXX0", commandsExecuted()[0])
+		assert.Equal(t, "edit org-collection 1234 --organizationid org-id eyJpZCI6IjEyMzQiLCJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ", commandsExecuted()[0])
 	}
 }
 
