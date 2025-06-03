@@ -453,6 +453,7 @@ func testFullyFilledOrgCollection() models.OrgCollection {
 		Object:         models.ObjectTypeOrgCollection,
 		OrganizationID: orgUuid,
 		Users:          []models.OrgCollectionMember{},
+		Groups:         []models.OrgCollectionMember{},
 	}
 	return obj
 }

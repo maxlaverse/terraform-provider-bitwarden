@@ -31,6 +31,14 @@ func OrgCollectionSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Optional:    schemaType == Resource,
 			Sensitive:   false,
 		},
+		AttributeMemberGroup: {
+			Description: DescriptionCollectionMemberGroup,
+			Type:        schema.TypeSet,
+			Elem:        membershipElem(),
+			Computed:    schemaType == DataSource,
+			Optional:    schemaType == Resource,
+			Sensitive:   false,
+		},
 	}
 
 	if schemaType == DataSource {
@@ -49,7 +57,7 @@ func membershipElem() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			AttributeID: {
-				Description: DescriptionIdentifier,
+				Description: DescriptionCollectionMemberID,
 				Type:        schema.TypeString,
 				Required:    true,
 			},
