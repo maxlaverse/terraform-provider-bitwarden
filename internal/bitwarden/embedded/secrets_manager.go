@@ -194,7 +194,7 @@ func (v *secretsManager) GetProject(ctx context.Context, project models.Project)
 
 	rawProject, err := v.client.GetProject(ctx, project.ID)
 	if err != nil {
-		if strings.Contains(err.Error(), "404!=200") {
+		if httpErr, ok := webapi.IsHTTPError(err); ok && httpErr.GetStatusCode() == 404 {
 			return nil, models.ErrObjectNotFound
 		}
 		return nil, fmt.Errorf("error getting project '%s': %w", project.ID, err)
@@ -215,7 +215,7 @@ func (v *secretsManager) GetSecret(ctx context.Context, secret models.Secret) (*
 
 	rawSecret, err := v.client.GetSecret(ctx, secret.ID)
 	if err != nil {
-		if strings.Contains(err.Error(), "404!=200") {
+		if httpErr, ok := webapi.IsHTTPError(err); ok && httpErr.GetStatusCode() == 404 {
 			return nil, models.ErrObjectNotFound
 		}
 		return nil, fmt.Errorf("error getting secret '%s': %w", secret.ID, err)

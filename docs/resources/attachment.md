@@ -79,6 +79,7 @@ resource "bitwarden_attachment" "dynamic_key_from_content" {
 - `file` (String) Path to the content of the attachment.
 - `file_name` (String) File name. This is required if specifying `content` in a resource.
 
+
 ### Read-Only
 
 - `id` (String) Identifier.

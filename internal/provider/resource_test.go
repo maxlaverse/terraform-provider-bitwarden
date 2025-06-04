@@ -24,7 +24,7 @@ func checkObject(resourceName string) resource.TestCheckFunc {
 	)
 }
 
-func checkItemGeneral(resourceName string) resource.TestCheckFunc {
+func checkItemBase(resourceName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
 		checkObject(resourceName),
 		resource.TestMatchResourceAttr(
@@ -35,9 +35,6 @@ func checkItemGeneral(resourceName string) resource.TestCheckFunc {
 		),
 		resource.TestMatchResourceAttr(
 			resourceName, schema_definition.AttributeReprompt, regexp.MustCompile("^true"),
-		),
-		resource.TestMatchResourceAttr(
-			resourceName, schema_definition.AttributeFavorite, regexp.MustCompile("^true"),
 		),
 		resource.TestMatchResourceAttr(
 			resourceName, schema_definition.AttributeRevisionDate, regexp.MustCompile(regExpDate),

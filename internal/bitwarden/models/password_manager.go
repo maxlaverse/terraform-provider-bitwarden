@@ -22,6 +22,7 @@ type ItemType int
 const (
 	ItemTypeLogin      ItemType = 1
 	ItemTypeSecureNote ItemType = 2
+	ItemTypeSSHKey     ItemType = 5
 )
 
 type KdfType int
@@ -86,6 +87,13 @@ const (
 	ObjectUserKey                 ObjectType = "userKey"
 )
 
+type FileUploadType int
+
+const (
+	FileUploadTypeDirect FileUploadType = 0
+	FileUploadTypeAzure  FileUploadType = 1
+)
+
 const (
 	DateLayout = "2006-01-02T15:04:05.000Z"
 )
@@ -121,6 +129,12 @@ type SecureNote struct {
 	Type int `json:"type,omitempty"`
 }
 
+type SSHKey struct {
+	PrivateKey     string `json:"privateKey,omitempty"`
+	PublicKey      string `json:"publicKey,omitempty"`
+	KeyFingerprint string `json:"keyFingerprint,omitempty"`
+}
+
 type ApiKey struct {
 	ClientID     string
 	ClientSecret string
@@ -147,6 +161,7 @@ type Item struct {
 	Reprompt            int                   `json:"reprompt,omitempty"`
 	RevisionDate        *time.Time            `json:"revisionDate,omitempty"`
 	SecureNote          SecureNote            `json:"secureNote,omitempty"`
+	SSHKey              SSHKey                `json:"sshKey,omitempty"`
 	Type                ItemType              `json:"type,omitempty"`
 	ViewPassword        bool                  `json:"viewPassword,omitempty"`
 }
@@ -189,6 +204,7 @@ type Attachment struct {
 type OrgCollectionMember struct {
 	HidePasswords bool   `json:"hidePasswords"`
 	Id            string `json:"id"`
+	Manage        bool   `json:"manage"`
 	ReadOnly      bool   `json:"readOnly"`
 }
 
@@ -206,6 +222,15 @@ type OrgCollection struct {
 	Object         ObjectType            `json:"object,omitempty"`
 	OrganizationID string                `json:"organizationId"`
 	Users          []OrgCollectionMember `json:"users"`
-	Groups         []interface{}         `json:"groups"` // Required but not used when creating collections using the CLI
+	Groups         []OrgCollectionMember `json:"groups"` // Required but not used when creating collections using the CLI
 	Manage         bool                  `json:"-"`
+}
+
+type OrgGroup struct {
+	AccessAll      bool                  `json:"accessAll"`
+	Collections    []OrgCollectionMember `json:"collections"`
+	ID             string                `json:"id,omitempty"`
+	Name           string                `json:"name,omitempty"`
+	OrganizationID string                `json:"organizationId"`
+	Users          []OrgCollectionMember `json:"users"`
 }

@@ -14,7 +14,7 @@ type ListObjectsFilterOptions struct {
 	ItemType           models.ItemType
 }
 
-func (f *ListObjectsFilterOptions) IsValid() bool {
+func (f *ListObjectsFilterOptions) HasSearchFilter() bool {
 	return f.SearchFilter != ""
 }
 

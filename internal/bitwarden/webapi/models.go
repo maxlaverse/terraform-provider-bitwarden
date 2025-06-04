@@ -31,17 +31,18 @@ type AttachmentRequestData struct {
 }
 
 type CreateObjectAttachmentResponse struct {
-	AttachmentId   string            `json:"attachmentId"`
-	CipherResponse models.Item       `json:"cipherResponse"`
-	FileUploadType int               `json:"fileUploadType"`
-	Object         models.ObjectType `json:"object"`
-	Url            string            `json:"url"`
+	AttachmentId   string                `json:"attachmentId"`
+	CipherResponse models.Item           `json:"cipherResponse"`
+	FileUploadType models.FileUploadType `json:"fileUploadType"`
+	Object         models.ObjectType     `json:"object"`
+	Url            string                `json:"url"`
 }
 
-type CollectionUser struct {
+type CollectionMember struct {
 	HidePasswords bool   `json:"hidePasswords"`
 	Id            string `json:"id"`
 	ReadOnly      bool   `json:"readOnly"`
+	Manage        bool   `json:"manage"`
 }
 
 type InviteUserRequest struct {
@@ -69,6 +70,22 @@ type UserPublicKeyResponse struct {
 type OrganizationUserList struct {
 	Data   []OrganizationUserDetails `json:"data"`
 	Object models.ObjectType         `json:"object"`
+}
+
+type OrganizationGroupList struct {
+	Data   []OrganizationGroupDetails `json:"data"`
+	Object models.ObjectType          `json:"object"`
+}
+
+type OrganizationGroupDetails struct {
+	AccessAll      bool              `json:"accessAll"`
+	Collections    []Collection      `json:"collections"`
+	Email          string            `json:"email"`
+	ExternalId     string            `json:"externalId"`
+	Id             string            `json:"id"`
+	Name           string            `json:"name"`
+	Object         models.ObjectType `json:"object"`
+	OrganizationId string            `json:"organizationId"`
 }
 
 type OrganizationUserDetails struct {
@@ -167,18 +184,18 @@ type CollectionResponseItem struct {
 }
 
 type Collection struct {
-	Assigned       bool              `json:"assigned"`
-	ExternalId     string            `json:"externalId"`
-	Groups         []string          `json:"groups"`
-	HidePasswords  bool              `json:"hidePasswords"` // Missing in get collections
-	Id             string            `json:"id"`
-	Manage         bool              `json:"manage"`
-	Name           string            `json:"name"`
-	Object         models.ObjectType `json:"object"`
-	OrganizationId string            `json:"organizationId"`
-	ReadOnly       bool              `json:"readOnly"` // Missing in get collections
-	Unmanaged      bool              `json:"unmanaged"`
-	Users          []CollectionUser  `json:"users"`
+	Assigned       bool               `json:"assigned"`
+	ExternalId     string             `json:"externalId"`
+	Groups         []CollectionMember `json:"groups"`
+	HidePasswords  bool               `json:"hidePasswords"` // Missing in get collections
+	Id             string             `json:"id"`
+	Manage         bool               `json:"manage"`
+	Name           string             `json:"name"`
+	Object         models.ObjectType  `json:"object"`
+	OrganizationId string             `json:"organizationId"`
+	ReadOnly       bool               `json:"readOnly"` // Missing in get collections
+	Unmanaged      bool               `json:"unmanaged"`
+	Users          []CollectionMember `json:"users"`
 }
 
 type CreateCipherRequest struct {
@@ -285,4 +302,13 @@ type CollectionAccessResponse struct {
 	ContinuationToken string            `json:"continuationToken"`
 	Data              []Collection      `json:"data"`
 	Object            models.ObjectType `json:"object"`
+}
+
+type ErrorResponse struct {
+	Message               string        `json:"message"`
+	ValidationErrors      []interface{} `json:"validationErrors"`
+	ExceptionMessage      string        `json:"exceptionMessage"`
+	ExceptionStackTrace   interface{}   `json:"exceptionStackTrace"`
+	InnerExceptionMessage string        `json:"innerExceptionMessage"`
+	Object                string        `json:"object"`
 }

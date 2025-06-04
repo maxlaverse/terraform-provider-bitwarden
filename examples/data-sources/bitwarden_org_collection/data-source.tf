@@ -20,7 +20,7 @@ resource "bitwarden_item_login" "administrative_user" {
 
 # Example of usage with ACLs:
 locals {
-  emails =[
+  emails = [
     "regular-user-1@example.com",
     "regular-user-2@example.com",
   ]
@@ -28,8 +28,8 @@ locals {
 
 data "bitwarden_org_member" "regular_users" {
   organization_id = data.bitwarden_organization.terraform.id
-  count          = length(local.emails)
-  email          = local.emails[count.index]
+  count           = length(local.emails)
+  email           = local.emails[count.index]
 }
 
 
@@ -41,8 +41,8 @@ resource "bitwarden_org_collection" "my_collection" {
   dynamic "member" {
     for_each = data.bitwarden_org_member.regular_users
     content {
-        id = member.value.id
-        read_only = true
+      id        = member.value.id
+      read_only = true
     }
   }
 

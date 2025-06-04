@@ -4,6 +4,7 @@ package bwcli
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
@@ -14,11 +15,11 @@ import (
 
 func TestCreateObjectEncoding(t *testing.T) {
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwidHlwZSI6MX0": `{}`,
+		"create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwic3NoS2V5Ijp7fSwidHlwZSI6MX0": `{}`,
 	})
 	defer removeMocks(t)
 
-	b := NewPasswordManagerClient("dummy")
+	b := NewPasswordManagerClient()
 	_, err := b.CreateItem(context.Background(), models.Item{
 		Object: models.ObjectTypeItem,
 		Type:   models.ItemTypeLogin,
@@ -33,17 +34,17 @@ func TestCreateObjectEncoding(t *testing.T) {
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
-		assert.Equal(t, "create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwidHlwZSI6MX0", commandsExecuted()[0])
+		assert.Equal(t, "create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwic3NoS2V5Ijp7fSwidHlwZSI6MX0", commandsExecuted()[0])
 	}
 }
 
 func TestCreateOrgCollection(t *testing.T) {
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"create org-collection eyJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpbXX0 --organizationid org-id": `{}`,
+		"create org-collection eyJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ --organizationid org-id": `{}`,
 	})
 	defer removeMocks(t)
 
-	b := NewPasswordManagerClient("dummy")
+	b := NewPasswordManagerClient()
 	_, err := b.CreateOrganizationCollection(context.Background(), models.OrgCollection{
 		Object:         models.ObjectTypeOrgCollection,
 		Name:           "test",
@@ -52,18 +53,18 @@ func TestCreateOrgCollection(t *testing.T) {
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
-		assert.Equal(t, "create org-collection eyJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpbXX0 --organizationid org-id", commandsExecuted()[0])
+		assert.Equal(t, "create org-collection eyJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ --organizationid org-id", commandsExecuted()[0])
 	}
 }
 
 func TestEditOrgCollection(t *testing.T) {
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"edit org-collection 1234 --organizationid org-id eyJpZCI6IjEyMzQiLCJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpbXX0": `{}`,
+		"edit org-collection 1234 --organizationid org-id eyJpZCI6IjEyMzQiLCJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ": `{}`,
 		"sync": `{}`,
 	})
 	defer removeMocks(t)
 
-	b := NewPasswordManagerClient("dummy")
+	b := NewPasswordManagerClient()
 	_, err := b.EditOrganizationCollection(context.Background(), models.OrgCollection{
 		Object:         models.ObjectTypeOrgCollection,
 		ID:             "1234",
@@ -73,7 +74,7 @@ func TestEditOrgCollection(t *testing.T) {
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 2) {
-		assert.Equal(t, "edit org-collection 1234 --organizationid org-id eyJpZCI6IjEyMzQiLCJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpbXX0", commandsExecuted()[0])
+		assert.Equal(t, "edit org-collection 1234 --organizationid org-id eyJpZCI6IjEyMzQiLCJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ", commandsExecuted()[0])
 	}
 }
 
@@ -83,7 +84,7 @@ func TestDeleteOrgCollection(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	b := NewPasswordManagerClient("dummy")
+	b := NewPasswordManagerClient()
 	err := b.DeleteOrganizationCollection(context.Background(), models.OrgCollection{
 		Object:         models.ObjectTypeOrgCollection,
 		ID:             "1234",
@@ -103,7 +104,7 @@ func TestListObjects(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	b := NewPasswordManagerClient("dummy")
+	b := NewPasswordManagerClient()
 	_, err := b.FindItem(context.Background(), bitwarden.WithFolderID("folder-id"), bitwarden.WithCollectionID("collection-id"), bitwarden.WithSearch("search"))
 
 	assert.NoError(t, err)
@@ -118,7 +119,7 @@ func TestGetItem(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	b := NewPasswordManagerClient("dummy")
+	b := NewPasswordManagerClient()
 	_, err := b.GetItem(context.Background(), models.Item{ID: "object-id", Object: models.ObjectTypeItem, Type: models.ItemTypeLogin})
 
 	assert.NoError(t, err)
@@ -133,7 +134,7 @@ func TestGetOrganizationCollection(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	b := NewPasswordManagerClient("dummy")
+	b := NewPasswordManagerClient()
 	_, err := b.GetOrganizationCollection(context.Background(), models.OrgCollection{ID: "object-id", Object: models.ObjectTypeOrgCollection, OrganizationID: "org-id"})
 
 	assert.NoError(t, err)
@@ -148,10 +149,18 @@ func TestErrorContainsCommand(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	b := NewPasswordManagerClient("dummy")
+	b := NewPasswordManagerClient()
 	_, err := b.FindOrganizationCollection(context.Background(), bitwarden.WithSearch("search"))
 
 	if assert.Error(t, err) {
 		assert.ErrorContains(t, err, "unable to parse result of 'list org-collections', error: 'unexpected end of JSON input', output: ''")
 	}
+}
+
+func TestSettingAppDataDir(t *testing.T) {
+	pwWithCustomAppDataDir := NewPasswordManagerClient(WithAppDataDir("custom_app_dir")).(*client)
+	assert.Contains(t, pwWithCustomAppDataDir.env(), "BITWARDENCLI_APPDATA_DIR=custom_app_dir")
+
+	pwWithoutCustomAppDataDir := NewPasswordManagerClient().(*client)
+	assert.NotContains(t, strings.Join(pwWithoutCustomAppDataDir.env(), " "), "BITWARDENCLI_APPDATA_DIR")
 }

@@ -64,6 +64,35 @@ func TestCompareObjectsArrays(t *testing.T) {
 	assert.NoError(t, compareObjects(context.Background(), obj4, obj5))
 }
 
+func TestCompareNestedObjects(t *testing.T) {
+	obj1 := models.Item{
+		Attachments: []models.Attachment{
+			{
+				Url: "https://example.com/test1",
+				ID:  "1",
+			},
+		},
+	}
+	obj2 := models.Item{
+		Attachments: []models.Attachment{
+			{
+				Url: "https://example.com/test2",
+				ID:  "1",
+			},
+		},
+	}
+	obj3 := models.Item{
+		Attachments: []models.Attachment{
+			{
+				Url: "https://example.com/test1",
+				ID:  "2",
+			},
+		},
+	}
+	assert.NoError(t, compareObjects(context.Background(), obj1, obj2, "/attachments/*/url"))
+	assert.Error(t, compareObjects(context.Background(), obj1, obj3, "/attachments/*/url"))
+}
+
 func TestMatchUrl(t *testing.T) {
 	testCases := []struct {
 		loginUri        models.LoginURI
@@ -374,6 +403,13 @@ func TestEncryptItem(t *testing.T) {
 	assert.Equal(t, true, objectToEncrypt.ViewPassword)
 	assert.Equal(t, true, newObj.ViewPassword)
 
+	assert.Equal(t, "sensitive-ssh-private-key", objectToEncrypt.SSHKey.PrivateKey)
+	assertEncryptedValueOf(t, "sensitive-ssh-private-key", newObj.SSHKey.PrivateKey, *r)
+	assert.Equal(t, "sensitive-ssh-public-key", objectToEncrypt.SSHKey.PublicKey)
+	assertEncryptedValueOf(t, "sensitive-ssh-public-key", newObj.SSHKey.PublicKey, *r)
+	assert.Equal(t, "sensitive-ssh-key-fingerprint", objectToEncrypt.SSHKey.KeyFingerprint)
+	assertEncryptedValueOf(t, "sensitive-ssh-key-fingerprint", newObj.SSHKey.KeyFingerprint, *r)
+
 	newOut, err := json.Marshal(newObj)
 	if err != nil {
 		t.Fatal(err)
@@ -417,6 +453,7 @@ func testFullyFilledOrgCollection() models.OrgCollection {
 		Object:         models.ObjectTypeOrgCollection,
 		OrganizationID: orgUuid,
 		Users:          []models.OrgCollectionMember{},
+		Groups:         []models.OrgCollectionMember{},
 	}
 	return obj
 }
@@ -492,6 +529,11 @@ func testFullyFilledItem() models.Item {
 		RevisionDate: &revisionDate,
 		SecureNote: models.SecureNote{
 			Type: 3,
+		},
+		SSHKey: models.SSHKey{
+			PrivateKey:     "sensitive-ssh-private-key",
+			PublicKey:      "sensitive-ssh-public-key",
+			KeyFingerprint: "sensitive-ssh-key-fingerprint",
 		},
 		Type:         models.ItemTypeLogin,
 		ViewPassword: true,

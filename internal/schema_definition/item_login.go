@@ -52,6 +52,20 @@ func LoginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Optional:    schemaType == Resource,
 			Sensitive:   false,
 		},
+		AttributeFavorite: {
+			Description: DescriptionFavorite,
+			Type:        schema.TypeBool,
+			Computed:    schemaType == DataSource,
+			Optional:    schemaType == Resource,
+		},
+		AttributeAttachments: {
+			Description: DescriptionAttachments,
+			Type:        schema.TypeList,
+			Elem: &schema.Resource{
+				Schema: AttachmentSchema(),
+			},
+			Computed: true,
+		},
 	}
 
 	if schemaType == DataSource {

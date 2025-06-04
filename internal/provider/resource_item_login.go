@@ -7,9 +7,9 @@ import (
 )
 
 func resourceItemLogin() *schema.Resource {
-	dataSourceItemSecureNoteSchema := schema_definition.ItemBaseSchema(schema_definition.Resource)
+	itemLoginSchema := schema_definition.ItemBaseSchema(schema_definition.Resource)
 	for k, v := range schema_definition.LoginSchema(schema_definition.Resource) {
-		dataSourceItemSecureNoteSchema[k] = v
+		itemLoginSchema[k] = v
 	}
 
 	return &schema.Resource{
@@ -19,6 +19,6 @@ func resourceItemLogin() *schema.Resource {
 		UpdateContext: withPasswordManager(opItemUpdate(models.ItemTypeLogin)),
 		DeleteContext: withPasswordManager(opItemDelete(models.ItemTypeLogin)),
 		Importer:      resourceImporter(opItemImport),
-		Schema:        dataSourceItemSecureNoteSchema,
+		Schema:        itemLoginSchema,
 	}
 }

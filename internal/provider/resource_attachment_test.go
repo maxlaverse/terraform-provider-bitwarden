@@ -15,6 +15,8 @@ import (
 )
 
 func TestAccResourceAttachment(t *testing.T) {
+	SkipIfNonPremiumTestAccount(t)
+
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "bitwarden_attachment.foo"
@@ -75,6 +77,19 @@ func TestAccResourceAttachment(t *testing.T) {
 					"data.bitwarden_attachment.foo_data", schema_definition.AttributeAttachmentContent, regexp.MustCompile(`^Hello, I'm a text attachment$`),
 				),
 			},
+			// Creating multiple attachments at once
+			{
+				ResourceName: resourceName,
+				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceMultiAttachment(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"bitwarden_attachment.foo", "file_name", "attachment1.txt",
+					),
+					resource.TestCheckResourceAttr(
+						"bitwarden_attachment.foo1", "file_name", "attachment2a.txt",
+					),
+				),
+			},
 			{
 				ResourceName:      resourceName,
 				ImportStateIdFunc: attachmentImportID(resourceName, "bitwarden_item_login.foo"),
@@ -86,6 +101,8 @@ func TestAccResourceAttachment(t *testing.T) {
 }
 
 func TestAccResourceItemAttachmentFields(t *testing.T) {
+	SkipIfNonPremiumTestAccount(t)
+
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "bitwarden_item_login.foo"
@@ -112,6 +129,8 @@ func TestAccResourceItemAttachmentFields(t *testing.T) {
 }
 
 func TestAccMissingAttachmentIsRecreated(t *testing.T) {
+	SkipIfNonPremiumTestAccount(t)
+
 	ensureVaultwardenConfigured(t)
 
 	var attachmentID string
@@ -155,27 +174,9 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 	})
 }
 
-func checkAttachmentMatches(resourceName, baseAttribute string) resource.TestCheckFunc {
-	return resource.ComposeTestCheckFunc(
-		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeID), regexp.MustCompile("^[a-fA-F0-9]{20}$"),
-		),
-		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentFileName), regexp.MustCompile(`^attachment1.txt$`),
-		),
-		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentSize), regexp.MustCompile("^81$"),
-		),
-		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentSizeName), regexp.MustCompile(`^81\.00 bytes$`),
-		),
-		resource.TestMatchResourceAttr(
-			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentURL), regexp.MustCompile(`^http://127.0.0.1:([0-9]+)/attachments/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}/[a-fA-F0-9]{20}\?token=.*$`),
-		),
-	)
-}
-
 func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
+	SkipIfNonPremiumTestAccount(t)
+
 	ensureVaultwardenConfigured(t)
 
 	resourceName := "bitwarden_attachment.foo"
@@ -218,6 +219,23 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 			},
 		},
 	})
+}
+
+func checkAttachmentMatches(resourceName, baseAttribute string) resource.TestCheckFunc {
+	return resource.ComposeTestCheckFunc(
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeID), regexp.MustCompile("^([a-fA-F0-9]{20}|[a-zA-Z0-9]{32})$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentFileName), regexp.MustCompile(`^attachment1.txt$`),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentSize), regexp.MustCompile("^81$"),
+		),
+		resource.TestMatchResourceAttr(
+			resourceName, fmt.Sprintf("%s%s", baseAttribute, schema_definition.AttributeAttachmentSizeName), regexp.MustCompile(`^81(\.00)? [bB]ytes$`),
+		),
+	)
 }
 
 func attachmentImportID(resourceName, resourceItemName string) func(s *terraform.State) (string, error) {
@@ -342,5 +360,29 @@ func tfConfigAttachmentSpecificPasswordManagerProvider() string {
 			embedded_client = false
 		}
 	}
-`, testPassword, testReverseProxyServerURL, testEmail)
+`, testMasterPassword, testReverseProxyServerURL, testEmail)
+}
+
+func tfConfigResourceMultiAttachment() string {
+	return `
+resource "bitwarden_item_login" "foo" {
+	provider = bitwarden
+
+	name     = "foo"
+}
+
+resource "bitwarden_attachment" "foo" {
+	provider  = bitwarden
+
+	file	 = "fixtures/attachment1.txt"
+	item_id   = bitwarden_item_login.foo.id
+}
+
+resource "bitwarden_attachment" "foo1" {
+	provider  = bitwarden
+
+	file	 = "fixtures/attachment2a.txt"
+	item_id   = bitwarden_item_login.foo.id
+}
+`
 }

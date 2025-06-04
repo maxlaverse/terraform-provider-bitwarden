@@ -116,9 +116,10 @@ provider "bitwarden" {
   client_id       = "my-client-id"
   client_secret   = "my-client-secret"
 
-  # Specify a server url when using a self-hosted version of Bitwarden
-  # or similar (e.g. Vaultwarden).
-  # server = "https://vault.myserver.org"
+  # Specify a server URL when using a self-hosted version of Bitwarden
+  # or similar (e.g., Vaultwarden), or the European instances:
+  #
+  # server = "https://vault.bitwarden.eu"
 
   # If you have the opportunity, you can try out the embedded client which
   # removes the need for a locally installed Bitwarden CLI. Please note that
@@ -160,7 +161,7 @@ export BW_CLIENTSECRET="my-client-secret"
 - `master_password` (String) Master password of the Vault (env: `BW_PASSWORD`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.
 - `server` (String) Bitwarden Server URL (default: `https://vault.bitwarden.com`, env: `BW_URL`).
 - `session_key` (String) A Bitwarden Session Key (env: `BW_SESSION`)
-- `vault_path` (String) Alternative directory for storing the Vault locally (default: `.bitwarden/`, env: `BITWARDENCLI_APPDATA_DIR`).
+- `vault_path` (String) Alternative directory for storing the Vault locally (default: `.bitwarden/`, env: `BITWARDENCLI_APPDATA_DIR`; set to empty string to use CLI default).
 
 <a id="nestedblock--experimental"></a>
 ### Nested Schema for `experimental`

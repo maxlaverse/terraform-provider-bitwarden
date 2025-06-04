@@ -24,26 +24,30 @@ import (
 type PasswordManagerClient interface {
 	BaseVault
 	ConfirmInvite(ctx context.Context, orgId, userEmail string) (string, error)
+	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error)
+	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Attachment, error)
 	CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	CreateItem(ctx context.Context, obj models.Item) (*models.Item, error)
 	CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
-	CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error)
-	CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Item, error)
+	CreateOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteFolder(ctx context.Context, obj models.Folder) error
+	DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error
 	DeleteItem(ctx context.Context, obj models.Item) error
 	DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error
 	EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	EditItem(ctx context.Context, obj models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	FindOrganizationGroup(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgGroup, error)
 	FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error)
 	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
 	GetAPIKey(ctx context.Context, username, password string) (*models.ApiKey, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
-	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	GetOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
+	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	InviteUser(ctx context.Context, orgId, userEmail string, memberRoleType models.OrgMemberRoleType) error
 	IsSyncAfterWriteVerificationDisabled() bool
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
@@ -169,14 +173,14 @@ func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string
 	return orgUser.ID, v.client.ConfirmOrganizationUser(ctx, orgId, orgUser.ID, string(orgKey))
 }
 
-func (v *webAPIVault) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error) {
+func (v *webAPIVault) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error) {
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
 	return v.createAttachment(ctx, itemId, filename, content)
 }
 
-func (v *webAPIVault) CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Item, error) {
+func (v *webAPIVault) CreateAttachmentFromFile(ctx context.Context, itemId, filePath string) (*models.Attachment, error) {
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
@@ -189,7 +193,7 @@ func (v *webAPIVault) CreateAttachmentFromFile(ctx context.Context, itemId, file
 	return v.createAttachment(ctx, itemId, filename, data)
 }
 
-func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename string, content []byte) (*models.Item, error) {
+func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error) {
 	if !v.objectsLoaded() {
 		return nil, models.ErrVaultLocked
 	}
@@ -204,9 +208,19 @@ func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename str
 		return nil, fmt.Errorf("error creating attachment: %w", err)
 	}
 
-	err = v.client.CreateObjectAttachmentData(ctx, itemId, resp.AttachmentId, data)
-	if err != nil {
-		return nil, fmt.Errorf("error creating attachment data: %w", err)
+	switch resp.FileUploadType {
+	case models.FileUploadTypeDirect:
+		err = v.client.CreateObjectAttachmentData(ctx, itemId, resp.AttachmentId, data)
+		if err != nil {
+			return nil, fmt.Errorf("error creating attachment data: %w", err)
+		}
+	case models.FileUploadTypeAzure:
+		err = v.client.UploadContentToUrl(ctx, webapi.CloudStorageProviderAzure, resp.Url, data)
+		if err != nil {
+			return nil, fmt.Errorf("error uploading data to Azure: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported file upload type: %d", resp.FileUploadType)
 	}
 
 	resObj, err := decryptItem((*resp).CipherResponse, v.loginAccount.Secrets)
@@ -229,9 +243,13 @@ func (v *webAPIVault) createAttachment(ctx context.Context, itemId, filename str
 
 		// The attachment's URL contains a signed token generated on each request. We need to diff
 		// it out if we want the comparison to work.
-		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/attachments/*/url")
+		err = v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/attachments/*/url", "/revisionDate")
+		if err != nil {
+			return nil, err
+		}
+		return attachmentFromObject(remoteObj, resp.AttachmentId)
 	}
-	return resObj, nil
+	return attachmentFromObject(resObj, resp.AttachmentId)
 }
 
 func (v *webAPIVault) CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error) {
@@ -270,6 +288,31 @@ func (v *webAPIVault) CreateFolder(ctx context.Context, obj models.Folder) (*mod
 		remoteObj, err := getObject(v.objectStore, *resObj)
 		if err != nil {
 			return nil, fmt.Errorf("error getting folder after creation (sync-after-write): %w", err)
+		}
+
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/revisionDate")
+	}
+	return resObj, nil
+}
+
+func (v *webAPIVault) CreateOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if !v.objectsLoaded() {
+		return nil, models.ErrVaultLocked
+	}
+
+	resObj, err := v.client.CreateOrganizationGroup(ctx, obj)
+	if err != nil {
+		return nil, fmt.Errorf("error creating group: %w", err)
+	}
+
+	if v.syncAfterWrite {
+		v.organizationGroups.ForgetOrganization(resObj.OrganizationID)
+		remoteObj, err := v.getOrganizationGroup(ctx, *resObj)
+		if err != nil {
+			return nil, fmt.Errorf("error getting group after creation (sync-after-write): %w", err)
 		}
 
 		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj)
@@ -327,6 +370,21 @@ func (v *webAPIVault) CreateItem(ctx context.Context, obj models.Item) (*models.
 	return resObj, nil
 }
 
+func (v *webAPIVault) ensureGroupsLoadedForOrg(ctx context.Context, orgId string) error {
+	if v.organizationGroups.OrganizationInitialized(orgId) {
+		return nil
+	}
+
+	orgGroups, err := v.client.GetOrganizationGroups(ctx, orgId)
+	if err != nil {
+		return fmt.Errorf("error getting organization groups: %w", err)
+	}
+
+	v.organizationGroups.LoadGroups(orgId, orgGroups)
+
+	return nil
+}
+
 func (v *webAPIVault) ensureUsersLoadedForOrg(ctx context.Context, orgId string) error {
 	if v.organizationMembers.OrganizationInitialized(orgId) {
 		return nil
@@ -345,19 +403,29 @@ func (v *webAPIVault) ensureUsersLoadedForOrg(ctx context.Context, orgId string)
 func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
 	// ValidateFunc is not supported on TypeSet, which means we can't check for
 	// duplicate during Schema validation. Doing it here instead.
-	err := checkForDuplicateMembers(obj.Users)
-	if err != nil {
-		return nil, err
+	userErr := checkForDuplicateMembers(obj.Users)
+	if userErr != nil {
+		return nil, userErr
+	}
+	groupErr := checkForDuplicateMembers(obj.Groups)
+	if groupErr != nil {
+		return nil, groupErr
 	}
 
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
+	err := v.checkMembersExistence(ctx, obj.OrganizationID, obj.Users)
+	if err != nil {
+		return nil, err
+	}
+
 	if !v.objectsLoaded() {
 		return nil, models.ErrVaultLocked
 	}
 
-	manageMembership := len(obj.Users) > 0
+	manageMembership := len(obj.Users) > 0 || len(obj.Groups) > 0
+	obj.Manage = manageMembership
 
 	encObj, err := encryptOrgCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
 	if err != nil {
@@ -412,13 +480,22 @@ func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj mode
 func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
 	// ValidateFunc is not supported on TypeSet, which means we can't check for
 	// duplicate during Schema validation. Doing it here instead.
-	err := checkForDuplicateMembers(obj.Users)
-	if err != nil {
-		return nil, err
+	userErr := checkForDuplicateMembers(obj.Users)
+	if userErr != nil {
+		return nil, userErr
+	}
+	groupErr := checkForDuplicateMembers(obj.Groups)
+	if groupErr != nil {
+		return nil, groupErr
 	}
 
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
+
+	err := v.checkMembersExistence(ctx, obj.OrganizationID, obj.Users)
+	if err != nil {
+		return nil, err
+	}
 
 	if !v.objectsLoaded() {
 		return nil, models.ErrVaultLocked
@@ -432,7 +509,7 @@ func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models
 	}
 
 	manageMembership := currentObj.Manage
-	if !manageMembership && len(obj.Users) > 0 {
+	if !manageMembership && (len(obj.Users) > 0 || len(obj.Groups) > 0) {
 		return nil, fmt.Errorf("error editing collection: you need to have the Manage permission to edit memberships")
 	}
 
@@ -590,7 +667,7 @@ func (v *webAPIVault) DeleteAttachment(ctx context.Context, itemId, attachmentId
 			return fmt.Errorf("error getting object after attachment deletion (syncAfterWrite): %w", err)
 		}
 
-		return v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj)
+		return v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/revisionDate")
 	}
 
 	return nil
@@ -608,6 +685,28 @@ func (v *webAPIVault) DeleteFolder(ctx context.Context, obj models.Folder) error
 	err := v.client.DeleteFolder(ctx, obj.ID)
 	if err != nil {
 		return fmt.Errorf("error deleting folder: %w", err)
+	}
+
+	v.deleteObjectFromStore(ctx, obj)
+
+	if v.syncAfterWrite {
+		return v.sync(ctx)
+	}
+	return nil
+}
+
+func (v *webAPIVault) DeleteItem(ctx context.Context, obj models.Item) error {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if !v.objectsLoaded() {
+		return models.ErrVaultLocked
+	}
+
+	// TODO: Don't fail if object is already gone
+	err := v.client.DeleteObject(ctx, obj.ID)
+	if err != nil {
+		return fmt.Errorf("error deleting item: %w", err)
 	}
 
 	v.deleteObjectFromStore(ctx, obj)
@@ -641,7 +740,7 @@ func (v *webAPIVault) DeleteOrganizationCollection(ctx context.Context, obj mode
 	return nil
 }
 
-func (v *webAPIVault) DeleteItem(ctx context.Context, obj models.Item) error {
+func (v *webAPIVault) DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error {
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
@@ -649,17 +748,13 @@ func (v *webAPIVault) DeleteItem(ctx context.Context, obj models.Item) error {
 		return models.ErrVaultLocked
 	}
 
-	// TODO: Don't fail if object is already gone
-	err := v.client.DeleteObject(ctx, obj.ID)
+	err := v.client.DeleteOrganizationGroup(ctx, obj)
 	if err != nil {
-		return fmt.Errorf("error deleting item: %w", err)
+		return fmt.Errorf("error deleting group: %w", err)
 	}
 
 	v.deleteObjectFromStore(ctx, obj)
 
-	if v.syncAfterWrite {
-		return v.sync(ctx)
-	}
 	return nil
 }
 
@@ -762,7 +857,9 @@ func (v *webAPIVault) EditItem(ctx context.Context, obj models.Item) (*models.It
 		// NOTE: The official Bitwarden server returns dates that are a few milliseconds apart
 		//       between the object's creation call and a later retrieval. We need to ignore
 		//       these differences in the diff.
-		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/revisionDate")
+		// NOTE: The official Bitwarden server don't return the collectionIds in the response
+		//       for items, even if they're actually taken into account.
+		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/revisionDate", "/collectionIds")
 	}
 	return resObj, nil
 }
@@ -789,9 +886,19 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 		return nil, models.ErrVaultLocked
 	}
 
+	// Check if the item exists beforehand, in order to differentiate between
+	// missing attachments, and missing items.
+	_, err := getObject(v.objectStore, models.Item{ID: itemId, Object: models.ObjectTypeItem})
+	if err != nil {
+		return nil, err
+	}
+
 	res, err := v.client.GetCipherAttachment(ctx, itemId, attachmentId)
 	if err != nil {
 		if strings.Contains(err.Error(), "Attachment doesn't exist") {
+			return nil, models.ErrAttachmentNotFound
+		}
+		if httpErr, ok := webapi.IsHTTPError(err); ok && httpErr.GetStatusCode() == 404 {
 			return nil, models.ErrAttachmentNotFound
 		}
 		if strings.Contains(err.Error(), "Cipher doesn't exist") {
@@ -830,6 +937,23 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 	}
 
 	return []byte(decryptedBody), nil
+}
+
+func (v *webAPIVault) GetOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
+	// Write lock is needed since we eventually load the organization groups..
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	return v.getOrganizationGroup(ctx, obj)
+}
+
+func (v *webAPIVault) getOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
+	err := v.ensureGroupsLoadedForOrg(ctx, obj.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("error loading users of organization '%s': %w", obj.OrganizationID, err)
+	}
+
+	return v.organizationGroups.FindGroupByID(obj.OrganizationID, obj.ID)
 }
 
 func (v *webAPIVault) GetOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error) {
@@ -886,10 +1010,30 @@ func (v *webAPIVault) IsSyncAfterWriteVerificationDisabled() bool {
 	return !v.failOnSyncAfterWriteVerification
 }
 
+func (v *webAPIVault) FindOrganizationGroup(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgGroup, error) {
+	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
+	if !filter.HasSearchFilter() {
+		return nil, fmt.Errorf("missing search filter")
+	}
+
+	// Write lock is needed since we eventually load the organization members.
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	orgId := filter.OrganizationFilter
+	groupName := filter.SearchFilter
+	err := v.ensureGroupsLoadedForOrg(ctx, orgId)
+	if err != nil {
+		return nil, fmt.Errorf("error loading groups of organization '%s': %w", orgId, err)
+	}
+
+	return v.organizationGroups.FindGroupByName(orgId, groupName)
+}
+
 func (v *webAPIVault) FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error) {
 	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
-	if !filter.IsValid() {
-		return nil, fmt.Errorf("invalid filter options")
+	if !filter.HasSearchFilter() {
+		return nil, fmt.Errorf("missing search filter")
 	}
 
 	// Write lock is needed since we eventually load the organization members.
@@ -908,8 +1052,8 @@ func (v *webAPIVault) FindOrganizationMember(ctx context.Context, options ...bit
 
 func (v *webAPIVault) FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error) {
 	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
-	if !filter.IsValid() {
-		return nil, fmt.Errorf("invalid filter options")
+	if !filter.HasSearchFilter() {
+		return nil, fmt.Errorf("missing search filter")
 	}
 
 	// Write lock is needed since we eventually load collections.
@@ -1231,6 +1375,30 @@ To learn more about this issue and how to handle it, please:
 		}
 	}
 	return nil
+}
+
+func (v *webAPIVault) checkMembersExistence(ctx context.Context, orgId string, users []models.OrgCollectionMember) error {
+	err := v.ensureUsersLoadedForOrg(ctx, orgId)
+	if err != nil {
+		return fmt.Errorf("error getting users for org: %w", err)
+	}
+
+	for _, user := range users {
+		_, err := v.organizationMembers.FindMemberByID(orgId, user.Id)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func attachmentFromObject(obj *models.Item, attachmentId string) (*models.Attachment, error) {
+	for _, attachment := range obj.Attachments {
+		if attachment.ID == attachmentId {
+			return &attachment, nil
+		}
+	}
+	return nil, models.ErrAttachmentNotFound
 }
 
 type SupportedCipher interface {
