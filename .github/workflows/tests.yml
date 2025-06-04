@@ -3,30 +3,20 @@ name: tests
 on:
   push:
     branches: [main]
-    paths:
-      - "tools/**"
-      - "internal/**"
-      - "*.go"
-      - "go.*"
+    paths: ["tools/**", "internal/**", "*.go", "go.*", ".github/workflows/tests.yml"]
   pull_request:
     branches: [main]
-    paths:
-      - "tools/**"
-      - "internal/**"
-      - "*.go"
-      - "go.*"
+    paths: ["tools/**", "internal/**", "*.go", "go.*", ".github/workflows/tests.yml"]
   workflow_dispatch:
+
 
 jobs:
   offline:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
-      - name: Run tests
-        run: mage test:offline
+      - run: mage test:offline
       - name: Code Coverage
         continue-on-error: true
         uses: shogo82148/actions-goveralls@v1
@@ -36,7 +26,6 @@ jobs:
 
   password_manager_vaultwarden_cli:
     runs-on: ubuntu-latest
-
     services:
       vaultwarden:
         image: vaultwarden/server:1.32.5
@@ -68,15 +57,12 @@ jobs:
           - 8080:8080
         options: >-
           --link vaultwarden
-
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
         with:
           installCLI: true
-      - name: Run tests
-        run: mage test:integrationPwdVaultwardenWithCLI
+      - run: mage test:integrationPwdVaultwardenWithCLI
       - name: Code Coverage
         continue-on-error: true
         uses: shogo82148/actions-goveralls@v1
@@ -86,7 +72,6 @@ jobs:
 
   password_manager_vaultwarden_embedded:
     runs-on: ubuntu-latest
-
     services:
       vaultwarden:
         image: vaultwarden/server:1.32.5
@@ -112,13 +97,10 @@ jobs:
           - 8000:8000
         volumes:
           - /dev/shm/vaultwarden-data:/data
-
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
-      - name: Run tests
-        run: mage test:integrationPwdVaultwardenWithEmbeddedClient
+      - run: mage test:integrationPwdVaultwardenWithEmbeddedClient
       - name: Code Coverage
         continue-on-error: true
         uses: shogo82148/actions-goveralls@v1
@@ -126,20 +108,18 @@ jobs:
           path-to-profile: profile.cov
           parallel: true
 
-
   password_manager_bitwarden_embedded:
     runs-on: ubuntu-latest
 
     # Only runs after the Secrets Manager to prevent rate limiting on login.
     needs: [secrets_manager_bitwarden]
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
         with:
           deviceIdentifier: ${{ secrets.BITWARDEN_DEVICE_IDENTIFIER }}
-      - name: Run tests
-        run: mage test:integrationPwdOfficialWithEmbeddedClient
+      - run: mage test:integrationPwdOfficialWithEmbeddedClient
         env:
           TEST_PASSWORD_MANAGER_EMAIL: "${{ secrets.BITWARDEN_EMAIL }}"
           TEST_PASSWORD_MANAGER_MASTER_PASSWORD: "${{ secrets.BITWARDEN_MASTER_PASSWORD }}"
@@ -161,15 +141,13 @@ jobs:
 
   secrets_manager_bitwarden:
     runs-on: ubuntu-latest
-
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
         with:
           deviceIdentifier: ${{ secrets.BWS_DEVICE_IDENTIFIER }}
-      - name: Run tests
-        run: mage test:integrationBwsOfficial
+      - run: mage test:integrationBwsOfficial
         env:
           TEST_SECRETS_MANAGER_ACCESS_TOKEN: "${{ secrets.BWS_ACCESS_TOKEN }}"
           TEST_SERVER_URL: "https://vault.bitwarden.eu"
@@ -180,16 +158,12 @@ jobs:
           path-to-profile: profile.cov
           parallel: true
 
-
   secrets_manager_mocked:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
-      - name: Run tests
-        run: mage test:integrationBwsMocked
+      - run: mage test:integrationBwsMocked
       - name: Code Coverage
         continue-on-error: true
         uses: shogo82148/actions-goveralls@v1
