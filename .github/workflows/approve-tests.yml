@@ -15,5 +15,5 @@ jobs:
         uses: benc-uk/workflow-dispatch@v1
         with:
           workflow: tests.yml
-          ref: refs/remotes/origin/${{ github.event.inputs.branch }}
+          ref: refs/pull/${{ github.event.inputs.branch }}/head
           token: ${{ secrets.WORKFLOW_TRIGGER_GITHUB_TOKEN }}
