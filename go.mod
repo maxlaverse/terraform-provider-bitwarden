@@ -15,9 +15,9 @@ require (
 	github.com/magefile/mage v1.15.0
 	github.com/stretchr/testify v1.10.0
 	github.com/wI2L/jsondiff v0.7.0
-	golang.org/x/crypto v0.38.0
+	golang.org/x/crypto v0.39.0
 	golang.org/x/net v0.40.0
-	golang.org/x/sync v0.14.0
+	golang.org/x/sync v0.15.0
 )
 
 require (
@@ -83,9 +83,9 @@ require (
 	github.com/zclconf/go-cty v1.16.3 // indirect
 	go.abhg.dev/goldmark/frontmatter v0.2.0 // indirect
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df // indirect
-	golang.org/x/mod v0.24.0 // indirect
+	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
 	golang.org/x/tools v0.33.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9 // indirect
