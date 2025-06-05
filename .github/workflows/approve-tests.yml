@@ -16,4 +16,4 @@ jobs:
         with:
           workflow: tests.yml
           ref: refs/remotes/origin/${{ github.event.inputs.branch }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.WORKFLOW_TRIGGER_GITHUB_TOKEN }}
