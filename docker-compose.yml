@@ -1,6 +1,6 @@
 services:
   vaultwarden:
-    image: vaultwarden/server:1.33.2
+    image: vaultwarden/server:1.34.1
     environment:
       - I_REALLY_WANT_VOLATILE_STORAGE=true
       - DISABLE_ICON_DOWNLOAD=true

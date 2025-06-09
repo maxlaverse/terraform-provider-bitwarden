@@ -28,7 +28,7 @@ The plugin has been tested with the following components:
 
 - [Terraform] v1.11.4 / [OpenTofu] v1.9.0
 - [Bitwarden CLI] v2025.2.0 (when not using the [Embedded Client](#embedded-client))
-- [Vaultwarden] v1.32.5
+- [Vaultwarden] v1.34.1
 - official [bitwarden.com] servers
 
 The provider is likely to work with older versions, but those haven't necessarily been tested.
