@@ -11,7 +11,7 @@ import (
 )
 
 func TestAccResourceFolder(t *testing.T) {
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resourceName := "bitwarden_folder.foo"
 	var objectID string
@@ -21,7 +21,7 @@ func TestAccResourceFolder(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceFolder("folder-bar"),
+				Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceFolder("folder-bar"),
 				Check: resource.ComposeTestCheckFunc(
 					checkObject(resourceName),
 					getObjectID(resourceName, &objectID),
@@ -29,7 +29,7 @@ func TestAccResourceFolder(t *testing.T) {
 			},
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider() + tfConfigResourceFolder("folder-new-name-bar"),
+				Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceFolder("folder-new-name-bar"),
 				Check: resource.ComposeTestCheckFunc(
 					checkObject(resourceName),
 					resource.TestCheckResourceAttr(

@@ -13,22 +13,22 @@ func TestAccDataSourceOrgGroupAttribute(t *testing.T) {
 	SkipIfOfficialBackend(t, "org groups require a higher license to be tested")
 	SkipIfOfficialCLI(t, "org groups are not supported by the official CLI")
 
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigDataOrgGroup(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigDataOrgGroup(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						"data.bitwarden_org_group.default_group", "id", testGroupID,
+						"data.bitwarden_org_group.default_group", "id", testConfiguration.Resources.GroupID,
 					),
 					resource.TestCheckResourceAttr(
-						"data.bitwarden_org_group.default_group", "organization_id", testOrganizationID,
+						"data.bitwarden_org_group.default_group", "organization_id", testConfiguration.Resources.OrganizationID,
 					),
 					resource.TestCheckResourceAttr(
-						"data.bitwarden_org_group.default_group", "name", testGroupName,
+						"data.bitwarden_org_group.default_group", "name", testConfiguration.Resources.GroupName,
 					),
 				),
 			},
@@ -46,6 +46,6 @@ data "bitwarden_org_group" "default_group" {
 }
 
 `,
-		testOrganizationID, testGroupName,
+		testConfiguration.Resources.OrganizationID, testConfiguration.Resources.GroupName,
 	)
 }

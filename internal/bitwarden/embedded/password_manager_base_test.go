@@ -3,7 +3,6 @@
 package embedded
 
 import (
-	"context"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -32,9 +31,9 @@ func TestCompareObjectsSimpleKeys(t *testing.T) {
 	obj3 := models.Item{
 		Name: "test1",
 	}
-	assert.NoError(t, compareObjects(context.Background(), obj1, obj2))
-	assert.EqualError(t, compareObjects(context.Background(), obj1, obj3), "different keys at [/name]")
-	assert.NoError(t, compareObjects(context.Background(), obj1, obj3, "/name"))
+	assert.NoError(t, compareObjects(t.Context(), obj1, obj2))
+	assert.EqualError(t, compareObjects(t.Context(), obj1, obj3), "different keys at [/name]")
+	assert.NoError(t, compareObjects(t.Context(), obj1, obj3, "/name"))
 }
 
 func TestCompareObjectsArrays(t *testing.T) {
@@ -58,10 +57,10 @@ func TestCompareObjectsArrays(t *testing.T) {
 		Name:          "test1",
 		CollectionIds: []string{"2", "1"},
 	}
-	assert.NoError(t, compareObjects(context.Background(), obj1, obj1))
-	assert.EqualError(t, compareObjects(context.Background(), obj1, obj2), "different keys at [/collectionIds/0]")
-	assert.NoError(t, compareObjects(context.Background(), obj3, obj4, "/collectionIds"))
-	assert.NoError(t, compareObjects(context.Background(), obj4, obj5))
+	assert.NoError(t, compareObjects(t.Context(), obj1, obj1))
+	assert.EqualError(t, compareObjects(t.Context(), obj1, obj2), "different keys at [/collectionIds/0]")
+	assert.NoError(t, compareObjects(t.Context(), obj3, obj4, "/collectionIds"))
+	assert.NoError(t, compareObjects(t.Context(), obj4, obj5))
 }
 
 func TestCompareNestedObjects(t *testing.T) {
@@ -89,8 +88,8 @@ func TestCompareNestedObjects(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, compareObjects(context.Background(), obj1, obj2, "/attachments/*/url"))
-	assert.Error(t, compareObjects(context.Background(), obj1, obj3, "/attachments/*/url"))
+	assert.NoError(t, compareObjects(t.Context(), obj1, obj2, "/attachments/*/url"))
+	assert.Error(t, compareObjects(t.Context(), obj1, obj3, "/attachments/*/url"))
 }
 
 func TestMatchUrl(t *testing.T) {
@@ -194,7 +193,7 @@ func TestEncryptOrgCollection(t *testing.T) {
 	accountSecrets := computeTestAccountSecrets(t)
 
 	orgToEncrypt := testFullyFilledOrgCollection()
-	newFolder, err := encryptOrgCollection(context.Background(), orgToEncrypt, *accountSecrets, true)
+	newFolder, err := encryptOrgCollection(t.Context(), orgToEncrypt, *accountSecrets, true)
 	if !assert.Nil(t, err) {
 		return
 	}
@@ -213,7 +212,7 @@ func TestEncryptFolder(t *testing.T) {
 	accountSecrets := computeTestAccountSecrets(t)
 
 	folderToEncrypt := testFullyFilledFolder()
-	newFolder, err := encryptFolder(context.Background(), folderToEncrypt, *accountSecrets, true)
+	newFolder, err := encryptFolder(t.Context(), folderToEncrypt, *accountSecrets, true)
 	if !assert.Nil(t, err) {
 		return
 	}
@@ -232,7 +231,7 @@ func TestEncryptItem(t *testing.T) {
 	accountSecrets := computeTestAccountSecrets(t)
 
 	objectToEncrypt := testFullyFilledItem()
-	newObj, err := encryptItem(context.Background(), objectToEncrypt, *accountSecrets, true)
+	newObj, err := encryptItem(t.Context(), objectToEncrypt, *accountSecrets, true)
 	if !assert.Nil(t, err) {
 		return
 	}
