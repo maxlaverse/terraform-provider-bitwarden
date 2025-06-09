@@ -66,6 +66,7 @@ type testConfigStruct struct {
 	UseEmbeddedClient             bool
 	Backend                       testBackendType
 	wasAccountCreationAttempted   atomic.Bool
+	didAccountCreationSucceed     bool
 	wasResourcesCreationAttempted atomic.Bool
 }
 
@@ -94,6 +95,9 @@ func (c *testConfigStruct) WasAccountCreationAttempted(t *testing.T) bool {
 	}
 
 	if !c.wasAccountCreationAttempted.CompareAndSwap(false, true) {
+		if !c.didAccountCreationSucceed {
+			t.Fatal("Account creation failed")
+		}
 		return true
 	}
 	return false
