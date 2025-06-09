@@ -11,6 +11,20 @@ on:
 
 
 jobs:
+  check_secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      has_secrets: ${{ steps.check.outputs.has_secrets }}
+    steps:
+      - name: Check if secrets are available
+        id: check
+        run: |
+          if [ -z "${{ secrets.BITWARDEN_EMAIL }}" ]; then
+            echo "has_secrets=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_secrets=true" >> $GITHUB_OUTPUT
+          fi
+
   offline:
     runs-on: ubuntu-latest
     steps:
@@ -112,8 +126,8 @@ jobs:
     runs-on: ubuntu-latest
 
     # Only runs after the Secrets Manager to prevent rate limiting on login.
-    needs: [secrets_manager_bitwarden]
-    if: secrets.BITWARDEN_EMAIL != ''
+    needs: [secrets_manager_bitwarden, check_secrets]
+    if: needs.check_secrets.outputs.has_secrets == 'true'
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
@@ -141,7 +155,8 @@ jobs:
 
   secrets_manager_bitwarden:
     runs-on: ubuntu-latest
-    if: secrets.BITWARDEN_EMAIL != ''
+    needs: [secrets_manager_bitwarden, check_secrets]
+    if: needs.check_secrets.outputs.has_secrets == 'true'
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
