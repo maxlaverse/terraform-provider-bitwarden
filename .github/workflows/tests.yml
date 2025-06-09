@@ -113,7 +113,7 @@ jobs:
 
     # Only runs after the Secrets Manager to prevent rate limiting on login.
     needs: [secrets_manager_bitwarden]
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    if: secrets.BITWARDEN_EMAIL != ''
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
@@ -141,7 +141,7 @@ jobs:
 
   secrets_manager_bitwarden:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    if: secrets.BITWARDEN_EMAIL != ''
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
