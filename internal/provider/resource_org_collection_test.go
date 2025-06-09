@@ -340,7 +340,7 @@ func orgCollectionImportID(resourceName string) func(s *terraform.State) (string
 func tfConfigResourceOrgCollection(name string, includeOurselves bool, members ...string) string {
 	var allMembers []string
 	if includeOurselves {
-		allMembers = append(allMembers, memberBlock(testConfiguration.Accounts[testAccountOrgOwner].Email, map[string]string{
+		allMembers = append(allMembers, memberBlock(testConfiguration.Accounts[testAccountOrgOwner].UserIdInTestOrganization, map[string]string{
 			"manage": "true",
 		}))
 	}
