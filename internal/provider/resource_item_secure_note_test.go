@@ -12,7 +12,7 @@ import (
 )
 
 func TestAccResourceItemSecureNote(t *testing.T) {
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resourceName := "bitwarden_item_secure_note.foo"
 	var objectID string
@@ -21,7 +21,7 @@ func TestAccResourceItemSecureNote(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemSecureNote(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemSecureNote(),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemSecureNote(resourceName),
 					getObjectID(resourceName, &objectID),
@@ -65,7 +65,7 @@ func tfConfigResourceItemSecureNote() string {
 			hidden = "value-hidden"
 		}
 	}
-`, testOrganizationID, testCollectionID, testFolderID)
+`, testConfiguration.Resources.OrganizationID, testConfiguration.Resources.CollectionID, testConfiguration.Resources.FolderID)
 }
 
 func checkItemSecureNote(resourceName string) resource.TestCheckFunc {

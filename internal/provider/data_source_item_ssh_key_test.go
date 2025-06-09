@@ -9,7 +9,7 @@ import (
 )
 
 func TestAccDataSourceItemSSHKey(t *testing.T) {
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resourceName := "data.bitwarden_item_ssh_key.foo_data"
 
@@ -18,10 +18,10 @@ func TestAccDataSourceItemSSHKey(t *testing.T) {
 		PreventPostDestroyRefresh: false,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemSSHKey(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemSSHKey(),
 			},
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemSSHKey() + tfConfigDataItemSSHKey(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemSSHKey() + tfConfigDataItemSSHKey(),
 				Check:  checkItemSSHKey(resourceName),
 			},
 		},

@@ -14,7 +14,7 @@ import (
 func TestAccResourceItemSSHKey(t *testing.T) {
 	SkipIfVaultwardenBackend(t)
 
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resourceName := "bitwarden_item_ssh_key.foo"
 	var objectID string
@@ -23,7 +23,7 @@ func TestAccResourceItemSSHKey(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemSSHKey(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemSSHKey(),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemSSHKey(resourceName),
 					getObjectID(resourceName, &objectID),
@@ -81,7 +81,7 @@ EOT
 			hidden = "value-hidden"
 		}
 	}
-`, testOrganizationID, testCollectionID, testFolderID, examplePrivateKey)
+`, testConfiguration.Resources.OrganizationID, testConfiguration.Resources.CollectionID, testConfiguration.Resources.FolderID, examplePrivateKey)
 }
 
 func checkItemSSHKey(resourceName string) resource.TestCheckFunc {

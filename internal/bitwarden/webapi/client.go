@@ -556,7 +556,7 @@ func (c *client) LoginWithAccessToken(ctx context.Context, clientId, clientSecre
 	form.Add("client_secret", clientSecret)
 	form.Add("grant_type", "client_credentials")
 
-	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
+	httpReq, err := c.prepareGenericRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing login with access token request: %w", err)
 	}
@@ -592,7 +592,7 @@ func (c *client) LoginWithPassword(ctx context.Context, username, password strin
 	form.Add("deviceIdentifier", c.device.official.deviceIdentifier)
 	form.Add("deviceName", c.device.official.deviceName)
 
-	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
+	httpReq, err := c.prepareGenericRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing login with password request: %w", err)
 	}
@@ -638,7 +638,7 @@ func (c *client) LoginWithAPIKey(ctx context.Context, clientId, clientSecret str
 	form.Add("deviceIdentifier", c.device.deviceIdentifier)
 	form.Add("deviceName", c.device.deviceName)
 
-	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
+	httpReq, err := c.prepareGenericRequest(ctx, "POST", fmt.Sprintf("%s/identity/connect/token", c.serverURL), form)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing login with api key request: %w", err)
 	}
@@ -652,7 +652,7 @@ func (c *client) LoginWithAPIKey(ctx context.Context, clientId, clientSecret str
 }
 
 func (c *client) PreLogin(ctx context.Context, username string) (*PreloginResponse, error) {
-	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/identity/accounts/prelogin", c.serverURL), PreloginRequest{Email: username})
+	httpReq, err := c.prepareGenericRequest(ctx, "POST", fmt.Sprintf("%s/identity/accounts/prelogin", c.serverURL), PreloginRequest{Email: username})
 	if err != nil {
 		return nil, fmt.Errorf("error preparing prelogin request: %w", err)
 	}
@@ -661,7 +661,7 @@ func (c *client) PreLogin(ctx context.Context, username string) (*PreloginRespon
 }
 
 func (c *client) RegisterUser(ctx context.Context, signupRequest SignupRequest) error {
-	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/accounts/register", c.serverURL), signupRequest)
+	httpReq, err := c.prepareGenericRequest(ctx, "POST", fmt.Sprintf("%s/api/accounts/register", c.serverURL), signupRequest)
 	if err != nil {
 		return fmt.Errorf("error preparing registration request: %w", err)
 	}
@@ -699,6 +699,10 @@ func (c *client) UploadContentToUrl(ctx context.Context, provider CloudStoragePr
 }
 
 func (c *client) prepareAuthenticatedRequest(ctx context.Context, reqMethod, reqUrl string, reqBody interface{}) (*http.Request, error) {
+	if len(c.sessionAccessToken) == 0 {
+		return nil, fmt.Errorf("no session access token found - you need to login first")
+	}
+
 	httpReq, err := c.prepareGenericRequest(ctx, reqMethod, reqUrl, reqBody)
 	if err != nil {
 		return nil, err
@@ -706,9 +710,7 @@ func (c *client) prepareAuthenticatedRequest(ctx context.Context, reqMethod, req
 
 	httpReq.Header.Set("Accept", "application/json")
 	httpReq.Header.Set("bitwarden-client-version", c.device.official.deviceVersion)
-	if len(c.sessionAccessToken) > 0 {
-		httpReq.Header.Add("authorization", fmt.Sprintf("Bearer %s", c.sessionAccessToken))
-	}
+	httpReq.Header.Add("authorization", fmt.Sprintf("Bearer %s", c.sessionAccessToken))
 
 	return httpReq, nil
 }

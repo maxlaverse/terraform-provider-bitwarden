@@ -9,7 +9,7 @@ import (
 )
 
 func TestAccDataSourceItemSecureNote(t *testing.T) {
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resourceName := "data.bitwarden_item_secure_note.foo_data"
 
@@ -18,10 +18,10 @@ func TestAccDataSourceItemSecureNote(t *testing.T) {
 		PreventPostDestroyRefresh: false,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemSecureNote(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemSecureNote(),
 			},
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemSecureNote() + tfConfigDataItemSecureNote(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemSecureNote() + tfConfigDataItemSecureNote(),
 				Check:  checkItemSecureNote(resourceName),
 			},
 		},

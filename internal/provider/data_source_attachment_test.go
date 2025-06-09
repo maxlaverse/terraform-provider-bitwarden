@@ -13,7 +13,7 @@ import (
 func TestAccDataSourceAttachment(t *testing.T) {
 	SkipIfNonPremiumTestAccount(t)
 
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
@@ -36,14 +36,14 @@ func TestAccDataSourceAttachment(t *testing.T) {
 				ExpectError: regexp.MustCompile("Error: object not found"),
 			},
 			{
-				Config: tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceOrganizationAttachment("fixtures/attachment1.txt", testOrganizationID),
+				Config: tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceOrganizationAttachment("fixtures/attachment1.txt", testConfiguration.Resources.OrganizationID),
 				SkipFunc: func() (bool, error) {
 					// Organization attachments are not support with 'free' and 'premium' plans.
 					return IsOfficialBackend(), nil
 				},
 			},
 			{
-				Config: tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceOrganizationAttachment("fixtures/attachment1.txt", testOrganizationID) + tfConfigDataAttachment(),
+				Config: tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceOrganizationAttachment("fixtures/attachment1.txt", testConfiguration.Resources.OrganizationID) + tfConfigDataAttachment(),
 				Check: resource.TestMatchResourceAttr(
 					"data.bitwarden_attachment.foo_data", schema_definition.AttributeAttachmentContent, regexp.MustCompile(`^Hello, I'm a text attachment$`),
 				),

@@ -3,7 +3,6 @@
 package command
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -24,7 +23,7 @@ func TestCommandRerunOnMatchingError(t *testing.T) {
 	cmd := NewWithRetries(retryHandler)(os.Args[0], "-test.run=TestCommandRerunOnMatchingError")
 	cmd.AppendEnv([]string{"GO_WANT_HELPER_PROCESS=1"})
 
-	_, err := cmd.Run(context.Background())
+	_, err := cmd.Run(t.Context())
 
 	assert.NotNil(t, err)
 	assert.Error(t, err)
@@ -42,7 +41,7 @@ func TestCommandFailsOnUnmatchedError(t *testing.T) {
 	cmd := NewWithRetries(retryHandler)(os.Args[0], "-test.run=TestCommandFailsOnUnmatchedError")
 	cmd.AppendEnv([]string{"GO_WANT_HELPER_PROCESS=1"})
 
-	_, err := cmd.Run(context.Background())
+	_, err := cmd.Run(t.Context())
 
 	assert.NotNil(t, err)
 	assert.Error(t, err)

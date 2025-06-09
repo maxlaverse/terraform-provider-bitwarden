@@ -3,7 +3,6 @@
 package provider
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"testing"
@@ -15,7 +14,7 @@ import (
 )
 
 func TestAccResourceItemLoginAttributes(t *testing.T) {
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resourceName := "bitwarden_item_login.foo"
 	var objectID string
@@ -24,7 +23,7 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemLogin("reslogin"),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("reslogin"),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemLogin(resourceName),
 					resource.TestCheckResourceAttr(
@@ -34,7 +33,7 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 				),
 			},
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemLogin("resloginmodified"),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("resloginmodified"),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemLogin(resourceName),
 					resource.TestCheckResourceAttr(
@@ -57,20 +56,20 @@ func TestAccResourceItemLoginMany(t *testing.T) {
 	SkipIfOfficialBackend(t, "Creating many items is too slow on the official bitwarden instances.")
 	SkipIfOfficialCLI(t, "Creating many items is too slow on the official CLI")
 
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemManyLogins(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemManyLogins(),
 			},
 		},
 	})
 }
 
 func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	var objectID string
 
@@ -78,30 +77,30 @@ func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemLoginSmall(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginSmall(),
 				Check: resource.ComposeTestCheckFunc(
 					getObjectID("bitwarden_item_login.foo", &objectID),
 				),
 			},
 			{
-				Config:             tfConfigPasswordManagerProvider() + tfConfigResourceItemLoginSmall(),
+				Config:             tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginSmall(),
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: false,
 			},
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceItemLoginSmall(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginSmall(),
 				PreConfig: func() {
 					obj := models.Item{ID: objectID, Object: models.ObjectTypeItem}
-					err := bwTestClient(t).DeleteItem(context.Background(), obj)
+					err := bwEmbeddedTestClient(t).DeleteItem(t.Context(), obj)
 					assert.NoError(t, err)
 
-					if useEmbeddedClient {
+					if testConfiguration.UseEmbeddedClient {
 						return
 					}
 
 					// Sync when using the official client, as we removed the object using the API
 					// which means the local state is out of sync.
-					bwOfficialTestClient(t).Sync(context.Background())
+					bwCLITestClient(t).Sync(t.Context())
 				},
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: true,
@@ -201,7 +200,7 @@ func tfConfigResourceItemLogin(source string) string {
 			value = "https://default"
 		}
 	}
-`, testOrganizationID, testCollectionID, testFolderID, source)
+`, testConfiguration.Resources.OrganizationID, testConfiguration.Resources.CollectionID, testConfiguration.Resources.FolderID, source)
 }
 
 func checkItemLogin(resourceName string) resource.TestCheckFunc {

@@ -3,7 +3,6 @@
 package embedded
 
 import (
-	"context"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
@@ -16,7 +15,7 @@ func TestLoginAsPasswordLoadsAccountInformationForPbkdf2(t *testing.T) {
 	vault, reset := newMockedPasswordManager(MockedClient(t, Pdkdf2Mocks))
 	defer reset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	err := vault.LoginWithPassword(ctx, AccountPbkdf2.Email, TestPassword)
 	if err != nil {
 		t.Fatalf("vault unlock failed: %v", err)
@@ -34,7 +33,7 @@ func TestLoginAsAPILoadsAccountInformationForPbkdf2(t *testing.T) {
 	vault, reset := newMockedPasswordManager(MockedClient(t, Pdkdf2Mocks))
 	defer reset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	err := vault.LoginWithAPIKey(ctx, TestPassword, "user.aaf15bd1-4f51-4ba0-ade8-9dc2ec0fd2c3", "ZTXHHyPY6bNlNq1diDA2nM1GROboP3")
 	if err != nil {
 		t.Fatalf("vault unlock failed: %v", err)
@@ -52,7 +51,7 @@ func TestLoginAsPasswordLoadsAccountInformationForArgon2(t *testing.T) {
 	vault, reset := newMockedPasswordManager(MockedClient(t, Argon2Mocks))
 	defer reset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	err := vault.LoginWithPassword(ctx, AccountArgon2.Email, TestPassword)
 	if err != nil {
 		t.Fatalf("vault unlock failed: %v", err)
@@ -70,7 +69,7 @@ func TestLoginAsAPILoadsAccountInformationForArgon2(t *testing.T) {
 	vault, reset := newMockedPasswordManager(MockedClient(t, Argon2Mocks))
 	defer reset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	err := vault.LoginWithAPIKey(ctx, TestPassword, "user.3f0abf17-e779-4312-a3dd-9c6266e95a9e", "oQAvXGx5h3iw0wzzgRwySsGxn3PvvA")
 	if err != nil {
 		t.Fatalf("vault unlock failed: %v", err)
@@ -90,7 +89,7 @@ func TestFolderCreation(t *testing.T) {
 	vault, reset := newMockedPasswordManager(MockedClient(t, Pdkdf2Mocks))
 	defer reset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	err := vault.LoginWithPassword(ctx, AccountPbkdf2.Email, TestPassword)
 	if err != nil {
 		t.Fatalf("vault unlock failed: %v", err)
@@ -113,7 +112,7 @@ func TestItemCreation(t *testing.T) {
 	vault, reset := newMockedPasswordManager(MockedClient(t, Pdkdf2Mocks))
 	defer reset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	err := vault.LoginWithPassword(ctx, AccountPbkdf2.Email, TestPassword)
 	if err != nil {
 		t.Fatalf("vault unlock failed: %v", err)
@@ -139,7 +138,7 @@ func TestItemCreationInOrganization(t *testing.T) {
 	vault, reset := newMockedPasswordManager(MockedClient(t, Pdkdf2Mocks))
 	defer reset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	err := vault.LoginWithPassword(ctx, AccountPbkdf2.Email, TestPassword)
 	if err != nil {
 		t.Fatalf("vault unlock failed: %v", err)

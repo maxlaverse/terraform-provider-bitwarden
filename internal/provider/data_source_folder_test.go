@@ -9,16 +9,16 @@ import (
 )
 
 func TestAccDataSourceFolderAttributes(t *testing.T) {
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceFolder("folder-bar"),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceFolder("folder-bar"),
 			},
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigResourceFolder("folder-bar") + tfConfigDataFolder(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceFolder("folder-bar") + tfConfigDataFolder(),
 				Check:  checkObject("data.bitwarden_folder.foo_data"),
 			},
 		},
