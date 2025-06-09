@@ -155,7 +155,7 @@ jobs:
 
   secrets_manager_bitwarden:
     runs-on: ubuntu-latest
-    needs: [secrets_manager_bitwarden, check_secrets]
+    needs: [check_secrets]
     if: needs.check_secrets.outputs.has_secrets == 'true'
     steps:
       - uses: actions/checkout@v3
