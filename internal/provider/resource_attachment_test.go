@@ -3,7 +3,6 @@
 package provider
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"testing"
@@ -17,7 +16,7 @@ import (
 func TestAccResourceAttachment(t *testing.T) {
 	SkipIfNonPremiumTestAccount(t)
 
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resourceName := "bitwarden_attachment.foo"
 
@@ -46,19 +45,19 @@ func TestAccResourceAttachment(t *testing.T) {
 			// Attachments created from Content
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider(),
-				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
+				Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin),
+				SkipFunc:     func() (bool, error) { return !testConfiguration.UseEmbeddedClient, nil },
 			},
 			{
 				ResourceName: resourceName,
 				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachmentFromContentWithFilename(),
-				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
+				SkipFunc:     func() (bool, error) { return !testConfiguration.UseEmbeddedClient, nil },
 				ExpectError:  regexp.MustCompile("\"file_name\": one of"),
 			},
 			{
 				ResourceName: resourceName,
 				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachmentFromContent("Hello, I'm a text attachment"),
-				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
+				SkipFunc:     func() (bool, error) { return !testConfiguration.UseEmbeddedClient, nil },
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						resourceName, schema_definition.AttributeAttachmentContent, contentHash("Hello, I'm a text attachment"),
@@ -72,7 +71,7 @@ func TestAccResourceAttachment(t *testing.T) {
 			{
 				ResourceName: resourceName,
 				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachmentFromContent("Hello, I'm a text attachment") + tfConfigDataAttachment(),
-				SkipFunc:     func() (bool, error) { return !useEmbeddedClient, nil },
+				SkipFunc:     func() (bool, error) { return !testConfiguration.UseEmbeddedClient, nil },
 				Check: resource.TestMatchResourceAttr(
 					"data.bitwarden_attachment.foo_data", schema_definition.AttributeAttachmentContent, regexp.MustCompile(`^Hello, I'm a text attachment$`),
 				),
@@ -103,7 +102,7 @@ func TestAccResourceAttachment(t *testing.T) {
 func TestAccResourceItemAttachmentFields(t *testing.T) {
 	SkipIfNonPremiumTestAccount(t)
 
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resourceName := "bitwarden_item_login.foo"
 
@@ -131,7 +130,7 @@ func TestAccResourceItemAttachmentFields(t *testing.T) {
 func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 	SkipIfNonPremiumTestAccount(t)
 
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	var attachmentID string
 	var itemID string
@@ -153,16 +152,16 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 			{
 				Config: tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				PreConfig: func() {
-					err := bwTestClient(t).DeleteAttachment(context.Background(), itemID, attachmentID)
+					err := bwEmbeddedTestClient(t).DeleteAttachment(t.Context(), itemID, attachmentID)
 					assert.NoError(t, err)
 
-					if useEmbeddedClient {
+					if testConfiguration.UseEmbeddedClient {
 						return
 					}
 
 					// Sync when using the official client, as we removed the attachment using the API
 					// which means the local state is out of sync.
-					bwOfficialTestClient(t).Sync(context.Background())
+					bwCLITestClient(t).Sync(t.Context())
 				},
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: true,
@@ -177,7 +176,7 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 	SkipIfNonPremiumTestAccount(t)
 
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resourceName := "bitwarden_attachment.foo"
 
@@ -297,7 +296,7 @@ resource "bitwarden_item_login" "foo" {
 	name     = "foo"
 	organization_id = "` + organizationID + `"
 	collection_ids = [
-		"` + testCollectionID + `"
+		"` + testConfiguration.Resources.CollectionID + `"
 	]
 }
 
@@ -343,24 +342,6 @@ resource "bitwarden_attachment" "foo" {
 	item_id   = bitwarden_item_login.foo.id
 }
 `
-}
-
-func tfConfigAttachmentSpecificPasswordManagerProvider() string {
-	if useEmbeddedClient {
-		return tfConfigPasswordManagerProvider()
-	}
-
-	return fmt.Sprintf(`
-	provider "bitwarden" {
-		master_password = "%s"
-		server          = "%s"
-		email           = "%s"
-
-		experimental {
-			embedded_client = false
-		}
-	}
-`, testMasterPassword, testReverseProxyServerURL, testEmail)
 }
 
 func tfConfigResourceMultiAttachment() string {

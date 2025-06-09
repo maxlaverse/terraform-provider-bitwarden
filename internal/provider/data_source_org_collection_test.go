@@ -12,7 +12,7 @@ import (
 )
 
 func TestAccDataSourceOrgCollection(t *testing.T) {
-	ensureVaultwardenConfigured(t)
+	ensureTestConfigurationReady(t)
 
 	resourceName := "data.bitwarden_org_collection.foo_data"
 
@@ -31,7 +31,7 @@ func TestAccDataSourceOrgCollection(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider() + tfConfigDataOrgCollection(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigDataOrgCollection(),
 				Check: resource.ComposeTestCheckFunc(
 					nameAssertion,
 					resource.TestMatchResourceAttr(
@@ -52,5 +52,5 @@ data "bitwarden_org_collection" "foo_data" {
 
 	search 	= "col"
 }
-`, testOrganizationID)
+`, testConfiguration.Resources.OrganizationID)
 }

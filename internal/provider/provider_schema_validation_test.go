@@ -3,7 +3,6 @@
 package provider
 
 import (
-	"context"
 	"regexp"
 	"testing"
 
@@ -34,7 +33,7 @@ func TestProviderAuthUsingAPIKey(t *testing.T) {
 	diag := p.Validate(config)
 	assert.False(t, diag.HasError())
 
-	diag = p.Configure(context.Background(), config)
+	diag = p.Configure(t.Context(), config)
 	assert.False(t, diag.HasError())
 
 	assert.Implements(t, (*bwcli.PasswordManagerClient)(nil), p.Meta())
@@ -58,7 +57,7 @@ func TestProviderAuthUsingAPIAndEmbedded(t *testing.T) {
 	diag := p.Validate(config)
 	assert.False(t, diag.HasError())
 
-	diag = p.Configure(context.Background(), config)
+	diag = p.Configure(t.Context(), config)
 	assert.False(t, diag.HasError())
 
 	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), p.Meta())
@@ -79,7 +78,7 @@ func TestProviderAuthUsingSessionKey(t *testing.T) {
 		t.Fatal(diag)
 	}
 
-	diag = p.Configure(context.Background(), config)
+	diag = p.Configure(t.Context(), config)
 	assert.False(t, diag.HasError())
 
 	assert.Implements(t, (*bwcli.PasswordManagerClient)(nil), p.Meta())
@@ -101,7 +100,7 @@ func TestProviderAuthUsingAccessToken(t *testing.T) {
 		t.Fatal(diag)
 	}
 
-	diag = p.Configure(context.Background(), config)
+	diag = p.Configure(t.Context(), config)
 	if !assert.False(t, diag.HasError()) {
 		t.Fatal(diag)
 	}
@@ -122,7 +121,7 @@ func TestProviderAuthUsingAccessToken_ThrowsErrorWithoutExperimentalFlag(t *test
 		t.Fatal(diag)
 	}
 
-	diag = p.Configure(context.Background(), config)
+	diag = p.Configure(t.Context(), config)
 	if assert.True(t, diag.HasError()) {
 		assert.Equal(t, "access token is not supported without the experimental 'embedded_client' flag", diag[0].Summary)
 	}
@@ -222,7 +221,7 @@ func TestSyncAfterWriteVerificationDisabled(t *testing.T) {
 	diag := p.Validate(config)
 	assert.False(t, diag.HasError())
 
-	diag = p.Configure(context.Background(), config)
+	diag = p.Configure(t.Context(), config)
 	assert.False(t, diag.HasError())
 
 	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), p.Meta())

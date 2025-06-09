@@ -31,7 +31,7 @@ func (m OrgGroupStore) FindGroupByID(orgId, groupId string) (*models.OrgGroup, e
 		}
 	}
 
-	return nil, fmt.Errorf("no group found with groupId '%s' in organization '%s' (org exists: %t)", orgId, groupId, ok)
+	return nil, fmt.Errorf("no group found with groupId '%s' in organization '%s' (org exists: %t)", groupId, orgId, ok)
 }
 
 func (m OrgGroupStore) FindGroupByName(orgId, groupName string) (*models.OrgGroup, error) {

@@ -3,7 +3,6 @@
 package bwcli
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -20,7 +19,7 @@ func TestCreateObjectEncoding(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient()
-	_, err := b.CreateItem(context.Background(), models.Item{
+	_, err := b.CreateItem(t.Context(), models.Item{
 		Object: models.ObjectTypeItem,
 		Type:   models.ItemTypeLogin,
 		Fields: []models.Field{
@@ -45,7 +44,7 @@ func TestCreateOrgCollection(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient()
-	_, err := b.CreateOrganizationCollection(context.Background(), models.OrgCollection{
+	_, err := b.CreateOrganizationCollection(t.Context(), models.OrgCollection{
 		Object:         models.ObjectTypeOrgCollection,
 		Name:           "test",
 		OrganizationID: "org-id",
@@ -65,7 +64,7 @@ func TestEditOrgCollection(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient()
-	_, err := b.EditOrganizationCollection(context.Background(), models.OrgCollection{
+	_, err := b.EditOrganizationCollection(t.Context(), models.OrgCollection{
 		Object:         models.ObjectTypeOrgCollection,
 		ID:             "1234",
 		Name:           "test",
@@ -85,7 +84,7 @@ func TestDeleteOrgCollection(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient()
-	err := b.DeleteOrganizationCollection(context.Background(), models.OrgCollection{
+	err := b.DeleteOrganizationCollection(t.Context(), models.OrgCollection{
 		Object:         models.ObjectTypeOrgCollection,
 		ID:             "1234",
 		Name:           "test",
@@ -105,7 +104,7 @@ func TestListObjects(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient()
-	_, err := b.FindItem(context.Background(), bitwarden.WithFolderID("folder-id"), bitwarden.WithCollectionID("collection-id"), bitwarden.WithSearch("search"))
+	_, err := b.FindItem(t.Context(), bitwarden.WithFolderID("folder-id"), bitwarden.WithCollectionID("collection-id"), bitwarden.WithSearch("search"))
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
@@ -120,7 +119,7 @@ func TestGetItem(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient()
-	_, err := b.GetItem(context.Background(), models.Item{ID: "object-id", Object: models.ObjectTypeItem, Type: models.ItemTypeLogin})
+	_, err := b.GetItem(t.Context(), models.Item{ID: "object-id", Object: models.ObjectTypeItem, Type: models.ItemTypeLogin})
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
@@ -135,7 +134,7 @@ func TestGetOrganizationCollection(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient()
-	_, err := b.GetOrganizationCollection(context.Background(), models.OrgCollection{ID: "object-id", Object: models.ObjectTypeOrgCollection, OrganizationID: "org-id"})
+	_, err := b.GetOrganizationCollection(t.Context(), models.OrgCollection{ID: "object-id", Object: models.ObjectTypeOrgCollection, OrganizationID: "org-id"})
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
@@ -150,7 +149,7 @@ func TestErrorContainsCommand(t *testing.T) {
 	defer removeMocks(t)
 
 	b := NewPasswordManagerClient()
-	_, err := b.FindOrganizationCollection(context.Background(), bitwarden.WithSearch("search"))
+	_, err := b.FindOrganizationCollection(t.Context(), bitwarden.WithSearch("search"))
 
 	if assert.Error(t, err) {
 		assert.ErrorContains(t, err, "unable to parse result of 'list org-collections', error: 'unexpected end of JSON input', output: ''")

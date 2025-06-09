@@ -3,7 +3,6 @@
 package embedded
 
 import (
-	"context"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
@@ -97,7 +96,7 @@ func TestCreateAccessTokenLoginMock(t *testing.T) {
 }
 
 func createOrganization(t *testing.T, account1 string, account2 string) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	accountEmail1 := fmt.Sprintf("%s@laverse.net", account1)
 	httpClient := http.Client{
@@ -134,7 +133,7 @@ func createOrganization(t *testing.T, account1 string, account2 string) {
 }
 
 func createOrganizationResources(t *testing.T, account1 string, orgId string) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	accountEmail1 := fmt.Sprintf("%s@laverse.net", account1)
 	httpClient := http.Client{
@@ -176,7 +175,7 @@ func createOrganizationResources(t *testing.T, account1 string, orgId string) {
 }
 
 func createTestAccount(t *testing.T, mockName string, kdfConfig models.KdfConfiguration, withResources bool) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	accountEmail := fmt.Sprintf("%s@laverse.net", mockName)
 

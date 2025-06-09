@@ -141,7 +141,7 @@ func TestRetryRoundTripper_RequestTimeout(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a context with a shorter timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
 	req = req.WithContext(ctx)
 
