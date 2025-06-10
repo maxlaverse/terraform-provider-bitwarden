@@ -37,10 +37,28 @@ func OrganizationCollectionObjectToSchema(ctx context.Context, obj *models.OrgCo
 		}
 	}
 
-	set := schema.NewSet(func(i interface{}) int {
+	userSet := schema.NewSet(func(i interface{}) int {
 		return hashStringToInt(i.(map[string]interface{})[schema_definition.AttributeID].(string))
 	}, users)
-	err = d.Set(schema_definition.AttributeMember, set)
+	err = d.Set(schema_definition.AttributeMember, userSet)
+	if err != nil {
+		return err
+	}
+
+	groups := make([]interface{}, len(obj.Groups))
+	for k, v := range obj.Groups {
+		groups[k] = map[string]interface{}{
+			schema_definition.AttributeCollectionMemberHidePasswords: v.HidePasswords,
+			schema_definition.AttributeID:                            v.Id,
+			schema_definition.AttributeCollectionMemberReadOnly:      v.ReadOnly,
+			schema_definition.AttributeCollectionMemberManage:        v.Manage,
+		}
+	}
+
+	groupSet := schema.NewSet(func(i interface{}) int {
+		return hashStringToInt(i.(map[string]interface{})[schema_definition.AttributeID].(string))
+	}, groups)
+	err = d.Set(schema_definition.AttributeMemberGroup, groupSet)
 	if err != nil {
 		return err
 	}
@@ -66,6 +84,18 @@ func OrganizationCollectionToObject(ctx context.Context, d *schema.ResourceData)
 		obj.Users = make([]models.OrgCollectionMember, v.Len())
 		for k, v2 := range v.List() {
 			obj.Users[k] = models.OrgCollectionMember{
+				HidePasswords: v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberHidePasswords].(bool),
+				Id:            v2.(map[string]interface{})[schema_definition.AttributeID].(string),
+				ReadOnly:      v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberReadOnly].(bool),
+				Manage:        v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberManage].(bool),
+			}
+		}
+	}
+
+	if v, ok := d.Get(schema_definition.AttributeMemberGroup).(*schema.Set); ok {
+		obj.Groups = make([]models.OrgCollectionMember, v.Len())
+		for k, v2 := range v.List() {
+			obj.Groups[k] = models.OrgCollectionMember{
 				HidePasswords: v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberHidePasswords].(bool),
 				Id:            v2.(map[string]interface{})[schema_definition.AttributeID].(string),
 				ReadOnly:      v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberReadOnly].(bool),
