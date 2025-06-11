@@ -66,6 +66,7 @@ type testConfigStruct struct {
 	UseEmbeddedClient             bool
 	Backend                       testBackendType
 	wasAccountCreationAttempted   atomic.Bool
+	didAccountCreationSucceed     bool
 	wasResourcesCreationAttempted atomic.Bool
 }
 
@@ -94,6 +95,9 @@ func (c *testConfigStruct) WasAccountCreationAttempted(t *testing.T) bool {
 	}
 
 	if !c.wasAccountCreationAttempted.CompareAndSwap(false, true) {
+		if !c.didAccountCreationSucceed {
+			t.Fatal("Account creation failed")
+		}
 		return true
 	}
 	return false
@@ -169,27 +173,34 @@ func loadTestAccountsConfiguration() {
 
 func loadOfficialBackendAccounts() {
 	baseAccount := testAccount{
-		Email:        os.Getenv("TEST_PASSWORD_MANAGER_EMAIL"),
-		Password:     os.Getenv("TEST_PASSWORD_MANAGER_MASTER_PASSWORD"),
-		ClientID:     os.Getenv("TEST_PASSWORD_MANAGER_CLIENT_ID"),
-		ClientSecret: os.Getenv("TEST_PASSWORD_MANAGER_CLIENT_SECRET"),
-		AccountType:  os.Getenv("TEST_PASSWORD_MANAGER_ACCOUNT_TYPE"),
-		Name:         os.Getenv("TEST_PASSWORD_MANAGER_USER_NAME"),
+		Email:        os.Getenv("TEST_PASSWORD_MANAGER_BASE_EMAIL"),
+		Password:     os.Getenv("TEST_PASSWORD_MANAGER_BASE_MASTER_PASSWORD"),
+		ClientID:     os.Getenv("TEST_PASSWORD_MANAGER_BASE_CLIENT_ID"),
+		ClientSecret: os.Getenv("TEST_PASSWORD_MANAGER_BASE_CLIENT_SECRET"),
+		AccountType:  os.Getenv("TEST_PASSWORD_MANAGER_BASE_ACCOUNT_TYPE"),
+		Name:         os.Getenv("TEST_PASSWORD_MANAGER_BASE_NAME"),
 	}
 
 	testConfiguration.Accounts[testAccountFullAdmin] = baseAccount
 	testConfiguration.Accounts[testAccountOrgOwner] = testAccount{
-		Email:                    baseAccount.Email,
-		Password:                 baseAccount.Password,
-		ClientID:                 baseAccount.ClientID,
-		ClientSecret:             baseAccount.ClientSecret,
-		AccountType:              baseAccount.AccountType,
-		Name:                     baseAccount.Name,
-		UserIdInTestOrganization: os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_MEMBER_ID"),
+		Email:                    os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_EMAIL"),
+		Password:                 os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_MASTER_PASSWORD"),
+		ClientID:                 os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_CLIENT_ID"),
+		ClientSecret:             os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_CLIENT_SECRET"),
+		AccountType:              os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_ACCOUNT_TYPE"),
+		Name:                     os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_NAME"),
+		UserIdInTestOrganization: os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_ORGANIZATION_MEMBER_ID"),
 		RoleInTestOrganization:   models.OrgMemberRoleTypeOwner,
 	}
 	testConfiguration.Accounts[testAccountOrgUser] = testAccount{
-		UserIdInTestOrganization: os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_OTHER_MEMBER_ID"),
+		Email:                    os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_EMAIL"),
+		Password:                 os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_PASSWORD"),
+		ClientID:                 os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_CLIENT_ID"),
+		ClientSecret:             os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_CLIENT_SECRET"),
+		AccountType:              os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_ACCOUNT_TYPE"),
+		Name:                     os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_NAME"),
+		UserIdInTestOrganization: os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_ORGANIZATION_MEMBER_ID"),
+		RoleInTestOrganization:   models.OrgMemberRoleTypeUser,
 	}
 }
 

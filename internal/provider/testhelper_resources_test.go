@@ -157,6 +157,7 @@ func ensureTestAccountsExist(t *testing.T) {
 
 		client.Logout(t.Context())
 	}
+	testConfiguration.didAccountCreationSucceed = true
 }
 
 func clearTestVault(t *testing.T) {

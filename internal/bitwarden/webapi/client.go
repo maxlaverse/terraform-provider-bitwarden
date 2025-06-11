@@ -458,7 +458,7 @@ func (c *client) GetOrganizationGroups(ctx context.Context, orgId string) ([]Org
 }
 
 func (c *client) GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error) {
-	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/users", c.serverURL, orgId), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/users/mini-details", c.serverURL, orgId), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing organization user list retrieval request: %w", err)
 	}

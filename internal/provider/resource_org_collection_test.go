@@ -202,8 +202,6 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 								"hide_passwords": "false",
 							},
 						),
-
-						getObjectID(resourceName, &objectID),
 					),
 				},
 				// 3. Adding a second member with permission set 1
@@ -324,6 +322,39 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 			},
 		})
 	}
+}
+
+func TestAccResourceOrgCollectionAsOrgUser(t *testing.T) {
+	// SkipIfOfficialBackend(t, "Test not implemented for official backend")
+	SkipIfOfficialCLI(t, "Test not implemented for official CLI")
+
+	ensureTestConfigurationReady(t)
+
+	resourceName := "bitwarden_org_collection.foo_org_col"
+	var objectID string
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				ResourceName: resourceName,
+				Config: tfConfigPasswordManagerProvider(testAccountOrgUser) + tfConfigResourceOrgCollection("org-col-bar", false,
+					memberBlock(testConfiguration.Accounts[testAccountOrgUser].UserIdInTestOrganization, map[string]string{
+						"manage": "true",
+					}),
+				),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						resourceName, schema_definition.AttributeName, "org-col-bar",
+					),
+					resource.TestMatchResourceAttr(
+						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
+					),
+					getObjectID(resourceName, &objectID),
+				),
+			},
+		},
+	})
 }
 
 func orgCollectionImportID(resourceName string) func(s *terraform.State) (string, error) {
