@@ -750,6 +750,7 @@ func (c *client) prepareGenericRequest(ctx context.Context, reqMethod, reqUrl st
 		httpReq.Header.Set("Cache-Control", "no-store")
 		httpReq.Header.Set("Pragma", "no-cache")
 	}
+	httpReq.Header.Set("bitwarden-client-version", c.device.official.deviceVersion)
 
 	return httpReq, nil
 }
