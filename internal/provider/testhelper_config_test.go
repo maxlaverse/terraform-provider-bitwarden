@@ -190,7 +190,7 @@ func loadOfficialBackendAccounts() {
 	}
 	testConfiguration.Accounts[testAccountOrgUser] = testAccount{
 		Email:                    os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_EMAIL"),
-		Password:                 os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_PASSWORD"),
+		Password:                 os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_MASTER_PASSWORD"),
 		ClientID:                 os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_CLIENT_ID"),
 		ClientSecret:             os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_CLIENT_SECRET"),
 		AccountType:              os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_ACCOUNT_TYPE"),
