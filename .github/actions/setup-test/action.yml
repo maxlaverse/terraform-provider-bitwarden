@@ -27,6 +27,11 @@ inputs:
     required: false
     default: '1.11.4'
     type: string
+  openTofuVersion:
+    description: 'Version of OpenTofu to install'
+    required: false
+    default: 'v1.9.0'
+    type: string
   deviceIdentifier:
     description: 'Device Identifier'
     required: false
@@ -66,10 +71,17 @@ runs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ inputs.openTofuVersion }}
+
       - name: Set Terraform Version
         shell: bash
         run: |
-          echo "TF_ACC_TERRAFORM_VERSION=${{ inputs.terraformVersion }}" >> $GITHUB_OUTPUT
+          echo TF_ACC_TERRAFORM_PATH=$(which tofu) >> $GITHUB_OUTPUT
+          echo TF_ACC_PROVIDER_NAMESPACE="hashicorp" >> $GITHUB_OUTPUT
+          echo TF_ACC_PROVIDER_HOST="registry.opentofu.org" >> $GITHUB_OUTPUT
+
 
       - name: Install Bitwarden CLI
         if: ${{ inputs.installCLI }}
