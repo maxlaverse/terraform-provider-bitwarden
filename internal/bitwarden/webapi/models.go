@@ -312,3 +312,12 @@ type ErrorResponse struct {
 	InnerExceptionMessage string        `json:"innerExceptionMessage"`
 	Object                string        `json:"object"`
 }
+
+type ConfigResponse struct {
+	FeatureStates ConfigFeatureStates `json:"featureStates"`
+	Version       string              `json:"version"`
+}
+
+type ConfigFeatureStates struct {
+	CipherKeyEncryption bool `json:"cipher-key-encryption"`
+}

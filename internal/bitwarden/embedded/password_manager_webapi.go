@@ -137,8 +137,11 @@ func NewDeviceIdentifier() string {
 
 type webAPIVault struct {
 	baseVault
-	client     webapi.Client
-	clientOpts []webapi.Options
+	client       webapi.Client
+	clientOpts   []webapi.Options
+	serverConfig struct {
+		disableCipherKeyEncryption bool
+	}
 
 	syncAfterWrite                   bool
 	failOnSyncAfterWriteVerification bool
@@ -329,7 +332,7 @@ func (v *webAPIVault) CreateItem(ctx context.Context, obj models.Item) (*models.
 	}
 
 	var resObj *models.Item
-	encObj, err := encryptItem(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
+	encObj, err := encryptItem(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption, v.serverConfig.disableCipherKeyEncryption)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting item for creation: %w", err)
 	}
@@ -818,7 +821,7 @@ func (v *webAPIVault) EditItem(ctx context.Context, obj models.Item) (*models.It
 	}
 
 	var resObj *models.Item
-	encObj, err := encryptItem(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
+	encObj, err := encryptItem(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption, v.serverConfig.disableCipherKeyEncryption)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting item for edition: %w", err)
 	}
@@ -1225,6 +1228,15 @@ func (v *webAPIVault) continueLoginWithTokens(ctx context.Context, tokenResp web
 	err := v.unlock(ctx, password)
 	if err != nil {
 		return fmt.Errorf("error unlocking after login: %w", err)
+	}
+
+	config, err := v.client.Config(ctx)
+	if err != nil {
+		return fmt.Errorf("error getting config: %w", err)
+	}
+
+	if config.FeatureStates.CipherKeyEncryption {
+		v.serverConfig.disableCipherKeyEncryption = true
 	}
 
 	return v.sync(ctx)

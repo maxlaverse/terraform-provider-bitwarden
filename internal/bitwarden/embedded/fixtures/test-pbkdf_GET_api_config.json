@@ -1,0 +1,8 @@
+{
+    "version": "2025.6.1",
+    "gitHash": "b511b055",
+    "featureStates": {
+        "cipher-key-encryption": false
+    },
+    "object": "config"
+}
