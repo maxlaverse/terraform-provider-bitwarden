@@ -231,7 +231,7 @@ func TestEncryptItem(t *testing.T) {
 	accountSecrets := computeTestAccountSecrets(t)
 
 	objectToEncrypt := testFullyFilledItem()
-	newObj, err := encryptItem(t.Context(), objectToEncrypt, *accountSecrets, true)
+	newObj, err := encryptItem(t.Context(), objectToEncrypt, *accountSecrets, true, true)
 	if !assert.Nil(t, err) {
 		return
 	}

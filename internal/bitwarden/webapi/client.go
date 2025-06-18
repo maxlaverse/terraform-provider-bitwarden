@@ -34,6 +34,7 @@ const (
 
 type Client interface {
 	ClearSession()
+	Config(ctx context.Context) (*ConfigResponse, error)
 	ConfirmOrganizationUser(ctx context.Context, orgID, orgUserID, key string) error
 	CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	CreateItem(context.Context, models.Item) (*models.Item, error)
@@ -105,6 +106,15 @@ type client struct {
 
 func (c *client) ClearSession() {
 	c.sessionAccessToken = ""
+}
+
+func (c *client) Config(ctx context.Context) (*ConfigResponse, error) {
+	httpReq, err := c.prepareGenericRequest(ctx, "GET", fmt.Sprintf("%s/api/config", c.serverURL), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing organization user confirmation request: %w", err)
+	}
+
+	return doRequest[ConfigResponse](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) ConfirmOrganizationUser(ctx context.Context, orgID, orgUserId, key string) error {
