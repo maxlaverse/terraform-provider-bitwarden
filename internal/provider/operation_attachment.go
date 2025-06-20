@@ -28,8 +28,21 @@ func opAttachmentCreate(ctx context.Context, d *schema.ResourceData, bwClient bi
 	filePath, fileSpecified := d.GetOk(schema_definition.AttributeAttachmentFile)
 	content, contentSpecified := d.GetOk(schema_definition.AttributeAttachmentContent)
 	fileName, fileNameSpecified := d.GetOk(schema_definition.AttributeAttachmentFileName)
+	dynamicFilePath, dynamicFileSpecified := d.GetOk(schema_definition.AttributeAttachmentDynamicFile)
+	_, hashSpecified := d.GetOk(schema_definition.AttributeAttachmentDataHash)
+
 	if fileSpecified {
 		obj, err = bwClient.CreateAttachmentFromFile(ctx, itemId, filePath.(string))
+	} else if dynamicFileSpecified {
+		if !hashSpecified {
+			// if hash not explicitly set, populate it.
+			hashErr := d.Set(schema_definition.AttributeAttachmentDataHash, fileHash(dynamicFilePath))
+			if hashErr != nil {
+				return diag.FromErr(hashErr)
+			}
+		}
+		// Create the Attachment
+		obj, err = bwClient.CreateAttachmentFromFile(ctx, itemId, dynamicFilePath.(string))
 	} else if contentSpecified && fileNameSpecified {
 		obj, err = bwClient.CreateAttachmentFromContent(ctx, itemId, fileName.(string), []byte(content.(string)))
 	} else {
@@ -73,6 +86,13 @@ func opAttachmentRead(ctx context.Context, d *schema.ResourceData, bwClient bitw
 		return diag.FromErr(err)
 	}
 
+	// Read is used for datasource, so set hash value automatically. Since datasource is content/file/dynamic upload
+	// agnostic, always calculate the hash as it can be useful even if not using the dynamic upload feature.
+	hashErr := d.Set(schema_definition.AttributeAttachmentDataHash, contentHash(string(content)))
+	if hashErr != nil {
+		return diag.FromErr(hashErr)
+	}
+
 	d.SetId(attachmentId)
 
 	return diag.FromErr(d.Set(schema_definition.AttributeAttachmentContent, string(content)))
@@ -80,7 +100,15 @@ func opAttachmentRead(ctx context.Context, d *schema.ResourceData, bwClient bitw
 
 func opAttachmentReadIgnoreMissing(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) diag.Diagnostics {
 	itemId := d.Get(schema_definition.AttributeAttachmentItemID).(string)
-
+	dynamicFilePath, dynamicFileSpecified := d.GetOk(schema_definition.AttributeAttachmentDynamicFile)
+	_, hashSpecified := d.GetOk(schema_definition.AttributeAttachmentDataHash)
+	if dynamicFileSpecified && !hashSpecified {
+		// if dynamic_file is specified, but hash is not, populate it.
+		hashErr := d.Set(schema_definition.AttributeAttachmentDataHash, fileHash(dynamicFilePath))
+		if hashErr != nil {
+			return diag.FromErr(hashErr)
+		}
+	}
 	obj, err := bwClient.GetItem(ctx, models.Item{ID: itemId, Object: models.ObjectTypeItem})
 	if err != nil {
 		// If the item is not found, we can't simply consider the attachment as
