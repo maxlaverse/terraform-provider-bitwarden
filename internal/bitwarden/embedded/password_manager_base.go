@@ -24,11 +24,6 @@ import (
 
 var (
 	panicOnEncryptionErrors = false
-
-	// objectKeyEncryption is a flag that can be set to true to have object-specific
-	// encryption keys for items. It used to be enabled by default but isn't anymore.
-	// Eventually we need to let the user decide whether to use object-specific keys or not.
-	objectKeyEncryption = true
 )
 
 type BaseVault interface {
@@ -575,7 +570,7 @@ func encryptFolder(ctx context.Context, obj models.Folder, secret AccountSecrets
 	return &encFolder, nil
 }
 
-func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, verifyObjectEncryption bool) (*models.Item, error) {
+func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, verifyObjectEncryption bool, objectKeyEncryption bool) (*models.Item, error) {
 	mainKey, err := getMainKeyForObject(obj, secret)
 	if err != nil {
 		return nil, err

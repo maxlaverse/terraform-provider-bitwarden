@@ -6,6 +6,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -66,6 +67,7 @@ type testConfigStruct struct {
 	UseEmbeddedClient             bool
 	Backend                       testBackendType
 	wasAccountCreationAttempted   atomic.Bool
+	didAccountCreationSucceed     bool
 	wasResourcesCreationAttempted atomic.Bool
 }
 
@@ -77,15 +79,10 @@ func (c *testConfigStruct) UseEmbeddedClientStr() string {
 }
 
 func (c *testConfigStruct) WasResourcesCreationAttempted(t *testing.T) bool {
-	if IsOfficialBackend() {
-		return true
-	}
-
 	if !c.wasResourcesCreationAttempted.CompareAndSwap(false, true) {
 		return true
 	}
 	return false
-
 }
 
 func (c *testConfigStruct) WasAccountCreationAttempted(t *testing.T) bool {
@@ -94,6 +91,9 @@ func (c *testConfigStruct) WasAccountCreationAttempted(t *testing.T) bool {
 	}
 
 	if !c.wasAccountCreationAttempted.CompareAndSwap(false, true) {
+		if !c.didAccountCreationSucceed {
+			t.Fatal("Account creation failed")
+		}
 		return true
 	}
 	return false
@@ -169,27 +169,34 @@ func loadTestAccountsConfiguration() {
 
 func loadOfficialBackendAccounts() {
 	baseAccount := testAccount{
-		Email:        os.Getenv("TEST_PASSWORD_MANAGER_EMAIL"),
-		Password:     os.Getenv("TEST_PASSWORD_MANAGER_MASTER_PASSWORD"),
-		ClientID:     os.Getenv("TEST_PASSWORD_MANAGER_CLIENT_ID"),
-		ClientSecret: os.Getenv("TEST_PASSWORD_MANAGER_CLIENT_SECRET"),
-		AccountType:  os.Getenv("TEST_PASSWORD_MANAGER_ACCOUNT_TYPE"),
-		Name:         os.Getenv("TEST_PASSWORD_MANAGER_USER_NAME"),
+		Email:        os.Getenv("TEST_PASSWORD_MANAGER_BASE_EMAIL"),
+		Password:     os.Getenv("TEST_PASSWORD_MANAGER_BASE_MASTER_PASSWORD"),
+		ClientID:     os.Getenv("TEST_PASSWORD_MANAGER_BASE_CLIENT_ID"),
+		ClientSecret: os.Getenv("TEST_PASSWORD_MANAGER_BASE_CLIENT_SECRET"),
+		AccountType:  os.Getenv("TEST_PASSWORD_MANAGER_BASE_ACCOUNT_TYPE"),
+		Name:         os.Getenv("TEST_PASSWORD_MANAGER_BASE_NAME"),
 	}
 
 	testConfiguration.Accounts[testAccountFullAdmin] = baseAccount
 	testConfiguration.Accounts[testAccountOrgOwner] = testAccount{
-		Email:                    baseAccount.Email,
-		Password:                 baseAccount.Password,
-		ClientID:                 baseAccount.ClientID,
-		ClientSecret:             baseAccount.ClientSecret,
-		AccountType:              baseAccount.AccountType,
-		Name:                     baseAccount.Name,
-		UserIdInTestOrganization: os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_MEMBER_ID"),
+		Email:                    os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_EMAIL"),
+		Password:                 os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_MASTER_PASSWORD"),
+		ClientID:                 os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_CLIENT_ID"),
+		ClientSecret:             os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_CLIENT_SECRET"),
+		AccountType:              os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_ACCOUNT_TYPE"),
+		Name:                     os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_NAME"),
+		UserIdInTestOrganization: os.Getenv("TEST_PASSWORD_MANAGER_ORG_OWNER_ORGANIZATION_MEMBER_ID"),
 		RoleInTestOrganization:   models.OrgMemberRoleTypeOwner,
 	}
 	testConfiguration.Accounts[testAccountOrgUser] = testAccount{
-		UserIdInTestOrganization: os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_OTHER_MEMBER_ID"),
+		Email:                    os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_EMAIL"),
+		Password:                 os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_MASTER_PASSWORD"),
+		ClientID:                 os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_CLIENT_ID"),
+		ClientSecret:             os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_CLIENT_SECRET"),
+		AccountType:              os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_ACCOUNT_TYPE"),
+		Name:                     os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_NAME"),
+		UserIdInTestOrganization: os.Getenv("TEST_PASSWORD_MANAGER_ORG_USER_ORGANIZATION_MEMBER_ID"),
+		RoleInTestOrganization:   models.OrgMemberRoleTypeUser,
 	}
 }
 
@@ -200,32 +207,37 @@ func loadVaultwardenBackendAccounts() {
 
 	accounts := map[testAccountName]testAccount{
 		testAccountFullAdmin: {
-			Name:     baseName,
-			Email:    fmt.Sprintf("%s@laverse.net", baseName),
-			Password: basePassword,
+			Name:        baseName,
+			Email:       fmt.Sprintf("%s@laverse.net", baseName),
+			Password:    basePassword,
+			AccountType: accountTypePremium,
 		},
 		testAccountOrgOwner: {
 			Name:                   baseName,
 			Email:                  fmt.Sprintf("%s-org-owner@laverse.net", baseName),
 			Password:               basePassword,
+			AccountType:            accountTypePremium,
 			RoleInTestOrganization: models.OrgMemberRoleTypeOwner,
 		},
 		testAccountOrgUser: {
 			Name:                   baseName,
 			Email:                  fmt.Sprintf("%s-org-user@laverse.net", baseName),
 			Password:               basePassword,
+			AccountType:            accountTypePremium,
 			RoleInTestOrganization: models.OrgMemberRoleTypeUser,
 		},
 		testAccountOrgAdmin: {
 			Name:                   baseName,
 			Email:                  fmt.Sprintf("%s-org-admin@laverse.net", baseName),
 			Password:               basePassword,
+			AccountType:            accountTypePremium,
 			RoleInTestOrganization: models.OrgMemberRoleTypeAdmin,
 		},
 		testAccountOrgManager: {
 			Name:                   baseName,
 			Email:                  fmt.Sprintf("%s-org-manager@laverse.net", baseName),
 			Password:               basePassword,
+			AccountType:            accountTypePremium,
 			RoleInTestOrganization: models.OrgMemberRoleTypeManager,
 		},
 	}
@@ -250,4 +262,81 @@ func loadTestResourcesConfiguration() {
 	testConfiguration.Resources.CollectionID = os.Getenv("TEST_PASSWORD_MANAGER_COLLECTION_ID")
 	testConfiguration.Resources.FolderID = os.Getenv("TEST_PASSWORD_MANAGER_FOLDER_ID")
 	testConfiguration.Resources.OrganizationID = os.Getenv("TEST_PASSWORD_MANAGER_ORGANIZATION_ID")
+}
+
+func (c *testConfigStruct) PrintConfiguration() string {
+	var buf strings.Builder
+
+	buf.WriteString("\nTest Configuration:\n")
+	buf.WriteString("------------------\n")
+	fmt.Fprintf(&buf, "Backend: %s\n", c.Backend)
+	fmt.Fprintf(&buf, "Server URL: %s\n", c.ServerURL)
+	fmt.Fprintf(&buf, "Reverse Proxy URL: %s\n", c.ReverseProxyServerURL)
+	fmt.Fprintf(&buf, "Use Embedded Client: %v\n", c.UseEmbeddedClient)
+	fmt.Fprintf(&buf, "Unique Test Identifier: %s\n", c.UniqueTestIdentifier)
+
+	buf.WriteString("\nResources:\n")
+	fmt.Fprintf(&buf, "  Organization ID: %s\n", maskIdentifier(c.Resources.OrganizationID))
+	fmt.Fprintf(&buf, "  Collection ID: %s\n", maskIdentifier(c.Resources.CollectionID))
+	fmt.Fprintf(&buf, "  Folder ID: %s\n", maskIdentifier(c.Resources.FolderID))
+	fmt.Fprintf(&buf, "  Group ID: %s\n", maskIdentifier(c.Resources.GroupID))
+	fmt.Fprintf(&buf, "  Group Name: %s\n", maskIfEmpty(c.Resources.GroupName))
+
+	for name, account := range c.Accounts {
+		fmt.Fprintf(&buf, "\n Account '%s':\n", name)
+		fmt.Fprintf(&buf, "  Name: %s\n", maskIfEmpty(account.Name))
+		fmt.Fprintf(&buf, "  Email: %s\n", maskEmail(account.Email))
+		fmt.Fprintf(&buf, "  Password: %s\n", maskSensitive(account.Password))
+		fmt.Fprintf(&buf, "  Client ID: %s\n", maskSensitive(account.ClientID))
+		fmt.Fprintf(&buf, "  Client Secret: %s\n", maskSensitive(account.ClientSecret))
+		fmt.Fprintf(&buf, "  Account Type: %s\n", maskIfEmpty(account.AccountType))
+		fmt.Fprintf(&buf, "  Organization Role: %s\n", maskIfEmpty(account.RoleInTestOrganization.String()))
+		fmt.Fprintf(&buf, "  Organization Member ID: %s\n", maskIdentifier(account.UserIdInTestOrganization))
+	}
+	buf.WriteString("------------------\n")
+
+	return buf.String()
+}
+
+func maskIfEmpty(value string) string {
+	if value == "" {
+		return "<not set>"
+	}
+	return value
+}
+
+func maskIdentifier(value string) string {
+	if value == "" {
+		return "<not set>"
+	}
+
+	parts := strings.Split(value, "-")
+	if len(parts) != 5 {
+		return value
+	}
+
+	for i := 0; i < len(parts)-1; i++ {
+		parts[i] = strings.Repeat("*", len(parts[i]))
+	}
+
+	return strings.Join(parts, "-")
+}
+
+func maskEmail(value string) string {
+	if value == "" {
+		return "<not set>"
+	}
+	parts := strings.Split(value, "@")
+	if len(parts) != 2 {
+		return value
+	}
+	parts[0] = strings.Repeat("*", len(parts[0]))
+	return strings.Join(parts, "@")
+}
+
+func maskSensitive(value string) string {
+	if value == "" {
+		return "<not set>"
+	}
+	return strings.Repeat("*", len(value))
 }

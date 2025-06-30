@@ -16,6 +16,11 @@ func ensureTestResourcesExist(t *testing.T) {
 		return
 	}
 
+	if IsOfficialBackend() {
+		fmt.Fprint(os.Stderr, testConfiguration.PrintConfiguration())
+		return
+	}
+
 	ctx := t.Context()
 	bwClient := bwEmbeddedTestClient(t).(embedded.PasswordManagerClient)
 
@@ -87,6 +92,7 @@ func ensureTestResourcesExist(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("Synced embedded test client")
+	fmt.Fprint(os.Stderr, testConfiguration.PrintConfiguration())
 }
 
 func ensureTestAccountsExist(t *testing.T) {
@@ -157,6 +163,7 @@ func ensureTestAccountsExist(t *testing.T) {
 
 		client.Logout(t.Context())
 	}
+	testConfiguration.didAccountCreationSucceed = true
 }
 
 func clearTestVault(t *testing.T) {

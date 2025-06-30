@@ -64,6 +64,10 @@ const (
 	OrgMemberRoleTypeManager OrgMemberRoleType = 3
 )
 
+func (r OrgMemberRoleType) String() string {
+	return []string{"owner", "admin", "user", "manager"}[r]
+}
+
 type ObjectType string
 
 const (

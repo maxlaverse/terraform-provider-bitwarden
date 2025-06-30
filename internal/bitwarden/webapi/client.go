@@ -34,6 +34,7 @@ const (
 
 type Client interface {
 	ClearSession()
+	Config(ctx context.Context) (*ConfigResponse, error)
 	ConfirmOrganizationUser(ctx context.Context, orgID, orgUserID, key string) error
 	CreateFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	CreateItem(context.Context, models.Item) (*models.Item, error)
@@ -105,6 +106,15 @@ type client struct {
 
 func (c *client) ClearSession() {
 	c.sessionAccessToken = ""
+}
+
+func (c *client) Config(ctx context.Context) (*ConfigResponse, error) {
+	httpReq, err := c.prepareGenericRequest(ctx, "GET", fmt.Sprintf("%s/api/config", c.serverURL), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing organization user confirmation request: %w", err)
+	}
+
+	return doRequest[ConfigResponse](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) ConfirmOrganizationUser(ctx context.Context, orgID, orgUserId, key string) error {
@@ -458,7 +468,7 @@ func (c *client) GetOrganizationGroups(ctx context.Context, orgId string) ([]Org
 }
 
 func (c *client) GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error) {
-	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/users", c.serverURL, orgId), nil)
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/users/mini-details", c.serverURL, orgId), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing organization user list retrieval request: %w", err)
 	}
@@ -750,6 +760,7 @@ func (c *client) prepareGenericRequest(ctx context.Context, reqMethod, reqUrl st
 		httpReq.Header.Set("Cache-Control", "no-store")
 		httpReq.Header.Set("Pragma", "no-cache")
 	}
+	httpReq.Header.Set("bitwarden-client-version", c.device.official.deviceVersion)
 
 	return httpReq, nil
 }
