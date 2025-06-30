@@ -279,13 +279,13 @@ func decryptOrgCollection(obj webapi.Collection, secret AccountSecrets) (*models
 	}
 
 	return &models.OrgCollection{
+		Groups:         groups,
 		ID:             obj.Id,
 		Manage:         obj.Manage,
 		Name:           decName,
 		Object:         models.ObjectTypeOrgCollection,
 		OrganizationID: obj.OrganizationId,
 		Users:          users,
-		Groups:         groups,
 	}, nil
 }
 
@@ -518,12 +518,12 @@ func encryptOrgCollection(ctx context.Context, obj models.OrgCollection, secret 
 	}
 
 	encObj := webapi.Collection{
+		Groups:         groups,
 		Id:             obj.ID,
 		Manage:         obj.Manage,
 		Name:           collectionName,
 		OrganizationId: obj.OrganizationID,
 		Users:          users,
-		Groups:         groups,
 	}
 
 	if verifyObjectEncryption {
