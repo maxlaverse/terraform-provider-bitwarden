@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -1367,15 +1368,21 @@ func (v *webAPIVault) loadObjectMap(ctx context.Context, cipherMap webapi.SyncRe
 func (v *webAPIVault) verifyObjectAfterWrite(ctx context.Context, actual, expected interface{}, ignoreFields ...string) error {
 	err := compareObjects(ctx, actual, expected, ignoreFields...)
 	if err != nil {
-		tflog.Error(ctx, "server returned different object after write", map[string]interface{}{"error": err})
+		actualType := reflect.TypeOf(actual)
+		typeName := actualType.String()
+		if actualType.Kind() == reflect.Ptr {
+			typeName = actualType.Elem().String()
+		}
+		tflog.Error(ctx, "server returned different object after write", map[string]interface{}{"error": err, "typeName": typeName})
 
 		if v.failOnSyncAfterWriteVerification {
-			return fmt.Errorf(`server returned different object after write!
-After writing an object and re-fetching it, the server returned a slightly different version: %w
+
+			return fmt.Errorf(`server returned different %s after write!
+After writing a %s and re-fetching it, the server returned a slightly different version: %w
 
 To learn more about this issue and how to handle it, please:
 1. Consider reporting affected fields at: https://github.com/maxlaverse/terraform-provider-bitwarden/issues/new
-2. Check the documentation of the 'experimental.disable_sync_after_write_verification' attribute`, err)
+2. Check the documentation of the 'experimental.disable_sync_after_write_verification' attribute`, typeName, typeName, err)
 		}
 	}
 	return nil
