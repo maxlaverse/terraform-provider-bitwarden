@@ -34,7 +34,12 @@ func InstallDeps() error {
 func (t Test) All() error {
 	mg.Deps(InstallDeps)
 
-	err := t.Offline()
+	err := t.Docs()
+	if err != nil {
+		return err
+	}
+
+	err = t.Offline()
 	if err != nil {
 		return err
 	}
@@ -210,16 +215,25 @@ func (Test) OfflineArgs(testPattern string) error {
 	return cmd.Run()
 }
 
-// Generate and formats the documentation for the project.
+// Generate the documentation.
 func Docs() error {
 	fmt.Println("Generating documentation...")
-	cmd := exec.Command("go", "run", "github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.19.0")
+	cmd := exec.Command("go", "run", "github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return err
 	}
 	cmd = exec.Command("tofu", "fmt", "-recursive", "examples")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// Validate the documentation.
+func (t Test) Docs() error {
+	fmt.Println("Validating documentation...")
+	cmd := exec.Command("go", "run", "github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest", "validate")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

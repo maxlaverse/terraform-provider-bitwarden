@@ -1,5 +1,4 @@
 ---
-layout: ""
 page_title: "Bitwarden Provider"
 description: |-
   Use the Bitwarden provider to manage your Logins, Secure Notes, and Secrets.

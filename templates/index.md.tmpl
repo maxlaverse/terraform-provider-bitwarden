@@ -1,5 +1,4 @@
 ---
-layout: ""
 page_title: "Bitwarden Provider"
 description: |-
   Use the Bitwarden provider to manage your Logins, Secure Notes, and Secrets.
@@ -14,58 +13,6 @@ If you're not trying out the experimental `embedded_client` feature, you also ne
 ## Example Usage
 
 {{tffile "examples/quick/provider.tf"}}
-
-## Authentication
-Depending on the type of credentials you use, you'll be able to connect either with a Password Manager or Secret Manager.
-If you want your workspace to interact with both, have a look at [provider aliases].
-
-### Password Manager
-The Password Manager accepts different combinations of credentials to authenticate:
-* _[Personal API Key]_ (requires `master_password`, `client_id` and `client_secret` to be set).
-* _Email and Password_ (requires `email` and `master_password` to be set) (prefer _Personal API keys_ instead).
-* User-provided _Session Key_ (requires `session_key` to be set), which only works with a pre-downloaded Vault (See _Generating a Session Key_).
-
-#### Generating a Client ID and Secret
-The recommended way to interact with your Password Manager Vault using the Bitwarden Provider Terraform plugin is to generate an API key.
-This allows you to easily revoke access to your Vault without having to change your master password.
-
-In order to generate a pair of Client ID and Secret, you need to:
-1. Connect to your Vault on https://vault.bitwarden.com, or your self-hosted instance
-2. Click on _Settings_ and then _My Account_
-3. Scroll down to the _API Key_ section
-4. Click on _View API Key_ (or maybe another label if it's the first time)
-5. Save the API credentials somewhere safe
-
-#### Generating a Session Key
-
-If you don't want to use an API key, you can use a Session Key instead.
-When doing so, it's your responsibility to:
-* ensure the validity of the Session Key
-* keep the Session Key safe
-* revoke it when you don't need it anymore
-
-You can generate a Session Key by running the following command in your Terraform Workspace:
-```console
-BITWARDENCLI_APPDATA_DIR=.bitwarden bw login
-
-# or if you use a custom vault path
-BITWARDENCLI_APPDATA_DIR=<vault_path> bw login
-```
-
-A Session Key is bound to a local copy of a Vault. It's therefore important that you set the right `BITWARDENCLI_APPDATA_DIR` to the path where your Vault is stored.
-
-### Secrets Manager
-The Secrets Manager only accepts [Access Tokens] (requires `access_token` to be set).
-
-In order to generate an Access Token you need to:
-1. Connect to your Vault on https://vault.bitwarden.com
-2. Ensure the _Secrets Manager_ section is selected (bottom left)
-3. Click on _Machine accounts_
-4. Click on _New_
-5. Click on your generated Machine Account
-6. Select the _Access Tokens_ tab
-7. Created a new Access Token and save it somewhere safe
-
 
 ## Configuration
 Configuration for the Bitwarden Provider can be derived from two sources:
