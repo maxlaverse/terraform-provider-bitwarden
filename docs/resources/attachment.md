@@ -61,6 +61,8 @@ resource "bitwarden_attachment" "vpn_config_from_file" {
 
 Import is supported using the following syntax:
 
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
 ```shell
 $ terraform import bitwarden_attachment.example <item_id>/<attachment_id>
 ```

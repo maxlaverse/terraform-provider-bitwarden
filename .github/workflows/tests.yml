@@ -38,6 +38,13 @@ jobs:
           path-to-profile: profile.cov
           parallel: true
 
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/setup-test
+      - run: mage test:docs
+
   password_manager_vaultwarden_cli:
     runs-on: ubuntu-latest
     services:
