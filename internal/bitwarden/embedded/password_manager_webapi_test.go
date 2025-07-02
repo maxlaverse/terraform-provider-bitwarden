@@ -159,6 +159,17 @@ func TestItemCreationInOrganization(t *testing.T) {
 	assert.Equal(t, "my-org-username", obj.Login.Username)
 }
 
+func TestVerifyObjectAfterWrite(t *testing.T) {
+	vault, reset := newMockedPasswordManager(MockedClient(t, Pdkdf2Mocks))
+	defer reset()
+
+	vault.failOnSyncAfterWriteVerification = true
+	err := vault.verifyObjectAfterWrite(t.Context(), testFullyFilledItem(), nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "server returned different models.Item after write!\nAfter writing a models.Item and re-fetching it, the server returned a slightly different version: different keys at []\n\nTo learn more about this issue and how to handle it, please:\n1. Consider reporting affected fields at: https://github.com/maxlaverse/terraform-provider-bitwarden/issues/new\n2. Check the documentation of the 'experimental.disable_sync_after_write_verification' attribute")
+}
+
 func newMockedPasswordManager(client webapi.Client) (webAPIVault, func()) {
 	httpmock.Activate()
 
