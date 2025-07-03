@@ -128,6 +128,7 @@ func NewPasswordManagerClient(serverURL, deviceIdentifier, providerVersion strin
 	}
 
 	c.client = webapi.NewClient(serverURL, deviceIdentifier, providerVersion, c.clientOpts...)
+	c.orgCache = NewOrgCache(c.client)
 
 	return c
 }
@@ -154,12 +155,7 @@ func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
-	err := v.ensureUsersLoadedForOrg(ctx, orgId)
-	if err != nil {
-		return "", fmt.Errorf("error loading users of organization '%s': %w", orgId, err)
-	}
-
-	orgUser, err := v.organizationMembers.FindMemberByEmail(orgId, userEmail)
+	orgUser, err := v.orgCache.FindMemberByEmail(ctx, orgId, userEmail)
 	if err != nil {
 		return "", fmt.Errorf("error getting organization user : %w", err)
 	}
@@ -312,9 +308,10 @@ func (v *webAPIVault) CreateOrganizationGroup(ctx context.Context, obj models.Or
 		return nil, fmt.Errorf("error creating group: %w", err)
 	}
 
+	v.orgCache.InvalidateOrganization(ctx, resObj.OrganizationID)
+
 	if v.syncAfterWrite {
-		v.organizationGroups.ForgetOrganization(resObj.OrganizationID)
-		remoteObj, err := v.getOrganizationGroup(ctx, *resObj)
+		remoteObj, err := v.GetOrganizationGroup(ctx, *resObj)
 		if err != nil {
 			return nil, fmt.Errorf("error getting group after creation (sync-after-write): %w", err)
 		}
@@ -372,36 +369,6 @@ func (v *webAPIVault) CreateItem(ctx context.Context, obj models.Item) (*models.
 		return remoteObj, v.verifyObjectAfterWrite(ctx, *resObj, *remoteObj, "/creationDate", "/revisionDate", "/collectionIds")
 	}
 	return resObj, nil
-}
-
-func (v *webAPIVault) ensureGroupsLoadedForOrg(ctx context.Context, orgId string) error {
-	if v.organizationGroups.OrganizationInitialized(orgId) {
-		return nil
-	}
-
-	orgGroups, err := v.client.GetOrganizationGroups(ctx, orgId)
-	if err != nil {
-		return fmt.Errorf("error getting organization groups: %w", err)
-	}
-
-	v.organizationGroups.LoadGroups(orgId, orgGroups)
-
-	return nil
-}
-
-func (v *webAPIVault) ensureUsersLoadedForOrg(ctx context.Context, orgId string) error {
-	if v.organizationMembers.OrganizationInitialized(orgId) {
-		return nil
-	}
-
-	orgUsers, err := v.client.GetOrganizationUsers(ctx, orgId)
-	if err != nil {
-		return fmt.Errorf("error getting organization users: %w", err)
-	}
-
-	v.organizationMembers.LoadMembers(orgId, orgUsers)
-
-	return nil
 }
 
 func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
@@ -759,6 +726,8 @@ func (v *webAPIVault) DeleteOrganizationGroup(ctx context.Context, obj models.Or
 
 	v.deleteObjectFromStore(ctx, obj)
 
+	v.orgCache.InvalidateOrganization(ctx, obj.OrganizationID)
+
 	return nil
 }
 
@@ -944,33 +913,11 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 }
 
 func (v *webAPIVault) GetOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
-	// Write lock is needed since we eventually load the organization groups..
-	v.vaultOperationMutex.RLock()
-	defer v.vaultOperationMutex.RUnlock()
-
-	return v.getOrganizationGroup(ctx, obj)
-}
-
-func (v *webAPIVault) getOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
-	err := v.ensureGroupsLoadedForOrg(ctx, obj.OrganizationID)
-	if err != nil {
-		return nil, fmt.Errorf("error loading users of organization '%s': %w", obj.OrganizationID, err)
-	}
-
-	return v.organizationGroups.FindGroupByID(obj.OrganizationID, obj.ID)
+	return v.orgCache.FindGroupByID(ctx, obj.OrganizationID, obj.ID)
 }
 
 func (v *webAPIVault) GetOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error) {
-	// Write lock is needed since we eventually load the organization members.
-	v.vaultOperationMutex.Lock()
-	defer v.vaultOperationMutex.Unlock()
-
-	err := v.ensureUsersLoadedForOrg(ctx, obj.OrganizationId)
-	if err != nil {
-		return nil, fmt.Errorf("error loading users of organization '%s': %w", obj.OrganizationId, err)
-	}
-
-	return v.organizationMembers.FindMemberByID(obj.OrganizationId, obj.ID)
+	return v.orgCache.FindMemberByID(ctx, obj.OrganizationId, obj.ID)
 }
 
 func (v *webAPIVault) GetOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
@@ -1005,7 +952,7 @@ func (v *webAPIVault) InviteUser(ctx context.Context, orgId, userEmail string, m
 		Collections:          []string{},
 	}
 
-	v.organizationMembers.ForgetOrganization(orgId)
+	v.orgCache.InvalidateOrganization(ctx, orgId)
 
 	return v.client.InviteUser(ctx, orgId, req)
 }
@@ -1020,18 +967,10 @@ func (v *webAPIVault) FindOrganizationGroup(ctx context.Context, options ...bitw
 		return nil, fmt.Errorf("missing search filter")
 	}
 
-	// Write lock is needed since we eventually load the organization members.
-	v.vaultOperationMutex.Lock()
-	defer v.vaultOperationMutex.Unlock()
-
 	orgId := filter.OrganizationFilter
 	groupName := filter.SearchFilter
-	err := v.ensureGroupsLoadedForOrg(ctx, orgId)
-	if err != nil {
-		return nil, fmt.Errorf("error loading groups of organization '%s': %w", orgId, err)
-	}
 
-	return v.organizationGroups.FindGroupByName(orgId, groupName)
+	return v.orgCache.FindGroupByName(ctx, orgId, groupName)
 }
 
 func (v *webAPIVault) FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error) {
@@ -1040,18 +979,10 @@ func (v *webAPIVault) FindOrganizationMember(ctx context.Context, options ...bit
 		return nil, fmt.Errorf("missing search filter")
 	}
 
-	// Write lock is needed since we eventually load the organization members.
-	v.vaultOperationMutex.Lock()
-	defer v.vaultOperationMutex.Unlock()
-
 	orgId := filter.OrganizationFilter
 	userEmail := filter.SearchFilter
-	err := v.ensureUsersLoadedForOrg(ctx, orgId)
-	if err != nil {
-		return nil, fmt.Errorf("error loading users of organization '%s': %w", orgId, err)
-	}
 
-	return v.organizationMembers.FindMemberByEmail(orgId, userEmail)
+	return v.orgCache.FindMemberByEmail(ctx, orgId, userEmail)
 }
 
 func (v *webAPIVault) FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error) {
@@ -1397,13 +1328,8 @@ To learn more about this issue and how to handle it, please:
 }
 
 func (v *webAPIVault) checkMembersExistence(ctx context.Context, orgId string, users []models.OrgCollectionMember) error {
-	err := v.ensureUsersLoadedForOrg(ctx, orgId)
-	if err != nil {
-		return fmt.Errorf("error getting users for org: %w", err)
-	}
-
 	for _, user := range users {
-		_, err := v.organizationMembers.FindMemberByID(orgId, user.Id)
+		_, err := v.orgCache.FindMemberByID(ctx, orgId, user.Id)
 		if err != nil {
 			return err
 		}
