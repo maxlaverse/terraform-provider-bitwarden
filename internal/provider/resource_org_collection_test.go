@@ -288,6 +288,34 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 						),
 					),
 				},
+				// 6. Adding one member group
+				{
+					ResourceName: resourceName,
+					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigDataOrgGroup() + tfConfigResourceOrgCollection("org-col-bar", false,
+						groupMemberBlock("data.bitwarden_org_group.default_group.id", map[string]string{
+							"manage": "true",
+						}),
+					),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(
+							resourceName, schema_definition.AttributeName, "org-col-bar",
+						),
+						resource.TestMatchResourceAttr(
+							resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
+						),
+						resource.TestCheckResourceAttr(
+							resourceName, "member_group.#", "1",
+						),
+						resource.TestCheckTypeSetElemNestedAttrs(
+							resourceName, "member_group.*", map[string]string{
+								"id":             testConfiguration.Resources.GroupID,
+								"manage":         "true",
+								"read_only":      "false",
+								"hide_passwords": "false",
+							},
+						),
+					),
+				},
 				{
 					ResourceName:      resourceName,
 					ImportStateIdFunc: orgCollectionImportID(resourceName),
@@ -398,6 +426,16 @@ func tfConfigResourceOrgCollection(name string, includeOurselves bool, members .
 func memberBlock(id string, attrs map[string]string) string {
 	var block strings.Builder
 	block.WriteString(fmt.Sprintf("\n\tmember {\n\t\tid = \"%s\"", id))
+	for k, v := range attrs {
+		block.WriteString(fmt.Sprintf("\n\t\t%s = %s", k, v))
+	}
+	block.WriteString("\n\t}")
+	return block.String()
+}
+
+func groupMemberBlock(id string, attrs map[string]string) string {
+	var block strings.Builder
+	block.WriteString(fmt.Sprintf("\n\tmember_group {\n\t\tid = %s", id))
 	for k, v := range attrs {
 		block.WriteString(fmt.Sprintf("\n\t\t%s = %s", k, v))
 	}

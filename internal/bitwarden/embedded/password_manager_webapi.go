@@ -407,15 +407,19 @@ func (v *webAPIVault) ensureUsersLoadedForOrg(ctx context.Context, orgId string)
 func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
 	// ValidateFunc is not supported on TypeSet, which means we can't check for
 	// duplicate during Schema validation. Doing it here instead.
-	err := checkForDuplicateMembers(obj.Users)
-	if err != nil {
-		return nil, err
+	userErr := checkForDuplicateMembers(obj.Users)
+	if userErr != nil {
+		return nil, userErr
+	}
+	groupErr := checkForDuplicateMembers(obj.Groups)
+	if groupErr != nil {
+		return nil, groupErr
 	}
 
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
-	err = v.checkMembersExistence(ctx, obj.OrganizationID, obj.Users)
+	err := v.checkMembersExistence(ctx, obj.OrganizationID, obj.Users)
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +428,7 @@ func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj mode
 		return nil, models.ErrVaultLocked
 	}
 
-	manageMembership := len(obj.Users) > 0
+	manageMembership := len(obj.Users) > 0 || len(obj.Groups) > 0
 	obj.Manage = manageMembership
 
 	encObj, err := encryptOrgCollection(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption)
@@ -480,15 +484,19 @@ func (v *webAPIVault) CreateOrganizationCollection(ctx context.Context, obj mode
 func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
 	// ValidateFunc is not supported on TypeSet, which means we can't check for
 	// duplicate during Schema validation. Doing it here instead.
-	err := checkForDuplicateMembers(obj.Users)
-	if err != nil {
-		return nil, err
+	userErr := checkForDuplicateMembers(obj.Users)
+	if userErr != nil {
+		return nil, userErr
+	}
+	groupErr := checkForDuplicateMembers(obj.Groups)
+	if groupErr != nil {
+		return nil, groupErr
 	}
 
 	v.vaultOperationMutex.Lock()
 	defer v.vaultOperationMutex.Unlock()
 
-	err = v.checkMembersExistence(ctx, obj.OrganizationID, obj.Users)
+	err := v.checkMembersExistence(ctx, obj.OrganizationID, obj.Users)
 	if err != nil {
 		return nil, err
 	}
@@ -505,7 +513,7 @@ func (v *webAPIVault) EditOrganizationCollection(ctx context.Context, obj models
 	}
 
 	manageMembership := currentObj.Manage
-	if !manageMembership && len(obj.Users) > 0 {
+	if !manageMembership && (len(obj.Users) > 0 || len(obj.Groups) > 0) {
 		return nil, fmt.Errorf("error editing collection: you need to have the Manage permission to edit memberships")
 	}
 
