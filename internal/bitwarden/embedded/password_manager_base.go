@@ -55,15 +55,8 @@ type baseVault struct {
 	// a given organization.
 	collectionDetailsLoadedForOrg map[string]bool
 
-	// organizationMembers stores the members of an organization alongside
-	// their user information. This allows us to reference members by their
-	// email for example.
-	organizationMembers OrgMemberStore
-
-	// organizationGroups stores the groups of an organization alongside
-	// their group information. This allows us to reference groups by their
-	// name for example.
-	organizationGroups OrgGroupStore
+	// orgCache manages cached organization data (groups and members)
+	orgCache OrgCache
 }
 
 func (v *baseVault) GetItem(ctx context.Context, obj models.Item) (*models.Item, error) {
@@ -184,8 +177,7 @@ func (v *baseVault) clearObjectStore(ctx context.Context) {
 	}
 	v.collectionDetailsLoadedForOrg = make(map[string]bool)
 	v.objectStore = make(map[string]interface{})
-	v.organizationMembers = NewOrgMemberStore()
-	v.organizationGroups = NewOrgGroupStore()
+	v.orgCache.InvalidateAll(ctx)
 }
 
 func (v *baseVault) deleteObjectFromStore(ctx context.Context, obj any) {
