@@ -149,6 +149,7 @@ func spawnTestSecretsManager(t *testing.T) (string, func()) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("Created access token: %s", accessToken)
 
 	return fmt.Sprintf(`
 	provider "bitwarden" {
@@ -156,10 +157,10 @@ func spawnTestSecretsManager(t *testing.T) (string, func()) {
 		server = "http://localhost:8081"
 
 		experimental {
-			embedded_client = true
+			embedded_client = %s
 		}
 	}
-	`, accessToken), stop
+	`, accessToken, testConfiguration.UseEmbeddedClientStr()), stop
 }
 
 func tfConfigSecretsManagerProvider() string {
@@ -168,10 +169,10 @@ func tfConfigSecretsManagerProvider() string {
 		access_token = "%s"
 		server = "%s"
 		experimental {
-			embedded_client = true
+			embedded_client = %s
 		}
 	}
-`, os.Getenv("TEST_SECRETS_MANAGER_ACCESS_TOKEN"), testConfiguration.ServerURL)
+`, os.Getenv("TEST_SECRETS_MANAGER_ACCESS_TOKEN"), testConfiguration.ServerURL, testConfiguration.UseEmbeddedClientStr())
 }
 
 func getObjectID(n string, objectId *string) resource.TestCheckFunc {

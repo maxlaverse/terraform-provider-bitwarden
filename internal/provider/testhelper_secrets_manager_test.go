@@ -26,6 +26,21 @@ const (
 	jwtSigningSecret = "secret-which-does-not-matter"
 )
 
+// sendJSONError sends a JSON error response with the specified message and status code
+func sendJSONError(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	errorResponse := map[string]interface{}{
+		"message":               message,
+		"validationErrors":      nil,
+		"exceptionMessage":      nil,
+		"exceptionStackTrace":   nil,
+		"innerExceptionMessage": nil,
+		"object":                "error",
+	}
+	json.NewEncoder(w).Encode(errorResponse)
+}
+
 func NewTestSecretsManager() *testSecretsManager {
 	return &testSecretsManager{
 		clientSideInformation: ClientSideInformation{
@@ -70,6 +85,20 @@ type CreateAccessTokenResponse struct {
 	Object       string
 }
 
+// BulkDeleteResponseModel represents a single item in a bulk delete response
+type BulkDeleteResponseModel struct {
+	Id     string  `json:"id"`
+	Error  *string `json:"error"`
+	Object string  `json:"object"`
+}
+
+// BulkDeleteResponse represents the complete bulk delete response
+type BulkDeleteResponse struct {
+	Data              []BulkDeleteResponseModel `json:"data"`
+	ContinuationToken *string                   `json:"continuationToken"`
+	Object            string                    `json:"object"`
+}
+
 func (tsm *testSecretsManager) Run(ctx context.Context, serverPort int) {
 	handler := mux.NewRouter()
 	handler.HandleFunc("/api/organizations/{orgId}/secrets", tsm.handlerCreateGetSecret).Methods("POST", "GET")
@@ -80,6 +109,7 @@ func (tsm *testSecretsManager) Run(ctx context.Context, serverPort int) {
 	handler.HandleFunc("/api/secrets/{secretId}", tsm.handlerGetSecret).Methods("GET")
 	handler.HandleFunc("/api/secrets/{secretId}", tsm.handlerEditSecret).Methods("PUT")
 	handler.HandleFunc("/api/secrets/delete", tsm.handlerDeleteSecret).Methods("POST")
+	handler.HandleFunc("/api/secrets/get-by-ids", tsm.handlerGetSecretsByIDs).Methods("POST")
 	handler.HandleFunc("/identity/connect/token", tsm.handlerLogin).Methods("POST")
 
 	server := &http.Server{
@@ -170,35 +200,43 @@ func (tsm *testSecretsManager) handlerLogin(w http.ResponseWriter, r *http.Reque
 	defer tsm.mutex.Unlock()
 
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		sendJSONError(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
 
 	providedClientId := r.FormValue("client_id")
 	client, clientExists := tsm.knownClients[providedClientId]
 	if !clientExists {
-		http.Error(w, "Invalid client id", http.StatusBadRequest)
+		sendJSONError(w, "Invalid client id", http.StatusBadRequest)
 		return
 	}
 
 	providedClientSecret := r.FormValue("client_secret")
 	if client.ClientSecret != providedClientSecret {
-		http.Error(w, "Invalid client secret", http.StatusBadRequest)
+		sendJSONError(w, "Invalid client secret", http.StatusBadRequest)
 		return
 	}
 
 	_, orgExists := tsm.knownOrganizations[client.OrganizationID]
 	if !orgExists {
-		http.Error(w, "Invalid organization", http.StatusBadRequest)
+		sendJSONError(w, "Invalid organization", http.StatusBadRequest)
 		return
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &embedded.MachineAccountClaims{
 		Organization: client.OrganizationID,
+		Scope:        []string{"api.secrets"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "https://identity.bitwarden.eu",
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			Subject:   client.ClientID,
+		},
 	})
 	jwtAccessToken, err := token.SignedString([]byte(jwtSigningSecret))
 	if err != nil {
-		http.Error(w, "error generating jwt token: %w", http.StatusBadRequest)
+		sendJSONError(w, "error generating jwt token: %w", http.StatusBadRequest)
 		return
 	}
 
@@ -213,7 +251,7 @@ func (tsm *testSecretsManager) handlerLogin(w http.ResponseWriter, r *http.Reque
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
 
@@ -233,20 +271,20 @@ func (tsm *testSecretsManager) handlerCreateProject(w http.ResponseWriter, r *ht
 
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		sendJSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		sendJSONError(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
 
 	var projectCreationRequest webapi.CreateProjectRequest
 	if err := json.Unmarshal(body, &projectCreationRequest); err != nil {
-		http.Error(w, "Failed to unmarshal request body", http.StatusBadRequest)
+		sendJSONError(w, "Failed to unmarshal request body", http.StatusBadRequest)
 		return
 	}
 
@@ -262,7 +300,7 @@ func (tsm *testSecretsManager) handlerCreateProject(w http.ResponseWriter, r *ht
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(project); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
 
@@ -273,26 +311,26 @@ func (tsm *testSecretsManager) handlerCreateSecret(w http.ResponseWriter, r *htt
 	orgId := mux.Vars(r)["orgId"]
 	_, v := tsm.knownOrganizations[orgId]
 	if !v {
-		http.Error(w, "Invalid organization", http.StatusBadRequest)
+		sendJSONError(w, "Invalid organization", http.StatusBadRequest)
 		return
 	}
 
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		sendJSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		sendJSONError(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
 
 	var secretCreationRequest webapi.CreateSecretRequest
 	if err := json.Unmarshal(body, &secretCreationRequest); err != nil {
-		http.Error(w, "Failed to unmarshal request body", http.StatusBadRequest)
+		sendJSONError(w, "Failed to unmarshal request body", http.StatusBadRequest)
 		return
 	}
 
@@ -300,7 +338,7 @@ func (tsm *testSecretsManager) handlerCreateSecret(w http.ResponseWriter, r *htt
 	for _, v := range secretCreationRequest.ProjectIDs {
 		project, projectExists := tsm.projectsStore[v]
 		if !projectExists {
-			http.Error(w, "Project not found", http.StatusBadRequest)
+			sendJSONError(w, fmt.Sprintf("Resource not found. (project): %s", v), http.StatusNotFound)
 			return
 		}
 		projects = append(projects, project)
@@ -325,7 +363,7 @@ func (tsm *testSecretsManager) handlerCreateSecret(w http.ResponseWriter, r *htt
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(secret); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
 
@@ -356,7 +394,7 @@ func (tsm *testSecretsManager) handlerGetSecrets(w http.ResponseWriter, r *http.
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(secretList); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
 
@@ -366,19 +404,19 @@ func (tsm *testSecretsManager) handlerGetProject(w http.ResponseWriter, r *http.
 
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		sendJSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	projectId := mux.Vars(r)["projectId"]
 	project, projectExists := tsm.projectsStore[projectId]
 	if !projectExists {
-		http.Error(w, "Project not found", http.StatusNotFound)
+		sendJSONError(w, fmt.Sprintf("Resource not found. (project): %s", projectId), http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(project); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
 
@@ -388,19 +426,67 @@ func (tsm *testSecretsManager) handlerGetSecret(w http.ResponseWriter, r *http.R
 
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		sendJSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	secretId := mux.Vars(r)["secretId"]
 	secret, secretExists := tsm.secretsStore[secretId]
 	if !secretExists {
-		http.Error(w, "Secret not found", http.StatusNotFound)
+		sendJSONError(w, "Resource not found. (secret)", http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(secret); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+func (tsm *testSecretsManager) handlerGetSecretsByIDs(w http.ResponseWriter, r *http.Request) {
+	tsm.mutex.RLock()
+	defer tsm.mutex.RUnlock()
+
+	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
+	if err != nil {
+		sendJSONError(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	defer r.Body.Close()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		sendJSONError(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	var requestBody struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.Unmarshal(body, &requestBody); err != nil {
+		sendJSONError(w, fmt.Sprintf("Failed to unmarshal request body: %s", string(body)), http.StatusBadRequest)
+		return
+	}
+
+	secretIds := requestBody.IDs
+
+	responseData := []webapi.Secret{}
+	for _, v := range secretIds {
+		secret, secretExists := tsm.secretsStore[v]
+		if !secretExists {
+			continue
+		}
+		responseData = append(responseData, secret)
+	}
+
+	response := struct {
+		Data []webapi.Secret `json:"data"`
+	}{
+		Data: responseData,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
 
@@ -410,27 +496,27 @@ func (tsm *testSecretsManager) handlerEditProject(w http.ResponseWriter, r *http
 
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		sendJSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	projectId := mux.Vars(r)["projectId"]
 	project, projectExists := tsm.projectsStore[projectId]
 	if !projectExists {
-		http.Error(w, "Project not found", http.StatusNotFound)
+		sendJSONError(w, fmt.Sprintf("Resource not found. (project): %s", projectId), http.StatusNotFound)
 		return
 	}
 
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		sendJSONError(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
 
 	var projectCreationRequest webapi.CreateProjectRequest
 	if err := json.Unmarshal(body, &projectCreationRequest); err != nil {
-		http.Error(w, "Failed to unmarshal request body", http.StatusBadRequest)
+		sendJSONError(w, "Failed to unmarshal request body", http.StatusBadRequest)
 		return
 	}
 
@@ -440,7 +526,7 @@ func (tsm *testSecretsManager) handlerEditProject(w http.ResponseWriter, r *http
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(project); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
 
@@ -450,27 +536,27 @@ func (tsm *testSecretsManager) handlerEditSecret(w http.ResponseWriter, r *http.
 
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		sendJSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	secretId := mux.Vars(r)["secretId"]
 	secret, secretExists := tsm.secretsStore[secretId]
 	if !secretExists {
-		http.Error(w, "Secret not found", http.StatusNotFound)
+		sendJSONError(w, "Resource not found. (secret)", http.StatusNotFound)
 		return
 	}
 
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		sendJSONError(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
 
 	var secretCreationRequest webapi.CreateSecretRequest
 	if err := json.Unmarshal(body, &secretCreationRequest); err != nil {
-		http.Error(w, "Failed to unmarshal request body", http.StatusBadRequest)
+		sendJSONError(w, "Failed to unmarshal request body", http.StatusBadRequest)
 		return
 	}
 
@@ -482,7 +568,7 @@ func (tsm *testSecretsManager) handlerEditSecret(w http.ResponseWriter, r *http.
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(secret); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
 
@@ -492,27 +578,52 @@ func (tsm *testSecretsManager) handlerDeleteProject(w http.ResponseWriter, r *ht
 
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		sendJSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		sendJSONError(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
 
 	var IDs []string
 	if err := json.Unmarshal(body, &IDs); err != nil {
-		http.Error(w, "Failed to unmarshal request body", http.StatusBadRequest)
+		sendJSONError(w, "Failed to unmarshal request body", http.StatusBadRequest)
 		return
 	}
 
+	var bulkDeleteResponseData []BulkDeleteResponseModel
 	for _, v := range IDs {
-		delete(tsm.projectsStore, v)
+		_, projectExists := tsm.projectsStore[v]
+		if projectExists {
+			delete(tsm.projectsStore, v)
+			bulkDeleteResponseData = append(bulkDeleteResponseData, BulkDeleteResponseModel{
+				Id:     v,
+				Error:  nil,
+				Object: "Project",
+			})
+		} else {
+			bulkDeleteResponseData = append(bulkDeleteResponseData, BulkDeleteResponseModel{
+				Id:     v,
+				Error:  &v,
+				Object: "Project",
+			})
+		}
 	}
-	w.WriteHeader(http.StatusOK)
+
+	bulkDeleteResponse := BulkDeleteResponse{
+		Data:              bulkDeleteResponseData,
+		ContinuationToken: nil,
+		Object:            "list",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(bulkDeleteResponse); err != nil {
+		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 func (tsm *testSecretsManager) handlerDeleteSecret(w http.ResponseWriter, r *http.Request) {
@@ -521,27 +632,52 @@ func (tsm *testSecretsManager) handlerDeleteSecret(w http.ResponseWriter, r *htt
 
 	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		sendJSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		sendJSONError(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
 
 	var IDs []string
 	if err := json.Unmarshal(body, &IDs); err != nil {
-		http.Error(w, "Failed to unmarshal request body", http.StatusBadRequest)
+		sendJSONError(w, "Failed to unmarshal request body", http.StatusBadRequest)
 		return
 	}
 
+	var bulkDeleteResponseData []BulkDeleteResponseModel
 	for _, v := range IDs {
-		delete(tsm.secretsStore, v)
+		_, secretExists := tsm.secretsStore[v]
+		if secretExists {
+			delete(tsm.secretsStore, v)
+			bulkDeleteResponseData = append(bulkDeleteResponseData, BulkDeleteResponseModel{
+				Id:     v,
+				Error:  nil,
+				Object: "Secret",
+			})
+		} else {
+			bulkDeleteResponseData = append(bulkDeleteResponseData, BulkDeleteResponseModel{
+				Id:     v,
+				Error:  &v,
+				Object: "Secret",
+			})
+		}
 	}
-	w.WriteHeader(http.StatusOK)
+
+	bulkDeleteResponse := BulkDeleteResponse{
+		Data:              bulkDeleteResponseData,
+		ContinuationToken: nil,
+		Object:            "list",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(bulkDeleteResponse); err != nil {
+		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 func (tsm *testSecretsManager) checkAuthentication(authorization string) error {
@@ -593,7 +729,7 @@ func generateOrganizationKey() (*symmetrickey.Key, error) {
 }
 
 func generateAccessTokenEncryptionKey() ([]byte, error) {
-	encryptionKey := make([]byte, 64)
+	encryptionKey := make([]byte, 16)
 	_, err := rand.Read(encryptionKey)
 	if err != nil {
 		return nil, fmt.Errorf("error generating organization key: %w", err)
@@ -602,7 +738,7 @@ func generateAccessTokenEncryptionKey() ([]byte, error) {
 }
 
 func generateClientSecret() ([]byte, error) {
-	clientSecretBytes := make([]byte, 64)
+	clientSecretBytes := make([]byte, 16)
 	_, err := rand.Read(clientSecretBytes)
 	if err != nil {
 		return nil, fmt.Errorf("error generating client secret: %w", err)

@@ -54,12 +54,22 @@ func (t Test) All() error {
 		return err
 	}
 
-	err = t.IntegrationBwsOfficial()
+	err = t.IntegrationBwsOfficialWithEmbeddedClient()
 	if err != nil {
 		return err
 	}
 
-	err = t.IntegrationBwsMocked()
+	err = t.IntegrationBwsOfficialWithCLI()
+	if err != nil {
+		return err
+	}
+
+	err = t.IntegrationBwsMockedWithEmbeddedClient()
+	if err != nil {
+		return err
+	}
+
+	err = t.IntegrationBwsMockedWithCLI()
 	if err != nil {
 		return err
 	}
@@ -96,13 +106,37 @@ func (t Test) IntegrationPwdOfficialWithEmbeddedClientArgs(testPattern string) e
 	return cmd.Run()
 }
 
+// Run Bitwarden Secrets integration tests with CLI on bitwarden.com.
+func (t Test) IntegrationBwsOfficialWithCLI() error {
+	return t.IntegrationBwsOfficialWithCLIArgs("")
+}
+
+// Like test:integrationBwsOfficialWithCLI but with a test pattern.
+func (t Test) IntegrationBwsOfficialWithCLIArgs(testPattern string) error {
+	mg.Deps(InstallDeps)
+
+	fmt.Println("Running Bitwarden Secrets integration tests with CLI on official bitwarden.com instances...")
+	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integrationBws", "-coverpkg=./...", "./..."}
+	if testPattern != "" {
+		args = append(args, "-run", testPattern, "-timeout", "1m")
+	} else {
+		args = append(args, "-timeout", "20m")
+	}
+	cmd := exec.Command("go", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
+	return cmd.Run()
+}
+
 // Run Bitwarden Secrets integration tests with embedded client on bitwarden.com.
-func (t Test) IntegrationBwsOfficial() error {
-	return t.IntegrationBwsOfficialArgs("")
+func (t Test) IntegrationBwsOfficialWithEmbeddedClient() error {
+	return t.IntegrationBwsOfficialWithEmbeddedClientArgs("")
 }
 
 // Like test:integrationBwsOfficial but with a test pattern.
-func (t Test) IntegrationBwsOfficialArgs(testPattern string) error {
+func (t Test) IntegrationBwsOfficialWithEmbeddedClientArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on official bitwarden.com instances...")
@@ -121,12 +155,36 @@ func (t Test) IntegrationBwsOfficialArgs(testPattern string) error {
 }
 
 // Run Bitwarden Secrets integration tests with embedded client on mocked backend.
-func (t Test) IntegrationBwsMocked() error {
-	return t.IntegrationBwsMockedArgs("")
+func (t Test) IntegrationBwsMockedWithEmbeddedClient() error {
+	return t.IntegrationBwsMockedWithEmbeddedClientArgs("")
 }
 
 // Run certain Bitwarden Secrets integration tests with embedded client on mocked backend.
-func (t Test) IntegrationBwsMockedArgs(testPattern string) error {
+func (t Test) IntegrationBwsMockedWithEmbeddedClientArgs(testPattern string) error {
+	mg.Deps(InstallDeps)
+
+	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on mocked backend...")
+	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integrationBws", "-coverpkg=./...", "./..."}
+	if testPattern != "" {
+		args = append(args, "-run", testPattern, "-timeout", "30s")
+	} else {
+		args = append(args, "-timeout", "20m")
+	}
+	cmd := exec.Command("go", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
+	return cmd.Run()
+}
+
+// Run Bitwarden Secrets integration tests with CLI on mocked backend.
+func (t Test) IntegrationBwsMockedWithCLI() error {
+	return t.IntegrationBwsMockedWithCLIArgs("")
+}
+
+// Run certain Bitwarden Secrets integration tests with CLI on mocked backend.
+func (t Test) IntegrationBwsMockedWithCLIArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on mocked backend...")

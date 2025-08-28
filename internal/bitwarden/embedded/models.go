@@ -55,6 +55,7 @@ type OrganizationSecret struct {
 }
 
 type MachineAccountClaims struct {
-	Organization string `json:"organization"`
+	Organization string   `json:"organization"`
+	Scope        []string `json:"scope"`
 	jwt.RegisteredClaims
 }

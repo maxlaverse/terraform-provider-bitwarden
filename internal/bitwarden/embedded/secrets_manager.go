@@ -106,6 +106,9 @@ func (v *secretsManager) CreateSecret(ctx context.Context, secret models.Secret)
 	resEncSecret, err := v.client.CreateSecret(ctx, *encSecret)
 
 	if err != nil {
+		if httpErr, ok := webapi.IsHTTPError(err); ok && httpErr.GetStatusCode() == 404 {
+			return nil, models.ErrObjectNotFound
+		}
 		return nil, fmt.Errorf("error creating secret: %w", err)
 	}
 
