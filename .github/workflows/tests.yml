@@ -133,7 +133,7 @@ jobs:
     runs-on: ubuntu-latest
 
     # Only runs after the Secrets Manager to prevent rate limiting on login.
-    needs: [secrets_manager_bitwarden, check_secrets]
+    needs: [secrets_manager_bitwarden_embedded, secrets_manager_bitwarden_cli, check_secrets]
     if: needs.check_secrets.outputs.has_secrets == 'true'
     steps:
       - uses: actions/checkout@v3
@@ -250,7 +250,7 @@ jobs:
 
   coverage:
     runs-on: ubuntu-latest
-    needs: [offline, password_manager_vaultwarden_cli, password_manager_vaultwarden_embedded, password_manager_bitwarden_embedded, secrets_manager_bitwarden, secrets_manager_mocked]
+    needs: [offline, password_manager_vaultwarden_cli, password_manager_vaultwarden_embedded, password_manager_bitwarden_embedded, secrets_manager_bitwarden_embedded, secrets_manager_bitwarden_cli, secrets_manager_mocked_cli, secrets_manager_mocked_embedded]
     steps:
       - name: Code Coverage
         continue-on-error: true
