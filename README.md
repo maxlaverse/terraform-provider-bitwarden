@@ -26,8 +26,9 @@ This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 
 The plugin has been tested with the following components:
 
-- [Terraform] v1.11.4 / [OpenTofu] v1.9.0
-- [Bitwarden CLI] v2025.2.0 (when not using the [Embedded Client](#embedded-client))
+- [Terraform] v1.11.4 / [OpenTofu] v1.10.0
+- [Bitwarden CLI] v2025.4.0 (when not using the [Embedded Client](#embedded-client))
+- [BWS CLI] v1.0.0 (when not using the [Embedded Client](#embedded-client))
 - [Vaultwarden] v1.33.2
 - official [bitwarden.com] servers v2025.6.2
 
@@ -211,6 +212,7 @@ Users are strongly encouraged to perform regular backups of their files and data
 Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more information.
 
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
+[BWS CLI]: https://github.com/bitwarden/sdk-sm/releases
 [Docker]: https://www.docker.com/products/docker-desktop
 [Docker Compose]: https://docs.docker.com/compose/install/
 [Go]: https://golang.org/doc/install
