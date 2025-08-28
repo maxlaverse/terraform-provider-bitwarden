@@ -65,7 +65,7 @@ func (c *client) CreateProject(ctx context.Context, project models.Project) (*mo
 		project.Name,
 	}
 
-	out, err := c.cmdWithSession(args...).Run(ctx)
+	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (c *client) CreateSecret(ctx context.Context, secret models.Secret) (*model
 		args = append(args, "--note", secret.Note)
 	}
 
-	out, err := c.cmdWithSession(args...).Run(ctx)
+	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (c *client) EditProject(ctx context.Context, project models.Project) (*mode
 		project.ID,
 	}
 
-	out, err := c.cmdWithSession(args...).Run(ctx)
+	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (c *client) EditSecret(ctx context.Context, secret models.Secret) (*models.
 
 	args = append(args, secret.ID)
 
-	out, err := c.cmdWithSession(args...).Run(ctx)
+	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -164,12 +164,12 @@ func (c *client) EditSecret(ctx context.Context, secret models.Secret) (*models.
 }
 
 func (c *client) DeleteProject(ctx context.Context, project models.Project) error {
-	_, err := c.cmdWithSession("project", "delete", project.ID).Run(ctx)
+	_, err := c.cmdWithAccessToken("project", "delete", project.ID).Run(ctx)
 	return err
 }
 
 func (c *client) DeleteSecret(ctx context.Context, secret models.Secret) error {
-	_, err := c.cmdWithSession("secret", "delete", secret.ID).Run(ctx)
+	_, err := c.cmdWithAccessToken("secret", "delete", secret.ID).Run(ctx)
 	return err
 }
 
@@ -180,7 +180,7 @@ func (c *client) GetProject(ctx context.Context, project models.Project) (*model
 		project.ID,
 	}
 
-	out, err := c.cmdWithSession(args...).Run(ctx)
+	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
 		return nil, remapError(err)
 	}
@@ -201,7 +201,7 @@ func (c *client) GetSecret(ctx context.Context, secret models.Secret) (*models.S
 		secret.ID,
 	}
 
-	out, err := c.cmdWithSession(args...).Run(ctx)
+	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
 		return nil, remapError(err)
 	}
@@ -221,7 +221,7 @@ func (c *client) GetSecretByKey(ctx context.Context, secretKey string) (*models.
 		"list",
 	}
 
-	out, err := c.cmdWithSession(args...).Run(ctx)
+	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
 		return nil, remapError(err)
 	}
@@ -241,17 +241,14 @@ func (c *client) GetSecretByKey(ctx context.Context, secretKey string) (*models.
 	return nil, models.ErrNoObjectFoundMatchingFilter
 }
 
-func (c *client) cmd(args ...string) command.Command {
+func (c *client) cmdWithAccessToken(args ...string) command.Command {
 	return c.newCommand("bws", args...).AppendEnv(c.env())
-}
-
-func (c *client) cmdWithSession(args ...string) command.Command {
-	return c.cmd(args...).AppendEnv([]string{fmt.Sprintf("BWS_ACCESS_TOKEN=%s", c.accessToken)})
 }
 
 func (c *client) env() []string {
 	defaultEnv := []string{
 		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
+		fmt.Sprintf("BWS_ACCESS_TOKEN=%s", c.accessToken),
 		fmt.Sprintf("BWS_SERVER_URL=%s", c.serverURL),
 	}
 	return defaultEnv
