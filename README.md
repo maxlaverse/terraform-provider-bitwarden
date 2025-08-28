@@ -46,7 +46,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.15.0"
+      version = ">= 0.16.0"
     }
   }
 }
@@ -54,6 +54,17 @@ terraform {
 # Configure the Bitwarden Provider
 provider "bitwarden" {
   access_token = "0.client_id.client_secret:dGVzdC1lbmNyeXB0aW9uLWtleQ=="
+
+  # By default, the provider uses Bitwarden CLIs to interact with the remote
+  # Vaults. You can also decide to a client embedded in the provider instead,
+  # which removes the need for locally installed binaries.
+  #
+  # Learn more about the implications by reading the "Client Implementation"
+  # section below.
+  #
+  # experimental {
+  #   embedded_client = true
+  # }
 }
 
 # Source a project
@@ -79,7 +90,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.15.0"
+      version = ">= 0.16.0"
     }
   }
 }
@@ -93,10 +104,12 @@ provider "bitwarden" {
   #
   # server = "https://vault.bitwarden.eu"
 
-  # If you have the opportunity, you can try out the embedded client which
-  # removes the need for a locally installed Bitwarden CLI. Please note that
-  # this feature is still considered experimental and not recommended for
-  # production use yet.
+  # By default, the provider uses Bitwarden CLIs to interact with the remote
+  # Vaults. You can also decide to a client embedded in the provider instead,
+  # which removes the need for locally installed binaries.
+  #
+  # Learn more about the implications by reading the "Client Implementation"
+  # section below.
   #
   # experimental {
   #   embedded_client = true
@@ -118,11 +131,24 @@ data "bitwarden_item_login" "example" {
 
 See the [examples](./examples/) directory for more examples.
 
-## Embedded Client
+## Client Implementation
 
-Since version 0.9.0, the provider contains an embedded client that can directly interact with Bitwarden's API, removing the need for a locally installed Bitwarden CLI.
-The embedded client makes the provider faster, easier to use, but it still requires more testing and feedback.
-For now, a feature flag needs to be set in order to use it (`experimental.embedded_client`).
+The Bitwarden provider offers two client implementations to interact with your Vault:
+
+### Official Bitwarden CLIs (Default)
+By default, the provider uses the official Bitwarden command-line tools ([Bitwarden CLI] for Password Manager and [BWS CLI] for Secrets Manager). This approach leverages the battle-tested reliability of Bitwarden's own tooling, backed by their engineering team and security expertise.
+
+The trade-off is that you need to pre-install the appropriate CLI tools in your Terraform environment. Additionally, the Password Manager CLI (written in Node.js) can create performance bottlenecks when managing many resources due to process spawning overhead.
+
+### Embedded Client
+The provider also includes an embedded client that communicates directly with Bitwarden servers without external dependencies. This eliminates the need to install separate CLI tools and provides better performance by avoiding external process spawning, making it particularly beneficial for managing large resource sets.
+
+However, this implementation is developed and maintained by a single person as a community project without company resources. While effort goes into ensuring security and correctness, it lacks the extensive security review, testing infrastructure, and dedicated security team that backs Bitwarden's official tools.
+
+### Choosing Your Implementation
+
+The choice depends on your needs: the official CLIs leverage Bitwarden's proven tooling, while the embedded client is a community project offering performance benefits and zero external dependencies. The embedded client aims for security and correctness, and code reviews are always welcome to help improve it.
+
 
 ## Security Considerations
 

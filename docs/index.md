@@ -8,7 +8,7 @@ description: |-
 
 Use the Bitwarden provider to manage your [Password Manager] Logins and Secure Notes, and [Secrets Manager] Secrets.
 You must configure the provider with proper credentials before you can use it.
-If you're not trying out the experimental `embedded_client` feature, you also need a [Bitwarden CLI] installed locally.
+If you're not using the `embedded_client` implementation, you also need a [Password Manager CLI][Bitwarden CLI] or [Secrets Manager CLI][BWS CLI] installed locally.
 
 ## Example Usage
 
@@ -17,7 +17,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.15.0"
+      version = ">= 0.16.0"
     }
   }
 }
@@ -26,10 +26,12 @@ terraform {
 provider "bitwarden" {
   email = "terraform@example.com"
 
-  # If you have the opportunity, you can try out the embedded client which
-  # removes the need for a locally installed Bitwarden CLI. Please note that
-  # this feature is still considered experimental and not recommended for
-  # production use.
+  # By default, the provider uses Bitwarden CLIs to interact with the remote
+  # Vaults. You can also decide to a client embedded in the provider instead,
+  # which removes the need for locally installed binaries.
+  #
+  # Learn more about the implications by reading the "Client Implementation"
+  # section below.
   #
   # experimental {
   #   embedded_client = true
@@ -48,6 +50,24 @@ data "bitwarden_item_login" "example" {
   search = "Example"
 }
 ```
+
+## Client Implementation
+
+The Bitwarden provider offers two client implementations to interact with your Vault:
+
+### Official Bitwarden CLIs (Default)
+By default, the provider uses the official Bitwarden command-line tools ([Bitwarden CLI] for Password Manager and [BWS CLI] for Secrets Manager). This approach leverages the battle-tested reliability of Bitwarden's own tooling, backed by their engineering team and security expertise.
+
+The trade-off is that you need to pre-install the appropriate CLI tools in your Terraform environment. Additionally, the Password Manager CLI (written in Node.js) can create performance bottlenecks when managing many resources due to process spawning overhead.
+
+### Embedded Client
+The provider also includes an embedded client that communicates directly with Bitwarden servers without external dependencies. This eliminates the need to install separate CLI tools and provides better performance by avoiding external process spawning, making it particularly beneficial for managing large resource sets.
+
+However, this implementation is developed and maintained by a single person as a community project without company resources. While effort goes into ensuring security and correctness, it lacks the extensive security review, testing infrastructure, and dedicated security team that backs Bitwarden's official tools.
+
+### Choosing Your Implementation
+
+The choice depends on your needs: the official CLIs leverage Bitwarden's proven tooling, while the embedded client is a community project offering performance benefits and zero external dependencies. The embedded client aims for security and correctness, and code reviews are always welcome to help improve it.
 
 ## Authentication
 Depending on the type of credentials you use, you'll be able to connect either with a Password Manager or Secret Manager.
@@ -173,6 +193,7 @@ Optional:
 [Password Manager]: https://bitwarden.com/products/personal/
 [Secrets Manager]: https://bitwarden.com/products/secrets-manager/
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
+[BWS CLI]: https://bitwarden.com/help/article/cli/#download-and-install
 [Access Tokens]: https://bitwarden.com/help/access-tokens/
 [Personal API Key]: https://bitwarden.com/help/personal-api-key/
 [provider aliases]: https://developer.hashicorp.com/terraform/language/providers/configuration#alias-multiple-provider-configurations

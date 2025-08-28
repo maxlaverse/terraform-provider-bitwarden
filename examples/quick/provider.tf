@@ -2,7 +2,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.15.0"
+      version = ">= 0.16.0"
     }
   }
 }
@@ -11,10 +11,12 @@ terraform {
 provider "bitwarden" {
   email = "terraform@example.com"
 
-  # If you have the opportunity, you can try out the embedded client which
-  # removes the need for a locally installed Bitwarden CLI. Please note that
-  # this feature is still considered experimental and not recommended for
-  # production use.
+  # By default, the provider uses Bitwarden CLIs to interact with the remote
+  # Vaults. You can also decide to a client embedded in the provider instead,
+  # which removes the need for locally installed binaries.
+  #
+  # Learn more about the implications by reading the "Client Implementation"
+  # section below.
   #
   # experimental {
   #   embedded_client = true
