@@ -2,7 +2,7 @@ name: 'Setup Test Environment'
 description: 'Sets up the test environment'
 
 inputs:
-  installCLI:
+  installBWCLI:
     description: 'Install Bitwarden CLI'
     required: false
     default: 'false'
@@ -11,6 +11,16 @@ inputs:
     description: 'Version of Bitwarden CLI to install'
     required: false
     default: '2025.2.0'
+    type: string
+  installBWSCLI:
+    description: 'Install Bitwarden Secrets CLI'
+    required: false
+    default: 'false'
+    type: boolean
+  bwscliVersion:
+    description: 'Version of Bitwarden Secrets CLI to install'
+    required: false
+    default: '1.0.0'
     type: string
   goVersion:
     description: 'Version of Go to install'
@@ -84,10 +94,17 @@ runs:
 
 
       - name: Install Bitwarden CLI
-        if: ${{ inputs.installCLI }}
+        if: ${{ inputs.installBWCLI }}
         shell: bash
         run: |
           npm install -g @bitwarden/cli@${{ inputs.bwcliVersion }}
+
+      - name: Install BWS CLI
+        if: ${{ inputs.installBWSCLI }}
+        shell: bash
+        run: |
+          wget https://github.com/bitwarden/sdk-sm/releases/download/bws-v${{ inputs.bwscliVersion }}/bws-x86_64-unknown-linux-gnu-${{ inputs.bwscliVersion }}.zip -O /usr/local/bin/bws
+          chmod +x /usr/local/bin/bws
 
       - name: Install Mage
         shell: bash
