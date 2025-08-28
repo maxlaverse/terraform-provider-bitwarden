@@ -45,15 +45,15 @@ func New(version string) func() *schema.Provider {
 				schema_definition.AttributeMasterPassword: {
 					Type:          schema.TypeString,
 					Description:   schema_definition.DescriptionMasterPassword,
-					ConflictsWith: []string{schema_definition.AttributeSessionKey, schema_definition.AttributeAccessToken},
-					AtLeastOneOf:  []string{schema_definition.AttributeSessionKey, schema_definition.AttributeAccessToken},
+					ConflictsWith: []string{schema_definition.AttributeSessionKey, schema_definition.AttributeBwsAccessToken},
+					AtLeastOneOf:  []string{schema_definition.AttributeSessionKey, schema_definition.AttributeBwsAccessToken},
 					Optional:      true,
 					DefaultFunc:   schema.EnvDefaultFunc("BW_PASSWORD", nil),
 				},
 				schema_definition.AttributeSessionKey: {
 					Type:         schema.TypeString,
 					Description:  schema_definition.DescriptionSessionKey,
-					AtLeastOneOf: []string{schema_definition.AttributeMasterPassword, schema_definition.AttributeAccessToken},
+					AtLeastOneOf: []string{schema_definition.AttributeMasterPassword, schema_definition.AttributeBwsAccessToken},
 					Optional:     true,
 					DefaultFunc:  schema.EnvDefaultFunc("BW_SESSION", nil),
 				},
@@ -71,9 +71,9 @@ func New(version string) func() *schema.Provider {
 					RequiredWith: []string{schema_definition.AttributeClientID, schema_definition.AttributeMasterPassword},
 					DefaultFunc:  schema.EnvDefaultFunc("BW_CLIENTSECRET", nil),
 				},
-				schema_definition.AttributeAccessToken: {
+				schema_definition.AttributeBwsAccessToken: {
 					Type:        schema.TypeString,
-					Description: schema_definition.DescriptionAccessToken,
+					Description: schema_definition.DescriptionBwsAccessToken,
 					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("BWS_ACCESS_TOKEN", nil),
 				},
@@ -83,13 +83,13 @@ func New(version string) func() *schema.Provider {
 					Type:        schema.TypeString,
 					Description: schema_definition.DescriptionServer,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("BW_URL", bitwarden.DefaultBitwardenServerURL),
+					DefaultFunc: schema.MultiEnvDefaultFunc([]string{"BW_URL", "BWS_SERVER_URL"}, bitwarden.DefaultBitwardenServerURL),
 				},
 				schema_definition.AttributeProviderEmail: {
 					Type:         schema.TypeString,
 					Description:  schema_definition.DescriptionProviderEmail,
 					Optional:     true,
-					AtLeastOneOf: []string{schema_definition.AttributeAccessToken, schema_definition.AttributeClientID, schema_definition.AttributeSessionKey},
+					AtLeastOneOf: []string{schema_definition.AttributeBwsAccessToken, schema_definition.AttributeClientID, schema_definition.AttributeSessionKey},
 					DefaultFunc:  schema.EnvDefaultFunc("BW_EMAIL", nil),
 				},
 				schema_definition.AttributeVaultPath: {
@@ -161,7 +161,7 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 
-		_, hasAccessToken := d.GetOk(schema_definition.AttributeAccessToken)
+		_, hasAccessToken := d.GetOk(schema_definition.AttributeBwsAccessToken)
 		useEmbeddedClient := useExperimentalEmbeddedClient(d)
 
 		if _, hasSessionKey := d.GetOk(schema_definition.AttributeSessionKey); useEmbeddedClient && hasSessionKey {
@@ -291,7 +291,7 @@ func ensureLoggedInCLIPasswordManager(ctx context.Context, d *schema.ResourceDat
 func loginMethod(d *schema.ResourceData) LoginMethod {
 	_, hasClientID := d.GetOk(schema_definition.AttributeClientID)
 	_, hasClientSecret := d.GetOk(schema_definition.AttributeClientSecret)
-	_, hasAccessToken := d.GetOk(schema_definition.AttributeAccessToken)
+	_, hasAccessToken := d.GetOk(schema_definition.AttributeBwsAccessToken)
 	_, hasMasterPassword := d.GetOk(schema_definition.AttributeMasterPassword)
 
 	if hasAccessToken {
@@ -418,7 +418,7 @@ func getOrGenerateDeviceIdentifier(ctx context.Context) (string, error) {
 }
 
 func ensureLoggedInEmbeddedSecretsManager(ctx context.Context, d *schema.ResourceData, bwClient embedded.SecretsManager) error {
-	accessToken, hasAccessToken := d.GetOk(schema_definition.AttributeAccessToken)
+	accessToken, hasAccessToken := d.GetOk(schema_definition.AttributeBwsAccessToken)
 	if !hasAccessToken {
 		return fmt.Errorf("access token is required")
 	}

@@ -158,7 +158,7 @@ export BW_CLIENTSECRET="my-client-secret"
 - `experimental` (Block Set) Enable experimental features. (see [below for nested schema](#nestedblock--experimental))
 - `extra_ca_certs` (String) Extends the well known 'root' CAs (like VeriSign) with the extra certificates in file (env: `NODE_EXTRA_CA_CERTS`, doesn't work with embedded client).
 - `master_password` (String) Master password of the Vault (env: `BW_PASSWORD`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.
-- `server` (String) Bitwarden Server URL (default: `https://vault.bitwarden.com`, env: `BW_URL`).
+- `server` (String) Bitwarden Server URL (default: `https://vault.bitwarden.com`, env: `BW_URL` or `BWS_SERVER_URL`).
 - `session_key` (String) A Bitwarden Session Key (env: `BW_SESSION`)
 - `vault_path` (String) Alternative directory for storing the Vault locally (default: `.bitwarden/`, env: `BITWARDENCLI_APPDATA_DIR`; set to empty string to use CLI default).
 

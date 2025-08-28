@@ -111,7 +111,7 @@ const (
 	DescriptionProjectID = "Identifier of the project."
 
 	// Provider field attributes
-	AttributeAccessToken                                   = "access_token"
+	AttributeBwsAccessToken                                = "access_token"
 	AttributeClientID                                      = "client_id"
 	AttributeClientSecret                                  = "client_secret"
 	AttributeProviderEmail                                 = "email"
@@ -125,12 +125,12 @@ const (
 	AttributeExperimentalDisableSyncAfterWriteVerification = "disable_sync_after_write_verification"
 
 	// Provider field descriptions
-	DescriptionAccessToken                                   = "Machine Account Access Token (env: `BWS_ACCESS_TOKEN`))."
+	DescriptionBwsAccessToken                                = "Machine Account Access Token (env: `BWS_ACCESS_TOKEN`))."
 	DescriptionClientSecret                                  = "Client Secret (env: `BW_CLIENTSECRET`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment."
 	DescriptionClientID                                      = "Client ID (env: `BW_CLIENTID`)"
 	DescriptionProviderEmail                                 = "Login Email of the Vault (env: `BW_EMAIL`)."
 	DescriptionMasterPassword                                = "Master password of the Vault (env: `BW_PASSWORD`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment."
-	DescriptionServer                                        = "Bitwarden Server URL (default: `https://vault.bitwarden.com`, env: `BW_URL`)."
+	DescriptionServer                                        = "Bitwarden Server URL (default: `https://vault.bitwarden.com`, env: `BW_URL` or `BWS_SERVER_URL`)."
 	DescriptionSessionKey                                    = "A Bitwarden Session Key (env: `BW_SESSION`)"
 	DescriptionVaultPath                                     = "Alternative directory for storing the Vault locally (default: `.bitwarden/`, env: `BITWARDENCLI_APPDATA_DIR`; set to empty string to use CLI default)."
 	DescriptionExtraCACertsPath                              = "Extends the well known 'root' CAs (like VeriSign) with the extra certificates in file (env: `NODE_EXTRA_CA_CERTS`, doesn't work with embedded client)."
