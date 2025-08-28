@@ -71,7 +71,7 @@ func (c *client) CreateProject(ctx context.Context, project models.Project) (*mo
 
 	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
-		return nil, err
+		return nil, remapError(err)
 	}
 
 	var projectObj models.Project
@@ -102,7 +102,7 @@ func (c *client) CreateSecret(ctx context.Context, secret models.Secret) (*model
 
 	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
-		return nil, err
+		return nil, remapError(err)
 	}
 
 	var secretObj models.Secret
@@ -128,7 +128,7 @@ func (c *client) EditProject(ctx context.Context, project models.Project) (*mode
 
 	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
-		return nil, err
+		return nil, remapError(err)
 	}
 
 	var projectObj models.Project
@@ -167,7 +167,7 @@ func (c *client) EditSecret(ctx context.Context, secret models.Secret) (*models.
 
 	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
-		return nil, err
+		return nil, remapError(err)
 	}
 
 	var secretObj models.Secret
@@ -185,7 +185,7 @@ func (c *client) DeleteProject(ctx context.Context, project models.Project) erro
 	}
 
 	_, err := c.cmdWithAccessToken("project", "delete", project.ID).Run(ctx)
-	return err
+	return remapError(err)
 }
 
 func (c *client) DeleteSecret(ctx context.Context, secret models.Secret) error {
@@ -194,7 +194,7 @@ func (c *client) DeleteSecret(ctx context.Context, secret models.Secret) error {
 	}
 
 	_, err := c.cmdWithAccessToken("secret", "delete", secret.ID).Run(ctx)
-	return err
+	return remapError(err)
 }
 
 func (c *client) GetProject(ctx context.Context, project models.Project) (*models.Project, error) {
@@ -268,10 +268,18 @@ func (c *client) GetSecretByKey(ctx context.Context, secretKey string) (*models.
 		return nil, newUnmarshallError(err, args[0:2], out)
 	}
 
+	matchingSecrets := []models.Secret{}
 	for _, secret := range secrets {
 		if secret.Key == secretKey {
-			return &secret, nil
+			matchingSecrets = append(matchingSecrets, secret)
 		}
+	}
+
+	if len(matchingSecrets) > 1 {
+		return nil, models.ErrTooManyObjectsFound
+	}
+	if len(matchingSecrets) == 1 {
+		return &matchingSecrets[0], nil
 	}
 
 	return nil, models.ErrNoObjectFoundMatchingFilter

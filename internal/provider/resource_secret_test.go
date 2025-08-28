@@ -48,7 +48,7 @@ func TestResourceSecret(t *testing.T) {
 			},
 			{
 				Config:      tfProvider + tfConfigResourceSecret("foo", "\"283e673a-2b95-46b7-9a1e-89b4fcf56f24\""),
-				ExpectError: regexp.MustCompile("400!=200|400 Bad Request"),
+				ExpectError: regexp.MustCompile("Error: object not found"),
 			},
 			// Test Creating Secret with INEXISTENT Project
 			{

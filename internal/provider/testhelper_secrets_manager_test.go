@@ -109,6 +109,7 @@ func (tsm *testSecretsManager) Run(ctx context.Context, serverPort int) {
 	handler.HandleFunc("/api/secrets/{secretId}", tsm.handlerGetSecret).Methods("GET")
 	handler.HandleFunc("/api/secrets/{secretId}", tsm.handlerEditSecret).Methods("PUT")
 	handler.HandleFunc("/api/secrets/delete", tsm.handlerDeleteSecret).Methods("POST")
+	handler.HandleFunc("/api/secrets/get-by-ids", tsm.handlerGetSecretsByIDs).Methods("POST")
 	handler.HandleFunc("/identity/connect/token", tsm.handlerLogin).Methods("POST")
 
 	server := &http.Server{
@@ -337,7 +338,7 @@ func (tsm *testSecretsManager) handlerCreateSecret(w http.ResponseWriter, r *htt
 	for _, v := range secretCreationRequest.ProjectIDs {
 		project, projectExists := tsm.projectsStore[v]
 		if !projectExists {
-			sendJSONError(w, fmt.Sprintf("Resource not found. (project): %s", v), http.StatusBadRequest)
+			sendJSONError(w, fmt.Sprintf("Resource not found. (project): %s", v), http.StatusNotFound)
 			return
 		}
 		projects = append(projects, project)
@@ -437,6 +438,54 @@ func (tsm *testSecretsManager) handlerGetSecret(w http.ResponseWriter, r *http.R
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(secret); err != nil {
+		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+func (tsm *testSecretsManager) handlerGetSecretsByIDs(w http.ResponseWriter, r *http.Request) {
+	tsm.mutex.RLock()
+	defer tsm.mutex.RUnlock()
+
+	err := tsm.checkAuthentication(r.Header.Get("Authorization"))
+	if err != nil {
+		sendJSONError(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	defer r.Body.Close()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		sendJSONError(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	var requestBody struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.Unmarshal(body, &requestBody); err != nil {
+		sendJSONError(w, fmt.Sprintf("Failed to unmarshal request body: %s", string(body)), http.StatusBadRequest)
+		return
+	}
+
+	secretIds := requestBody.IDs
+
+	responseData := []webapi.Secret{}
+	for _, v := range secretIds {
+		secret, secretExists := tsm.secretsStore[v]
+		if !secretExists {
+			continue
+		}
+		responseData = append(responseData, secret)
+	}
+
+	response := struct {
+		Data []webapi.Secret `json:"data"`
+	}{
+		Data: responseData,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		sendJSONError(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }

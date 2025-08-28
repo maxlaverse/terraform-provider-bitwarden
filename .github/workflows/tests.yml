@@ -182,7 +182,7 @@ jobs:
           path-to-profile: profile.cov
           parallel: true
 
-  secrets_manager_bitwarden:
+  secrets_manager_bitwarden_cli:
     runs-on: ubuntu-latest
     needs: [check_secrets]
     if: needs.check_secrets.outputs.has_secrets == 'true'
@@ -191,7 +191,7 @@ jobs:
       - uses: ./.github/actions/setup-test
         with:
           deviceIdentifier: ${{ secrets.BWS_DEVICE_IDENTIFIER }}
-      - run: mage test:integrationBwsOfficial
+      - run: mage test:integrationBwsOfficialWithCLI
         env:
           TEST_SECRETS_MANAGER_ACCESS_TOKEN: "${{ secrets.BWS_ACCESS_TOKEN }}"
           TEST_SERVER_URL: "https://vault.bitwarden.eu"
@@ -202,7 +202,40 @@ jobs:
           path-to-profile: profile.cov
           parallel: true
 
-  secrets_manager_mocked:
+  secrets_manager_bitwarden_embedded:
+    runs-on: ubuntu-latest
+    needs: [check_secrets, secrets_manager_bitwarden_cli]
+    if: needs.check_secrets.outputs.has_secrets == 'true'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/setup-test
+        with:
+          deviceIdentifier: ${{ secrets.BWS_DEVICE_IDENTIFIER }}
+      - run: mage test:integrationBwsOfficialWithEmbeddedClient
+        env:
+          TEST_SECRETS_MANAGER_ACCESS_TOKEN: "${{ secrets.BWS_ACCESS_TOKEN }}"
+          TEST_SERVER_URL: "https://vault.bitwarden.eu"
+      - name: Code Coverage
+        continue-on-error: true
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: profile.cov
+          parallel: true
+
+  secrets_manager_mocked_cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/setup-test
+      - run: mage test:integrationBwsMockedWithCLI
+      - name: Code Coverage
+        continue-on-error: true
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: profile.cov
+          parallel: true
+
+  secrets_manager_mocked_embedded:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
