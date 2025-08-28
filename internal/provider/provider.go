@@ -200,6 +200,13 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 				return nil, diag.FromErr(err)
 			}
 
+			// We login anyway, since it's just about storing the access token
+			// when using the CLI.
+			err = ensureLoggedInEmbeddedSecretsManager(ctx, d, bwsClient)
+			if err != nil {
+				return nil, diag.FromErr(err)
+			}
+
 			return bwsClient, nil
 		}
 

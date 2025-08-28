@@ -59,6 +59,10 @@ func (c *client) LoginWithAccessToken(ctx context.Context, accessToken string) e
 }
 
 func (c *client) CreateProject(ctx context.Context, project models.Project) (*models.Project, error) {
+	if err := c.checkAccessToken(); err != nil {
+		return nil, err
+	}
+
 	args := []string{
 		"project",
 		"create",
@@ -80,6 +84,10 @@ func (c *client) CreateProject(ctx context.Context, project models.Project) (*mo
 }
 
 func (c *client) CreateSecret(ctx context.Context, secret models.Secret) (*models.Secret, error) {
+	if err := c.checkAccessToken(); err != nil {
+		return nil, err
+	}
+
 	args := []string{
 		"secret",
 		"create",
@@ -107,6 +115,10 @@ func (c *client) CreateSecret(ctx context.Context, secret models.Secret) (*model
 }
 
 func (c *client) EditProject(ctx context.Context, project models.Project) (*models.Project, error) {
+	if err := c.checkAccessToken(); err != nil {
+		return nil, err
+	}
+
 	args := []string{
 		"project",
 		"edit",
@@ -129,6 +141,10 @@ func (c *client) EditProject(ctx context.Context, project models.Project) (*mode
 }
 
 func (c *client) EditSecret(ctx context.Context, secret models.Secret) (*models.Secret, error) {
+	if err := c.checkAccessToken(); err != nil {
+		return nil, err
+	}
+
 	args := []string{
 		"secret",
 		"edit",
@@ -164,16 +180,28 @@ func (c *client) EditSecret(ctx context.Context, secret models.Secret) (*models.
 }
 
 func (c *client) DeleteProject(ctx context.Context, project models.Project) error {
+	if err := c.checkAccessToken(); err != nil {
+		return err
+	}
+
 	_, err := c.cmdWithAccessToken("project", "delete", project.ID).Run(ctx)
 	return err
 }
 
 func (c *client) DeleteSecret(ctx context.Context, secret models.Secret) error {
+	if err := c.checkAccessToken(); err != nil {
+		return err
+	}
+
 	_, err := c.cmdWithAccessToken("secret", "delete", secret.ID).Run(ctx)
 	return err
 }
 
 func (c *client) GetProject(ctx context.Context, project models.Project) (*models.Project, error) {
+	if err := c.checkAccessToken(); err != nil {
+		return nil, err
+	}
+
 	args := []string{
 		"project",
 		"get",
@@ -195,6 +223,10 @@ func (c *client) GetProject(ctx context.Context, project models.Project) (*model
 }
 
 func (c *client) GetSecret(ctx context.Context, secret models.Secret) (*models.Secret, error) {
+	if err := c.checkAccessToken(); err != nil {
+		return nil, err
+	}
+
 	args := []string{
 		"secret",
 		"get",
@@ -216,6 +248,10 @@ func (c *client) GetSecret(ctx context.Context, secret models.Secret) (*models.S
 }
 
 func (c *client) GetSecretByKey(ctx context.Context, secretKey string) (*models.Secret, error) {
+	if err := c.checkAccessToken(); err != nil {
+		return nil, err
+	}
+
 	args := []string{
 		"secret",
 		"list",
@@ -245,9 +281,17 @@ func (c *client) cmdWithAccessToken(args ...string) command.Command {
 	return c.newCommand("bws", args...).AppendEnv(c.env())
 }
 
+func (c *client) checkAccessToken() error {
+	if c.accessToken == "" {
+		return fmt.Errorf("access token not set")
+	}
+	return nil
+}
+
 func (c *client) env() []string {
 	defaultEnv := []string{
 		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
+		"RUST_BACKTRACE=full",
 		fmt.Sprintf("BWS_ACCESS_TOKEN=%s", c.accessToken),
 		fmt.Sprintf("BWS_SERVER_URL=%s", c.serverURL),
 	}
