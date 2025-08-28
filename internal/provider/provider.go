@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwscli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
@@ -194,7 +195,12 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 			}
 			return bwsClient, nil
 		} else if !useEmbeddedClient && hasAccessToken {
-			return nil, diag.Errorf("access token is not supported without the experimental 'embedded_client' flag")
+			bwsClient, err := newCLISecretsManagerClient(ctx, d, version)
+			if err != nil {
+				return nil, diag.FromErr(err)
+			}
+
+			return bwsClient, nil
 		}
 
 		bwClient, err := newCLIPasswordManagerClient(d, version)
@@ -371,6 +377,11 @@ func newEmbeddedSecretsManagerClient(ctx context.Context, d *schema.ResourceData
 
 	serverURL := d.Get(schema_definition.AttributeServer).(string)
 	return embedded.NewSecretsManagerClient(serverURL, deviceId, version, embedded.WithSecretsManagerHttpOptions(buildWebapiOptions(version)...)), nil
+}
+
+func newCLISecretsManagerClient(ctx context.Context, d *schema.ResourceData, version string) (bitwarden.SecretsManager, error) {
+	serverURL := d.Get(schema_definition.AttributeServer).(string)
+	return bwscli.NewSecretsManagerClient(serverURL), nil
 }
 
 func buildWebapiOptions(version string) []webapi.Options {
