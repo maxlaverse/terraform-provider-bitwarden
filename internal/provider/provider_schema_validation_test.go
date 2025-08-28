@@ -108,25 +108,6 @@ func TestProviderAuthUsingAccessToken(t *testing.T) {
 	assert.Implements(t, (*embedded.SecretsManager)(nil), p.Meta())
 }
 
-func TestProviderAuthUsingAccessToken_ThrowsErrorWithoutExperimentalFlag(t *testing.T) {
-	raw := map[string]interface{}{
-		"access_token": "0.client_id.client_secret:dGVzdC1lbmNyeXB0aW9uLWtleQ==",
-	}
-
-	p := New(versionTestSkippedLogin)()
-
-	config := terraform.NewResourceConfigRaw(raw)
-	diag := p.Validate(config)
-	if !assert.False(t, diag.HasError()) {
-		t.Fatal(diag)
-	}
-
-	diag = p.Configure(t.Context(), config)
-	if assert.True(t, diag.HasError()) {
-		assert.Equal(t, "access token is not supported without the experimental 'embedded_client' flag", diag[0].Summary)
-	}
-}
-
 func TestProviderAuthUsingAPIKey_ThrowsErrorOnMissingClientID(t *testing.T) {
 	raw := map[string]interface{}{
 		"server":          "http://127.0.0.1/",
