@@ -207,7 +207,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
-      - run: mage test:integrationBwsMocked
+      - run: mage test:integrationBwsMockedWithEmbeddedClient
       - name: Code Coverage
         continue-on-error: true
         uses: shogo82148/actions-goveralls@v1
