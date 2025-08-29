@@ -58,7 +58,7 @@ The Bitwarden provider offers two client implementations to interact with your V
 ### Official Bitwarden CLIs (Default)
 By default, the provider uses the official Bitwarden command-line tools ([Bitwarden CLI] for Password Manager and [BWS CLI] for Secrets Manager). This approach leverages the battle-tested reliability of Bitwarden's own tooling, backed by their engineering team and security expertise.
 
-The trade-off is that you need to pre-install the appropriate CLI tools in your Terraform environment. Additionally, the Password Manager CLI (written in Node.js) can create performance bottlenecks when managing many resources due to process spawning overhead.
+The trade-off is that you need to pre-install the appropriate CLI tools in your Terraform environment. Additionally, the Password Manager CLI (requiring Node.js) can create performance bottlenecks when managing many resources due to process spawning overhead.
 
 ### Embedded Client
 The provider also includes an embedded client that communicates directly with Bitwarden servers without external dependencies. This eliminates the need to install separate CLI tools and provides better performance by avoiding external process spawning, making it particularly beneficial for managing large resource sets.
