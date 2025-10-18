@@ -83,6 +83,7 @@ In order to generate an Access Token you need to:
 6. Select the _Access Tokens_ tab
 7. Created a new Access Token and save it somewhere safe
 
+-> **Note:** By default, new machine accounts are not assigned to any projects. After creating a machine account, make sure it is added to the project(s) you want to access, with either "Can Read" or "Can Read & Write" permissions. If the machine account does not have access to the project, you will encounter an `Error: object not found` when attempting to use/create secrets from that project.
 
 ## Configuration
 Configuration for the Bitwarden Provider can be derived from two sources:
