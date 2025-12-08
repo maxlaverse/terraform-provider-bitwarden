@@ -16,7 +16,7 @@ require (
 	github.com/wI2L/jsondiff v0.7.0
 	golang.org/x/crypto v0.44.0
 	golang.org/x/net v0.47.0
-	golang.org/x/sync v0.18.0
+	golang.org/x/sync v0.19.0
 )
 
 require (
