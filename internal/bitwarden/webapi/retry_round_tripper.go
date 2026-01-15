@@ -78,7 +78,8 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 
 	resp, err := rrt.Transport.RoundTrip(httpReq.WithContext(reqCtx))
 
-	isSuccessful := err == nil && !slices.Contains(retryableStatusCodes, resp.StatusCode)
+	// A request is successful if there's no error and the status code is not retryable
+	isSuccessful := err == nil && resp != nil && !isRetriableStatusCode(httpReq.Method, resp.StatusCode)
 
 	// If the request was successful, we return without additional logging.
 	// We preserve the response body as exiting the method cancels the context.
@@ -89,7 +90,7 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	// At this point, there was a problem. We need to check if it's retryable,
 	// and we want to log information in any case.
 	isDialError := err != nil && isDialError(err)
-	isRetriableHttpStatusCode := httpReq.Method == http.MethodGet && err == nil && slices.Contains(retryableStatusCodes, resp.StatusCode)
+	isRetriableHttpStatusCode := err == nil && resp != nil && isRetriableStatusCode(httpReq.Method, resp.StatusCode)
 	isRetriableReadTimeout := httpReq.Method == http.MethodGet && (isReadTimeout(err))
 	isLastPossibleAttempt := attemptNumber >= rrt.maxRetries-1 || rrt.DisableRetries
 
@@ -222,4 +223,21 @@ func preserveResponseBody(resp *http.Response) error {
 	}
 	resp.Body = io.NopCloser(bytes.NewReader(body))
 	return nil
+}
+
+// isRetriableStatusCode determines if a status code is retryable based on the HTTP method.
+// - 4xx status codes: retryable for both GET and POST
+// - 5xx status codes: retryable for GET only if the code is in retryableStatusCodes
+func isRetriableStatusCode(method string, statusCode int) bool {
+	if !slices.Contains(retryableStatusCodes, statusCode) {
+		return false
+	}
+
+	switch {
+	case statusCode >= 400 && statusCode < 500:
+		return method == http.MethodGet || method == http.MethodPost
+	case statusCode >= 500 && statusCode < 600:
+		return method == http.MethodGet
+	}
+	return false
 }

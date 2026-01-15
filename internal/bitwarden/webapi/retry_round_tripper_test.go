@@ -86,6 +86,153 @@ func TestRetryRoundTripper_ServiceUnavailable(t *testing.T) {
 	assert.Equal(t, 2, transport.index)
 }
 
+func TestRetryRoundTripper_4xxWithGET(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	// Create a transport that returns 429 (4xx) then succeeds
+	transport := &mockTransport{
+		responses: []*http.Response{
+			{StatusCode: http.StatusTooManyRequests},
+			{StatusCode: http.StatusOK},
+		},
+		errors: []error{nil, nil},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt.Transport = transport
+
+	req, err := http.NewRequest("GET", "http://example.com", nil)
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, 2, transport.index)
+}
+
+func TestRetryRoundTripper_4xxWithPOST(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	// Create a transport that returns 429 (4xx) then succeeds
+	transport := &mockTransport{
+		responses: []*http.Response{
+			{StatusCode: http.StatusTooManyRequests},
+			{StatusCode: http.StatusOK},
+		},
+		errors: []error{nil, nil},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt.Transport = transport
+
+	req, err := http.NewRequest("POST", "http://example.com", nil)
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, 2, transport.index)
+}
+
+func TestRetryRoundTripper_4xxWithGETNotInRetryableList(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	// Create a transport that returns 400 (4xx, not in retryableStatusCodes) - should not retry
+	transport := &mockTransport{
+		responses: []*http.Response{
+			{StatusCode: http.StatusBadRequest},
+		},
+		errors: []error{nil},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt.Transport = transport
+
+	req, err := http.NewRequest("GET", "http://example.com", nil)
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, 1, transport.index)
+}
+
+func TestRetryRoundTripper_5xxWithGet(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	// Create a transport that returns 503 (5xx, in retryableStatusCodes) - should retry
+	transport := &mockTransport{
+		responses: []*http.Response{
+			{StatusCode: http.StatusServiceUnavailable},
+			{StatusCode: http.StatusOK},
+		},
+		errors: []error{nil, nil},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt.Transport = transport
+
+	req, err := http.NewRequest("GET", "http://example.com", nil)
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, 2, transport.index)
+}
+
+func TestRetryRoundTripper_5xxWithPOST(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	// Create a transport that returns 503 (5xx) with POST - should not retry because POST is not retryable
+	transport := &mockTransport{
+		responses: []*http.Response{
+			{StatusCode: http.StatusServiceUnavailable},
+		},
+		errors: []error{nil},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt.Transport = transport
+
+	req, err := http.NewRequest("POST", "http://example.com", nil)
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+	assert.Equal(t, 1, transport.index)
+}
+
+func TestRetryRoundTripper_5xxWithGETNotInRetryableList(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	// Create a transport that returns 500 (5xx, not in retryableStatusCodes) - should not retry
+	transport := &mockTransport{
+		responses: []*http.Response{
+			{StatusCode: http.StatusInternalServerError},
+		},
+		errors: []error{nil},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt.Transport = transport
+
+	req, err := http.NewRequest("GET", "http://example.com", nil)
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, 1, transport.index)
+}
+
 func TestRetryRoundTripper_ConcurrentRequests(t *testing.T) {
 	transport := &mockTransport{
 		responses: []*http.Response{
