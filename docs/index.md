@@ -27,15 +27,13 @@ provider "bitwarden" {
   email = "terraform@example.com"
 
   # By default, the provider uses Bitwarden CLIs to interact with the remote
-  # Vaults. You can also decide to a client embedded in the provider instead,
-  # which removes the need for locally installed binaries.
+  # Vaults. You can also use the embedded client instead, which removes
+  # the need for locally installed binaries.
   #
   # Learn more about the implications by reading the "Client Implementation"
   # section below.
   #
-  # experimental {
-  #   embedded_client = true
-  # }
+  # client_implementation = "embedded"
 }
 
 # Create a Bitwarden Login item
@@ -142,13 +140,9 @@ provider "bitwarden" {
   # server = "https://vault.bitwarden.eu"
 
   # If you have the opportunity, you can try out the embedded client which
-  # removes the need for a locally installed Bitwarden CLI. Please note that
-  # this feature is still considered experimental and not recommended for
-  # production use yet.
+  # removes the need for a locally installed Bitwarden CLI.
   #
-  # experimental {
-  #   embedded_client = true
-  # }
+  # client_implementation = "embedded"
 }
 ```
 
@@ -174,6 +168,7 @@ export BW_CLIENTSECRET="my-client-secret"
 
 - `access_token` (String) Machine Account Access Token (env: `BWS_ACCESS_TOKEN`)).
 - `client_id` (String) Client ID (env: `BW_CLIENTID`)
+- `client_implementation` (String) Client implementation type. Valid values are "embedded" (use embedded client) or "cli" (use CLI binaries, default).
 - `client_secret` (String) Client Secret (env: `BW_CLIENTSECRET`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.
 - `email` (String) Login Email of the Vault (env: `BW_EMAIL`).
 - `experimental` (Block Set) Enable experimental features. (see [below for nested schema](#nestedblock--experimental))
@@ -189,7 +184,7 @@ export BW_CLIENTSECRET="my-client-secret"
 Optional:
 
 - `disable_sync_after_write_verification` (Boolean) Skip verification of server-side modifications (like timestamp updates) after write operations - useful when the Bitwarden server makes minor, non-functional changes to objects.
-- `embedded_client` (Boolean) Use the embedded client instead of an external binary.
+- `embedded_client` (Boolean, Deprecated) Use the embedded client instead of an external binary.
 
 [Password Manager]: https://bitwarden.com/products/personal/
 [Secrets Manager]: https://bitwarden.com/products/secrets-manager/

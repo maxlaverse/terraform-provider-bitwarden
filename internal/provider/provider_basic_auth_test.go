@@ -96,12 +96,9 @@ func usernamePasswordTestProvider(email, password string) string {
 		master_password = "%s"
 		server          = "%s"
 		email           = "%s"
-
-		experimental {
-			embedded_client = %s
-		}
+		client_implementation = "%s"
 	}
-`, password, testConfiguration.ServerURL, email, testConfiguration.UseEmbeddedClientStr())
+`, password, testConfiguration.ServerURL, email, testConfiguration.ClientImplementationStr())
 }
 
 func checkResourceId() resource.TestCheckFunc {

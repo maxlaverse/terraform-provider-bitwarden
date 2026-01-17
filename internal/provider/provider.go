@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwscli"
@@ -104,6 +105,13 @@ func New(version string) func() *schema.Provider {
 					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("NODE_EXTRA_CA_CERTS", nil),
 				},
+				schema_definition.AttributeClientImplementation: {
+					Type:             schema.TypeString,
+					Description:      schema_definition.DescriptionClientImplementation,
+					Optional:         true,
+					Default:          schema_definition.ClientImplementationCLI,
+					ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{schema_definition.ClientImplementationCLI, schema_definition.ClientImplementationEmbedded}, false)),
+				},
 
 				// Experimental
 				schema_definition.AttributeExperimental: {
@@ -113,9 +121,11 @@ func New(version string) func() *schema.Provider {
 					Elem: &schema.Resource{
 						Schema: map[string]*schema.Schema{
 							schema_definition.AttributeExperimentalEmbeddedClient: {
-								Description: schema_definition.DescriptionExperimentalEmbeddedClient,
-								Type:        schema.TypeBool,
-								Optional:    true,
+								Description:   schema_definition.DescriptionExperimentalEmbeddedClient,
+								Type:          schema.TypeBool,
+								Optional:      true,
+								Deprecated:    "Use client_implementation = \"embedded\" instead.",
+								ConflictsWith: []string{schema_definition.AttributeClientImplementation},
 							},
 							schema_definition.AttributeExperimentalDisableSyncAfterWriteVerification: {
 								Description: schema_definition.DescriptionExperimentalDisableSyncAfterWriteVerification,
@@ -162,7 +172,7 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 
 		_, hasAccessToken := d.GetOk(schema_definition.AttributeBwsAccessToken)
-		useEmbeddedClient := useExperimentalEmbeddedClient(d)
+		useEmbeddedClient := getClientImplementation(d) == schema_definition.ClientImplementationEmbedded
 
 		if _, hasSessionKey := d.GetOk(schema_definition.AttributeSessionKey); useEmbeddedClient && hasSessionKey {
 			return nil, diag.Errorf("session key is not supported with the embedded client")
@@ -231,8 +241,19 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 	}
 }
 
-func useExperimentalEmbeddedClient(d *schema.ResourceData) bool {
-	return hasExperimentalFeature(d, schema_definition.AttributeExperimentalEmbeddedClient)
+func getClientImplementation(d *schema.ResourceData) string {
+	// Check for backward compatibility with experimental.embedded_client
+	if hasExperimentalFeature(d, schema_definition.AttributeExperimentalEmbeddedClient) {
+		tflog.Warn(context.Background(), "The experimental.embedded_client attribute is deprecated. Please use client_implementation = \"embedded\" instead.")
+		return schema_definition.ClientImplementationEmbedded
+	}
+
+	// Get client_implementation, defaulting to "cli" if not set
+	clientImplementation, ok := d.GetOk(schema_definition.AttributeClientImplementation)
+	if !ok {
+		return schema_definition.ClientImplementationCLI
+	}
+	return clientImplementation.(string)
 }
 
 func ensureLoggedInCLIPasswordManager(ctx context.Context, d *schema.ResourceData, bwClient bwcli.PasswordManagerClient) error {

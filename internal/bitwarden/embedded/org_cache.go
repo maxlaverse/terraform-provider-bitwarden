@@ -18,10 +18,10 @@ type OrgCache struct {
 }
 
 type orgCacheEntry struct {
-	groups  []models.OrgGroup
-	members []models.OrgMember
-    groupsLoaded  bool
-    membersLoaded bool	
+	groups        []models.OrgGroup
+	members       []models.OrgMember
+	groupsLoaded  bool
+	membersLoaded bool
 }
 
 func NewOrgCache(client webapi.Client) OrgCache {
@@ -33,28 +33,28 @@ func NewOrgCache(client webapi.Client) OrgCache {
 
 // GetGroups returns cached groups for an organization, loading them if needed
 func (c *OrgCache) GetGroups(ctx context.Context, orgId string) ([]models.OrgGroup, error) {
-    c.mu.RLock()
-    entry, exists := c.cache[orgId]
-    if exists && entry.groupsLoaded {
-        groups := entry.groups
-        c.mu.RUnlock()
-        return groups, nil
-    }
-    c.mu.RUnlock()
-    return c.loadGroups(ctx, orgId)
+	c.mu.RLock()
+	entry, exists := c.cache[orgId]
+	if exists && entry.groupsLoaded {
+		groups := entry.groups
+		c.mu.RUnlock()
+		return groups, nil
+	}
+	c.mu.RUnlock()
+	return c.loadGroups(ctx, orgId)
 }
 
 // GetMembers returns cached members for an organization, loading them if needed
 func (c *OrgCache) GetMembers(ctx context.Context, orgId string) ([]models.OrgMember, error) {
-    c.mu.RLock()
-    entry, exists := c.cache[orgId]
-    if exists && entry.membersLoaded {
-        members := entry.members
-        c.mu.RUnlock()
-        return members, nil
-    }
-    c.mu.RUnlock()
-    return c.loadMembers(ctx, orgId)
+	c.mu.RLock()
+	entry, exists := c.cache[orgId]
+	if exists && entry.membersLoaded {
+		members := entry.members
+		c.mu.RUnlock()
+		return members, nil
+	}
+	c.mu.RUnlock()
+	return c.loadMembers(ctx, orgId)
 }
 
 // FindGroupByID finds a group by ID in the specified organization
@@ -157,32 +157,32 @@ func (c *OrgCache) InvalidateAll(ctx context.Context) {
 
 // loadGroups loads groups from the API and caches them
 func (c *OrgCache) loadGroups(ctx context.Context, orgId string) ([]models.OrgGroup, error) {
-    c.mu.Lock()
-    defer c.mu.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-    tflog.Trace(ctx, "Loading groups for organization", map[string]interface{}{"org_id": orgId})
+	tflog.Trace(ctx, "Loading groups for organization", map[string]interface{}{"org_id": orgId})
 
-    orgGroups, err := c.client.GetOrganizationGroups(ctx, orgId)
-    if err != nil {
-        return nil, fmt.Errorf("error getting organization groups: %w", err)
-    }
+	orgGroups, err := c.client.GetOrganizationGroups(ctx, orgId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting organization groups: %w", err)
+	}
 
-    groups := make([]models.OrgGroup, len(orgGroups))
-    for i, g := range orgGroups {
-        groups[i] = models.OrgGroup{ ID: g.Id, Name: g.Name, OrganizationID: orgId }
-    }
+	groups := make([]models.OrgGroup, len(orgGroups))
+	for i, g := range orgGroups {
+		groups[i] = models.OrgGroup{ID: g.Id, Name: g.Name, OrganizationID: orgId}
+	}
 
-    if entry, ok := c.cache[orgId]; ok {
-        entry.groups = groups
-        entry.groupsLoaded = true
-        // keep entry.members / entry.membersLoaded as-is
-    } else {
-        c.cache[orgId] = &orgCacheEntry{
-            groups:       groups,
-            groupsLoaded: true,
-        }
-    }
-    return groups, nil
+	if entry, ok := c.cache[orgId]; ok {
+		entry.groups = groups
+		entry.groupsLoaded = true
+		// keep entry.members / entry.membersLoaded as-is
+	} else {
+		c.cache[orgId] = &orgCacheEntry{
+			groups:       groups,
+			groupsLoaded: true,
+		}
+	}
+	return groups, nil
 }
 
 // loadMembers loads members from the API and caches them
@@ -208,16 +208,16 @@ func (c *OrgCache) loadMembers(ctx context.Context, orgId string) ([]models.OrgM
 		}
 	}
 
-    if entry, ok := c.cache[orgId]; ok {
-        entry.members = members
-        entry.membersLoaded = true
-        // keep entry.groups / entry.groupsLoaded as-is
-    } else {
-        c.cache[orgId] = &orgCacheEntry{
-            members:       members,
-            membersLoaded: true,
-        }
-    }
+	if entry, ok := c.cache[orgId]; ok {
+		entry.members = members
+		entry.membersLoaded = true
+		// keep entry.groups / entry.groupsLoaded as-is
+	} else {
+		c.cache[orgId] = &orgCacheEntry{
+			members:       members,
+			membersLoaded: true,
+		}
+	}
 
 	return members, nil
 }

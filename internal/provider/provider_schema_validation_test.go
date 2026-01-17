@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,14 +42,12 @@ func TestProviderAuthUsingAPIKey(t *testing.T) {
 
 func TestProviderAuthUsingAPIAndEmbedded(t *testing.T) {
 	raw := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"email":           "test@laverse.net",
-		"client_id":       "client-id-1234",
-		"client_secret":   "client-secret-5678",
-		"master_password": "master-password-9",
-		"experimental": []interface{}{
-			map[string]interface{}{"embedded_client": "true"},
-		},
+		"server":                "http://127.0.0.1/",
+		"email":                 "test@laverse.net",
+		"client_id":             "client-id-1234",
+		"client_secret":         "client-secret-5678",
+		"master_password":       "master-password-9",
+		"client_implementation": schema_definition.ClientImplementationEmbedded,
 	}
 
 	p := New(versionTestSkippedLogin)()
@@ -86,10 +85,8 @@ func TestProviderAuthUsingSessionKey(t *testing.T) {
 
 func TestProviderAuthUsingAccessToken(t *testing.T) {
 	raw := map[string]interface{}{
-		"access_token": "0.client_id.client_secret:dGVzdC1lbmNyeXB0aW9uLWtleQ==",
-		"experimental": []interface{}{
-			map[string]interface{}{"embedded_client": "true"},
-		},
+		"access_token":          "0.client_id.client_secret:dGVzdC1lbmNyeXB0aW9uLWtleQ==",
+		"client_implementation": schema_definition.ClientImplementationEmbedded,
 	}
 
 	p := New(versionTestSkippedLogin)()
@@ -183,14 +180,14 @@ func TestProviderAuthForPasswordManager_ThrowsErrorOnMissingEmail(t *testing.T) 
 
 func TestSyncAfterWriteVerificationDisabled(t *testing.T) {
 	raw := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"email":           "test@laverse.net",
-		"client_id":       "client-id-1234",
-		"client_secret":   "client-secret-5678",
-		"master_password": "master-password-9",
+		"server":                "http://127.0.0.1/",
+		"email":                 "test@laverse.net",
+		"client_id":             "client-id-1234",
+		"client_secret":         "client-secret-5678",
+		"master_password":       "master-password-9",
+		"client_implementation": schema_definition.ClientImplementationEmbedded,
 		"experimental": []interface{}{
 			map[string]interface{}{
-				"embedded_client":                       "true",
 				"disable_sync_after_write_verification": "true",
 			},
 		},
@@ -207,4 +204,30 @@ func TestSyncAfterWriteVerificationDisabled(t *testing.T) {
 
 	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), p.Meta())
 	assert.True(t, p.Meta().(embedded.PasswordManagerClient).IsSyncAfterWriteVerificationDisabled())
+}
+
+func TestProviderAuthUsingExperimentalEmbeddedClient_BackwardCompatibility(t *testing.T) {
+	raw := map[string]interface{}{
+		"server":          "http://127.0.0.1/",
+		"email":           "test@laverse.net",
+		"client_id":       "client-id-1234",
+		"client_secret":   "client-secret-5678",
+		"master_password": "master-password-9",
+		"experimental": []interface{}{
+			map[string]interface{}{
+				"embedded_client": true,
+			},
+		},
+	}
+
+	p := New(versionTestSkippedLogin)()
+
+	config := terraform.NewResourceConfigRaw(raw)
+	diag := p.Validate(config)
+	assert.False(t, diag.HasError())
+
+	diag = p.Configure(t.Context(), config)
+	assert.False(t, diag.HasError())
+
+	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), p.Meta())
 }

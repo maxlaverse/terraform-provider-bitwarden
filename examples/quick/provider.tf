@@ -12,15 +12,13 @@ provider "bitwarden" {
   email = "terraform@example.com"
 
   # By default, the provider uses Bitwarden CLIs to interact with the remote
-  # Vaults. You can also decide to a client embedded in the provider instead,
-  # which removes the need for locally installed binaries.
+  # Vaults. You can also use the embedded client instead, which removes
+  # the need for locally installed binaries.
   #
   # Learn more about the implications by reading the "Client Implementation"
   # section below.
   #
-  # experimental {
-  #   embedded_client = true
-  # }
+  # client_implementation = "embedded"
 }
 
 # Create a Bitwarden Login item

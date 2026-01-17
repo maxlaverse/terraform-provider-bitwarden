@@ -113,6 +113,7 @@ const (
 	// Provider field attributes
 	AttributeBwsAccessToken                                = "access_token"
 	AttributeClientID                                      = "client_id"
+	AttributeClientImplementation                          = "client_implementation"
 	AttributeClientSecret                                  = "client_secret"
 	AttributeProviderEmail                                 = "email"
 	AttributeMasterPassword                                = "master_password"
@@ -124,6 +125,10 @@ const (
 	AttributeExperimentalEmbeddedClient                    = "embedded_client"
 	AttributeExperimentalDisableSyncAfterWriteVerification = "disable_sync_after_write_verification"
 
+	// Client implementation values
+	ClientImplementationCLI      = "cli"
+	ClientImplementationEmbedded = "embedded"
+
 	// Provider field descriptions
 	DescriptionBwsAccessToken                                = "Machine Account Access Token (env: `BWS_ACCESS_TOKEN`))."
 	DescriptionClientSecret                                  = "Client Secret (env: `BW_CLIENTSECRET`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment."
@@ -134,6 +139,7 @@ const (
 	DescriptionSessionKey                                    = "A Bitwarden Session Key (env: `BW_SESSION`)"
 	DescriptionVaultPath                                     = "Alternative directory for storing the Vault locally (default: `.bitwarden/`, env: `BITWARDENCLI_APPDATA_DIR`; set to empty string to use CLI default)."
 	DescriptionExtraCACertsPath                              = "Extends the well known 'root' CAs (like VeriSign) with the extra certificates in file (env: `NODE_EXTRA_CA_CERTS`, doesn't work with embedded client)."
+	DescriptionClientImplementation                          = "Client implementation type. Valid values are \"embedded\" (use embedded client) or \"cli\" (use CLI binaries, default)."
 	DescriptionExperimental                                  = "Enable experimental features."
 	DescriptionExperimentalEmbeddedClient                    = "Use the embedded client instead of an external binary."
 	DescriptionExperimentalDisableSyncAfterWriteVerification = "Skip verification of server-side modifications (like timestamp updates) after write operations - useful when the Bitwarden server makes minor, non-functional changes to objects."
