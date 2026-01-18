@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
@@ -230,4 +231,81 @@ func TestProviderAuthUsingExperimentalEmbeddedClient_BackwardCompatibility(t *te
 	assert.False(t, diag.HasError())
 
 	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), p.Meta())
+}
+
+func TestGetClientImplementation_RecognizesExperimentalEmbeddedClient(t *testing.T) {
+	raw := map[string]interface{}{
+		"server":          "http://127.0.0.1/",
+		"email":           "test@laverse.net",
+		"client_id":       "client-id-1234",
+		"client_secret":   "client-secret-5678",
+		"master_password": "master-password-9",
+		"experimental": []interface{}{
+			map[string]interface{}{
+				"embedded_client": true,
+			},
+		},
+	}
+
+	p := New(versionTestSkippedLogin)()
+	resourceData := schema.TestResourceDataRaw(t, p.Schema, raw)
+
+	// Verify that getClientImplementation recognizes experimental.embedded_client
+	clientImpl := getClientImplementation(resourceData)
+	assert.Equal(t, schema_definition.ClientImplementationEmbedded, clientImpl)
+}
+
+func TestGetClientImplementation_RecognizesExplicitClientImplementation(t *testing.T) {
+	raw := map[string]interface{}{
+		"server":                "http://127.0.0.1/",
+		"email":                 "test@laverse.net",
+		"client_id":             "client-id-1234",
+		"client_secret":         "client-secret-5678",
+		"master_password":       "master-password-9",
+		"client_implementation": schema_definition.ClientImplementationEmbedded,
+	}
+
+	p := New(versionTestSkippedLogin)()
+	resourceData := schema.TestResourceDataRaw(t, p.Schema, raw)
+	clientImpl := getClientImplementation(resourceData)
+	assert.Equal(t, schema_definition.ClientImplementationEmbedded, clientImpl)
+}
+
+func TestGetClientImplementation_DefaultsToCLI(t *testing.T) {
+	raw := map[string]interface{}{
+		"server":          "http://127.0.0.1/",
+		"email":           "test@laverse.net",
+		"client_id":       "client-id-1234",
+		"client_secret":   "client-secret-5678",
+		"master_password": "master-password-9",
+		// client_implementation not set, should default to "cli"
+	}
+
+	p := New(versionTestSkippedLogin)()
+	resourceData := schema.TestResourceDataRaw(t, p.Schema, raw)
+	clientImpl := getClientImplementation(resourceData)
+	assert.Equal(t, schema_definition.ClientImplementationCLI, clientImpl)
+}
+
+func TestGetClientImplementation_ExperimentalTakesPrecedenceWhenBothSet(t *testing.T) {
+	raw := map[string]interface{}{
+		"server":                "http://127.0.0.1/",
+		"email":                 "test@laverse.net",
+		"client_id":             "client-id-1234",
+		"client_secret":         "client-secret-5678",
+		"master_password":       "master-password-9",
+		"client_implementation": schema_definition.ClientImplementationCLI, // explicitly set to "cli"
+		"experimental": []interface{}{
+			map[string]interface{}{
+				"embedded_client": true, // but experimental.embedded_client is also set
+			},
+		},
+	}
+
+	p := New(versionTestSkippedLogin)()
+	resourceData := schema.TestResourceDataRaw(t, p.Schema, raw)
+
+	// Verify that experimental.embedded_client takes precedence over explicit client_implementation
+	clientImpl := getClientImplementation(resourceData)
+	assert.Equal(t, schema_definition.ClientImplementationEmbedded, clientImpl, "experimental.embedded_client should take precedence when both are set")
 }
