@@ -13,6 +13,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
 const (
@@ -76,6 +77,13 @@ func (c *testConfigStruct) UseEmbeddedClientStr() string {
 		return "true"
 	}
 	return "false"
+}
+
+func (c *testConfigStruct) ClientImplementationStr() string {
+	if c.UseEmbeddedClient {
+		return schema_definition.ClientImplementationEmbedded
+	}
+	return schema_definition.ClientImplementationCLI
 }
 
 func (c *testConfigStruct) WasResourcesCreationAttempted(t *testing.T) bool {

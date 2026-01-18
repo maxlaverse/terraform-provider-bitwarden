@@ -99,12 +99,9 @@ func tfConfigPasswordManagerProvider(account testAccountName) string {
 		email           = "%s"
 		client_id       = "%s"
 		client_secret   = "%s"
-
-		experimental {
-			embedded_client = %s
-		}
+		client_implementation = "%s"
 	}
-`, acc.Password, testConfiguration.ServerURL, acc.Email, acc.ClientID, acc.ClientSecret, testConfiguration.UseEmbeddedClientStr())
+`, acc.Password, testConfiguration.ServerURL, acc.Email, acc.ClientID, acc.ClientSecret, testConfiguration.ClientImplementationStr())
 }
 
 func tfConfigAttachmentSpecificPasswordManagerProvider() string {
@@ -118,12 +115,9 @@ func tfConfigAttachmentSpecificPasswordManagerProvider() string {
 		master_password = "%s"
 		server          = "%s"
 		email           = "%s"
-
-		experimental {
-			embedded_client = false
-		}
+		client_implementation = "%s"
 	}
-`, acc.Password, testConfiguration.ReverseProxyServerURL, acc.Email)
+`, acc.Password, testConfiguration.ReverseProxyServerURL, acc.Email, testConfiguration.ClientImplementationStr())
 }
 
 func testOrRealSecretsManagerProvider(t *testing.T) (string, func()) {
@@ -155,12 +149,9 @@ func spawnTestSecretsManager(t *testing.T) (string, func()) {
 	provider "bitwarden" {
 		access_token = "%s"
 		server = "http://localhost:8081"
-
-		experimental {
-			embedded_client = %s
-		}
+		client_implementation = "%s"
 	}
-	`, accessToken, testConfiguration.UseEmbeddedClientStr()), stop
+	`, accessToken, testConfiguration.ClientImplementationStr()), stop
 }
 
 func tfConfigSecretsManagerProvider() string {
@@ -168,11 +159,9 @@ func tfConfigSecretsManagerProvider() string {
 	provider "bitwarden" {
 		access_token = "%s"
 		server = "%s"
-		experimental {
-			embedded_client = %s
-		}
+		client_implementation = "%s"
 	}
-`, os.Getenv("TEST_SECRETS_MANAGER_ACCESS_TOKEN"), testConfiguration.ServerURL, testConfiguration.UseEmbeddedClientStr())
+`, os.Getenv("TEST_SECRETS_MANAGER_ACCESS_TOKEN"), testConfiguration.ServerURL, testConfiguration.ClientImplementationStr())
 }
 
 func getObjectID(n string, objectId *string) resource.TestCheckFunc {
