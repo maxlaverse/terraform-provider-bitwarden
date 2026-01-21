@@ -121,11 +121,14 @@ func New(version string) func() *schema.Provider {
 					Elem: &schema.Resource{
 						Schema: map[string]*schema.Schema{
 							schema_definition.AttributeExperimentalEmbeddedClient: {
-								Description:   schema_definition.DescriptionExperimentalEmbeddedClient,
-								Type:          schema.TypeBool,
-								Optional:      true,
-								Deprecated:    "Use client_implementation = \"embedded\" instead.",
-								ConflictsWith: []string{schema_definition.AttributeClientImplementation},
+								Description: schema_definition.DescriptionExperimentalEmbeddedClient,
+								Type:        schema.TypeBool,
+								Optional:    true,
+								Deprecated:  "Use client_implementation = \"embedded\" instead.",
+								// Note: We don't use ConflictsWith because client_implementation has a default value. To
+								// properly detect if it was explicitly set (vs using the default) would require additional
+								// code. Instead, we allow both to be set and let experimental.embedded_client take
+								// precedence in getClientImplementation().
 							},
 							schema_definition.AttributeExperimentalDisableSyncAfterWriteVerification: {
 								Description: schema_definition.DescriptionExperimentalDisableSyncAfterWriteVerification,
@@ -170,7 +173,6 @@ func providerConfigure(version string, _ *schema.Provider) func(context.Context,
 	shouldLogin := !strings.Contains(version, versionTestSkippedLogin)
 
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-
 		_, hasAccessToken := d.GetOk(schema_definition.AttributeBwsAccessToken)
 		useEmbeddedClient := getClientImplementation(d) == schema_definition.ClientImplementationEmbedded
 
