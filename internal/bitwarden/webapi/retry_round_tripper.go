@@ -32,7 +32,7 @@ var retryableStatusCodes = []int{
 	http.StatusServiceUnavailable,
 }
 
-var retryBackoffFactor = 2
+var retryBackoffFactor = 1.5
 
 // NewRetryRoundTripper creates a new retry-capable HTTP transport.
 //
@@ -57,9 +57,28 @@ func (rrt *RetryRoundTripper) RoundTrip(httpReq *http.Request) (*http.Response, 
 	}
 
 	ctx := httpReq.Context()
+
+	// Buffer request body for potential retries. POST requests can get 429/503
+	// and be retried; once the body is read by the transport it cannot be read again.
+	var bodyBuf []byte
+	if httpReq.Body != nil && httpReq.Method == http.MethodPost {
+		var readErr error
+		bodyBuf, readErr = io.ReadAll(httpReq.Body)
+		httpReq.Body.Close()
+		if readErr != nil {
+			return nil, fmt.Errorf("buffer request body for retry: %w", readErr)
+		}
+		httpReq.Body = io.NopCloser(bytes.NewReader(bodyBuf))
+	}
+
 	attemptNumber := 0
 	for {
 		attemptNumber += 1
+
+		// Restore body before each retry so the transport can read it again.
+		if attemptNumber > 1 && len(bodyBuf) > 0 {
+			httpReq.Body = io.NopCloser(bytes.NewReader(bodyBuf))
+		}
 
 		resp, shouldRetry, err := rrt.doRequest(ctx, httpReq, attemptNumber)
 		if err != nil {
@@ -92,7 +111,9 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	isDialError := err != nil && isDialError(err)
 	isRetriableHttpStatusCode := err == nil && resp != nil && isRetriableStatusCode(httpReq.Method, resp.StatusCode)
 	isRetriableReadTimeout := httpReq.Method == http.MethodGet && (isReadTimeout(err))
-	isLastPossibleAttempt := attemptNumber >= rrt.maxRetries-1 || rrt.DisableRetries
+	is429 := resp != nil && resp.StatusCode == http.StatusTooManyRequests
+	// 429 is retried indefinitely (rate limits eventually reset). Other retryable cases use maxRetries.
+	isLastPossibleAttempt := (attemptNumber >= rrt.maxRetries-1 || rrt.DisableRetries) && !is429
 
 	debugInfo := map[string]interface{}{
 		"url":                           httpReq.URL.RequestURI(),
@@ -130,13 +151,12 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 		debugInfo["status_message"] = resp.Status
 	}
 
-	// Try to find the best waiting duration, either from the response headers
-	// or from the backoff function.
-	var waitDuration time.Duration
+	// Default to exponential backoff; use server-provided wait when available for 429.
+	waitDuration := backoff(attemptNumber)
 	if resp != nil && resp.StatusCode == http.StatusTooManyRequests {
-		waitDuration = tryToReadWaitDurationFromHeaders(resp)
-	} else {
-		waitDuration = backoff(attemptNumber)
+		if d := tryToReadWaitDurationFromHeaders(resp); d > 0 {
+			waitDuration = d
+		}
 	}
 
 	debugInfo["wait_duration_sec"] = waitDuration.Seconds()
