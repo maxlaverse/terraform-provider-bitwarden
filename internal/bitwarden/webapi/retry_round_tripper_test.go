@@ -3,8 +3,10 @@
 package webapi
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"math"
 	"net"
 	"net/http"
@@ -19,13 +21,18 @@ import (
 )
 
 func TestRetryRoundTripper_Backoff(t *testing.T) {
+	// retryBackoffFactor is 1.5: delay = 1.5^attempt seconds, capped at 30s
 	testData := map[int]time.Duration{
-		1: 2 * time.Second,
-		2: 4 * time.Second,
-		3: 8 * time.Second,
-		4: 16 * time.Second,
-		5: 30 * time.Second,
-		6: 30 * time.Second,
+		1: 1 * time.Second,
+		2: 2 * time.Second,
+		3: 3 * time.Second,
+		4: 5 * time.Second,
+		5: 7 * time.Second,
+		6: 11 * time.Second,
+		7: 17 * time.Second,
+		8: 25 * time.Second,
+		9: 30 * time.Second,
+		10: 30 * time.Second,
 	}
 	for attempt, expected := range testData {
 		assert.Equal(t, expected, backoff(attempt))
@@ -134,6 +141,79 @@ func TestRetryRoundTripper_4xxWithPOST(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, 2, transport.index)
+}
+
+func TestRetryRoundTripper_4xxWithPOSTRewindsBody(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	// Transport that returns 429 then 200 and records the body received on each attempt.
+	var bodies [][]byte
+	var bodiesMu sync.Mutex
+	transport := &mockTransport{
+		responses: []*http.Response{
+			{StatusCode: http.StatusTooManyRequests},
+			{StatusCode: http.StatusOK},
+		},
+		errors: []error{nil, nil},
+	}
+	recordBodyTransport := &roundTripFunc{
+		fn: func(req *http.Request) (*http.Response, error) {
+			var body []byte
+			if req.Body != nil {
+				body, _ = io.ReadAll(req.Body)
+			}
+			bodiesMu.Lock()
+			bodies = append(bodies, body)
+			bodiesMu.Unlock()
+			return transport.RoundTrip(req)
+		},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt.Transport = recordBodyTransport
+
+	body := []byte("grant_type=password&username=foo@example.com")
+	req, err := http.NewRequest("POST", "http://example.com", bytes.NewReader(body))
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, 2, transport.index)
+	bodiesMu.Lock()
+	defer bodiesMu.Unlock()
+	require.Len(t, bodies, 2, "body should have been sent on both attempts")
+	assert.Equal(t, body, bodies[0], "first attempt should send full body")
+	assert.Equal(t, body, bodies[1], "retry should send same body (rewound)")
+}
+
+func TestRetryRoundTripper_429RetriedIndefinitely(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	// With maxRetries=3 we'd normally give up after 2 attempts. For 429 we retry
+	// until success. Return 429 three times then 200; we should get 200 on attempt 4.
+	transport := &mockTransport{
+		responses: []*http.Response{
+			{StatusCode: http.StatusTooManyRequests},
+			{StatusCode: http.StatusTooManyRequests},
+			{StatusCode: http.StatusTooManyRequests},
+			{StatusCode: http.StatusOK},
+		},
+		errors: []error{nil, nil, nil, nil},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt.Transport = transport
+
+	req, err := http.NewRequest("POST", "http://example.com", bytes.NewReader([]byte("body")))
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, 4, transport.index, "should have retried 429 more than maxRetries times until success")
 }
 
 func TestRetryRoundTripper_4xxWithGETNotInRetryableList(t *testing.T) {
@@ -393,6 +473,14 @@ func TestRetryRoundTripper_ReadWaitDurationFromHeaders(t *testing.T) {
 		assert.True(t, math.Abs(float64(duration-test.duration)) <= float64(time.Second),
 			"Duration %v should be within 1 second of expected %v", duration, test.duration)
 	}
+}
+
+type roundTripFunc struct {
+	fn func(*http.Request) (*http.Response, error)
+}
+
+func (r *roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return r.fn(req)
 }
 
 type mockTransport struct {
