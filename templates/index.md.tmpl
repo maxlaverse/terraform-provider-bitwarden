@@ -85,6 +85,8 @@ In order to generate an Access Token you need to:
 
 -> **Note:** By default, new machine accounts are not assigned to any projects. After creating a machine account, make sure it is added to the project(s) you want to access, with either "Can Read" or "Can Read & Write" permissions. If the machine account does not have access to the project, you will encounter an `Error: object not found` when attempting to use/create secrets from that project.
 
+-> **Note:** When using the embedded client in ephemeral environments (CI, containers), the provider stores a device identifier in `.bitwarden/device_identifier`. If that file is missing, a new one is generated each run and Bitwarden may send "new device logged in" emails. To avoid that, persist `.bitwarden/device_identifier` (e.g. in a secret or volume) and restore it before running Terraform.
+
 ## Configuration
 Configuration for the Bitwarden Provider can be derived from two sources:
 * Parameters in the provider configuration
