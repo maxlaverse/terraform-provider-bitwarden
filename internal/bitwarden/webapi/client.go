@@ -21,9 +21,12 @@ import (
 )
 
 const (
-	defaultRequestTimeout = 10 * time.Second
-	maxConcurrentRequests = 4
-	maxRetryAttempts      = 3
+	defaultDialTimeout           = 10 * time.Second
+	defaultTLSHandshakeTimeout   = 10 * time.Second
+	defaultResponseHeaderTimeout = 10 * time.Second
+	defaultAttemptTimeout        = 15 * time.Second
+	maxConcurrentRequests        = 4
+	maxRetryAttempts             = 3
 )
 
 type CloudStorageProvider string
@@ -86,7 +89,7 @@ func NewClient(serverURL, deviceIdentifier, providerVersion string, opts ...Opti
 		device:    DeviceInformation(deviceIdentifier, providerVersion),
 		serverURL: strings.TrimSuffix(serverURL, "/"),
 		httpClient: &http.Client{
-			Transport:     NewRetryRoundTripper(maxConcurrentRequests, maxRetryAttempts, defaultRequestTimeout),
+			Transport:     NewRetryRoundTripper(maxConcurrentRequests, maxRetryAttempts, defaultAttemptTimeout, defaultDialTimeout, defaultTLSHandshakeTimeout, defaultResponseHeaderTimeout),
 			CheckRedirect: handleRedirect,
 		},
 	}
