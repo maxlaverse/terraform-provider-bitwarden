@@ -23,15 +23,15 @@ import (
 func TestRetryRoundTripper_Backoff(t *testing.T) {
 	// retryBackoffFactor is 1.5: delay = 1.5^attempt seconds, capped at 30s
 	testData := map[int]time.Duration{
-		1: 1 * time.Second,
-		2: 2 * time.Second,
-		3: 3 * time.Second,
-		4: 5 * time.Second,
-		5: 7 * time.Second,
-		6: 11 * time.Second,
-		7: 17 * time.Second,
-		8: 25 * time.Second,
-		9: 30 * time.Second,
+		1:  1 * time.Second,
+		2:  2 * time.Second,
+		3:  3 * time.Second,
+		4:  5 * time.Second,
+		5:  7 * time.Second,
+		6:  11 * time.Second,
+		7:  17 * time.Second,
+		8:  25 * time.Second,
+		9:  30 * time.Second,
 		10: 30 * time.Second,
 	}
 	for attempt, expected := range testData {
@@ -55,7 +55,7 @@ func TestRetryRoundTripper_BasicRetry(t *testing.T) {
 		},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 
 	req, err := http.NewRequest("GET", "http://example.com", nil)
@@ -81,7 +81,7 @@ func TestRetryRoundTripper_ServiceUnavailable(t *testing.T) {
 		errors: []error{nil, nil},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 
 	req, err := http.NewRequest("GET", "http://example.com", nil)
@@ -106,7 +106,7 @@ func TestRetryRoundTripper_4xxWithGET(t *testing.T) {
 		errors: []error{nil, nil},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 
 	req, err := http.NewRequest("GET", "http://example.com", nil)
@@ -131,7 +131,7 @@ func TestRetryRoundTripper_4xxWithPOST(t *testing.T) {
 		errors: []error{nil, nil},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 
 	req, err := http.NewRequest("POST", "http://example.com", nil)
@@ -170,7 +170,7 @@ func TestRetryRoundTripper_4xxWithPOSTRewindsBody(t *testing.T) {
 		},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = recordBodyTransport
 
 	body := []byte("grant_type=password&username=foo@example.com")
@@ -204,7 +204,7 @@ func TestRetryRoundTripper_429RetriedIndefinitely(t *testing.T) {
 		errors: []error{nil, nil, nil, nil},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 
 	req, err := http.NewRequest("POST", "http://example.com", bytes.NewReader([]byte("body")))
@@ -228,7 +228,7 @@ func TestRetryRoundTripper_4xxWithGETNotInRetryableList(t *testing.T) {
 		errors: []error{nil},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 
 	req, err := http.NewRequest("GET", "http://example.com", nil)
@@ -253,7 +253,7 @@ func TestRetryRoundTripper_5xxWithGet(t *testing.T) {
 		errors: []error{nil, nil},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 
 	req, err := http.NewRequest("GET", "http://example.com", nil)
@@ -277,7 +277,7 @@ func TestRetryRoundTripper_5xxWithPOST(t *testing.T) {
 		errors: []error{nil},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 
 	req, err := http.NewRequest("POST", "http://example.com", nil)
@@ -301,7 +301,7 @@ func TestRetryRoundTripper_5xxWithGETNotInRetryableList(t *testing.T) {
 		errors: []error{nil},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 
 	req, err := http.NewRequest("GET", "http://example.com", nil)
@@ -323,7 +323,7 @@ func TestRetryRoundTripper_ConcurrentRequests(t *testing.T) {
 		errors: []error{nil, nil, nil},
 	}
 
-	rrt := NewRetryRoundTripper(2, 3, time.Second)
+	rrt := NewRetryRoundTripper(2, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 
 	// Create a channel to coordinate the requests
@@ -361,21 +361,19 @@ func TestRetryRoundTripper_RequestTimeout(t *testing.T) {
 		errors:    []error{context.DeadlineExceeded},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, 100*time.Millisecond)
+	rrt := NewRetryRoundTripper(1, 3, 100*time.Millisecond, 100*time.Millisecond, 100*time.Millisecond, 100*time.Millisecond)
 	rrt.Transport = transport
 
 	req, err := http.NewRequest("GET", "http://example.com", nil)
 	require.NoError(t, err)
-
-	// Create a context with a shorter timeout
-	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
-	defer cancel()
-	req = req.WithContext(ctx)
+	req = req.WithContext(t.Context())
 
 	resp, err := rrt.RoundTrip(req)
 	assert.Error(t, err)
 	assert.Nil(t, resp)
-	assert.Contains(t, err.Error(), "context deadline exceeded")
+	assert.True(t, errors.Is(err, errNoMoreResponses))
+	// Context timeout is retried for GET; we retried once and the second attempt hit the mock with no more responses.
+	assert.Equal(t, 2, transport.index)
 }
 
 func TestRetryRoundTripper_DisableRetries(t *testing.T) {
@@ -389,7 +387,7 @@ func TestRetryRoundTripper_DisableRetries(t *testing.T) {
 		errors: []error{nil},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 	rrt.DisableRetries = true
 
@@ -411,7 +409,7 @@ func TestRetryRoundTripper_NonGetRequest(t *testing.T) {
 		errors:    []error{&net.OpError{Op: "dial", Err: errors.New("connection refused")}},
 	}
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second)
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 
 	req, err := http.NewRequest("POST", "http://example.com", nil)
@@ -420,7 +418,8 @@ func TestRetryRoundTripper_NonGetRequest(t *testing.T) {
 	resp, err := rrt.RoundTrip(req)
 	assert.Error(t, err)
 	assert.Nil(t, resp)
-	assert.Equal(t, 1, transport.index)
+	// Dial errors are retried for all methods; we retry once then hit "no more responses".
+	assert.Equal(t, 2, transport.index)
 }
 
 func TestRetryRoundTripper_IsConnectTimeout(t *testing.T) {
@@ -483,6 +482,8 @@ func (r *roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return r.fn(req)
 }
 
+var errNoMoreResponses = errors.New("no more responses")
+
 type mockTransport struct {
 	responses []*http.Response
 	errors    []error
@@ -495,7 +496,8 @@ func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	defer m.mu.Unlock()
 
 	if m.index >= len(m.responses) {
-		return nil, errors.New("no more responses")
+		m.index++
+		return nil, errNoMoreResponses
 	}
 	resp := m.responses[m.index]
 	err := m.errors[m.index]
