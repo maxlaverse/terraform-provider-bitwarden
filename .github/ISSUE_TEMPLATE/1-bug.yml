@@ -44,6 +44,16 @@ body:
       description: What version of the Bitwarden Terraform provider are you using?
     validations:
       required: true
+  - id: client_implementation
+    type: dropdown
+    attributes:
+      label: What client implementation are you using ?
+      options:
+        - embedded
+        - cli
+      default: cli
+    validations:
+      required: true
   - id: resources
     type: dropdown
     attributes:
@@ -55,7 +65,9 @@ body:
         - bitwarden_folder
         - bitwarden_item_login
         - bitwarden_item_secure_note
+        - bitwarden_item_ssh_key
         - bitwarden_org_collection
+        - bitwarden_org_group
         - bitwarden_org_member
         - bitwarden_organization
         - bitwarden_project
