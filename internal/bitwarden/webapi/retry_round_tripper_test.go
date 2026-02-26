@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net"
@@ -376,6 +377,33 @@ func TestRetryRoundTripper_RequestTimeout(t *testing.T) {
 	assert.Equal(t, 2, transport.index)
 }
 
+func TestRetryRoundTripper_ResponseHeaderTimeout(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	// Simulate "http2: timeout awaiting response headers" (e.g. from ResponseHeaderTimeout)
+	headerTimeoutErr := errors.New("http2: timeout awaiting response headers")
+	transport := &mockTransport{
+		responses: []*http.Response{
+			nil,
+			{StatusCode: http.StatusOK},
+		},
+		errors: []error{headerTimeoutErr, nil},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
+	rrt.Transport = transport
+
+	req, err := http.NewRequest("GET", "http://example.com", nil)
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	// Response header timeout is retried for GET; first attempt failed, second succeeded.
+	assert.Equal(t, 2, transport.index)
+}
+
 func TestRetryRoundTripper_DisableRetries(t *testing.T) {
 	lowerBackoffFactor()
 	defer lowerBackoffFactor()
@@ -449,6 +477,13 @@ func TestRetryRoundTripper_IsConnectTimeout(t *testing.T) {
 
 	// Test with nil
 	assert.False(t, isDialError(nil))
+}
+
+func TestRetryRoundTripper_IsResponseHeaderTimeout(t *testing.T) {
+	assert.True(t, isResponseHeaderTimeout(errors.New("http2: timeout awaiting response headers")))
+	assert.True(t, isResponseHeaderTimeout(fmt.Errorf("sync failed: %w", errors.New("http2: timeout awaiting response headers"))))
+	assert.False(t, isResponseHeaderTimeout(errors.New("TLS handshake timeout")))
+	assert.False(t, isResponseHeaderTimeout(nil))
 }
 
 func TestRetryRoundTripper_ReadWaitDurationFromHeaders(t *testing.T) {
