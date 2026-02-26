@@ -210,6 +210,18 @@ func isTLSHandshakeTimeout(err error) bool {
 	return false
 }
 
+// isResponseHeaderTimeout reports whether the error is from the transport's
+// ResponseHeaderTimeout being exceeded (e.g. "http2: timeout awaiting response headers").
+// Transient and retriable for GET requests.
+func isResponseHeaderTimeout(err error) bool {
+	for ; err != nil; err = errors.Unwrap(err) {
+		if strings.Contains(err.Error(), "timeout awaiting response headers") {
+			return true
+		}
+	}
+	return false
+}
+
 func isReadTimeout(err error) bool {
 	var netErr net.Error
 	if errors.As(err, &netErr) && netErr.Timeout() {
@@ -307,6 +319,9 @@ func retriableReasons(err error, httpReq *http.Request, resp *http.Response) []s
 	}
 	if isRetriableForResponsePhase(httpReq) && isReadTimeout(err) {
 		reasons = append(reasons, "read_timeout")
+	}
+	if isRetriableForResponsePhase(httpReq) && isResponseHeaderTimeout(err) {
+		reasons = append(reasons, "response_header_timeout")
 	}
 	if resp != nil && isRetriableStatusCode(httpReq.Method, resp.StatusCode) {
 		reasons = append(reasons, "retriable_http_status_code")
