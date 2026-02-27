@@ -32,11 +32,6 @@ inputs:
     required: false
     default: '23.x'
     type: string
-  terraformVersion:
-    description: 'Version of Terraform to install'
-    required: false
-    default: '1.11.4'
-    type: string
   openTofuVersion:
     description: 'Version of OpenTofu to install'
     required: false
@@ -50,33 +45,14 @@ inputs:
 runs:
   using: "composite"
   steps:
-      - id: go-cache-paths
-        shell: bash
-        run: |
-          echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "GOMODCACHE=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: ">=${{ inputs.goVersion }}"
-
-      # Cache go build cache, used to speedup go test
-      - name: Go Build Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.go-cache-paths.outputs.GOCACHE }}
-          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
-
-      # Cache go mod cache, used to speedup builds
-      - name: Go Mod Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.go-cache-paths.outputs.GOMODCACHE }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+          cache: true
 
       - name: Setup Node.js
-        if: ${{ inputs.installCLI }}
+        if: ${{ inputs.installBWCLI }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
@@ -84,14 +60,6 @@ runs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: ${{ inputs.openTofuVersion }}
-
-      - name: Set Terraform Version
-        shell: bash
-        run: |
-          echo TF_ACC_TERRAFORM_PATH=$(which tofu) >> $GITHUB_OUTPUT
-          echo TF_ACC_PROVIDER_NAMESPACE="hashicorp" >> $GITHUB_OUTPUT
-          echo TF_ACC_PROVIDER_HOST="registry.opentofu.org" >> $GITHUB_OUTPUT
-
 
       - name: Install Bitwarden CLI
         if: ${{ inputs.installBWCLI }}
