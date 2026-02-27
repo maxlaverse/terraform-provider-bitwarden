@@ -12,6 +12,21 @@ import (
 	"github.com/magefile/mage/mg"
 )
 
+// accTestEnv returns env vars common to all acceptance tests: avoid checkpoint (use local
+// binary or fixed version), OpenTofu provider registry, and TF_ACC/CHECKPOINT_DISABLE.
+func accTestEnv() []string {
+	base := []string{"TF_ACC=1", "CHECKPOINT_DISABLE=1", "TF_ACC_PROVIDER_NAMESPACE=hashicorp", "TF_ACC_PROVIDER_HOST=registry.opentofu.org"}
+	if path := os.Getenv("TF_ACC_TERRAFORM_PATH"); path != "" {
+		return append([]string{"TF_ACC_TERRAFORM_PATH=" + path}, base...)
+	}
+	for _, name := range []string{"tofu", "terraform"} {
+		if path, err := exec.LookPath(name); err == nil {
+			return append([]string{"TF_ACC_TERRAFORM_PATH=" + path}, base...)
+		}
+	}
+	return append([]string{"TF_ACC_TERRAFORM_VERSION=1.9.0"}, base...)
+}
+
 type Test mg.Namespace
 type Setup mg.Namespace
 
@@ -102,7 +117,8 @@ func (t Test) IntegrationPwdOfficialWithEmbeddedClientArgs(testPattern string) e
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
+	cmd.Env = append(cmd.Env, accTestEnv()...)
+	cmd.Env = append(cmd.Env, "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
 	return cmd.Run()
 }
 
@@ -126,7 +142,8 @@ func (t Test) IntegrationBwsOfficialWithCLIArgs(testPattern string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
+	cmd.Env = append(cmd.Env, accTestEnv()...)
+	cmd.Env = append(cmd.Env, "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
 	return cmd.Run()
 }
 
@@ -150,7 +167,8 @@ func (t Test) IntegrationBwsOfficialWithEmbeddedClientArgs(testPattern string) e
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=official")
+	cmd.Env = append(cmd.Env, accTestEnv()...)
+	cmd.Env = append(cmd.Env, "TEST_BACKEND=official")
 	return cmd.Run()
 }
 
@@ -174,7 +192,8 @@ func (t Test) IntegrationBwsMockedWithEmbeddedClientArgs(testPattern string) err
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
+	cmd.Env = append(cmd.Env, accTestEnv()...)
+	cmd.Env = append(cmd.Env, "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
 	return cmd.Run()
 }
 
@@ -198,7 +217,8 @@ func (t Test) IntegrationBwsMockedWithCLIArgs(testPattern string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=vaultwarden")
+	cmd.Env = append(cmd.Env, accTestEnv()...)
+	cmd.Env = append(cmd.Env, "TEST_BACKEND=vaultwarden")
 	return cmd.Run()
 }
 
@@ -222,7 +242,8 @@ func (t Test) IntegrationPwdVaultwardenWithEmbeddedClientArgs(testPattern string
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
+	cmd.Env = append(cmd.Env, accTestEnv()...)
+	cmd.Env = append(cmd.Env, "TEST_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
 	return cmd.Run()
 }
 
@@ -247,7 +268,8 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "TEST_REVERSE_PROXY_URL=http://127.0.0.1:8080")
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
+	cmd.Env = append(cmd.Env, accTestEnv()...)
+	cmd.Env = append(cmd.Env, "TEST_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
 	return cmd.Run()
 }
 
@@ -269,7 +291,8 @@ func (Test) OfflineArgs(testPattern string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TF_ACC=1", "CHECKPOINT_DISABLE=1", "TEST_BACKEND=vaultwarden")
+	cmd.Env = append(cmd.Env, accTestEnv()...)
+	cmd.Env = append(cmd.Env, "TEST_BACKEND=vaultwarden")
 	return cmd.Run()
 }
 
