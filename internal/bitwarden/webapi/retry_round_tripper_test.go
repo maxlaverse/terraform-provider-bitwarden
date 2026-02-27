@@ -290,14 +290,39 @@ func TestRetryRoundTripper_5xxWithPOST(t *testing.T) {
 	assert.Equal(t, 1, transport.index)
 }
 
+func TestRetryRoundTripper_500WithGET(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	// Create a transport that returns 500 then succeeds - GET is idempotent so we retry
+	transport := &mockTransport{
+		responses: []*http.Response{
+			{StatusCode: http.StatusInternalServerError},
+			{StatusCode: http.StatusOK},
+		},
+		errors: []error{nil, nil},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
+	rrt.Transport = transport
+
+	req, err := http.NewRequest("GET", "http://example.com", nil)
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, 2, transport.index)
+}
+
 func TestRetryRoundTripper_5xxWithGETNotInRetryableList(t *testing.T) {
 	lowerBackoffFactor()
 	defer lowerBackoffFactor()
 
-	// Create a transport that returns 500 (5xx, not in retryableStatusCodes) - should not retry
+	// Create a transport that returns 501 (5xx, not in retryableStatusCodes) - should not retry
 	transport := &mockTransport{
 		responses: []*http.Response{
-			{StatusCode: http.StatusInternalServerError},
+			{StatusCode: http.StatusNotImplemented},
 		},
 		errors: []error{nil},
 	}
@@ -310,7 +335,7 @@ func TestRetryRoundTripper_5xxWithGETNotInRetryableList(t *testing.T) {
 
 	resp, err := rrt.RoundTrip(req)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, http.StatusNotImplemented, resp.StatusCode)
 	assert.Equal(t, 1, transport.index)
 }
 

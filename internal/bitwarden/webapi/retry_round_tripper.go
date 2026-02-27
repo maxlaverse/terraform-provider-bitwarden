@@ -31,6 +31,7 @@ type RetryRoundTripper struct {
 var retryableStatusCodes = []int{
 	http.StatusTooManyRequests,
 	http.StatusServiceUnavailable,
+	http.StatusInternalServerError,
 }
 
 var retryBackoffFactor = 1.5
