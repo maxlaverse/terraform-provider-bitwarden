@@ -137,6 +137,9 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 		} else if readErr != nil {
 			err = readErr
 		}
+		if attemptNumber > 1 {
+			err = fmt.Errorf("%w (after %d attempts)", err, attemptNumber)
+		}
 		return resp, false, err
 	}
 
