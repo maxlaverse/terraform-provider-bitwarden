@@ -162,7 +162,18 @@ func (c *client) CreateOrganizationGroup(ctx context.Context, obj models.OrgGrou
 }
 
 func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
-	return createObject(ctx, c, obj, models.ObjectTypeItem)
+	res, err := createObject(ctx, c, obj, models.ObjectTypeItem)
+	if err != nil {
+		return nil, err
+	}
+
+	// The Bitwarden CLI can only append collection IDs to items when editing them.
+	// We need an extra call to the `edit item-collections` endpoint to change or set the collection IDs.
+	// Because this has a performance impact, we only do it if the item is in an organization.
+	if obj.OrganizationID != "" {
+		return c.editItemCollections(ctx, obj.ID, obj.CollectionIds)
+	}
+	return res, nil
 }
 
 func (c *client) CreateOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
@@ -208,7 +219,18 @@ func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Fol
 }
 
 func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
-	return editGenericObject(ctx, c, obj, obj.Object, obj.ID)
+	_, err := editGenericObject(ctx, c, obj, obj.Object, obj.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// The Bitwarden CLI can only append collection IDs to items when editing them.
+	// We need an extra call to the `edit item-collections` endpoint to change or set the collection IDs.
+	// Because this has a performance impact, we only do it if the item is in an organization.
+	if obj.OrganizationID != "" {
+		return c.editItemCollections(ctx, obj.ID, obj.CollectionIds)
+	}
+	return nil, nil
 }
 
 func (c *client) EditOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {
@@ -251,6 +273,35 @@ func editGenericObject[T any](ctx context.Context, c *client, obj T, objectType 
 	}
 
 	return &obj, nil
+}
+
+func (c *client) editItemCollections(ctx context.Context, objId string, collectionIds []string) (*models.Item, error) {
+	collectionIdsJSON, err := c.encode(collectionIds)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling collection IDs: %w", err)
+	}
+
+	args := []string{
+		"edit",
+		"item-collections",
+		objId,
+		string(collectionIdsJSON),
+	}
+	out, err := c.cmdWithSession(args...).Run(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error editing item collections: %w", err)
+	}
+	var res models.Item
+	err = json.Unmarshal(out, &res)
+	if err != nil {
+		return nil, newUnmarshallError(err, args, out)
+	}
+
+	err = c.Sync(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error syncing: %v, %v", err, string(out))
+	}
+	return &res, nil
 }
 
 func (c *client) GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error) {
