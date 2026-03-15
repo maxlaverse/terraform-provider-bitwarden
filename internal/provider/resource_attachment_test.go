@@ -14,7 +14,7 @@ import (
 )
 
 func TestAccResourceAttachment(t *testing.T) {
-	SkipIfNonPremiumTestAccount(t)
+	SkipIfNonPremiumTestAccount(t, "Attachments are not supported with non-premium test accounts")
 
 	ensureTestConfigurationReady(t)
 
@@ -100,7 +100,7 @@ func TestAccResourceAttachment(t *testing.T) {
 }
 
 func TestAccResourceItemAttachmentFields(t *testing.T) {
-	SkipIfNonPremiumTestAccount(t)
+	SkipIfNonPremiumTestAccount(t, "Attachments are not supported with non-premium test accounts")
 
 	ensureTestConfigurationReady(t)
 
@@ -128,7 +128,7 @@ func TestAccResourceItemAttachmentFields(t *testing.T) {
 }
 
 func TestAccMissingAttachmentIsRecreated(t *testing.T) {
-	SkipIfNonPremiumTestAccount(t)
+	SkipIfNonPremiumTestAccount(t, "Attachments are not supported with non-premium test accounts")
 
 	ensureTestConfigurationReady(t)
 
@@ -174,7 +174,7 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 }
 
 func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
-	SkipIfNonPremiumTestAccount(t)
+	SkipIfNonPremiumTestAccount(t, "Attachments are not supported with non-premium test accounts")
 
 	ensureTestConfigurationReady(t)
 

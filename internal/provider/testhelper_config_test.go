@@ -123,9 +123,9 @@ func SkipIfVaultwardenBackend(t *testing.T) {
 	}
 }
 
-func SkipIfNonPremiumTestAccount(t *testing.T) {
+func SkipIfNonPremiumTestAccount(t *testing.T, reason string) {
 	if testConfiguration.Accounts[testAccountFullAdmin].AccountType != accountTypePremium {
-		t.Skip("Skipping test as non-premium test account is used")
+		t.Skipf("Skipping test as non-premium test account is used: %s", reason)
 	}
 }
 

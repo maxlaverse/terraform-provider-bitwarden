@@ -3,8 +3,10 @@ package provider
 import (
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
@@ -75,9 +77,37 @@ func checkItemFields(resourceName string) resource.TestCheckFunc {
 	)
 }
 
-func conditionalAssertion(shouldRun bool, testCheckFunc ...resource.TestCheckFunc) resource.TestCheckFunc {
-	if !shouldRun {
-		return resource.ComposeTestCheckFunc()
+// checkResourceAttrListEqualsSet verifies that the resource's list attribute contains exactly the expected string values, in any order.
+func checkResourceAttrListEqualsSet(resourceName, attr string, expectedValues []*string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("resource not found: %s", resourceName)
+		}
+		countStr, ok := rs.Primary.Attributes[attr+".#"]
+		if !ok {
+			return fmt.Errorf("%s.# not found", attr)
+		}
+		var count int
+		if _, err := fmt.Sscanf(countStr, "%d", &count); err != nil {
+			return fmt.Errorf("invalid %s.# value: %s", attr, countStr)
+		}
+		actual := make([]string, 0, count)
+		for i := 0; i < count; i++ {
+			v := rs.Primary.Attributes[fmt.Sprintf("%s.%d", attr, i)]
+			actual = append(actual, v)
+		}
+		if len(actual) != len(expectedValues) {
+			return fmt.Errorf("%s length: got %d, want %d (got %v, want %v)", attr, len(actual), len(expectedValues), actual, expectedValues)
+		}
+		for _, expected := range expectedValues {
+			if expected == nil {
+				return fmt.Errorf("%s missing expected value (got %v)", attr, actual)
+			}
+			if !slices.Contains(actual, *expected) {
+				return fmt.Errorf("%s missing expected value %q (got %v)", attr, *expected, actual)
+			}
+		}
+		return nil
 	}
-	return resource.ComposeTestCheckFunc(testCheckFunc...)
 }

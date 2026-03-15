@@ -259,7 +259,7 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	fmt.Println("Running integration tests with CLI on locally running Vaultwarden...")
 	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integration", "-coverpkg=./...", "./..."}
 	if testPattern != "" {
-		args = append(args, "-run", testPattern, "-timeout", "2m")
+		args = append(args, "-run", testPattern, "-timeout", "3m")
 	} else {
 		args = append(args, "-timeout", "60m")
 	}
