@@ -93,8 +93,8 @@ func TestAccResourceItemLoginAddRemoveCollection(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						resourceName, fmt.Sprintf("%s.#", schema_definition.AttributeCollectionIDs), "1",
 					),
-					resource.TestCheckResourceAttr(
-						resourceName, fmt.Sprintf("%s.0", schema_definition.AttributeCollectionIDs), testConfiguration.Resources.CollectionID,
+					resource.TestCheckTypeSetElemAttr(
+						resourceName, schema_definition.AttributeCollectionIDs+".*", testConfiguration.Resources.CollectionID,
 					),
 				),
 			},

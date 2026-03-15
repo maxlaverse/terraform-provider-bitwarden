@@ -2,7 +2,6 @@ package transformation
 
 import (
 	"context"
-	"sort"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
@@ -37,8 +36,6 @@ func ItemObjectToSchema(ctx context.Context, obj *models.Item, d *schema.Resourc
 		return err
 	}
 
-	// Sort collection IDs when storing in state to ensure consistent ordering.
-	sort.Strings(obj.CollectionIds)
 	err = d.Set(schema_definition.AttributeCollectionIDs, obj.CollectionIds)
 	if err != nil {
 		return err
@@ -156,13 +153,12 @@ func ItemSchemaToObject(attrType models.ItemType) func(ctx context.Context, d *s
 			obj.Reprompt = 1
 		}
 
-		if vList, ok := d.Get(schema_definition.AttributeCollectionIDs).([]interface{}); ok {
+		if vSet, ok := d.Get(schema_definition.AttributeCollectionIDs).(*schema.Set); ok {
+			vList := vSet.List()
 			obj.CollectionIds = make([]string, len(vList))
 			for k, v := range vList {
 				obj.CollectionIds[k] = v.(string)
 			}
-			// Sort collection IDs when retrieving from state to ensure consistent ordering.
-			sort.Strings(obj.CollectionIds)
 		}
 
 		if v, ok := d.Get(schema_definition.AttributeField).([]interface{}); ok {

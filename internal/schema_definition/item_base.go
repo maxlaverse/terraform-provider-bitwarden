@@ -35,7 +35,7 @@ func ItemBaseSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 		 */
 		AttributeCollectionIDs: {
 			Description: DescriptionCollectionIDs,
-			Type:        schema.TypeList,
+			Type:        schema.TypeSet,
 			Elem:        &schema.Schema{Type: schema.TypeString},
 			Computed:    schemaType == DataSource,
 			Optional:    schemaType == Resource,
