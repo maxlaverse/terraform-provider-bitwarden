@@ -11,7 +11,7 @@ import (
 )
 
 func TestAccDataSourceAttachment(t *testing.T) {
-	SkipIfNonPremiumTestAccount(t)
+	SkipIfNonPremiumTestAccount(t, "Attachments are not supported with non-premium test accounts")
 
 	ensureTestConfigurationReady(t)
 

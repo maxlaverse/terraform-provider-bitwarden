@@ -259,7 +259,7 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	fmt.Println("Running integration tests with CLI on locally running Vaultwarden...")
 	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integration", "-coverpkg=./...", "./..."}
 	if testPattern != "" {
-		args = append(args, "-run", testPattern, "-timeout", "2m")
+		args = append(args, "-run", testPattern, "-timeout", "3m")
 	} else {
 		args = append(args, "-timeout", "60m")
 	}
@@ -270,6 +270,31 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	cmd.Env = append(cmd.Env, "TEST_REVERSE_PROXY_URL=http://127.0.0.1:8080")
 	cmd.Env = append(cmd.Env, accTestEnv()...)
 	cmd.Env = append(cmd.Env, "TEST_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
+	return cmd.Run()
+}
+
+// Run Password Manager integration tests with CLI on official bitwarden.com instance.
+func (t Test) IntegrationPwdOfficialWithCLI() error {
+	return t.IntegrationPwdOfficialWithCLIArgs("")
+}
+
+// Like test:integrationPwdOfficialWithCLI but with a test pattern.
+func (t Test) IntegrationPwdOfficialWithCLIArgs(testPattern string) error {
+	mg.Deps(InstallDeps)
+
+	fmt.Println("Running integration tests with CLI on official bitwarden.com instance...")
+	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integration", "-coverpkg=./...", "./..."}
+	if testPattern != "" {
+		args = append(args, "-run", testPattern, "-timeout", "3m")
+	} else {
+		args = append(args, "-timeout", "60m")
+	}
+	cmd := exec.Command("go", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, accTestEnv()...)
+	cmd.Env = append(cmd.Env, "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
 	return cmd.Run()
 }
 

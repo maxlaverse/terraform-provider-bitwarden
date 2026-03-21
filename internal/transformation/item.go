@@ -153,7 +153,8 @@ func ItemSchemaToObject(attrType models.ItemType) func(ctx context.Context, d *s
 			obj.Reprompt = 1
 		}
 
-		if vList, ok := d.Get(schema_definition.AttributeCollectionIDs).([]interface{}); ok {
+		if vSet, ok := d.Get(schema_definition.AttributeCollectionIDs).(*schema.Set); ok {
+			vList := vSet.List()
 			obj.CollectionIds = make([]string, len(vList))
 			for k, v := range vList {
 				obj.CollectionIds[k] = v.(string)
