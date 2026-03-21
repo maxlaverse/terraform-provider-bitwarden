@@ -185,14 +185,20 @@ func tfConfigResourceItemLogin(source string) string {
 }
 
 // tfConfigResourceOrgCollectionForLoginTest creates an org collection used by the item login test (add/remove collection steps).
+// It includes a member with manage permission because Bitwarden-compatible APIs reject empty collections (400).
 func tfConfigResourceOrgCollectionForLoginTest() string {
 	return fmt.Sprintf(`
 	resource "bitwarden_org_collection" "login_test_col" {
 		provider        = bitwarden
 		organization_id = "%s"
 		name            = "login-test-col-%s"
+		%s
 	}
-`, testConfiguration.Resources.OrganizationID, testConfiguration.UniqueTestIdentifier)
+`, testConfiguration.Resources.OrganizationID, testConfiguration.UniqueTestIdentifier,
+		memberBlock(testConfiguration.Accounts[testAccountOrgOwner].UserIdInTestOrganization, map[string]string{
+			"manage": "true",
+		}),
+	)
 }
 
 const tfConfigResourceItemLoginTemplate = `
