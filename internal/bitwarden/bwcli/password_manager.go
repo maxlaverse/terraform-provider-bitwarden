@@ -219,7 +219,7 @@ func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Fol
 }
 
 func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
-	_, err := editGenericObject(ctx, c, obj, obj.Object, obj.ID)
+	res, err := editGenericObject(ctx, c, obj, obj.Object, obj.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -228,9 +228,9 @@ func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, e
 	// We need an extra call to the `edit item-collections` endpoint to change or set the collection IDs.
 	// Because this has a performance impact, we only do it if the item is in an organization.
 	if obj.OrganizationID != "" {
-		return c.editItemCollections(ctx, obj.ID, obj.CollectionIds)
+		return c.editItemCollections(ctx, res.ID, obj.CollectionIds)
 	}
-	return nil, nil
+	return res, nil
 }
 
 func (c *client) EditOrganizationCollection(ctx context.Context, obj models.OrgCollection) (*models.OrgCollection, error) {

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 	"github.com/stretchr/testify/assert"
@@ -58,15 +59,30 @@ func TestAccResourceItemLoginAddRemoveCollection(t *testing.T) {
 
 	ensureTestConfigurationReady(t)
 
+	// Create second collection via embedded client (supports membership).
+	// Only for premium or non-official accounts. Keeps the test focused on item collection_ids add/remove.
+	bwClient := bwEmbeddedTestClient(t).(embedded.PasswordManagerClient)
+	loginTestCol, err := bwClient.CreateOrganizationCollection(t.Context(), models.OrgCollection{
+		Object:         models.ObjectTypeOrgCollection,
+		OrganizationID: testConfiguration.Resources.OrganizationID,
+		Name:           fmt.Sprintf("login-test-col-%s", testConfiguration.UniqueTestIdentifier),
+		Users: []models.OrgCollectionMember{
+			{Id: testConfiguration.Accounts[testAccountOrgOwner].UserIdInTestOrganization, Manage: true},
+		},
+		Groups: []models.OrgCollectionMember{},
+	})
+	if err != nil {
+		t.Fatalf("creating login test collection: %v", err)
+	}
+	loginTestCollectionID := loginTestCol.ID
+
 	resourceName := "bitwarden_item_login.foo"
-	orgCollectionRef := "bitwarden_org_collection.login_test_col.id"
-	var secondCollectionID string
 
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollectionForLoginTest() + tfConfigResourceItemLoginWithCollections("reslogin", []string{testConfiguration.Resources.CollectionID}),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWithCollections("reslogin", []string{testConfiguration.Resources.CollectionID}),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemLogin(resourceName),
 					resource.TestCheckResourceAttr(
@@ -75,19 +91,18 @@ func TestAccResourceItemLoginAddRemoveCollection(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						resourceName, fmt.Sprintf("%s.0", schema_definition.AttributeCollectionIDs), testConfiguration.Resources.CollectionID,
 					),
-					getObjectID("bitwarden_org_collection.login_test_col", &secondCollectionID),
 				),
 			},
 			// Add second collection (2 collections)
 			{
-				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollectionForLoginTest() + tfConfigResourceItemLoginWithCollectionRefs("reslogin", []string{testConfiguration.Resources.CollectionID}, []string{orgCollectionRef}),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWithCollections("reslogin", []string{testConfiguration.Resources.CollectionID, loginTestCollectionID}),
 				Check: resource.ComposeTestCheckFunc(
-					checkResourceAttrListEqualsSet(resourceName, schema_definition.AttributeCollectionIDs, []*string{&testConfiguration.Resources.CollectionID, &secondCollectionID}),
+					checkResourceAttrListEqualsSet(resourceName, schema_definition.AttributeCollectionIDs, []*string{&testConfiguration.Resources.CollectionID, &loginTestCollectionID}),
 				),
 			},
 			// Remove second collection (back to 1)
 			{
-				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollectionForLoginTest() + tfConfigResourceItemLoginWithCollections("reslogin", []string{testConfiguration.Resources.CollectionID}),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWithCollections("reslogin", []string{testConfiguration.Resources.CollectionID}),
 				Check: resource.ComposeTestCheckFunc(
 					checkItemLogin(resourceName),
 					resource.TestCheckResourceAttr(
@@ -182,23 +197,6 @@ func tfConfigResourceItemManyLogins() string {
 
 func tfConfigResourceItemLogin(source string) string {
 	return tfConfigResourceItemLoginWithCollections(source, []string{testConfiguration.Resources.CollectionID})
-}
-
-// tfConfigResourceOrgCollectionForLoginTest creates an org collection used by the item login test (add/remove collection steps).
-// It includes a member with manage permission because Bitwarden-compatible APIs reject empty collections (400).
-func tfConfigResourceOrgCollectionForLoginTest() string {
-	return fmt.Sprintf(`
-	resource "bitwarden_org_collection" "login_test_col" {
-		provider        = bitwarden
-		organization_id = "%s"
-		name            = "login-test-col-%s"
-		%s
-	}
-`, testConfiguration.Resources.OrganizationID, testConfiguration.UniqueTestIdentifier,
-		memberBlock(testConfiguration.Accounts[testAccountOrgOwner].UserIdInTestOrganization, map[string]string{
-			"manage": "true",
-		}),
-	)
 }
 
 const tfConfigResourceItemLoginTemplate = `

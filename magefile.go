@@ -273,6 +273,31 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	return cmd.Run()
 }
 
+// Run Password Manager integration tests with CLI on official bitwarden.com instance.
+func (t Test) IntegrationPwdOfficialWithCLI() error {
+	return t.IntegrationPwdOfficialWithCLIArgs("")
+}
+
+// Like test:integrationPwdOfficialWithCLI but with a test pattern.
+func (t Test) IntegrationPwdOfficialWithCLIArgs(testPattern string) error {
+	mg.Deps(InstallDeps)
+
+	fmt.Println("Running integration tests with CLI on official bitwarden.com instance...")
+	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integration", "-coverpkg=./...", "./..."}
+	if testPattern != "" {
+		args = append(args, "-run", testPattern, "-timeout", "3m")
+	} else {
+		args = append(args, "-timeout", "60m")
+	}
+	cmd := exec.Command("go", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, accTestEnv()...)
+	cmd.Env = append(cmd.Env, "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
+	return cmd.Run()
+}
+
 // Run tests not requiring a running Bitwarden-compatible backend.
 func (t Test) Offline() error {
 	return t.OfflineArgs("")
