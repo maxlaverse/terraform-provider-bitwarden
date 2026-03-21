@@ -171,7 +171,7 @@ func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item,
 	// We need an extra call to the `edit item-collections` endpoint to change or set the collection IDs.
 	// Because this has a performance impact, we only do it if the item is in an organization.
 	if obj.OrganizationID != "" {
-		return c.editItemCollections(ctx, obj.ID, obj.CollectionIds)
+		return c.editItemCollections(ctx, res.ID, obj.CollectionIds)
 	}
 	return res, nil
 }
