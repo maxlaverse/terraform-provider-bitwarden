@@ -3,6 +3,7 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -75,6 +76,15 @@ func TestAccResourceItemLoginAddRemoveCollection(t *testing.T) {
 		t.Fatalf("creating login test collection: %v", err)
 	}
 	loginTestCollectionID := loginTestCol.ID
+	t.Cleanup(func() {
+		if err := bwClient.DeleteOrganizationCollection(context.Background(), models.OrgCollection{
+			Object:         models.ObjectTypeOrgCollection,
+			ID:             loginTestCollectionID,
+			OrganizationID: testConfiguration.Resources.OrganizationID,
+		}); err != nil {
+			t.Logf("cleaning up login test collection %s: %v", loginTestCollectionID, err)
+		}
+	})
 
 	resourceName := "bitwarden_item_login.foo"
 
