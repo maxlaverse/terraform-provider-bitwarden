@@ -46,7 +46,7 @@ resource "kubernetes_secret" "vpn_credentials" {
 ### Read-Only
 
 - `attachments` (List of Object) List of item attachments. (see [below for nested schema](#nestedatt--attachments))
-- `collection_ids` (List of String) Identifier of the collections the item belongs to.
+- `collection_ids` (Set of String) Identifier of the collections the item belongs to.
 - `creation_date` (String) Date the item was created.
 - `deleted_date` (String) Date the item was deleted.
 - `favorite` (Boolean) Mark as a Favorite to have item appear at the top of your Vault in the UI.

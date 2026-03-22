@@ -50,7 +50,7 @@ resource "bitwarden_item_login" "administrative-user" {
 
 ### Optional
 
-- `collection_ids` (List of String) Identifier of the collections the item belongs to.
+- `collection_ids` (Set of String) Identifier of the collections the item belongs to.
 - `favorite` (Boolean) Mark as a Favorite to have item appear at the top of your Vault in the UI.
 - `field` (Block List) Extra fields. (see [below for nested schema](#nestedblock--field))
 - `folder_id` (String) Identifier of the folder.

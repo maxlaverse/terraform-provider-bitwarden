@@ -37,7 +37,7 @@ resource "local_sensitive_file" "id_rsa" {
 
 ### Read-Only
 
-- `collection_ids` (List of String) Identifier of the collections the item belongs to.
+- `collection_ids` (Set of String) Identifier of the collections the item belongs to.
 - `creation_date` (String) Date the item was created.
 - `deleted_date` (String) Date the item was deleted.
 - `field` (List of Object, Sensitive) Extra fields. (see [below for nested schema](#nestedatt--field))

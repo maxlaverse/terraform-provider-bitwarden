@@ -37,7 +37,7 @@ resource "bitwarden_item_ssh_key" "id_rsa" {
 
 ### Optional
 
-- `collection_ids` (List of String) Identifier of the collections the item belongs to.
+- `collection_ids` (Set of String) Identifier of the collections the item belongs to.
 - `field` (Block List) Extra fields. (see [below for nested schema](#nestedblock--field))
 - `folder_id` (String) Identifier of the folder.
 - `id` (String) Identifier.
