@@ -29,7 +29,7 @@ func ensureTestResourcesExist(t *testing.T) {
 		t.Fatal(err)
 	}
 	testConfiguration.Resources.OrganizationID = testOrgId
-	t.Logf("Created organization %s", testConfiguration.Resources.OrganizationID)
+	t.Logf("Created organization %s", maskIdentifier(testConfiguration.Resources.OrganizationID))
 
 	for _, account := range []testAccountName{testAccountOrgOwner, testAccountOrgUser, testAccountOrgAdmin, testAccountOrgManager} {
 		err = bwClient.InviteUser(ctx, testConfiguration.Resources.OrganizationID, testConfiguration.Accounts[account].Email, testConfiguration.Accounts[account].RoleInTestOrganization)
@@ -44,7 +44,12 @@ func ensureTestResourcesExist(t *testing.T) {
 		ac := testConfiguration.Accounts[account]
 		ac.UserIdInTestOrganization = userIdInOrg
 		testConfiguration.Accounts[account] = ac
-		t.Logf("Invited %s to organization %s (%s)", testConfiguration.Accounts[account].Email, testConfiguration.Resources.OrganizationID, testConfiguration.Accounts[account].UserIdInTestOrganization)
+		t.Logf(
+			"Invited %s to organization %s (%s)",
+			maskEmail(testConfiguration.Accounts[account].Email),
+			maskIdentifier(testConfiguration.Resources.OrganizationID),
+			maskIdentifier(testConfiguration.Accounts[account].UserIdInTestOrganization),
+		)
 	}
 
 	webapiClient := webapi.NewClient(testConfiguration.ServerURL, embedded.NewDeviceIdentifier(), testDeviceVersion)
@@ -71,7 +76,7 @@ func ensureTestResourcesExist(t *testing.T) {
 	}
 
 	testConfiguration.Resources.FolderID = folder.ID
-	t.Logf("Created Folder '%s' (%s)", testFolderName, testConfiguration.Resources.FolderID)
+	t.Logf("Created Folder '%s' (%s)", testFolderName, maskIdentifier(testConfiguration.Resources.FolderID))
 
 	testConfiguration.Resources.GroupName = fmt.Sprintf("group-%s-bar", testConfiguration.UniqueTestIdentifier)
 	group, err := bwClient.CreateOrganizationGroup(ctx, models.OrgGroup{
@@ -85,7 +90,7 @@ func ensureTestResourcesExist(t *testing.T) {
 	}
 
 	testConfiguration.Resources.GroupID = group.ID
-	t.Logf("Created Group '%s' (%s)", testConfiguration.Resources.GroupName, testConfiguration.Resources.GroupID)
+	t.Logf("Created Group '%s' (%s)", testConfiguration.Resources.GroupName, maskIdentifier(testConfiguration.Resources.GroupID))
 
 	err = bwClient.Sync(ctx)
 	if err != nil {
@@ -115,7 +120,7 @@ func ensureTestAccountsExist(t *testing.T) {
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 		t.Fatal(err)
 	}
-	t.Logf("Registered test user (%s) %s", testAccountFullAdmin, testConfiguration.Accounts[testAccountFullAdmin].Email)
+	t.Logf("Registered test user (%s) %s", testAccountFullAdmin, maskEmail(testConfiguration.Accounts[testAccountFullAdmin].Email))
 
 	err = client.LoginWithPassword(t.Context(), testConfiguration.Accounts[testAccountFullAdmin].Email, testConfiguration.Accounts[testAccountFullAdmin].Password)
 	if err != nil {
@@ -145,7 +150,7 @@ func ensureTestAccountsExist(t *testing.T) {
 		if err != nil && !strings.Contains(strings.ToLower(err.Error()), "user already exists") {
 			t.Fatal(err)
 		}
-		t.Logf("Registered test user (%s) %s", account, testConfiguration.Accounts[account].Email)
+		t.Logf("Registered test user (%s) %s", account, maskEmail(testConfiguration.Accounts[account].Email))
 
 		err = client.LoginWithPassword(t.Context(), testConfiguration.Accounts[account].Email, testConfiguration.Accounts[account].Password)
 		if err != nil {
