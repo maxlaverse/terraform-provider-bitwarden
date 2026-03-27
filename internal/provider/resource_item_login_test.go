@@ -75,7 +75,7 @@ func TestAccResourceItemLoginAddRemoveCollection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("creating login test collection: %v", err)
 	}
-	t.Logf("login test collection: %+v", loginTestCol)
+
 	loginTestCollectionID := loginTestCol.ID
 	t.Cleanup(func() {
 		if err := bwClient.DeleteOrganizationCollection(context.Background(), models.OrgCollection{
