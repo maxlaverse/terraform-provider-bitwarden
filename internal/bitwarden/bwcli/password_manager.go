@@ -162,16 +162,20 @@ func (c *client) CreateOrganizationGroup(ctx context.Context, obj models.OrgGrou
 }
 
 func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
+	desiredCollectionIDs := append([]string(nil), obj.CollectionIds...)
+	obj.CollectionIds = nil
+
 	res, err := createObject(ctx, c, obj, models.ObjectTypeItem)
 	if err != nil {
 		return nil, err
 	}
 
-	// The Bitwarden CLI can only append collection IDs to items when editing them.
-	// We need an extra call to the `edit item-collections` endpoint to change or set the collection IDs.
+	// The Bitwarden CLI appends collection IDs from the create payload instead of replacing them.
+	// We therefore clear collection IDs before creating and then explicitly set the final list with
+	// `edit item-collections` (including empty lists, which remove all collections).
 	// Because this has a performance impact, we only do it if the item is in an organization.
 	if obj.OrganizationID != "" {
-		return c.editItemCollections(ctx, res.ID, obj.CollectionIds)
+		return c.editItemCollections(ctx, res.ID, desiredCollectionIDs)
 	}
 	return res, nil
 }
@@ -219,16 +223,20 @@ func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Fol
 }
 
 func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
+	desiredCollectionIDs := append([]string(nil), obj.CollectionIds...)
+	obj.CollectionIds = nil
+
 	res, err := editGenericObject(ctx, c, obj, obj.Object, obj.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	// The Bitwarden CLI can only append collection IDs to items when editing them.
-	// We need an extra call to the `edit item-collections` endpoint to change or set the collection IDs.
+	// The Bitwarden CLI appends collection IDs from the `edit item` payload instead of replacing them.
+	// We therefore clear collection IDs before editing and then explicitly set the final list with
+	// `edit item-collections` (including empty lists, which remove all collections).
 	// Because this has a performance impact, we only do it if the item is in an organization.
 	if obj.OrganizationID != "" {
-		return c.editItemCollections(ctx, res.ID, obj.CollectionIds)
+		return c.editItemCollections(ctx, res.ID, desiredCollectionIDs)
 	}
 	return res, nil
 }
@@ -296,7 +304,11 @@ func (c *client) editItemCollections(ctx context.Context, objId string, collecti
 	if err != nil {
 		return nil, newUnmarshallError(err, args, out)
 	}
-	return &res, nil
+	err = c.Sync(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error syncing: %v, %v", err, string(out))
+	}
+	return c.GetItem(ctx, res)
 }
 
 func (c *client) GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error) {
