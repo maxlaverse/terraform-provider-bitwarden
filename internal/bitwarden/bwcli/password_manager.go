@@ -304,6 +304,10 @@ func (c *client) editItemCollections(ctx context.Context, objId string, collecti
 	if err != nil {
 		return nil, newUnmarshallError(err, args, out)
 	}
+	err = c.Sync(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error syncing: %v, %v", err, string(out))
+	}
 	return &res, nil
 }
 
