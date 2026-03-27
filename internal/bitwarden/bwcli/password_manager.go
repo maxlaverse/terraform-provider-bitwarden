@@ -308,7 +308,7 @@ func (c *client) editItemCollections(ctx context.Context, objId string, collecti
 	if err != nil {
 		return nil, fmt.Errorf("error syncing: %v, %v", err, string(out))
 	}
-	return &res, nil
+	return c.GetItem(ctx, res)
 }
 
 func (c *client) GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error) {
