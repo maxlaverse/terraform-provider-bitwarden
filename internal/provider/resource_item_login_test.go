@@ -56,6 +56,7 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 }
 
 func TestAccResourceItemLoginAddRemoveCollection(t *testing.T) {
+	t.Skip("Skipping test until we figure out how sharing work with official backend")
 	SkipIfNonPremiumTestAccount(t, "Having more than one collection is not supported with non-premium test accounts")
 
 	ensureTestConfigurationReady(t)
