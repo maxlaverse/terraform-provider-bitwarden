@@ -21,11 +21,13 @@ type PasswordManagerClient interface {
 	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	CreateOrganizationGroup(context.Context, models.OrgGroup) (*models.OrgGroup, error)
+	CreateOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteFolder(context.Context, models.Folder) error
 	DeleteItem(context.Context, models.Item) error
 	DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error
 	DeleteOrganizationGroup(context.Context, models.OrgGroup) error
+	DeleteOrganizationMember(context.Context, models.OrgMember) error
 	EditFolder(context.Context, models.Folder) (*models.Folder, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
@@ -159,6 +161,10 @@ func (c *client) CreateFolder(ctx context.Context, obj models.Folder) (*models.F
 
 func (c *client) CreateOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
 	return nil, fmt.Errorf("creating groups is only supported by the embedded client")
+}
+
+func (c *client) CreateOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error) {
+	return nil, fmt.Errorf("creating organization members is only supported by the embedded client")
 }
 
 func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
@@ -454,6 +460,10 @@ func (c *client) DeleteFolder(ctx context.Context, obj models.Folder) error {
 
 func (c *client) DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error {
 	return fmt.Errorf("deleting groups is only supported by the embedded client")
+}
+
+func (c *client) DeleteOrganizationMember(ctx context.Context, obj models.OrgMember) error {
+	return fmt.Errorf("deleting organization members is only supported by the embedded client")
 }
 
 func (c *client) DeleteItem(ctx context.Context, obj models.Item) error {

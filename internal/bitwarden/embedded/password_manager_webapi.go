@@ -32,9 +32,11 @@ type PasswordManagerClient interface {
 	CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	CreateOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
+	CreateOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteFolder(ctx context.Context, obj models.Folder) error
 	DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error
+	DeleteOrganizationMember(ctx context.Context, obj models.OrgMember) error
 	DeleteItem(ctx context.Context, obj models.Item) error
 	DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error
 	EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
@@ -171,6 +173,26 @@ func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string
 	}
 
 	return orgUser.ID, v.client.ConfirmOrganizationUser(ctx, orgId, orgUser.ID, string(orgKey))
+}
+
+func (v *webAPIVault) CreateOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error) {
+	if err := v.InviteUser(ctx, obj.OrganizationId, obj.Email, obj.Role); err != nil {
+		return nil, err
+	}
+
+	// Invite returns no body, so re-read to get the server-assigned ID.
+	return v.orgCache.FindMemberByEmail(ctx, obj.OrganizationId, obj.Email)
+}
+
+func (v *webAPIVault) DeleteOrganizationMember(ctx context.Context, obj models.OrgMember) error {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if err := v.client.DeleteOrganizationUser(ctx, obj.OrganizationId, obj.ID); err != nil {
+		return fmt.Errorf("error deleting organization member: %w", err)
+	}
+	v.orgCache.InvalidateOrganization(ctx, obj.OrganizationId)
+	return nil
 }
 
 func (v *webAPIVault) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error) {

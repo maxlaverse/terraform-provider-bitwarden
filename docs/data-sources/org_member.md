@@ -41,3 +41,4 @@ data "bitwarden_org_member" "john" {
 ### Read-Only
 
 - `name` (String) Name.
+- `role` (String) Organization role of the member.

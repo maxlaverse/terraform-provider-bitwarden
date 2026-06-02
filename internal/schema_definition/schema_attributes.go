@@ -49,6 +49,7 @@ const (
 	AttributeSSHKeyPublicKey               = "public_key"
 	AttributeReprompt                      = "reprompt"
 	AttributeRevisionDate                  = "revision_date"
+	AttributeRole                          = "role"
 
 	// Secret specific attributes
 	AttributeKey       = "key"
@@ -104,6 +105,7 @@ const (
 	DescriptionPublicKey                     = "Public key."
 	DescriptionReprompt                      = "Require master password 're-prompt' when displaying secret in the UI."
 	DescriptionRevisionDate                  = "Last time the item was updated."
+	DescriptionOrgMemberRole                 = "Organization role of the member."
 
 	// Secret specific attributes
 	DescriptionValue     = "Value."
@@ -128,6 +130,12 @@ const (
 	// Client implementation values
 	ClientImplementationCLI      = "cli"
 	ClientImplementationEmbedded = "embedded"
+
+	// Organization member role values
+	OrgMemberRoleOwner   = "owner"
+	OrgMemberRoleAdmin   = "admin"
+	OrgMemberRoleUser    = "user"
+	OrgMemberRoleManager = "manager"
 
 	// Provider field descriptions
 	DescriptionBwsAccessToken                                = "Machine Account Access Token (env: `BWS_ACCESS_TOKEN`))."

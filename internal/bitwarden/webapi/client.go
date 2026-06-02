@@ -53,6 +53,7 @@ type Client interface {
 	DeleteObjectAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteOrganizationCollection(ctx context.Context, orgID, collectionID string) error
 	DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error
+	DeleteOrganizationUser(ctx context.Context, orgID, orgUserID string) error
 	DeleteProject(ctx context.Context, projectId string) error
 	DeleteSecret(ctx context.Context, secretId string) error
 	EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
@@ -296,6 +297,16 @@ func (c *client) DeleteOrganizationCollection(ctx context.Context, orgID, collec
 	httpReq, err := c.prepareAuthenticatedRequest(ctx, "DELETE", fmt.Sprintf("%s/api/organizations/%s/collections/%s", c.serverURL, orgID, collectionID), nil)
 	if err != nil {
 		return fmt.Errorf("error preparing organization collection deletion request: %w", err)
+	}
+
+	_, err = doRequest[[]byte](ctx, c.httpClient, httpReq)
+	return err
+}
+
+func (c *client) DeleteOrganizationUser(ctx context.Context, orgID, orgUserID string) error {
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "DELETE", fmt.Sprintf("%s/api/organizations/%s/users/%s", c.serverURL, orgID, orgUserID), nil)
+	if err != nil {
+		return fmt.Errorf("error preparing organization user deletion request: %w", err)
 	}
 
 	_, err = doRequest[[]byte](ctx, c.httpClient, httpReq)

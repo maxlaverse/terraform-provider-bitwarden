@@ -17,11 +17,13 @@ type PasswordManager interface {
 	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	CreateOrganizationGroup(context.Context, models.OrgGroup) (*models.OrgGroup, error)
+	CreateOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteFolder(context.Context, models.Folder) error
 	DeleteItem(context.Context, models.Item) error
 	DeleteOrganizationCollection(context.Context, models.OrgCollection) error
 	DeleteOrganizationGroup(context.Context, models.OrgGroup) error
+	DeleteOrganizationMember(context.Context, models.OrgMember) error
 	EditFolder(context.Context, models.Folder) (*models.Folder, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)

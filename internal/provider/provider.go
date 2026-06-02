@@ -159,6 +159,7 @@ func New(version string) func() *schema.Provider {
 				"bitwarden_item_secure_note": resourceItemSecureNote(),
 				"bitwarden_item_ssh_key":     resourceItemSSHKey(),
 				"bitwarden_org_collection":   resourceOrgCollection(),
+				"bitwarden_org_member":       resourceOrgMember(),
 				"bitwarden_project":          resourceProject(),
 				"bitwarden_secret":           resourceSecret(),
 			},
