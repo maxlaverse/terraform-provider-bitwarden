@@ -42,6 +42,7 @@ type PasswordManagerClient interface {
 	EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	EditItem(ctx context.Context, obj models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	EditOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
 	FindOrganizationGroup(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgGroup, error)
 	FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error)
 	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
@@ -325,12 +326,22 @@ func (v *webAPIVault) CreateOrganizationGroup(ctx context.Context, obj models.Or
 		return nil, models.ErrVaultLocked
 	}
 
+	// Members are assigned via the dedicated /users endpoint below; the group body
+	// must still send (empty) arrays since the API rejects null.
+	obj.Collections = []models.OrgCollectionMember{}
+	obj.Users = []models.OrgCollectionMember{}
+
 	resObj, err := v.client.CreateOrganizationGroup(ctx, obj)
 	if err != nil {
 		return nil, fmt.Errorf("error creating group: %w", err)
 	}
 
 	v.orgCache.InvalidateOrganization(ctx, resObj.OrganizationID)
+
+	if err := v.client.SetOrganizationGroupMembers(ctx, resObj.OrganizationID, resObj.ID, obj.MemberIDs); err != nil {
+		return nil, fmt.Errorf("error setting group members: %w", err)
+	}
+	resObj.MemberIDs = obj.MemberIDs
 
 	if v.syncAfterWrite {
 		remoteObj, err := v.GetOrganizationGroup(ctx, *resObj)
@@ -935,7 +946,24 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 }
 
 func (v *webAPIVault) GetOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
-	return v.orgCache.FindGroupByID(ctx, obj.OrganizationID, obj.ID)
+	group, err := v.orgCache.FindGroupByID(ctx, obj.OrganizationID, obj.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := v.client.GetOrganizationGroupMembers(ctx, obj.OrganizationID, obj.ID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting group members: %w", err)
+	}
+	group.MemberIDs = members
+	return group, nil
+}
+
+func (v *webAPIVault) EditOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
+	if err := v.client.SetOrganizationGroupMembers(ctx, obj.OrganizationID, obj.ID, obj.MemberIDs); err != nil {
+		return nil, fmt.Errorf("error setting group members: %w", err)
+	}
+	return v.GetOrganizationGroup(ctx, obj)
 }
 
 func (v *webAPIVault) GetOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error) {
@@ -992,7 +1020,17 @@ func (v *webAPIVault) FindOrganizationGroup(ctx context.Context, options ...bitw
 	orgId := filter.OrganizationFilter
 	groupName := filter.SearchFilter
 
-	return v.orgCache.FindGroupByName(ctx, orgId, groupName)
+	group, err := v.orgCache.FindGroupByName(ctx, orgId, groupName)
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := v.client.GetOrganizationGroupMembers(ctx, orgId, group.ID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting group members: %w", err)
+	}
+	group.MemberIDs = members
+	return group, nil
 }
 
 func (v *webAPIVault) FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error) {

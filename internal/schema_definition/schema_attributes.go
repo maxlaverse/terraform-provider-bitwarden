@@ -101,6 +101,7 @@ const (
 	DescriptionName                          = "Name."
 	DescriptionNotes                         = "Notes."
 	DescriptionOrganizationID                = "Identifier of the organization."
+	DescriptionOrgGroupMember                = "Identifiers of the organization members belonging to the group."
 	DescriptionPrivateKey                    = "Private key."
 	DescriptionPublicKey                     = "Public key."
 	DescriptionReprompt                      = "Require master password 're-prompt' when displaying secret in the UI."

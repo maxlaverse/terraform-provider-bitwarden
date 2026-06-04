@@ -74,7 +74,7 @@ func (c *OrgCache) FindGroupByID(ctx context.Context, orgId, groupId string) (*m
 		}
 	}
 
-	return nil, fmt.Errorf("no group found with groupId '%s' in organization '%s'", groupId, orgId)
+	return nil, fmt.Errorf("no group found with groupId '%s' in organization '%s': %w", groupId, orgId, models.ErrObjectNotFound)
 }
 
 // FindGroupByName finds a group by name in the specified organization

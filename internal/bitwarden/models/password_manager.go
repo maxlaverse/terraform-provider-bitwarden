@@ -110,6 +110,7 @@ const (
 	ObjectTypeCollectionDetails   ObjectType = "collectionDetails" // collection listed in sync
 	ObjectTypeCollection          ObjectType = "collection"        // used when refetching collections
 	ObjectTypeOrgMember           ObjectType = "org-member"
+	ObjectTypeOrgGroup            ObjectType = "org-group"
 	ObjectTypeProfile             ObjectType = "profile"
 	ObjectTypeSync                ObjectType = "sync"
 	ObjectTypeProfileOrganization ObjectType = "profileOrganization"   // organization under profile
@@ -268,4 +269,5 @@ type OrgGroup struct {
 	Name           string                `json:"name,omitempty"`
 	OrganizationID string                `json:"organizationId"`
 	Users          []OrgCollectionMember `json:"users"`
+	MemberIDs      []string              `json:"-"`
 }

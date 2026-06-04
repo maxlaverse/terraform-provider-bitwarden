@@ -27,6 +27,7 @@ type PasswordManager interface {
 	EditFolder(context.Context, models.Folder) (*models.Folder, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	EditOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
 	FindFolder(ctx context.Context, options ...ListObjectsOption) (*models.Folder, error)
 	FindItem(ctx context.Context, options ...ListObjectsOption) (*models.Item, error)
 	FindOrganization(ctx context.Context, options ...ListObjectsOption) (*models.Organization, error)

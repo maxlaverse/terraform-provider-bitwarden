@@ -31,6 +31,7 @@ type PasswordManagerClient interface {
 	EditFolder(context.Context, models.Folder) (*models.Folder, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	EditOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
 	FindFolder(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Folder, error)
 	FindItem(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Item, error)
 	FindOrganization(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Organization, error)
@@ -222,6 +223,10 @@ func (c *client) EditOrganizationCollection(ctx context.Context, obj models.OrgC
 		return nil, fmt.Errorf("managing collection memberships is only supported by the embedded client")
 	}
 	return editGenericObject(ctx, c, obj, obj.Object, obj.ID)
+}
+
+func (c *client) EditOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
+	return nil, fmt.Errorf("editing groups is only supported by the embedded client")
 }
 
 func editGenericObject[T any](ctx context.Context, c *client, obj T, objectType models.ObjectType, id string) (*T, error) {

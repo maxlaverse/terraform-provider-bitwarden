@@ -69,6 +69,8 @@ type Client interface {
 	GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error)
 	GetOrganizationGroup(ctx context.Context, group models.OrgGroup) (*models.OrgGroup, error)
 	GetOrganizationGroups(ctx context.Context, orgId string) ([]OrganizationGroupDetails, error)
+	GetOrganizationGroupMembers(ctx context.Context, orgID, groupID string) ([]string, error)
+	SetOrganizationGroupMembers(ctx context.Context, orgID, groupID string, memberIDs []string) error
 	GetProfile(context.Context) (*Profile, error)
 	GetProject(ctx context.Context, projectId string) (*models.Project, error)
 	GetProjects(ctx context.Context, orgId string) ([]models.Project, error)
@@ -479,6 +481,32 @@ func (c *client) GetOrganizationGroups(ctx context.Context, orgId string) ([]Org
 		return nil, err
 	}
 	return resp.Data, nil
+}
+
+func (c *client) GetOrganizationGroupMembers(ctx context.Context, orgID, groupID string) ([]string, error) {
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/groups/%s/users", c.serverURL, orgID, groupID), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing group members retrieval request: %w", err)
+	}
+
+	resp, err := doRequest[[]string](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+	return *resp, nil
+}
+
+func (c *client) SetOrganizationGroupMembers(ctx context.Context, orgID, groupID string, memberIDs []string) error {
+	if memberIDs == nil {
+		memberIDs = []string{}
+	}
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/organizations/%s/groups/%s/users", c.serverURL, orgID, groupID), memberIDs)
+	if err != nil {
+		return fmt.Errorf("error preparing group members update request: %w", err)
+	}
+
+	_, err = doRequest[[]byte](ctx, c.httpClient, httpReq)
+	return err
 }
 
 func (c *client) GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error) {
