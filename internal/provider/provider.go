@@ -112,6 +112,13 @@ func New(version string) func() *schema.Provider {
 					Default:          schema_definition.ClientImplementationCLI,
 					ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{schema_definition.ClientImplementationCLI, schema_definition.ClientImplementationEmbedded}, false)),
 				},
+				schema_definition.AttributeAdminToken: {
+					Type:        schema.TypeString,
+					Description: schema_definition.DescriptionAdminToken,
+					Optional:    true,
+					Sensitive:   true,
+					DefaultFunc: schema.EnvDefaultFunc("BW_ADMIN_TOKEN", nil),
+				},
 
 				// Experimental
 				schema_definition.AttributeExperimental: {
@@ -151,6 +158,7 @@ func New(version string) func() *schema.Provider {
 				"bitwarden_organization":     dataSourceOrganization(),
 				"bitwarden_project":          dataSourceProject(),
 				"bitwarden_secret":           dataSourceSecret(),
+				"bitwarden_user":             dataSourceUser(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
 				"bitwarden_attachment":       resourceAttachment(),
@@ -163,6 +171,7 @@ func New(version string) func() *schema.Provider {
 				"bitwarden_org_member":       resourceOrgMember(),
 				"bitwarden_project":          resourceProject(),
 				"bitwarden_secret":           resourceSecret(),
+				"bitwarden_user":             resourceUser(),
 			},
 		}
 
@@ -389,6 +398,8 @@ func newEmbeddedPasswordManagerClient(ctx context.Context, d *schema.ResourceDat
 		return nil, err
 	}
 
+	serverURL := d.Get(schema_definition.AttributeServer).(string)
+
 	opts := []embedded.PasswordManagerOptions{
 		embedded.WithPasswordManagerHttpOptions(buildWebapiOptions(version)...),
 	}
@@ -397,7 +408,10 @@ func newEmbeddedPasswordManagerClient(ctx context.Context, d *schema.ResourceDat
 		opts = append(opts, embedded.DisableFailOnSyncAfterWriteVerification())
 	}
 
-	serverURL := d.Get(schema_definition.AttributeServer).(string)
+	if adminToken, ok := d.GetOk(schema_definition.AttributeAdminToken); ok {
+		opts = append(opts, embedded.WithAdminClient(webapi.NewAdminClient(serverURL, adminToken.(string))))
+	}
+
 	return embedded.NewPasswordManagerClient(serverURL, deviceId, version, opts...), nil
 }
 

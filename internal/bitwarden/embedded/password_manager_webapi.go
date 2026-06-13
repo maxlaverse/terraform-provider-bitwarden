@@ -33,10 +33,12 @@ type PasswordManagerClient interface {
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	CreateOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
 	CreateOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error)
+	CreateUser(ctx context.Context, obj models.User) (*models.User, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteFolder(ctx context.Context, obj models.Folder) error
 	DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error
 	DeleteOrganizationMember(ctx context.Context, obj models.OrgMember) error
+	DeleteUser(ctx context.Context, obj models.User) error
 	DeleteItem(ctx context.Context, obj models.Item) error
 	DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error
 	EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
@@ -46,12 +48,14 @@ type PasswordManagerClient interface {
 	FindOrganizationGroup(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgGroup, error)
 	FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error)
 	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
+	FindUser(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.User, error)
 	GetAPIKey(ctx context.Context, username, password string) (*models.ApiKey, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
 	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	GetOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
 	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
+	GetUser(ctx context.Context, obj models.User) (*models.User, error)
 	InviteUser(ctx context.Context, orgId, userEmail string, memberRoleType models.OrgMemberRoleType) error
 	IsSyncAfterWriteVerificationDisabled() bool
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
@@ -104,6 +108,12 @@ func WithPasswordManagerHttpOptions(opts ...webapi.Options) PasswordManagerOptio
 	}
 }
 
+func WithAdminClient(ac webapi.AdminClient) PasswordManagerOptions {
+	return func(c bitwarden.PasswordManager) {
+		c.(*webAPIVault).adminClient = ac
+	}
+}
+
 // Panic on error is useful for debugging, but should not be used in production.
 func EnablePanicOnEncryptionError() PasswordManagerOptions {
 	return func(c bitwarden.PasswordManager) {
@@ -151,6 +161,35 @@ type webAPIVault struct {
 	syncAfterWrite                   bool
 	failOnSyncAfterWriteVerification bool
 	serverURL                        string
+	adminClient                      webapi.AdminClient
+}
+
+func (v *webAPIVault) CreateUser(ctx context.Context, obj models.User) (*models.User, error) {
+	if v.adminClient == nil {
+		return nil, fmt.Errorf("admin_token must be configured on the provider to manage Vaultwarden users")
+	}
+	return v.adminClient.CreateUser(ctx, obj.Email)
+}
+
+func (v *webAPIVault) GetUser(ctx context.Context, obj models.User) (*models.User, error) {
+	if v.adminClient == nil {
+		return nil, fmt.Errorf("admin_token must be configured on the provider to manage Vaultwarden users")
+	}
+	user, err := v.adminClient.GetUser(ctx, obj.ID)
+	if err != nil {
+		if httpErr, ok := webapi.IsHTTPError(err); ok && httpErr.GetStatusCode() == 404 {
+			return nil, fmt.Errorf("user with id '%s' not found: %w", obj.ID, models.ErrObjectNotFound)
+		}
+		return nil, err
+	}
+	return user, nil
+}
+
+func (v *webAPIVault) DeleteUser(ctx context.Context, obj models.User) error {
+	if v.adminClient == nil {
+		return fmt.Errorf("admin_token must be configured on the provider to manage Vaultwarden users")
+	}
+	return v.adminClient.DeleteUser(ctx, obj.ID)
 }
 
 func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string) (string, error) {
@@ -1043,6 +1082,24 @@ func (v *webAPIVault) FindOrganizationMember(ctx context.Context, options ...bit
 	userEmail := filter.SearchFilter
 
 	return v.orgCache.FindMemberByEmail(ctx, orgId, userEmail)
+}
+
+func (v *webAPIVault) FindUser(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.User, error) {
+	if v.adminClient == nil {
+		return nil, fmt.Errorf("admin_token must be configured on the provider to manage Vaultwarden users")
+	}
+	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
+	if !filter.HasSearchFilter() {
+		return nil, fmt.Errorf("missing search filter")
+	}
+	user, err := v.adminClient.GetUserByEmail(ctx, filter.SearchFilter)
+	if err != nil {
+		if httpErr, ok := webapi.IsHTTPError(err); ok && httpErr.GetStatusCode() == 404 {
+			return nil, fmt.Errorf("user with email '%s' not found: %w", filter.SearchFilter, models.ErrObjectNotFound)
+		}
+		return nil, err
+	}
+	return user, nil
 }
 
 func (v *webAPIVault) FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error) {
