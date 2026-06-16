@@ -120,6 +120,21 @@ func tfConfigAttachmentSpecificPasswordManagerProvider() string {
 `, acc.Password, testConfiguration.ReverseProxyServerURL, acc.Email, testConfiguration.ClientImplementationStr())
 }
 
+func tfConfigPasswordManagerProviderWithAdminToken(account testAccountName) string {
+	acc := testConfiguration.Accounts[account]
+	return fmt.Sprintf(`
+	provider "bitwarden" {
+		master_password       = "%s"
+		server                = "%s"
+		email                 = "%s"
+		client_id             = "%s"
+		client_secret         = "%s"
+		client_implementation = "%s"
+		admin_token           = "%s"
+	}
+`, acc.Password, testConfiguration.ServerURL, acc.Email, acc.ClientID, acc.ClientSecret, testConfiguration.ClientImplementationStr(), defaultTestPassword)
+}
+
 func testOrRealSecretsManagerProvider(t *testing.T) (string, func()) {
 	if IsOfficialBackend() {
 		t.Logf("Using real Bitwarden Secrets Manager")

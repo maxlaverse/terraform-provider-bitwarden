@@ -30,6 +30,9 @@ func TestAccDataSourceOrgGroupAttribute(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"data.bitwarden_org_group.default_group", "name", testConfiguration.Resources.GroupName,
 					),
+					resource.TestCheckResourceAttr(
+						"data.bitwarden_org_group.default_group", "member.#", "0",
+					),
 				),
 			},
 		},
