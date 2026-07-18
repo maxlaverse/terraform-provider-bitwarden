@@ -169,6 +169,7 @@ export BW_CLIENTSECRET="my-client-secret"
 ### Optional
 
 - `access_token` (String) Machine Account Access Token (env: `BWS_ACCESS_TOKEN`)).
+- `admin_token` (String, Sensitive) Vaultwarden admin API token used to manage user accounts (env: `BW_ADMIN_TOKEN`). Embedded client and Vaultwarden only.
 - `client_id` (String) Client ID (env: `BW_CLIENTID`)
 - `client_implementation` (String) Client implementation type. Valid values are "embedded" (use embedded client) or "cli" (use CLI binaries, default).
 - `client_secret` (String) Client Secret (env: `BW_CLIENTSECRET`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.

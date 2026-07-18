@@ -26,6 +26,11 @@ func OrganizationGroupObjectToSchema(ctx context.Context, obj *models.OrgGroup, 
 		return err
 	}
 
+	err = d.Set(schema_definition.AttributeMember, obj.MemberIDs)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -40,6 +45,13 @@ func OrganizationGroupToObject(ctx context.Context, d *schema.ResourceData) mode
 
 	if v, ok := d.Get(schema_definition.AttributeOrganizationID).(string); ok {
 		obj.OrganizationID = v
+	}
+
+	if v, ok := d.Get(schema_definition.AttributeMember).(*schema.Set); ok {
+		obj.MemberIDs = make([]string, v.Len())
+		for k, v2 := range v.List() {
+			obj.MemberIDs[k] = v2.(string)
+		}
 	}
 
 	return obj

@@ -49,6 +49,7 @@ const (
 	AttributeSSHKeyPublicKey               = "public_key"
 	AttributeReprompt                      = "reprompt"
 	AttributeRevisionDate                  = "revision_date"
+	AttributeRole                          = "role"
 
 	// Secret specific attributes
 	AttributeKey       = "key"
@@ -100,10 +101,12 @@ const (
 	DescriptionName                          = "Name."
 	DescriptionNotes                         = "Notes."
 	DescriptionOrganizationID                = "Identifier of the organization."
+	DescriptionOrgGroupMember                = "Identifiers of the organization members belonging to the group."
 	DescriptionPrivateKey                    = "Private key."
 	DescriptionPublicKey                     = "Public key."
 	DescriptionReprompt                      = "Require master password 're-prompt' when displaying secret in the UI."
 	DescriptionRevisionDate                  = "Last time the item was updated."
+	DescriptionOrgMemberRole                 = "Organization role of the member."
 
 	// Secret specific attributes
 	DescriptionValue     = "Value."
@@ -121,6 +124,7 @@ const (
 	AttributeSessionKey                                    = "session_key"
 	AttributeVaultPath                                     = "vault_path"
 	AttributeExtraCACertsPath                              = "extra_ca_certs"
+	AttributeAdminToken                                    = "admin_token"
 	AttributeExperimental                                  = "experimental"
 	AttributeExperimentalEmbeddedClient                    = "embedded_client"
 	AttributeExperimentalDisableSyncAfterWriteVerification = "disable_sync_after_write_verification"
@@ -128,6 +132,12 @@ const (
 	// Client implementation values
 	ClientImplementationCLI      = "cli"
 	ClientImplementationEmbedded = "embedded"
+
+	// Organization member role values
+	OrgMemberRoleOwner   = "owner"
+	OrgMemberRoleAdmin   = "admin"
+	OrgMemberRoleUser    = "user"
+	OrgMemberRoleManager = "manager"
 
 	// Provider field descriptions
 	DescriptionBwsAccessToken                                = "Machine Account Access Token (env: `BWS_ACCESS_TOKEN`))."
@@ -140,6 +150,7 @@ const (
 	DescriptionVaultPath                                     = "Alternative directory for storing the Vault locally (default: `.bitwarden/`, env: `BITWARDENCLI_APPDATA_DIR`; set to empty string to use CLI default)."
 	DescriptionExtraCACertsPath                              = "Extends the well known 'root' CAs (like VeriSign) with the extra certificates in file (env: `NODE_EXTRA_CA_CERTS`, doesn't work with embedded client)."
 	DescriptionClientImplementation                          = "Client implementation type. Valid values are \"embedded\" (use embedded client) or \"cli\" (use CLI binaries, default)."
+	DescriptionAdminToken                                    = "Vaultwarden admin API token used to manage user accounts (env: `BW_ADMIN_TOKEN`). Embedded client and Vaultwarden only."
 	DescriptionExperimental                                  = "Enable experimental features."
 	DescriptionExperimentalEmbeddedClient                    = "Use the embedded client instead of an external binary."
 	DescriptionExperimentalDisableSyncAfterWriteVerification = "Skip verification of server-side modifications (like timestamp updates) after write operations - useful when the Bitwarden server makes minor, non-functional changes to objects."

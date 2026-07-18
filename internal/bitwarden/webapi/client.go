@@ -53,6 +53,7 @@ type Client interface {
 	DeleteObjectAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteOrganizationCollection(ctx context.Context, orgID, collectionID string) error
 	DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error
+	DeleteOrganizationUser(ctx context.Context, orgID, orgUserID string) error
 	DeleteProject(ctx context.Context, projectId string) error
 	DeleteSecret(ctx context.Context, secretId string) error
 	EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
@@ -68,6 +69,8 @@ type Client interface {
 	GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error)
 	GetOrganizationGroup(ctx context.Context, group models.OrgGroup) (*models.OrgGroup, error)
 	GetOrganizationGroups(ctx context.Context, orgId string) ([]OrganizationGroupDetails, error)
+	GetOrganizationGroupMembers(ctx context.Context, orgID, groupID string) ([]string, error)
+	SetOrganizationGroupMembers(ctx context.Context, orgID, groupID string, memberIDs []string) error
 	GetProfile(context.Context) (*Profile, error)
 	GetProject(ctx context.Context, projectId string) (*models.Project, error)
 	GetProjects(ctx context.Context, orgId string) ([]models.Project, error)
@@ -302,6 +305,16 @@ func (c *client) DeleteOrganizationCollection(ctx context.Context, orgID, collec
 	return err
 }
 
+func (c *client) DeleteOrganizationUser(ctx context.Context, orgID, orgUserID string) error {
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "DELETE", fmt.Sprintf("%s/api/organizations/%s/users/%s", c.serverURL, orgID, orgUserID), nil)
+	if err != nil {
+		return fmt.Errorf("error preparing organization user deletion request: %w", err)
+	}
+
+	_, err = doRequest[[]byte](ctx, c.httpClient, httpReq)
+	return err
+}
+
 func (c *client) DeleteProject(ctx context.Context, projectId string) error {
 	IDs := []string{projectId}
 	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/projects/delete", c.serverURL), IDs)
@@ -468,6 +481,32 @@ func (c *client) GetOrganizationGroups(ctx context.Context, orgId string) ([]Org
 		return nil, err
 	}
 	return resp.Data, nil
+}
+
+func (c *client) GetOrganizationGroupMembers(ctx context.Context, orgID, groupID string) ([]string, error) {
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "GET", fmt.Sprintf("%s/api/organizations/%s/groups/%s/users", c.serverURL, orgID, groupID), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing group members retrieval request: %w", err)
+	}
+
+	resp, err := doRequest[[]string](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+	return *resp, nil
+}
+
+func (c *client) SetOrganizationGroupMembers(ctx context.Context, orgID, groupID string, memberIDs []string) error {
+	if memberIDs == nil {
+		memberIDs = []string{}
+	}
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/organizations/%s/groups/%s/users", c.serverURL, orgID, groupID), memberIDs)
+	if err != nil {
+		return fmt.Errorf("error preparing group members update request: %w", err)
+	}
+
+	_, err = doRequest[[]byte](ctx, c.httpClient, httpReq)
+	return err
 }
 
 func (c *client) GetOrganizationUsers(ctx context.Context, orgId string) ([]OrganizationUserDetails, error) {

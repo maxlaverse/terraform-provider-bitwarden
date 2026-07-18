@@ -17,20 +17,26 @@ type PasswordManager interface {
 	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	CreateOrganizationGroup(context.Context, models.OrgGroup) (*models.OrgGroup, error)
+	CreateOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
+	CreateUser(context.Context, models.User) (*models.User, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteFolder(context.Context, models.Folder) error
 	DeleteItem(context.Context, models.Item) error
 	DeleteOrganizationCollection(context.Context, models.OrgCollection) error
 	DeleteOrganizationGroup(context.Context, models.OrgGroup) error
+	DeleteOrganizationMember(context.Context, models.OrgMember) error
+	DeleteUser(context.Context, models.User) error
 	EditFolder(context.Context, models.Folder) (*models.Folder, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	EditOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
 	FindFolder(ctx context.Context, options ...ListObjectsOption) (*models.Folder, error)
 	FindItem(ctx context.Context, options ...ListObjectsOption) (*models.Item, error)
 	FindOrganization(ctx context.Context, options ...ListObjectsOption) (*models.Organization, error)
 	FindOrganizationGroup(ctx context.Context, options ...ListObjectsOption) (*models.OrgGroup, error)
 	FindOrganizationMember(ctx context.Context, options ...ListObjectsOption) (*models.OrgMember, error)
 	FindOrganizationCollection(ctx context.Context, options ...ListObjectsOption) (*models.OrgCollection, error)
+	FindUser(ctx context.Context, options ...ListObjectsOption) (*models.User, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	GetFolder(context.Context, models.Folder) (*models.Folder, error)
 	GetItem(context.Context, models.Item) (*models.Item, error)
@@ -38,6 +44,7 @@ type PasswordManager interface {
 	GetOrganizationGroup(context.Context, models.OrgGroup) (*models.OrgGroup, error)
 	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	GetUser(context.Context, models.User) (*models.User, error)
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
 	Sync(context.Context) error

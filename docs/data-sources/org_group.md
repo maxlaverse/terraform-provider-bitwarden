@@ -37,4 +37,5 @@ data "bitwarden_org_group" "engineers" {
 
 ### Read-Only
 
+- `member` (Set of String) Identifiers of the organization members belonging to the group.
 - `name` (String) Name.

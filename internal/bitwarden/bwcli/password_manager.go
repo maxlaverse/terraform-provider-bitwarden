@@ -21,20 +21,26 @@ type PasswordManagerClient interface {
 	CreateItem(context.Context, models.Item) (*models.Item, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	CreateOrganizationGroup(context.Context, models.OrgGroup) (*models.OrgGroup, error)
+	CreateOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
+	CreateUser(context.Context, models.User) (*models.User, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteFolder(context.Context, models.Folder) error
 	DeleteItem(context.Context, models.Item) error
 	DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error
 	DeleteOrganizationGroup(context.Context, models.OrgGroup) error
+	DeleteOrganizationMember(context.Context, models.OrgMember) error
+	DeleteUser(context.Context, models.User) error
 	EditFolder(context.Context, models.Folder) (*models.Folder, error)
 	EditItem(context.Context, models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	EditOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
 	FindFolder(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Folder, error)
 	FindItem(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Item, error)
 	FindOrganization(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.Organization, error)
 	FindOrganizationGroup(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgGroup, error)
 	FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error)
 	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
+	FindUser(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.User, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	GetFolder(context.Context, models.Folder) (*models.Folder, error)
 	GetItem(context.Context, models.Item) (*models.Item, error)
@@ -42,6 +48,7 @@ type PasswordManagerClient interface {
 	GetOrganizationGroup(context.Context, models.OrgGroup) (*models.OrgGroup, error)
 	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	GetUser(context.Context, models.User) (*models.User, error)
 	GetSessionKey() string
 	HasSessionKey() bool
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
@@ -161,6 +168,10 @@ func (c *client) CreateOrganizationGroup(ctx context.Context, obj models.OrgGrou
 	return nil, fmt.Errorf("creating groups is only supported by the embedded client")
 }
 
+func (c *client) CreateOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error) {
+	return nil, fmt.Errorf("creating organization members is only supported by the embedded client")
+}
+
 func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
 	return createObject(ctx, c, obj, models.ObjectTypeItem)
 }
@@ -216,6 +227,26 @@ func (c *client) EditOrganizationCollection(ctx context.Context, obj models.OrgC
 		return nil, fmt.Errorf("managing collection memberships is only supported by the embedded client")
 	}
 	return editGenericObject(ctx, c, obj, obj.Object, obj.ID)
+}
+
+func (c *client) EditOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
+	return nil, fmt.Errorf("editing groups is only supported by the embedded client")
+}
+
+func (c *client) CreateUser(ctx context.Context, obj models.User) (*models.User, error) {
+	return nil, fmt.Errorf("managing Vaultwarden users is only supported by the embedded client")
+}
+
+func (c *client) GetUser(ctx context.Context, obj models.User) (*models.User, error) {
+	return nil, fmt.Errorf("managing Vaultwarden users is only supported by the embedded client")
+}
+
+func (c *client) DeleteUser(ctx context.Context, obj models.User) error {
+	return fmt.Errorf("managing Vaultwarden users is only supported by the embedded client")
+}
+
+func (c *client) FindUser(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.User, error) {
+	return nil, fmt.Errorf("managing Vaultwarden users is only supported by the embedded client")
 }
 
 func editGenericObject[T any](ctx context.Context, c *client, obj T, objectType models.ObjectType, id string) (*T, error) {
@@ -454,6 +485,10 @@ func (c *client) DeleteFolder(ctx context.Context, obj models.Folder) error {
 
 func (c *client) DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error {
 	return fmt.Errorf("deleting groups is only supported by the embedded client")
+}
+
+func (c *client) DeleteOrganizationMember(ctx context.Context, obj models.OrgMember) error {
+	return fmt.Errorf("deleting organization members is only supported by the embedded client")
 }
 
 func (c *client) DeleteItem(ctx context.Context, obj models.Item) error {

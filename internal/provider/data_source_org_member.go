@@ -9,6 +9,6 @@ func dataSourceOrgMember() *schema.Resource {
 	return &schema.Resource{
 		Description: "Use this data source to get information on an existing organization member.",
 		ReadContext: withPasswordManager(opOrganizationMemberRead),
-		Schema:      schema_definition.OrgMemberSchema(),
+		Schema:      schema_definition.OrgMemberSchema(schema_definition.DataSource),
 	}
 }

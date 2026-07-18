@@ -32,6 +32,9 @@ func TestAccDataSourceOrgMemberAttribute(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"data.bitwarden_org_member.org_owner", "name", testConfiguration.Accounts[testAccountOrgOwner].Name,
 					),
+					resource.TestCheckResourceAttr(
+						"data.bitwarden_org_member.org_owner", "role", "owner",
+					),
 				),
 			}, {
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigDataOrgMembers(),
@@ -49,6 +52,9 @@ func TestAccDataSourceOrgMemberAttribute(t *testing.T) {
 						"data.bitwarden_org_member.org_admin", "email", testConfiguration.Accounts[testAccountOrgAdmin].Email,
 					),
 					resource.TestCheckResourceAttr(
+						"data.bitwarden_org_member.org_admin", "role", "admin",
+					),
+					resource.TestCheckResourceAttr(
 						"data.bitwarden_org_member.org_manager", "id", testConfiguration.Accounts[testAccountOrgManager].UserIdInTestOrganization,
 					),
 					resource.TestCheckResourceAttr(
@@ -56,6 +62,9 @@ func TestAccDataSourceOrgMemberAttribute(t *testing.T) {
 					),
 					resource.TestCheckResourceAttr(
 						"data.bitwarden_org_member.org_manager", "email", testConfiguration.Accounts[testAccountOrgManager].Email,
+					),
+					resource.TestCheckResourceAttr(
+						"data.bitwarden_org_member.org_manager", "role", "manager",
 					),
 					resource.TestCheckResourceAttr(
 						"data.bitwarden_org_member.org_user", "id", testConfiguration.Accounts[testAccountOrgUser].UserIdInTestOrganization,
@@ -67,6 +76,9 @@ func TestAccDataSourceOrgMemberAttribute(t *testing.T) {
 						"data.bitwarden_org_member.org_user", "email", testConfiguration.Accounts[testAccountOrgUser].Email,
 					),
 					resource.TestCheckResourceAttr(
+						"data.bitwarden_org_member.org_user", "role", "user",
+					),
+					resource.TestCheckResourceAttr(
 						"data.bitwarden_org_member.org_user_by_id", "id", testConfiguration.Accounts[testAccountOrgUser].UserIdInTestOrganization,
 					),
 					resource.TestCheckResourceAttr(
@@ -74,6 +86,9 @@ func TestAccDataSourceOrgMemberAttribute(t *testing.T) {
 					),
 					resource.TestCheckResourceAttr(
 						"data.bitwarden_org_member.org_user_by_id", "email", testConfiguration.Accounts[testAccountOrgUser].Email,
+					),
+					resource.TestCheckResourceAttr(
+						"data.bitwarden_org_member.org_user_by_id", "role", "user",
 					),
 				),
 			},

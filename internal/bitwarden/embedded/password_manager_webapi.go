@@ -32,23 +32,30 @@ type PasswordManagerClient interface {
 	CreateOrganization(ctx context.Context, organizationName, organizationLabel, billingEmail string) (string, error)
 	CreateOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	CreateOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
+	CreateOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error)
+	CreateUser(ctx context.Context, obj models.User) (*models.User, error)
 	DeleteAttachment(ctx context.Context, itemId, attachmentId string) error
 	DeleteFolder(ctx context.Context, obj models.Folder) error
 	DeleteOrganizationGroup(ctx context.Context, obj models.OrgGroup) error
+	DeleteOrganizationMember(ctx context.Context, obj models.OrgMember) error
+	DeleteUser(ctx context.Context, obj models.User) error
 	DeleteItem(ctx context.Context, obj models.Item) error
 	DeleteOrganizationCollection(ctx context.Context, obj models.OrgCollection) error
 	EditFolder(ctx context.Context, obj models.Folder) (*models.Folder, error)
 	EditItem(ctx context.Context, obj models.Item) (*models.Item, error)
 	EditOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
+	EditOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
 	FindOrganizationGroup(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgGroup, error)
 	FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error)
 	FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error)
+	FindUser(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.User, error)
 	GetAPIKey(ctx context.Context, username, password string) (*models.ApiKey, error)
 	GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error)
 	GetOrganization(context.Context, models.Organization) (*models.Organization, error)
 	GetOrganizationCollection(ctx context.Context, collection models.OrgCollection) (*models.OrgCollection, error)
 	GetOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error)
 	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
+	GetUser(ctx context.Context, obj models.User) (*models.User, error)
 	InviteUser(ctx context.Context, orgId, userEmail string, memberRoleType models.OrgMemberRoleType) error
 	IsSyncAfterWriteVerificationDisabled() bool
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
@@ -101,6 +108,12 @@ func WithPasswordManagerHttpOptions(opts ...webapi.Options) PasswordManagerOptio
 	}
 }
 
+func WithAdminClient(ac webapi.AdminClient) PasswordManagerOptions {
+	return func(c bitwarden.PasswordManager) {
+		c.(*webAPIVault).adminClient = ac
+	}
+}
+
 // Panic on error is useful for debugging, but should not be used in production.
 func EnablePanicOnEncryptionError() PasswordManagerOptions {
 	return func(c bitwarden.PasswordManager) {
@@ -148,6 +161,35 @@ type webAPIVault struct {
 	syncAfterWrite                   bool
 	failOnSyncAfterWriteVerification bool
 	serverURL                        string
+	adminClient                      webapi.AdminClient
+}
+
+func (v *webAPIVault) CreateUser(ctx context.Context, obj models.User) (*models.User, error) {
+	if v.adminClient == nil {
+		return nil, fmt.Errorf("admin_token must be configured on the provider to manage Vaultwarden users")
+	}
+	return v.adminClient.CreateUser(ctx, obj.Email)
+}
+
+func (v *webAPIVault) GetUser(ctx context.Context, obj models.User) (*models.User, error) {
+	if v.adminClient == nil {
+		return nil, fmt.Errorf("admin_token must be configured on the provider to manage Vaultwarden users")
+	}
+	user, err := v.adminClient.GetUser(ctx, obj.ID)
+	if err != nil {
+		if httpErr, ok := webapi.IsHTTPError(err); ok && httpErr.GetStatusCode() == 404 {
+			return nil, fmt.Errorf("user with id '%s' not found: %w", obj.ID, models.ErrObjectNotFound)
+		}
+		return nil, err
+	}
+	return user, nil
+}
+
+func (v *webAPIVault) DeleteUser(ctx context.Context, obj models.User) error {
+	if v.adminClient == nil {
+		return fmt.Errorf("admin_token must be configured on the provider to manage Vaultwarden users")
+	}
+	return v.adminClient.DeleteUser(ctx, obj.ID)
 }
 
 func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string) (string, error) {
@@ -171,6 +213,26 @@ func (v *webAPIVault) ConfirmInvite(ctx context.Context, orgId, userEmail string
 	}
 
 	return orgUser.ID, v.client.ConfirmOrganizationUser(ctx, orgId, orgUser.ID, string(orgKey))
+}
+
+func (v *webAPIVault) CreateOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error) {
+	if err := v.InviteUser(ctx, obj.OrganizationId, obj.Email, obj.Role); err != nil {
+		return nil, err
+	}
+
+	// Invite returns no body, so re-read to get the server-assigned ID.
+	return v.orgCache.FindMemberByEmail(ctx, obj.OrganizationId, obj.Email)
+}
+
+func (v *webAPIVault) DeleteOrganizationMember(ctx context.Context, obj models.OrgMember) error {
+	v.vaultOperationMutex.Lock()
+	defer v.vaultOperationMutex.Unlock()
+
+	if err := v.client.DeleteOrganizationUser(ctx, obj.OrganizationId, obj.ID); err != nil {
+		return fmt.Errorf("error deleting organization member: %w", err)
+	}
+	v.orgCache.InvalidateOrganization(ctx, obj.OrganizationId)
+	return nil
 }
 
 func (v *webAPIVault) CreateAttachmentFromContent(ctx context.Context, itemId, filename string, content []byte) (*models.Attachment, error) {
@@ -303,12 +365,22 @@ func (v *webAPIVault) CreateOrganizationGroup(ctx context.Context, obj models.Or
 		return nil, models.ErrVaultLocked
 	}
 
+	// Members are assigned via the dedicated /users endpoint below; the group body
+	// must still send (empty) arrays since the API rejects null.
+	obj.Collections = []models.OrgCollectionMember{}
+	obj.Users = []models.OrgCollectionMember{}
+
 	resObj, err := v.client.CreateOrganizationGroup(ctx, obj)
 	if err != nil {
 		return nil, fmt.Errorf("error creating group: %w", err)
 	}
 
 	v.orgCache.InvalidateOrganization(ctx, resObj.OrganizationID)
+
+	if err := v.client.SetOrganizationGroupMembers(ctx, resObj.OrganizationID, resObj.ID, obj.MemberIDs); err != nil {
+		return nil, fmt.Errorf("error setting group members: %w", err)
+	}
+	resObj.MemberIDs = obj.MemberIDs
 
 	if v.syncAfterWrite {
 		remoteObj, err := v.GetOrganizationGroup(ctx, *resObj)
@@ -913,7 +985,24 @@ func (v *webAPIVault) GetAttachment(ctx context.Context, itemId, attachmentId st
 }
 
 func (v *webAPIVault) GetOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
-	return v.orgCache.FindGroupByID(ctx, obj.OrganizationID, obj.ID)
+	group, err := v.orgCache.FindGroupByID(ctx, obj.OrganizationID, obj.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := v.client.GetOrganizationGroupMembers(ctx, obj.OrganizationID, obj.ID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting group members: %w", err)
+	}
+	group.MemberIDs = members
+	return group, nil
+}
+
+func (v *webAPIVault) EditOrganizationGroup(ctx context.Context, obj models.OrgGroup) (*models.OrgGroup, error) {
+	if err := v.client.SetOrganizationGroupMembers(ctx, obj.OrganizationID, obj.ID, obj.MemberIDs); err != nil {
+		return nil, fmt.Errorf("error setting group members: %w", err)
+	}
+	return v.GetOrganizationGroup(ctx, obj)
 }
 
 func (v *webAPIVault) GetOrganizationMember(ctx context.Context, obj models.OrgMember) (*models.OrgMember, error) {
@@ -970,7 +1059,17 @@ func (v *webAPIVault) FindOrganizationGroup(ctx context.Context, options ...bitw
 	orgId := filter.OrganizationFilter
 	groupName := filter.SearchFilter
 
-	return v.orgCache.FindGroupByName(ctx, orgId, groupName)
+	group, err := v.orgCache.FindGroupByName(ctx, orgId, groupName)
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := v.client.GetOrganizationGroupMembers(ctx, orgId, group.ID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting group members: %w", err)
+	}
+	group.MemberIDs = members
+	return group, nil
 }
 
 func (v *webAPIVault) FindOrganizationMember(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgMember, error) {
@@ -983,6 +1082,24 @@ func (v *webAPIVault) FindOrganizationMember(ctx context.Context, options ...bit
 	userEmail := filter.SearchFilter
 
 	return v.orgCache.FindMemberByEmail(ctx, orgId, userEmail)
+}
+
+func (v *webAPIVault) FindUser(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.User, error) {
+	if v.adminClient == nil {
+		return nil, fmt.Errorf("admin_token must be configured on the provider to manage Vaultwarden users")
+	}
+	filter := bitwarden.ListObjectsOptionsToFilterOptions(options...)
+	if !filter.HasSearchFilter() {
+		return nil, fmt.Errorf("missing search filter")
+	}
+	user, err := v.adminClient.GetUserByEmail(ctx, filter.SearchFilter)
+	if err != nil {
+		if httpErr, ok := webapi.IsHTTPError(err); ok && httpErr.GetStatusCode() == 404 {
+			return nil, fmt.Errorf("user with email '%s' not found: %w", filter.SearchFilter, models.ErrObjectNotFound)
+		}
+		return nil, err
+	}
+	return user, nil
 }
 
 func (v *webAPIVault) FindOrganizationCollection(ctx context.Context, options ...bitwarden.ListObjectsOption) (*models.OrgCollection, error) {

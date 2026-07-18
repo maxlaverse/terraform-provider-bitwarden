@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -62,10 +63,39 @@ const (
 
 	// According to UI: Create, delete, and manage access in assigned collections
 	OrgMemberRoleTypeManager OrgMemberRoleType = 3
+
+	// Vaultwarden surfaces Manager (3) as Custom (4) on the wire.
+	OrgMemberRoleTypeCustom OrgMemberRoleType = 4
 )
 
 func (r OrgMemberRoleType) String() string {
-	return []string{"owner", "admin", "user", "manager"}[r]
+	switch r {
+	case OrgMemberRoleTypeOwner:
+		return "owner"
+	case OrgMemberRoleTypeAdmin:
+		return "admin"
+	case OrgMemberRoleTypeUser:
+		return "user"
+	case OrgMemberRoleTypeManager, OrgMemberRoleTypeCustom:
+		return "manager"
+	default:
+		return "user"
+	}
+}
+
+func OrgMemberRoleTypeFromString(s string) (OrgMemberRoleType, error) {
+	switch s {
+	case "owner":
+		return OrgMemberRoleTypeOwner, nil
+	case "admin":
+		return OrgMemberRoleTypeAdmin, nil
+	case "user":
+		return OrgMemberRoleTypeUser, nil
+	case "manager":
+		return OrgMemberRoleTypeManager, nil
+	default:
+		return 0, fmt.Errorf("invalid organization member role %q (must be one of owner, admin, user, manager)", s)
+	}
 }
 
 type ObjectType string
@@ -80,6 +110,7 @@ const (
 	ObjectTypeCollectionDetails   ObjectType = "collectionDetails" // collection listed in sync
 	ObjectTypeCollection          ObjectType = "collection"        // used when refetching collections
 	ObjectTypeOrgMember           ObjectType = "org-member"
+	ObjectTypeOrgGroup            ObjectType = "org-group"
 	ObjectTypeProfile             ObjectType = "profile"
 	ObjectTypeSync                ObjectType = "sync"
 	ObjectTypeProfileOrganization ObjectType = "profileOrganization"   // organization under profile
@@ -218,6 +249,7 @@ type OrgMember struct {
 	Email          string
 	Name           string
 	UserId         string
+	Role           OrgMemberRoleType
 }
 
 type OrgCollection struct {
@@ -237,4 +269,10 @@ type OrgGroup struct {
 	Name           string                `json:"name,omitempty"`
 	OrganizationID string                `json:"organizationId"`
 	Users          []OrgCollectionMember `json:"users"`
+	MemberIDs      []string              `json:"-"`
+}
+
+type User struct {
+	ID    string `json:"id,omitempty"`
+	Email string `json:"email"`
 }

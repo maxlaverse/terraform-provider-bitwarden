@@ -74,7 +74,7 @@ func (c *OrgCache) FindGroupByID(ctx context.Context, orgId, groupId string) (*m
 		}
 	}
 
-	return nil, fmt.Errorf("no group found with groupId '%s' in organization '%s'", groupId, orgId)
+	return nil, fmt.Errorf("no group found with groupId '%s' in organization '%s': %w", groupId, orgId, models.ErrObjectNotFound)
 }
 
 // FindGroupByName finds a group by name in the specified organization
@@ -114,7 +114,7 @@ func (c *OrgCache) FindMemberByID(ctx context.Context, orgId, memberId string) (
 		}
 	}
 
-	return nil, fmt.Errorf("no member found with memberId '%s' in organization '%s'", memberId, orgId)
+	return nil, fmt.Errorf("no member found with memberId '%s' in organization '%s': %w", memberId, orgId, models.ErrObjectNotFound)
 }
 
 // FindMemberByEmail finds a member by email in the specified organization
@@ -205,6 +205,7 @@ func (c *OrgCache) loadMembers(ctx context.Context, orgId string) ([]models.OrgM
 			Name:           user.Name,
 			OrganizationId: orgId,
 			UserId:         user.UserId,
+			Role:           models.OrgMemberRoleType(user.Type),
 		}
 	}
 

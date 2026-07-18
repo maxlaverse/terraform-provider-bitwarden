@@ -818,6 +818,8 @@ func objKey(obj any) string {
 		return fmt.Sprintf("%s___%s", models.ObjectTypeOrganization, itemObj.ID)
 	case models.OrgCollection:
 		return fmt.Sprintf("%s___%s", models.ObjectTypeOrgCollection, itemObj.ID)
+	case models.OrgGroup:
+		return fmt.Sprintf("%s___%s", models.ObjectTypeOrgGroup, itemObj.ID)
 	}
 	panic(fmt.Sprintf("BUG: objKey, unsupported object type: %T", obj))
 }

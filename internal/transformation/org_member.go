@@ -31,6 +31,11 @@ func OrganizationMemberObjectToSchema(ctx context.Context, obj *models.OrgMember
 		return err
 	}
 
+	err = d.Set(schema_definition.AttributeRole, obj.Role.String())
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -48,6 +53,14 @@ func OrganizationMemberToObject(ctx context.Context, d *schema.ResourceData) mod
 
 	if v, ok := d.Get(schema_definition.AttributeOrganizationID).(string); ok {
 		obj.OrganizationId = v
+	}
+
+	// Default to user; the zero value of OrgMemberRoleType is Owner.
+	obj.Role = models.OrgMemberRoleTypeUser
+	if v, ok := d.Get(schema_definition.AttributeRole).(string); ok && v != "" {
+		if role, err := models.OrgMemberRoleTypeFromString(v); err == nil {
+			obj.Role = role
+		}
 	}
 
 	return obj
