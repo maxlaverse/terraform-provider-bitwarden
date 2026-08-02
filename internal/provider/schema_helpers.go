@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"errors"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -14,9 +13,13 @@ type secretsManagerOperation func(ctx context.Context, d *schema.ResourceData, b
 
 func withPasswordManager(resourceAction passwordManagerOperation) func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-		bwClient, ok := meta.(bitwarden.PasswordManager)
+		clients, ok := meta.(*ProviderClients)
 		if !ok {
-			return diag.FromErr(errors.New("provider was not configured with Password Manager credentials"))
+			return diag.FromErr(errPasswordManagerRequired)
+		}
+		bwClient, err := clients.RequirePasswordManager()
+		if err != nil {
+			return diag.FromErr(err)
 		}
 		return resourceAction(ctx, d, bwClient)
 	}
@@ -24,9 +27,13 @@ func withPasswordManager(resourceAction passwordManagerOperation) func(ctx conte
 
 func withSecretsManager(resourceAction secretsManagerOperation) func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-		bwsClient, ok := meta.(bitwarden.SecretsManager)
+		clients, ok := meta.(*ProviderClients)
 		if !ok {
-			return diag.FromErr(errors.New("provider was not configured with Secrets Manager credentials"))
+			return diag.FromErr(errSecretsManagerRequired)
+		}
+		bwsClient, err := clients.RequireSecretsManager()
+		if err != nil {
+			return diag.FromErr(err)
 		}
 		return resourceAction(ctx, d, bwsClient)
 	}
