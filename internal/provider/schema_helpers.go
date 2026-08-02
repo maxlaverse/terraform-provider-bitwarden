@@ -27,6 +27,28 @@ func clientsFromProviderData(providerData any, diags *diag.Diagnostics) (*Provid
 	return clients, true
 }
 
+// requirePasswordManager returns the Password Manager client from provider meta,
+// or records a diagnostic and returns false.
+func requirePasswordManager(clients *ProviderClients, diags *diag.Diagnostics) (bitwarden.PasswordManager, bool) {
+	bwClient, err := clients.RequirePasswordManager()
+	if err != nil {
+		diags.AddError("Provider not configured for Password Manager", err.Error())
+		return nil, false
+	}
+	return bwClient, true
+}
+
+// requireSecretsManager returns the Secrets Manager client from provider meta,
+// or records a diagnostic and returns false.
+func requireSecretsManager(clients *ProviderClients, diags *diag.Diagnostics) (bitwarden.SecretsManager, bool) {
+	bwsClient, err := clients.RequireSecretsManager()
+	if err != nil {
+		diags.AddError("Provider not configured for Secrets Manager", err.Error())
+		return nil, false
+	}
+	return bwsClient, true
+}
+
 // addErr reports a client/API error using the error text as the diagnostic
 // summary, matching the historical SDKv2 diag.FromErr formatting that
 // acceptance tests assert against (e.g. "Error: object not found").
