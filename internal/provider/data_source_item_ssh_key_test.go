@@ -14,7 +14,7 @@ func TestAccDataSourceItemSSHKey(t *testing.T) {
 	resourceName := "data.bitwarden_item_ssh_key.foo_data"
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories:         providerFactories,
+		ProtoV6ProviderFactories:  providerFactories,
 		PreventPostDestroyRefresh: false,
 		Steps: []resource.TestStep{
 			{

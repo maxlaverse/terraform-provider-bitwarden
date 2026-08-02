@@ -16,7 +16,7 @@ func TestResourceProject(t *testing.T) {
 	defer stop()
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfProvider + tfConfigResourceProject("foo", "project-foo"),

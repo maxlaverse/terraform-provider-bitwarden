@@ -10,6 +10,8 @@ Use the Bitwarden provider to manage your [Password Manager] Logins and Secure N
 You must configure the provider with proper credentials before you can use it.
 If you're not using the `embedded_client` implementation, you also need a [Password Manager CLI][Bitwarden CLI] or [Secrets Manager CLI][BWS CLI] installed locally.
 
+-> **Note:** This provider requires Terraform or OpenTofu 1.1.5 or later (Protocol 6).
+
 ## Example Usage
 
 ```terraform
@@ -17,7 +19,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.17.5"
+      version = ">= 0.18.0"
     }
   }
 }
@@ -168,16 +170,16 @@ export BW_CLIENTSECRET="my-client-secret"
 
 ### Optional
 
-- `access_token` (String) Machine Account Access Token (env: `BWS_ACCESS_TOKEN`)).
+- `access_token` (String, Sensitive) Machine Account Access Token (env: `BWS_ACCESS_TOKEN`)).
 - `client_id` (String) Client ID (env: `BW_CLIENTID`)
 - `client_implementation` (String) Client implementation type. Valid values are "embedded" (use embedded client) or "cli" (use CLI binaries, default).
-- `client_secret` (String) Client Secret (env: `BW_CLIENTSECRET`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.
+- `client_secret` (String, Sensitive) Client Secret (env: `BW_CLIENTSECRET`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.
 - `email` (String) Login Email of the Vault (env: `BW_EMAIL`).
 - `experimental` (Block Set) Enable experimental features. (see [below for nested schema](#nestedblock--experimental))
 - `extra_ca_certs` (String) Extends the well known 'root' CAs (like VeriSign) with the extra certificates in file (env: `NODE_EXTRA_CA_CERTS`, doesn't work with embedded client).
-- `master_password` (String) Master password of the Vault (env: `BW_PASSWORD`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.
+- `master_password` (String, Sensitive) Master password of the Vault (env: `BW_PASSWORD`). Do not commit this information in Git unless you know what you're doing. Prefer using a Terraform `variable {}` in order to inject this value from the environment.
 - `server` (String) Bitwarden Server URL (default: `https://vault.bitwarden.com`, env: `BW_URL` or `BWS_SERVER_URL`).
-- `session_key` (String) A Bitwarden Session Key (env: `BW_SESSION`)
+- `session_key` (String, Sensitive) A Bitwarden Session Key (env: `BW_SESSION`)
 - `vault_path` (String) Alternative directory for storing the Vault locally (default: `.bitwarden/`, env: `BITWARDENCLI_APPDATA_DIR`; set to empty string to use CLI default).
 
 <a id="nestedblock--experimental"></a>

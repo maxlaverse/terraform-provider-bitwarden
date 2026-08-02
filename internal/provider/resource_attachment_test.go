@@ -21,7 +21,7 @@ func TestAccResourceAttachment(t *testing.T) {
 	resourceName := "bitwarden_attachment.foo"
 
 	resource.UnitTest(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
@@ -107,7 +107,7 @@ func TestAccResourceItemAttachmentFields(t *testing.T) {
 	resourceName := "bitwarden_item_login.foo"
 
 	resource.UnitTest(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
@@ -136,7 +136,7 @@ func TestAccMissingAttachmentIsRecreated(t *testing.T) {
 	var itemID string
 
 	resource.UnitTest(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
@@ -182,7 +182,7 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 
 	var ID string
 	resource.UnitTest(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,

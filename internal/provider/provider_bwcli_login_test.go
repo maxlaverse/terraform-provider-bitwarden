@@ -5,7 +5,6 @@ package provider
 import (
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	test_command "github.com/maxlaverse/terraform-provider-bitwarden/internal/command/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,16 +18,15 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedOnDifferentServer(t *t
 	})
 	defer removeMocks(t)
 
-	providerConfiguration := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"email":           "test@laverse.net",
-		"master_password": "master-password-9",
+	cfg := providerConfig{
+		Server:         "http://127.0.0.1/",
+		Email:          "test@laverse.net",
+		MasterPassword: "master-password-9",
 	}
 
-	diag := New(versionTestDisabledRetries)().Configure(t.Context(), terraform.NewResourceConfigRaw(providerConfiguration))
-
-	if !assert.False(t, diag.HasError()) {
-		t.Fatalf("unexpected error: %v", diag[0])
+	_, err := configureClients(t.Context(), versionTestDisabledRetries, cfg)
+	if !assert.NoError(t, err) {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
 	assert.Equal(t, []string{
@@ -47,16 +45,15 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedWithDifferentUser(t *t
 	})
 	defer removeMocks(t)
 
-	providerConfiguration := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"email":           "test@laverse.net",
-		"master_password": "master-password-9",
+	cfg := providerConfig{
+		Server:         "http://127.0.0.1/",
+		Email:          "test@laverse.net",
+		MasterPassword: "master-password-9",
 	}
 
-	diag := New(versionTestDisabledRetries)().Configure(t.Context(), terraform.NewResourceConfigRaw(providerConfiguration))
-
-	if !assert.False(t, diag.HasError()) {
-		t.Fatalf("unexpected error: %v", diag[0])
+	_, err := configureClients(t.Context(), versionTestDisabledRetries, cfg)
+	if !assert.NoError(t, err) {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
 	assert.Equal(t, []string{
@@ -73,16 +70,15 @@ func TestProviderDoesntLogoutFirstIfUnauthenticated(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	providerConfiguration := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"email":           "test@laverse.net",
-		"master_password": "master-password-9",
+	cfg := providerConfig{
+		Server:         "http://127.0.0.1/",
+		Email:          "test@laverse.net",
+		MasterPassword: "master-password-9",
 	}
 
-	diag := New(versionTestDisabledRetries)().Configure(t.Context(), terraform.NewResourceConfigRaw(providerConfiguration))
-
-	if !assert.False(t, diag.HasError()) {
-		t.Fatalf("unexpected error: %v", diag[0])
+	_, err := configureClients(t.Context(), versionTestDisabledRetries, cfg)
+	if !assert.NoError(t, err) {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
 	assert.Equal(t, []string{
@@ -98,17 +94,17 @@ func TestProviderWithSessionKeySync(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	raw := map[string]interface{}{
-		"server":      "http://127.0.0.1/",
-		"email":       "test@laverse.net",
-		"session_key": "abcd1234",
+	cfg := providerConfig{
+		Server:     "http://127.0.0.1/",
+		Email:      "test@laverse.net",
+		SessionKey: "abcd1234",
 	}
 
 	// We specifically set the provider's version to something else than 'versionTestDisabledRetries'
 	// in order to capture 'sync' calls.
-	diag := New("not-dev")().Configure(t.Context(), terraform.NewResourceConfigRaw(raw))
-	if !assert.False(t, diag.HasError()) {
-		t.Fatal(diag[0])
+	_, err := configureClients(t.Context(), "not-dev", cfg)
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
 	}
 
 	assert.Equal(t, []string{
@@ -123,16 +119,16 @@ func TestProviderRetryOnRateLimitExceeded(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	raw := map[string]interface{}{
-		"server":      "http://127.0.0.1/",
-		"email":       "test@laverse.net",
-		"session_key": "abcd1234",
+	cfg := providerConfig{
+		Server:     "http://127.0.0.1/",
+		Email:      "test@laverse.net",
+		SessionKey: "abcd1234",
 	}
 
-	diag := New(versionTestDisabledRetries)().Configure(t.Context(), terraform.NewResourceConfigRaw(raw))
+	_, err := configureClients(t.Context(), versionTestDisabledRetries, cfg)
 
-	if assert.True(t, diag.HasError()) {
-		assert.Equal(t, diag[0].Summary, "failing command 'status' for test purposes: Rate limit exceeded. Try again later.")
+	if assert.Error(t, err) {
+		assert.Equal(t, "failing command 'status' for test purposes: Rate limit exceeded. Try again later.", err.Error())
 		assert.Equal(t, []string{
 			"status",
 			"status",
@@ -147,16 +143,16 @@ func TestProviderReturnUnhandledError(t *testing.T) {
 	})
 	defer removeMocks(t)
 
-	raw := map[string]interface{}{
-		"server":      "http://127.0.0.1/",
-		"email":       "test@laverse.net",
-		"session_key": "abcd1234",
+	cfg := providerConfig{
+		Server:     "http://127.0.0.1/",
+		Email:      "test@laverse.net",
+		SessionKey: "abcd1234",
 	}
 
-	diag := New(versionTestDisabledRetries)().Configure(t.Context(), terraform.NewResourceConfigRaw(raw))
+	_, err := configureClients(t.Context(), versionTestDisabledRetries, cfg)
 
-	if assert.True(t, diag.HasError()) {
-		assert.Equal(t, diag[0].Summary, "failing command 'status' for test purposes: Something unknown and bad happened.")
+	if assert.Error(t, err) {
+		assert.Equal(t, "failing command 'status' for test purposes: Something unknown and bad happened.", err.Error())
 		assert.Equal(t, []string{
 			"status",
 		}, commandsExecuted())

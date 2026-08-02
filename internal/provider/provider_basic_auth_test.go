@@ -29,7 +29,7 @@ func TestAccProviderAuthUsernamePassword(t *testing.T) {
 	invalidAccount := usernamePasswordTestProvider("unknown-account@laverse.net", testConfiguration.Accounts[testAccountFullAdmin].Password)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      invalidAccount + testResource,
@@ -64,7 +64,7 @@ func TestAccProviderAuthSessionKey(t *testing.T) {
 	invalidProvider := sessionKeyTestProvider(testConfiguration.Accounts[testAccountFullAdmin].Email, "invalid-session-key")
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      invalidProvider + testResource,

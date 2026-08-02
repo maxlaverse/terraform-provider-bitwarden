@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
@@ -19,13 +19,20 @@ import (
 // providerFactories are used to instantiate a provider during acceptance testing.
 // The factory function will be invoked for every Terraform CLI command executed
 // to create a provider server to which the CLI can reattach.
-var providerFactories = map[string]func() (*schema.Provider, error){
-	"bitwarden": func() (*schema.Provider, error) {
+//
+// Protocol version 6 is required. The factory returns the muxed Framework+SDKv2
+// server so resources stay available while Framework migration proceeds.
+var providerFactories = map[string]func() (tfprotov6.ProviderServer, error){
+	"bitwarden": func() (tfprotov6.ProviderServer, error) {
 		version := versionTestDefault
 		if !IsOfficialBackend() {
 			version = versionTestDisabledRetries
 		}
-		return New(version)(), nil
+		factory, err := NewProviderServer(version)
+		if err != nil {
+			return nil, err
+		}
+		return factory(), nil
 	},
 }
 

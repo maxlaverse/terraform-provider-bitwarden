@@ -22,7 +22,7 @@ func TestAccResourceOrgCollection(t *testing.T) {
 	var objectID string
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
@@ -69,7 +69,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 
 	if IsOfficialBackend() {
 		resource.Test(t, resource.TestCase{
-			ProviderFactories: providerFactories,
+			ProtoV6ProviderFactories: providerFactories,
 			Steps: []resource.TestStep{
 				// 1. Create an org-collection with ourself as the only member
 				{
@@ -164,7 +164,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 		})
 	} else if IsVaultwardenBackend() && testConfiguration.UseEmbeddedClient {
 		resource.Test(t, resource.TestCase{
-			ProviderFactories: providerFactories,
+			ProtoV6ProviderFactories: providerFactories,
 			Steps: []resource.TestStep{
 				{
 					ResourceName: resourceName,
@@ -326,7 +326,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 		})
 	} else {
 		resource.Test(t, resource.TestCase{
-			ProviderFactories: providerFactories,
+			ProtoV6ProviderFactories: providerFactories,
 			Steps: []resource.TestStep{
 				{
 					ResourceName: resourceName,
@@ -368,7 +368,7 @@ func TestAccResourceOrgCollectionWithLowerPrivileges(t *testing.T) {
 	var objectID string
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,

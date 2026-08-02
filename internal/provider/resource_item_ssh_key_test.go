@@ -20,7 +20,7 @@ func TestAccResourceItemSSHKey(t *testing.T) {
 	var objectID string
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemSSHKey(),
