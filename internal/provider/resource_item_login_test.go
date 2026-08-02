@@ -23,7 +23,7 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 	var objectID string
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("reslogin"),
@@ -91,7 +91,7 @@ func TestAccResourceItemLoginAddRemoveCollection(t *testing.T) {
 	resourceName := "bitwarden_item_login.foo"
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWithCollections("reslogin", []string{testConfiguration.Resources.CollectionID}),
@@ -136,7 +136,7 @@ func TestAccResourceItemLoginMany(t *testing.T) {
 	ensureTestConfigurationReady(t)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemManyLogins(),
@@ -151,7 +151,7 @@ func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 	var objectID string
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginSmall(),

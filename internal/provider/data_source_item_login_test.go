@@ -14,7 +14,7 @@ func TestAccDataSourceItemLoginAttributes(t *testing.T) {
 	ensureTestConfigurationReady(t)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("datalogin"),
@@ -38,7 +38,7 @@ func TestAccDataSourceItemLoginFailsOnWrongResourceType(t *testing.T) {
 	ensureTestConfigurationReady(t)
 
 	resource.UnitTest(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemSecureNote(),
@@ -55,7 +55,7 @@ func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 	ensureTestConfigurationReady(t)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("search"),

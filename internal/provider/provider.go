@@ -1,144 +1,204 @@
 package provider
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/provider"
+	provschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func init() {
-	schema.DescriptionKind = schema.StringMarkdown
+// Ensure the provider satisfies the framework interface.
+var _ provider.Provider = &bitwardenProvider{}
+
+type bitwardenProvider struct {
+	version string
 }
 
-func New(version string) func() *schema.Provider {
-	return func() *schema.Provider {
-		p := &schema.Provider{
-			Schema: map[string]*schema.Schema{
-				// Attributes which depend on each other
-				schema_definition.AttributeMasterPassword: {
-					Type:          schema.TypeString,
-					Description:   schema_definition.DescriptionMasterPassword,
-					ConflictsWith: []string{schema_definition.AttributeSessionKey, schema_definition.AttributeBwsAccessToken},
-					AtLeastOneOf:  []string{schema_definition.AttributeSessionKey, schema_definition.AttributeBwsAccessToken},
-					Optional:      true,
-					DefaultFunc:   schema.EnvDefaultFunc("BW_PASSWORD", nil),
-				},
-				schema_definition.AttributeSessionKey: {
-					Type:         schema.TypeString,
-					Description:  schema_definition.DescriptionSessionKey,
-					AtLeastOneOf: []string{schema_definition.AttributeMasterPassword, schema_definition.AttributeBwsAccessToken},
-					Optional:     true,
-					DefaultFunc:  schema.EnvDefaultFunc("BW_SESSION", nil),
-				},
-				schema_definition.AttributeClientID: {
-					Type:         schema.TypeString,
-					Description:  schema_definition.DescriptionClientID,
-					Optional:     true,
-					RequiredWith: []string{schema_definition.AttributeClientSecret, schema_definition.AttributeMasterPassword},
-					DefaultFunc:  schema.EnvDefaultFunc("BW_CLIENTID", nil),
-				},
-				schema_definition.AttributeClientSecret: {
-					Type:         schema.TypeString,
-					Description:  schema_definition.DescriptionClientSecret,
-					Optional:     true,
-					RequiredWith: []string{schema_definition.AttributeClientID, schema_definition.AttributeMasterPassword},
-					DefaultFunc:  schema.EnvDefaultFunc("BW_CLIENTSECRET", nil),
-				},
-				schema_definition.AttributeBwsAccessToken: {
-					Type:        schema.TypeString,
-					Description: schema_definition.DescriptionBwsAccessToken,
-					Optional:    true,
-					DefaultFunc: schema.EnvDefaultFunc("BWS_ACCESS_TOKEN", nil),
-				},
+// New returns a Plugin Framework provider factory.
+func New(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &bitwardenProvider{version: version}
+	}
+}
 
-				// Standalone attributes
-				schema_definition.AttributeServer: {
-					Type:        schema.TypeString,
-					Description: schema_definition.DescriptionServer,
-					Required:    true,
-					DefaultFunc: schema.MultiEnvDefaultFunc([]string{"BW_URL", "BWS_SERVER_URL"}, bitwarden.DefaultBitwardenServerURL),
-				},
-				schema_definition.AttributeProviderEmail: {
-					Type:         schema.TypeString,
-					Description:  schema_definition.DescriptionProviderEmail,
-					Optional:     true,
-					AtLeastOneOf: []string{schema_definition.AttributeBwsAccessToken, schema_definition.AttributeClientID, schema_definition.AttributeSessionKey},
-					DefaultFunc:  schema.EnvDefaultFunc("BW_EMAIL", nil),
-				},
-				schema_definition.AttributeVaultPath: {
-					Type:        schema.TypeString,
-					Description: schema_definition.DescriptionVaultPath,
-					Optional:    true,
-					DefaultFunc: schema.EnvDefaultFunc("BITWARDENCLI_APPDATA_DIR", ".bitwarden/"),
-				},
-				schema_definition.AttributeExtraCACertsPath: {
-					Type:        schema.TypeString,
-					Description: schema_definition.DescriptionExtraCACertsPath,
-					Optional:    true,
-					DefaultFunc: schema.EnvDefaultFunc("NODE_EXTRA_CA_CERTS", nil),
-				},
-				schema_definition.AttributeClientImplementation: {
-					Type:             schema.TypeString,
-					Description:      schema_definition.DescriptionClientImplementation,
-					Optional:         true,
-					Default:          schema_definition.ClientImplementationCLI,
-					ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{schema_definition.ClientImplementationCLI, schema_definition.ClientImplementationEmbedded}, false)),
-				},
+type experimentalModel struct {
+	EmbeddedClient                    types.Bool `tfsdk:"embedded_client"`
+	DisableSyncAfterWriteVerification types.Bool `tfsdk:"disable_sync_after_write_verification"`
+}
 
-				// Experimental
-				schema_definition.AttributeExperimental: {
-					Description: schema_definition.DescriptionExperimental,
-					Type:        schema.TypeSet,
-					Optional:    true,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							schema_definition.AttributeExperimentalEmbeddedClient: {
-								Description: schema_definition.DescriptionExperimentalEmbeddedClient,
-								Type:        schema.TypeBool,
-								Optional:    true,
-								Deprecated:  "Use client_implementation = \"embedded\" instead.",
-								// Note: We don't use ConflictsWith because client_implementation has a default value. To
-								// properly detect if it was explicitly set (vs using the default) would require additional
-								// code. Instead, we allow both to be set and let experimental.embedded_client take
-								// precedence in getClientImplementation().
-							},
-							schema_definition.AttributeExperimentalDisableSyncAfterWriteVerification: {
-								Description: schema_definition.DescriptionExperimentalDisableSyncAfterWriteVerification,
-								Type:        schema.TypeBool,
-								Optional:    true,
-							},
+type bitwardenProviderModel struct {
+	MasterPassword       types.String `tfsdk:"master_password"`
+	SessionKey           types.String `tfsdk:"session_key"`
+	ClientID             types.String `tfsdk:"client_id"`
+	ClientSecret         types.String `tfsdk:"client_secret"`
+	AccessToken          types.String `tfsdk:"access_token"`
+	Server               types.String `tfsdk:"server"`
+	Email                types.String `tfsdk:"email"`
+	VaultPath            types.String `tfsdk:"vault_path"`
+	ExtraCACerts         types.String `tfsdk:"extra_ca_certs"`
+	ClientImplementation types.String `tfsdk:"client_implementation"`
+	Experimental         types.Set    `tfsdk:"experimental"`
+}
+
+func (p *bitwardenProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "bitwarden"
+	resp.Version = p.version
+}
+
+func (p *bitwardenProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+	// Provider schema must match NewSDK for terraform-plugin-mux. Keep flags
+	// (sensitive, markdown descriptions) aligned with the SDKv2 provider schema.
+	resp.Schema = provschema.Schema{
+		Attributes: map[string]provschema.Attribute{
+			// Credential attributes (cross-field rules enforced in validateProviderConfig)
+			schema_definition.AttributeMasterPassword: provschema.StringAttribute{
+				MarkdownDescription: schema_definition.DescriptionMasterPassword,
+				Optional:            true,
+				Sensitive:           true,
+			},
+			schema_definition.AttributeSessionKey: provschema.StringAttribute{
+				MarkdownDescription: schema_definition.DescriptionSessionKey,
+				Optional:            true,
+				Sensitive:           true,
+			},
+			schema_definition.AttributeClientID: provschema.StringAttribute{
+				MarkdownDescription: schema_definition.DescriptionClientID,
+				Optional:            true,
+			},
+			schema_definition.AttributeClientSecret: provschema.StringAttribute{
+				MarkdownDescription: schema_definition.DescriptionClientSecret,
+				Optional:            true,
+				Sensitive:           true,
+			},
+			schema_definition.AttributeBwsAccessToken: provschema.StringAttribute{
+				MarkdownDescription: schema_definition.DescriptionBwsAccessToken,
+				Optional:            true,
+				Sensitive:           true,
+			},
+
+			// Standalone attributes
+			schema_definition.AttributeServer: provschema.StringAttribute{
+				MarkdownDescription: schema_definition.DescriptionServer,
+				Optional:            true,
+			},
+			schema_definition.AttributeProviderEmail: provschema.StringAttribute{
+				MarkdownDescription: schema_definition.DescriptionProviderEmail,
+				Optional:            true,
+			},
+			schema_definition.AttributeVaultPath: provschema.StringAttribute{
+				MarkdownDescription: schema_definition.DescriptionVaultPath,
+				Optional:            true,
+			},
+			schema_definition.AttributeExtraCACertsPath: provschema.StringAttribute{
+				MarkdownDescription: schema_definition.DescriptionExtraCACertsPath,
+				Optional:            true,
+			},
+			schema_definition.AttributeClientImplementation: provschema.StringAttribute{
+				MarkdownDescription: schema_definition.DescriptionClientImplementation,
+				Optional:            true,
+				Validators: []validator.String{
+					stringvalidator.OneOf(schema_definition.ClientImplementationCLI, schema_definition.ClientImplementationEmbedded),
+				},
+			},
+		},
+		Blocks: map[string]provschema.Block{
+			// Experimental
+			schema_definition.AttributeExperimental: provschema.SetNestedBlock{
+				MarkdownDescription: schema_definition.DescriptionExperimental,
+				NestedObject: provschema.NestedBlockObject{
+					Attributes: map[string]provschema.Attribute{
+						schema_definition.AttributeExperimentalEmbeddedClient: provschema.BoolAttribute{
+							MarkdownDescription: schema_definition.DescriptionExperimentalEmbeddedClient,
+							Optional:            true,
+							DeprecationMessage:  "Use client_implementation = \"embedded\" instead.",
+							// Both may be set; experimental.embedded_client wins in getClientImplementation().
+							// client_implementation is defaulted there when unset, so a schema-level conflict
+							// cannot distinguish an explicit "cli" from the default.
+						},
+						schema_definition.AttributeExperimentalDisableSyncAfterWriteVerification: provschema.BoolAttribute{
+							MarkdownDescription: schema_definition.DescriptionExperimentalDisableSyncAfterWriteVerification,
+							Optional:            true,
 						},
 					},
 				},
 			},
-			DataSourcesMap: map[string]*schema.Resource{
-				"bitwarden_attachment":       dataSourceAttachment(),
-				"bitwarden_folder":           dataSourceFolder(),
-				"bitwarden_item_login":       dataSourceItemLogin(),
-				"bitwarden_item_secure_note": dataSourceItemSecureNote(),
-				"bitwarden_item_ssh_key":     dataSourceItemSSHKey(),
-				"bitwarden_org_collection":   dataSourceOrgCollection(),
-				"bitwarden_org_group":        dataSourceOrgGroup(),
-				"bitwarden_org_member":       dataSourceOrgMember(),
-				"bitwarden_organization":     dataSourceOrganization(),
-				"bitwarden_project":          dataSourceProject(),
-				"bitwarden_secret":           dataSourceSecret(),
-			},
-			ResourcesMap: map[string]*schema.Resource{
-				"bitwarden_attachment":       resourceAttachment(),
-				"bitwarden_folder":           resourceFolder(),
-				"bitwarden_item_login":       resourceItemLogin(),
-				"bitwarden_item_secure_note": resourceItemSecureNote(),
-				"bitwarden_item_ssh_key":     resourceItemSSHKey(),
-				"bitwarden_org_collection":   resourceOrgCollection(),
-				"bitwarden_project":          resourceProject(),
-				"bitwarden_secret":           resourceSecret(),
-			},
-		}
-
-		p.ConfigureContextFunc = providerConfigure(version, p)
-		return p
+		},
 	}
 }
 
+func (p *bitwardenProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	// While muxed with NewSDK and Framework registers no resources/data sources,
+	// SDKv2 owns client login. Skip Framework configure to avoid duplicate auth.
+	if !p.ownsManagedResources(ctx) {
+		return
+	}
+
+	var model bitwardenProviderModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &model)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	cfg := applyProviderConfigEnvDefaults(providerConfig{
+		Server:               model.Server.ValueString(),
+		Email:                model.Email.ValueString(),
+		MasterPassword:       model.MasterPassword.ValueString(),
+		SessionKey:           model.SessionKey.ValueString(),
+		ClientID:             model.ClientID.ValueString(),
+		ClientSecret:         model.ClientSecret.ValueString(),
+		AccessToken:          model.AccessToken.ValueString(),
+		VaultPath:            model.VaultPath.ValueString(),
+		ExtraCACertsPath:     model.ExtraCACerts.ValueString(),
+		ClientImplementation: model.ClientImplementation.ValueString(),
+	})
+
+	if !model.Experimental.IsNull() && !model.Experimental.IsUnknown() {
+		var experimental []experimentalModel
+		resp.Diagnostics.Append(model.Experimental.ElementsAs(ctx, &experimental, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if len(experimental) > 0 {
+			cfg.ExperimentalEmbeddedClient = experimental[0].EmbeddedClient.ValueBool()
+			cfg.ExperimentalDisableSyncAfterWriteVerification = experimental[0].DisableSyncAfterWriteVerification.ValueBool()
+		}
+	}
+
+	if err := validateProviderConfig(cfg); err != nil {
+		resp.Diagnostics.AddError("Missing required argument", err.Error())
+		return
+	}
+
+	clients, err := configureClients(ctx, p.version, cfg)
+	if err != nil {
+		addErr(&resp.Diagnostics, err)
+		return
+	}
+
+	resp.ResourceData = clients
+	resp.DataSourceData = clients
+}
+
+func (p *bitwardenProvider) ownsManagedResources(ctx context.Context) bool {
+	// True once at least one Framework resource/data source is registered;
+	// until then NewSDK owns login via providerConfigureSDK.
+	return len(p.Resources(ctx)) > 0 || len(p.DataSources(ctx)) > 0
+}
+
+func (p *bitwardenProvider) Resources(_ context.Context) []func() resource.Resource {
+	// Muxed with SDKv2 (NewSDK): Framework registers no resources yet so type
+	// names do not collide. Later PRs move resources here and remove them from NewSDK.
+	return nil
+}
+
+func (p *bitwardenProvider) DataSources(_ context.Context) []func() datasource.DataSource {
+	// Muxed with SDKv2 (NewSDK): Framework registers no data sources yet so type
+	// names do not collide. Later PRs move data sources here and remove them from NewSDK.
+	return nil
+}

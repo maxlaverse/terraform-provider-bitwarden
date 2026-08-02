@@ -28,7 +28,7 @@ func TestAccDataSourceOrganizationAttributes(t *testing.T) {
 	}
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigDataOrganization(),

@@ -15,7 +15,7 @@ func TestResourceSecretSchema(t *testing.T) {
 	tfProvider := tfConfigSecretsManagerProvider()
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      tfProvider + tfConfigDataSecretWithoutAnyInput(),
@@ -36,7 +36,7 @@ func TestResourceSecret(t *testing.T) {
 	projectResourceId := "bitwarden_project.foo.id"
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      tfProvider + tfConfigDataSecretWithoutAnyInput(),

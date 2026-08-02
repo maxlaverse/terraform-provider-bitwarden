@@ -32,7 +32,9 @@ The plugin has been tested with the following components:
 - [Vaultwarden] v1.33.2
 - official [bitwarden.com] servers v2025.6.2
 
-The provider is likely to work with older versions, but those haven't necessarily been tested.
+**Minimum Terraform/OpenTofu:** 1.1.5 or later (Protocol 6). Older CLIs that only speak Protocol 5 are not supported.
+
+The provider is likely to work with older versions of the Bitwarden backends/CLIs, but those haven't necessarily been tested.
 If you encounter issues with recent versions of the Bitwarden CLI, consider trying out the [Embedded Client](#embedded-client).
 
 ## Usage
@@ -46,7 +48,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.17.5"
+      version = ">= 0.18.0"
     }
   }
 }
@@ -88,7 +90,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.17.5"
+      version = ">= 0.18.0"
     }
   }
 }

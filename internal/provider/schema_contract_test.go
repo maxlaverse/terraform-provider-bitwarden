@@ -67,31 +67,14 @@ func assertSchemaContract(t *testing.T, got map[string]*schema.Schema, want map[
 }
 
 func TestProviderAndAttachmentSchemaContracts(t *testing.T) {
+	// Attachment resource/data source schemas stay on SDKv2 during the mux
+	// migration and must remain backward compatible (hashes, ForceNew, conflicts).
+	// Provider schema mux alignment is covered by TestProviderSchemaValidity.
 	cases := []struct {
 		name string
 		got  map[string]*schema.Schema
 		want map[string]attrContract
 	}{
-		{
-			name: "Provider",
-			got:  New(versionTestSkippedLogin)().Schema,
-			want: map[string]attrContract{
-				"access_token":          {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				"client_id":             {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, RequiredWith: []string{"client_secret", "master_password"}},
-				"client_implementation": {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				"client_secret":         {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, RequiredWith: []string{"client_id", "master_password"}},
-				"email":                 {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, AtLeastOneOf: []string{"access_token", "client_id", "session_key"}},
-				"experimental": {Type: schema.TypeSet, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, Nested: map[string]attrContract{
-					"disable_sync_after_write_verification": {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-					"embedded_client":                       {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				}},
-				"extra_ca_certs":  {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				"master_password": {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, ConflictsWith: []string{"session_key", "access_token"}, AtLeastOneOf: []string{"session_key", "access_token"}},
-				"server":          {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-				"session_key":     {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, AtLeastOneOf: []string{"master_password", "access_token"}},
-				"vault_path":      {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-			},
-		},
 		{
 			name: "ResourceAttachment",
 			got:  resourceAttachment().Schema,

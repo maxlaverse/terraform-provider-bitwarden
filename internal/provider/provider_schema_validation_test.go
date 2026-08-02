@@ -3,329 +3,268 @@
 package provider
 
 import (
-	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 	"github.com/stretchr/testify/assert"
 )
 
+// TestProviderSchemaValidity ensures the muxed Framework+SDKv2 provider schemas
+// align (terraform-plugin-mux rejects mismatched provider schemas). Attachment
+// resources/data sources remain on SDKv2 and are covered by schema_contract_test.go
+// without behavioral change.
 func TestProviderSchemaValidity(t *testing.T) {
-	if err := New(versionTestSkippedLogin)().InternalValidate(); err != nil {
+	factory, err := NewProviderServer(versionTestSkippedLogin)
+	if err != nil {
+		t.Fatalf("mux provider schemas must align: %s", err)
+	}
+	server := factory()
+
+	resp, err := server.GetProviderSchema(t.Context(), &tfprotov6.GetProviderSchemaRequest{})
+	if err != nil {
 		t.Fatalf("err: %s", err)
+	}
+	for _, d := range resp.Diagnostics {
+		if d.Severity == tfprotov6.DiagnosticSeverityError {
+			t.Fatalf("schema error: %s: %s", d.Summary, d.Detail)
+		}
+	}
+
+	if _, ok := resp.ResourceSchemas["bitwarden_attachment"]; !ok {
+		t.Fatal("expected SDKv2 bitwarden_attachment resource to remain registered during mux migration")
 	}
 }
 
 func TestProviderAuthUsingAPIKey(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"email":           "test@laverse.net",
-		"client_id":       "client-id-1234",
-		"client_secret":   "client-secret-5678",
-		"master_password": "master-password-9",
+	cfg := providerConfig{
+		Server:         "http://127.0.0.1/",
+		Email:          "test@laverse.net",
+		ClientID:       "client-id-1234",
+		ClientSecret:   "client-secret-5678",
+		MasterPassword: "master-password-9",
 	}
+	assert.NoError(t, validateProviderConfig(cfg))
 
-	p := New(versionTestSkippedLogin)()
+	clients, err := configureClients(t.Context(), versionTestSkippedLogin, cfg)
+	assert.NoError(t, err)
 
-	config := terraform.NewResourceConfigRaw(raw)
-	diag := p.Validate(config)
-	assert.False(t, diag.HasError())
-
-	diag = p.Configure(t.Context(), config)
-	assert.False(t, diag.HasError())
-
-	assert.Implements(t, (*bwcli.PasswordManagerClient)(nil), requirePasswordManagerMeta(t, p))
+	pm, err := clients.RequirePasswordManager()
+	assert.NoError(t, err)
+	assert.Implements(t, (*bwcli.PasswordManagerClient)(nil), pm)
 }
 
 func TestProviderAuthUsingAPIAndEmbedded(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":                "http://127.0.0.1/",
-		"email":                 "test@laverse.net",
-		"client_id":             "client-id-1234",
-		"client_secret":         "client-secret-5678",
-		"master_password":       "master-password-9",
-		"client_implementation": schema_definition.ClientImplementationEmbedded,
+	cfg := providerConfig{
+		Server:               "http://127.0.0.1/",
+		Email:                "test@laverse.net",
+		ClientID:             "client-id-1234",
+		ClientSecret:         "client-secret-5678",
+		MasterPassword:       "master-password-9",
+		ClientImplementation: schema_definition.ClientImplementationEmbedded,
 	}
+	assert.NoError(t, validateProviderConfig(cfg))
 
-	p := New(versionTestSkippedLogin)()
+	clients, err := configureClients(t.Context(), versionTestSkippedLogin, cfg)
+	assert.NoError(t, err)
 
-	config := terraform.NewResourceConfigRaw(raw)
-	diag := p.Validate(config)
-	assert.False(t, diag.HasError())
-
-	diag = p.Configure(t.Context(), config)
-	assert.False(t, diag.HasError())
-
-	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), requirePasswordManagerMeta(t, p))
+	pm, err := clients.RequirePasswordManager()
+	assert.NoError(t, err)
+	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), pm)
 }
 
 func TestProviderAuthUsingSessionKey(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":      "http://127.0.0.1/",
-		"email":       "test@laverse.net",
-		"session_key": "1234",
+	cfg := providerConfig{
+		Server:     "http://127.0.0.1/",
+		Email:      "test@laverse.net",
+		SessionKey: "1234",
 	}
+	assert.NoError(t, validateProviderConfig(cfg))
 
-	p := New(versionTestSkippedLogin)()
+	clients, err := configureClients(t.Context(), versionTestSkippedLogin, cfg)
+	assert.NoError(t, err)
 
-	config := terraform.NewResourceConfigRaw(raw)
-	diag := p.Validate(config)
-	if !assert.False(t, diag.HasError()) {
-		t.Fatal(diag)
-	}
-
-	diag = p.Configure(t.Context(), config)
-	assert.False(t, diag.HasError())
-
-	assert.Implements(t, (*bwcli.PasswordManagerClient)(nil), requirePasswordManagerMeta(t, p))
+	pm, err := clients.RequirePasswordManager()
+	assert.NoError(t, err)
+	assert.Implements(t, (*bwcli.PasswordManagerClient)(nil), pm)
 }
 
 func TestProviderAuthUsingAccessToken(t *testing.T) {
-	raw := map[string]interface{}{
-		"access_token":          "0.client_id.client_secret:dGVzdC1lbmNyeXB0aW9uLWtleQ==",
-		"client_implementation": schema_definition.ClientImplementationEmbedded,
+	cfg := providerConfig{
+		AccessToken:          "0.client_id.client_secret:dGVzdC1lbmNyeXB0aW9uLWtleQ==",
+		ClientImplementation: schema_definition.ClientImplementationEmbedded,
 	}
+	assert.NoError(t, validateProviderConfig(cfg))
 
-	p := New(versionTestSkippedLogin)()
+	clients, err := configureClients(t.Context(), versionTestSkippedLogin, cfg)
+	assert.NoError(t, err)
 
-	config := terraform.NewResourceConfigRaw(raw)
-	diag := p.Validate(config)
-	if !assert.False(t, diag.HasError()) {
-		t.Fatal(diag)
-	}
-
-	diag = p.Configure(t.Context(), config)
-	if !assert.False(t, diag.HasError()) {
-		t.Fatal(diag)
-	}
-
-	assert.Implements(t, (*embedded.SecretsManager)(nil), requireSecretsManagerMeta(t, p))
+	sm, err := clients.RequireSecretsManager()
+	assert.NoError(t, err)
+	assert.Implements(t, (*embedded.SecretsManager)(nil), sm)
 }
 
 func TestProviderAuthUsingAPIKey_ThrowsErrorOnMissingClientID(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"client_secret":   "client-secret-5678",
-		"master_password": "master-password-9",
+	cfg := providerConfig{
+		Server:         "http://127.0.0.1/",
+		ClientSecret:   "client-secret-5678",
+		MasterPassword: "master-password-9",
 	}
 
-	diag := New(versionTestSkippedLogin)().Validate(terraform.NewResourceConfigRaw(raw))
-
-	if assert.True(t, diag.HasError()) {
-		assert.Equal(t, "Missing required argument", diag[0].Summary)
+	err := validateProviderConfig(cfg)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "client_id")
 	}
 }
 
 func TestProviderAuthUsingAPIKey_ThrowsErrorOnMissingClientSecret(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"client_id":       "client-id-1234",
-		"master_password": "master-password-9",
+	cfg := providerConfig{
+		Server:         "http://127.0.0.1/",
+		ClientID:       "client-id-1234",
+		MasterPassword: "master-password-9",
 	}
 
-	diag := New(versionTestSkippedLogin)().Validate(terraform.NewResourceConfigRaw(raw))
-
-	if assert.True(t, diag.HasError()) {
-		assert.Equal(t, "Missing required argument", diag[0].Summary)
-		assert.Regexp(t, regexp.MustCompile("all of `client_id,client_secret,master_password` must be specified|one of `master_password,session_key` must be specified"), diag[0].Detail)
+	err := validateProviderConfig(cfg)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "client_secret")
 	}
 }
 
 func TestProviderAuthUsingAPIKey_ThrowsErrorOnMissingMasterPassword(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":        "http://127.0.0.1/",
-		"email":         "test@laverse.net",
-		"client_id":     "client-id-1234",
-		"client_secret": "client-secret-5678",
+	cfg := providerConfig{
+		Server:       "http://127.0.0.1/",
+		Email:        "test@laverse.net",
+		ClientID:     "client-id-1234",
+		ClientSecret: "client-secret-5678",
 	}
 
-	diag := New(versionTestSkippedLogin)().Validate(terraform.NewResourceConfigRaw(raw))
-
-	if assert.True(t, diag.HasError()) {
-		assert.Equal(t, "Missing required argument", diag[0].Summary)
-		assert.Regexp(t, regexp.MustCompile("all of `client_id,client_secret,master_password` must be specified|one of `access_token,master_password,session_key` must be specified"), diag[0].Detail)
+	err := validateProviderConfig(cfg)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "master_password")
 	}
 }
 
 func TestProviderAuthUsingUsernamePassword_ThrowsErrorOnMissingMasterPassword(t *testing.T) {
-	raw := map[string]interface{}{
-		"server": "http://127.0.0.1/",
-		"email":  "test@laverse.net",
+	cfg := providerConfig{
+		Server: "http://127.0.0.1/",
+		Email:  "test@laverse.net",
 	}
 
-	diag := New(versionTestSkippedLogin)().Validate(terraform.NewResourceConfigRaw(raw))
-
-	if assert.True(t, diag.HasError()) {
-		assert.Equal(t, "Missing required argument", diag[0].Summary)
-		assert.Regexp(t, "\"(master_password|session_key)\": one of `access_token,master_password,session_key` must be specified", diag[0].Detail)
+	err := validateProviderConfig(cfg)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "master_password")
+		assert.Contains(t, err.Error(), "session_key")
 	}
 }
 
 func TestProviderAuthForPasswordManager_ThrowsErrorOnMissingEmail(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"master_password": "master-password-9",
+	cfg := providerConfig{
+		Server:         "http://127.0.0.1/",
+		MasterPassword: "master-password-9",
 	}
 
-	diag := New(versionTestSkippedLogin)().Validate(terraform.NewResourceConfigRaw(raw))
-
-	if assert.True(t, diag.HasError()) {
-		assert.Equal(t, "Missing required argument", diag[0].Summary)
-		assert.Equal(t, "\"email\": one of `access_token,client_id,email,session_key` must be specified", diag[0].Detail)
+	err := validateProviderConfig(cfg)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "email")
 	}
 }
 
 func TestSyncAfterWriteVerificationDisabled(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":                "http://127.0.0.1/",
-		"email":                 "test@laverse.net",
-		"client_id":             "client-id-1234",
-		"client_secret":         "client-secret-5678",
-		"master_password":       "master-password-9",
-		"client_implementation": schema_definition.ClientImplementationEmbedded,
-		"experimental": []interface{}{
-			map[string]interface{}{
-				"disable_sync_after_write_verification": "true",
-			},
-		},
+	cfg := providerConfig{
+		Server:               "http://127.0.0.1/",
+		Email:                "test@laverse.net",
+		ClientID:             "client-id-1234",
+		ClientSecret:         "client-secret-5678",
+		MasterPassword:       "master-password-9",
+		ClientImplementation: schema_definition.ClientImplementationEmbedded,
+		ExperimentalDisableSyncAfterWriteVerification: true,
 	}
+	assert.NoError(t, validateProviderConfig(cfg))
 
-	p := New(versionTestSkippedLogin)()
+	clients, err := configureClients(t.Context(), versionTestSkippedLogin, cfg)
+	assert.NoError(t, err)
 
-	config := terraform.NewResourceConfigRaw(raw)
-	diag := p.Validate(config)
-	assert.False(t, diag.HasError())
-
-	diag = p.Configure(t.Context(), config)
-	assert.False(t, diag.HasError())
-
-	pm := requirePasswordManagerMeta(t, p)
+	pm, err := clients.RequirePasswordManager()
+	assert.NoError(t, err)
 	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), pm)
 	assert.True(t, pm.(embedded.PasswordManagerClient).IsSyncAfterWriteVerificationDisabled())
 }
 
 func TestProviderAuthUsingExperimentalEmbeddedClient_BackwardCompatibility(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"email":           "test@laverse.net",
-		"client_id":       "client-id-1234",
-		"client_secret":   "client-secret-5678",
-		"master_password": "master-password-9",
-		"experimental": []interface{}{
-			map[string]interface{}{
-				"embedded_client": true,
-			},
-		},
+	cfg := providerConfig{
+		Server:                     "http://127.0.0.1/",
+		Email:                      "test@laverse.net",
+		ClientID:                   "client-id-1234",
+		ClientSecret:               "client-secret-5678",
+		MasterPassword:             "master-password-9",
+		ExperimentalEmbeddedClient: true,
 	}
+	assert.NoError(t, validateProviderConfig(cfg))
 
-	p := New(versionTestSkippedLogin)()
+	clients, err := configureClients(t.Context(), versionTestSkippedLogin, cfg)
+	assert.NoError(t, err)
 
-	config := terraform.NewResourceConfigRaw(raw)
-	diag := p.Validate(config)
-	assert.False(t, diag.HasError())
-
-	diag = p.Configure(t.Context(), config)
-	assert.False(t, diag.HasError())
-
-	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), requirePasswordManagerMeta(t, p))
+	pm, err := clients.RequirePasswordManager()
+	assert.NoError(t, err)
+	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), pm)
 }
 
 func TestGetClientImplementation_RecognizesExperimentalEmbeddedClient(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"email":           "test@laverse.net",
-		"client_id":       "client-id-1234",
-		"client_secret":   "client-secret-5678",
-		"master_password": "master-password-9",
-		"experimental": []interface{}{
-			map[string]interface{}{
-				"embedded_client": true,
-			},
-		},
+	cfg := providerConfig{
+		Server:                     "http://127.0.0.1/",
+		Email:                      "test@laverse.net",
+		ClientID:                   "client-id-1234",
+		ClientSecret:               "client-secret-5678",
+		MasterPassword:             "master-password-9",
+		ExperimentalEmbeddedClient: true,
 	}
 
-	p := New(versionTestSkippedLogin)()
-	resourceData := schema.TestResourceDataRaw(t, p.Schema, raw)
-
-	// Verify that getClientImplementation recognizes experimental.embedded_client
-	clientImpl := getClientImplementation(resourceData)
+	clientImpl := getClientImplementation(cfg)
 	assert.Equal(t, schema_definition.ClientImplementationEmbedded, clientImpl)
 }
 
 func TestGetClientImplementation_RecognizesExplicitClientImplementation(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":                "http://127.0.0.1/",
-		"email":                 "test@laverse.net",
-		"client_id":             "client-id-1234",
-		"client_secret":         "client-secret-5678",
-		"master_password":       "master-password-9",
-		"client_implementation": schema_definition.ClientImplementationEmbedded,
+	cfg := providerConfig{
+		Server:               "http://127.0.0.1/",
+		Email:                "test@laverse.net",
+		ClientID:             "client-id-1234",
+		ClientSecret:         "client-secret-5678",
+		MasterPassword:       "master-password-9",
+		ClientImplementation: schema_definition.ClientImplementationEmbedded,
 	}
 
-	p := New(versionTestSkippedLogin)()
-	resourceData := schema.TestResourceDataRaw(t, p.Schema, raw)
-	clientImpl := getClientImplementation(resourceData)
+	clientImpl := getClientImplementation(cfg)
 	assert.Equal(t, schema_definition.ClientImplementationEmbedded, clientImpl)
 }
 
 func TestGetClientImplementation_DefaultsToCLI(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":          "http://127.0.0.1/",
-		"email":           "test@laverse.net",
-		"client_id":       "client-id-1234",
-		"client_secret":   "client-secret-5678",
-		"master_password": "master-password-9",
-		// client_implementation not set, should default to "cli"
+	cfg := providerConfig{
+		Server:         "http://127.0.0.1/",
+		Email:          "test@laverse.net",
+		ClientID:       "client-id-1234",
+		ClientSecret:   "client-secret-5678",
+		MasterPassword: "master-password-9",
+		// ClientImplementation not set, should default to "cli"
 	}
 
-	p := New(versionTestSkippedLogin)()
-	resourceData := schema.TestResourceDataRaw(t, p.Schema, raw)
-	clientImpl := getClientImplementation(resourceData)
+	clientImpl := getClientImplementation(cfg)
 	assert.Equal(t, schema_definition.ClientImplementationCLI, clientImpl)
 }
 
 func TestGetClientImplementation_ExperimentalTakesPrecedenceWhenBothSet(t *testing.T) {
-	raw := map[string]interface{}{
-		"server":                "http://127.0.0.1/",
-		"email":                 "test@laverse.net",
-		"client_id":             "client-id-1234",
-		"client_secret":         "client-secret-5678",
-		"master_password":       "master-password-9",
-		"client_implementation": schema_definition.ClientImplementationCLI, // explicitly set to "cli"
-		"experimental": []interface{}{
-			map[string]interface{}{
-				"embedded_client": true, // but experimental.embedded_client is also set
-			},
-		},
+	cfg := providerConfig{
+		Server:                     "http://127.0.0.1/",
+		Email:                      "test@laverse.net",
+		ClientID:                   "client-id-1234",
+		ClientSecret:               "client-secret-5678",
+		MasterPassword:             "master-password-9",
+		ClientImplementation:       schema_definition.ClientImplementationCLI, // explicitly set to "cli"
+		ExperimentalEmbeddedClient: true,                                      // but experimental.embedded_client is also set
 	}
-
-	p := New(versionTestSkippedLogin)()
-	resourceData := schema.TestResourceDataRaw(t, p.Schema, raw)
 
 	// Verify that experimental.embedded_client takes precedence over explicit client_implementation
-	clientImpl := getClientImplementation(resourceData)
+	clientImpl := getClientImplementation(cfg)
 	assert.Equal(t, schema_definition.ClientImplementationEmbedded, clientImpl, "experimental.embedded_client should take precedence when both are set")
-}
-
-func requireProviderClients(t *testing.T, p *schema.Provider) *ProviderClients {
-	t.Helper()
-	clients, ok := p.Meta().(*ProviderClients)
-	if !assert.True(t, ok, "provider meta should be *ProviderClients") {
-		t.FailNow()
-	}
-	return clients
-}
-
-func requirePasswordManagerMeta(t *testing.T, p *schema.Provider) interface{} {
-	t.Helper()
-	return requireProviderClients(t, p).PasswordManager
-}
-
-func requireSecretsManagerMeta(t *testing.T, p *schema.Provider) interface{} {
-	t.Helper()
-	return requireProviderClients(t, p).SecretsManager
 }
