@@ -2,9 +2,10 @@ package transformation
 
 // AttrData is an SDK-agnostic view of Terraform resource/data-source attributes.
 // It decouples domain mapping from terraform-plugin-sdk's *schema.ResourceData
-// so the same mapping logic can later target Plugin Framework state models.
+// so the same mapping logic can target Plugin Framework state via MapData.
 //
-// *schema.ResourceData already satisfies this interface.
+// *schema.ResourceData (SDKv2) and *MapData (Framework bridge) both satisfy this
+// interface.
 type AttrData interface {
 	Id() string
 	SetId(id string)
