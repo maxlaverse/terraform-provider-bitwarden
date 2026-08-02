@@ -38,7 +38,7 @@ func TestProviderAuthUsingAPIKey(t *testing.T) {
 	diag = p.Configure(t.Context(), config)
 	assert.False(t, diag.HasError())
 
-	assert.Implements(t, (*bwcli.PasswordManagerClient)(nil), p.Meta())
+	assert.Implements(t, (*bwcli.PasswordManagerClient)(nil), requirePasswordManagerMeta(t, p))
 }
 
 func TestProviderAuthUsingAPIAndEmbedded(t *testing.T) {
@@ -60,7 +60,7 @@ func TestProviderAuthUsingAPIAndEmbedded(t *testing.T) {
 	diag = p.Configure(t.Context(), config)
 	assert.False(t, diag.HasError())
 
-	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), p.Meta())
+	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), requirePasswordManagerMeta(t, p))
 }
 
 func TestProviderAuthUsingSessionKey(t *testing.T) {
@@ -81,7 +81,7 @@ func TestProviderAuthUsingSessionKey(t *testing.T) {
 	diag = p.Configure(t.Context(), config)
 	assert.False(t, diag.HasError())
 
-	assert.Implements(t, (*bwcli.PasswordManagerClient)(nil), p.Meta())
+	assert.Implements(t, (*bwcli.PasswordManagerClient)(nil), requirePasswordManagerMeta(t, p))
 }
 
 func TestProviderAuthUsingAccessToken(t *testing.T) {
@@ -103,7 +103,7 @@ func TestProviderAuthUsingAccessToken(t *testing.T) {
 		t.Fatal(diag)
 	}
 
-	assert.Implements(t, (*embedded.SecretsManager)(nil), p.Meta())
+	assert.Implements(t, (*embedded.SecretsManager)(nil), requireSecretsManagerMeta(t, p))
 }
 
 func TestProviderAuthUsingAPIKey_ThrowsErrorOnMissingClientID(t *testing.T) {
@@ -203,8 +203,9 @@ func TestSyncAfterWriteVerificationDisabled(t *testing.T) {
 	diag = p.Configure(t.Context(), config)
 	assert.False(t, diag.HasError())
 
-	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), p.Meta())
-	assert.True(t, p.Meta().(embedded.PasswordManagerClient).IsSyncAfterWriteVerificationDisabled())
+	pm := requirePasswordManagerMeta(t, p)
+	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), pm)
+	assert.True(t, pm.(embedded.PasswordManagerClient).IsSyncAfterWriteVerificationDisabled())
 }
 
 func TestProviderAuthUsingExperimentalEmbeddedClient_BackwardCompatibility(t *testing.T) {
@@ -230,7 +231,7 @@ func TestProviderAuthUsingExperimentalEmbeddedClient_BackwardCompatibility(t *te
 	diag = p.Configure(t.Context(), config)
 	assert.False(t, diag.HasError())
 
-	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), p.Meta())
+	assert.Implements(t, (*embedded.PasswordManagerClient)(nil), requirePasswordManagerMeta(t, p))
 }
 
 func TestGetClientImplementation_RecognizesExperimentalEmbeddedClient(t *testing.T) {
@@ -308,4 +309,23 @@ func TestGetClientImplementation_ExperimentalTakesPrecedenceWhenBothSet(t *testi
 	// Verify that experimental.embedded_client takes precedence over explicit client_implementation
 	clientImpl := getClientImplementation(resourceData)
 	assert.Equal(t, schema_definition.ClientImplementationEmbedded, clientImpl, "experimental.embedded_client should take precedence when both are set")
+}
+
+func requireProviderClients(t *testing.T, p *schema.Provider) *ProviderClients {
+	t.Helper()
+	clients, ok := p.Meta().(*ProviderClients)
+	if !assert.True(t, ok, "provider meta should be *ProviderClients") {
+		t.FailNow()
+	}
+	return clients
+}
+
+func requirePasswordManagerMeta(t *testing.T, p *schema.Provider) interface{} {
+	t.Helper()
+	return requireProviderClients(t, p).PasswordManager
+}
+
+func requireSecretsManagerMeta(t *testing.T, p *schema.Provider) interface{} {
+	t.Helper()
+	return requireProviderClients(t, p).SecretsManager
 }
