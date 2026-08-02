@@ -3,12 +3,11 @@ package transformation
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func ItemObjectToSchema(ctx context.Context, obj *models.Item, d *schema.ResourceData) error {
+func ItemObjectToSchema(ctx context.Context, obj *models.Item, d AttrData) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil
@@ -124,8 +123,8 @@ func ItemObjectToSchema(ctx context.Context, obj *models.Item, d *schema.Resourc
 	return nil
 }
 
-func ItemSchemaToObject(attrType models.ItemType) func(ctx context.Context, d *schema.ResourceData) models.Item {
-	return func(ctx context.Context, d *schema.ResourceData) models.Item {
+func ItemSchemaToObject(attrType models.ItemType) func(ctx context.Context, d AttrData) models.Item {
+	return func(ctx context.Context, d AttrData) models.Item {
 		var obj models.Item
 
 		obj.ID = d.Id()
@@ -153,8 +152,7 @@ func ItemSchemaToObject(attrType models.ItemType) func(ctx context.Context, d *s
 			obj.Reprompt = 1
 		}
 
-		if vSet, ok := d.Get(schema_definition.AttributeCollectionIDs).(*schema.Set); ok {
-			vList := vSet.List()
+		if vList, ok := asInterfaceList(d.Get(schema_definition.AttributeCollectionIDs)); ok {
 			obj.CollectionIds = make([]string, len(vList))
 			for k, v := range vList {
 				obj.CollectionIds[k] = v.(string)

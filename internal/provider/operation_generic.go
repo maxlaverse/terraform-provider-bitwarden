@@ -18,8 +18,8 @@ type deleteOperationFn[T any] func(context.Context, T) error
 type findOperationFn[T any] func(ctx context.Context, options ...bitwarden.ListObjectsOption) (*T, error)
 
 // TransformationOperation
-type schemaToObjectTransformation[T any] func(ctx context.Context, d *schema.ResourceData) T
-type objectToSchemaTransformation[T any] func(ctx context.Context, obj *T, d *schema.ResourceData) error
+type schemaToObjectTransformation[T any] func(ctx context.Context, d transformation.AttrData) T
+type objectToSchemaTransformation[T any] func(ctx context.Context, obj *T, d transformation.AttrData) error
 
 func applyOperation[T any](ctx context.Context, d *schema.ResourceData, clientOperation applyOperationFn[T], fromSchemaToObj schemaToObjectTransformation[T], fromObjToSchema objectToSchemaTransformation[T]) error {
 	obj, err := clientOperation(ctx, fromSchemaToObj(ctx, d))

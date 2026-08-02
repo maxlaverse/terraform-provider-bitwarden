@@ -2,14 +2,12 @@ package transformation
 
 import (
 	"context"
-	"hash/fnv"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func OrganizationCollectionObjectToSchema(ctx context.Context, obj *models.OrgCollection, d *schema.ResourceData) error {
+func OrganizationCollectionObjectToSchema(ctx context.Context, obj *models.OrgCollection, d AttrData) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil
@@ -37,10 +35,8 @@ func OrganizationCollectionObjectToSchema(ctx context.Context, obj *models.OrgCo
 		}
 	}
 
-	userSet := schema.NewSet(func(i interface{}) int {
-		return hashStringToInt(i.(map[string]interface{})[schema_definition.AttributeID].(string))
-	}, users)
-	err = d.Set(schema_definition.AttributeMember, userSet)
+	// Pass a plain slice; *schema.ResourceData.Set wraps TypeSet attributes.
+	err = d.Set(schema_definition.AttributeMember, users)
 	if err != nil {
 		return err
 	}
@@ -55,10 +51,7 @@ func OrganizationCollectionObjectToSchema(ctx context.Context, obj *models.OrgCo
 		}
 	}
 
-	groupSet := schema.NewSet(func(i interface{}) int {
-		return hashStringToInt(i.(map[string]interface{})[schema_definition.AttributeID].(string))
-	}, groups)
-	err = d.Set(schema_definition.AttributeMemberGroup, groupSet)
+	err = d.Set(schema_definition.AttributeMemberGroup, groups)
 	if err != nil {
 		return err
 	}
@@ -66,7 +59,7 @@ func OrganizationCollectionObjectToSchema(ctx context.Context, obj *models.OrgCo
 	return nil
 }
 
-func OrganizationCollectionToObject(ctx context.Context, d *schema.ResourceData) models.OrgCollection {
+func OrganizationCollectionToObject(ctx context.Context, d AttrData) models.OrgCollection {
 	var obj models.OrgCollection
 
 	obj.ID = d.Id()
@@ -80,35 +73,44 @@ func OrganizationCollectionToObject(ctx context.Context, d *schema.ResourceData)
 		obj.OrganizationID = v
 	}
 
-	if v, ok := d.Get(schema_definition.AttributeMember).(*schema.Set); ok {
-		obj.Users = make([]models.OrgCollectionMember, v.Len())
-		for k, v2 := range v.List() {
-			obj.Users[k] = models.OrgCollectionMember{
-				HidePasswords: v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberHidePasswords].(bool),
-				Id:            v2.(map[string]interface{})[schema_definition.AttributeID].(string),
-				ReadOnly:      v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberReadOnly].(bool),
-				Manage:        v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberManage].(bool),
-			}
-		}
-	}
-
-	if v, ok := d.Get(schema_definition.AttributeMemberGroup).(*schema.Set); ok {
-		obj.Groups = make([]models.OrgCollectionMember, v.Len())
-		for k, v2 := range v.List() {
-			obj.Groups[k] = models.OrgCollectionMember{
-				HidePasswords: v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberHidePasswords].(bool),
-				Id:            v2.(map[string]interface{})[schema_definition.AttributeID].(string),
-				ReadOnly:      v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberReadOnly].(bool),
-				Manage:        v2.(map[string]interface{})[schema_definition.AttributeCollectionMemberManage].(bool),
-			}
-		}
-	}
+	obj.Users = orgCollectionMembersFromData(d.Get(schema_definition.AttributeMember))
+	obj.Groups = orgCollectionMembersFromData(d.Get(schema_definition.AttributeMemberGroup))
 
 	return obj
 }
 
-func hashStringToInt(s string) int {
-	h := fnv.New32a()
-	h.Write([]byte(s))
-	return int(h.Sum32())
+func orgCollectionMembersFromData(v interface{}) []models.OrgCollectionMember {
+	vList, ok := asInterfaceList(v)
+	if !ok {
+		return []models.OrgCollectionMember{}
+	}
+
+	members := make([]models.OrgCollectionMember, len(vList))
+	for k, v2 := range vList {
+		m, ok := v2.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		members[k] = models.OrgCollectionMember{
+			HidePasswords: boolFromMap(m, schema_definition.AttributeCollectionMemberHidePasswords),
+			Id:            stringFromMap(m, schema_definition.AttributeID),
+			ReadOnly:      boolFromMap(m, schema_definition.AttributeCollectionMemberReadOnly),
+			Manage:        boolFromMap(m, schema_definition.AttributeCollectionMemberManage),
+		}
+	}
+	return members
+}
+
+func stringFromMap(m map[string]interface{}, key string) string {
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func boolFromMap(m map[string]interface{}, key string) bool {
+	if v, ok := m[key].(bool); ok {
+		return v
+	}
+	return false
 }

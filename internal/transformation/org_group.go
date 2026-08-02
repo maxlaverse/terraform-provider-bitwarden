@@ -3,12 +3,11 @@ package transformation
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func OrganizationGroupObjectToSchema(ctx context.Context, obj *models.OrgGroup, d *schema.ResourceData) error {
+func OrganizationGroupObjectToSchema(ctx context.Context, obj *models.OrgGroup, d AttrData) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil
@@ -29,7 +28,7 @@ func OrganizationGroupObjectToSchema(ctx context.Context, obj *models.OrgGroup, 
 	return nil
 }
 
-func OrganizationGroupToObject(ctx context.Context, d *schema.ResourceData) models.OrgGroup {
+func OrganizationGroupToObject(ctx context.Context, d AttrData) models.OrgGroup {
 	var obj models.OrgGroup
 
 	obj.ID = d.Id()

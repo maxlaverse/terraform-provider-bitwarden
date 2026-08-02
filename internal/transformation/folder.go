@@ -3,12 +3,11 @@ package transformation
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func FolderObjectToSchema(ctx context.Context, obj *models.Folder, d *schema.ResourceData) error {
+func FolderObjectToSchema(ctx context.Context, obj *models.Folder, d AttrData) error {
 	if obj == nil {
 		// Object has been deleted
 		return nil
@@ -24,7 +23,7 @@ func FolderObjectToSchema(ctx context.Context, obj *models.Folder, d *schema.Res
 	return nil
 }
 
-func SchemaToFolderObject(ctx context.Context, d *schema.ResourceData) models.Folder {
+func SchemaToFolderObject(ctx context.Context, d AttrData) models.Folder {
 	var obj models.Folder
 
 	obj.ID = d.Id()

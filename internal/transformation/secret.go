@@ -3,12 +3,11 @@ package transformation
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func SecretSchemaToObject(_ context.Context, d *schema.ResourceData) models.Secret {
+func SecretSchemaToObject(_ context.Context, d AttrData) models.Secret {
 	var secret models.Secret
 
 	secret.ID = d.Id()
@@ -35,7 +34,7 @@ func SecretSchemaToObject(_ context.Context, d *schema.ResourceData) models.Secr
 	return secret
 }
 
-func SecretObjectToSchema(_ context.Context, secret *models.Secret, d *schema.ResourceData) error {
+func SecretObjectToSchema(_ context.Context, secret *models.Secret, d AttrData) error {
 	if secret == nil {
 		// Secret has been deleted
 		return nil
