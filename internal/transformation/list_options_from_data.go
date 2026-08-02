@@ -1,12 +1,11 @@
 package transformation
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func ListOptionsFromData(d *schema.ResourceData) []bitwarden.ListObjectsOption {
+func ListOptionsFromData(d AttrData) []bitwarden.ListObjectsOption {
 	filters := []bitwarden.ListObjectsOption{}
 
 	filterMap := map[string]bitwarden.ListObjectsOptionGenerator{

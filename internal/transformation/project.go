@@ -3,12 +3,11 @@ package transformation
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-func ProjectSchemaToObject(_ context.Context, d *schema.ResourceData) models.Project {
+func ProjectSchemaToObject(_ context.Context, d AttrData) models.Project {
 	var project models.Project
 
 	project.ID = d.Id()
@@ -23,7 +22,7 @@ func ProjectSchemaToObject(_ context.Context, d *schema.ResourceData) models.Pro
 	return project
 }
 
-func ProjectObjectToSchema(_ context.Context, project *models.Project, d *schema.ResourceData) error {
+func ProjectObjectToSchema(_ context.Context, project *models.Project, d AttrData) error {
 	if project == nil {
 		// Project has been deleted
 		return nil
