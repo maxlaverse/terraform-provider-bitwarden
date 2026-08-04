@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	sdkdiag "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
@@ -54,6 +55,15 @@ func requireSecretsManager(clients *ProviderClients, diags *diag.Diagnostics) (b
 // acceptance tests assert against (e.g. "Error: object not found").
 func addErr(diags *diag.Diagnostics, err error) {
 	diags.AddError(err.Error(), "")
+}
+
+// mapStr converts a map value from MapData into a Framework string attribute.
+// Non-string values become null.
+func mapStr(v interface{}) types.String {
+	if s, ok := v.(string); ok {
+		return types.StringValue(s)
+	}
+	return types.StringNull()
 }
 
 type passwordManagerOperation func(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) sdkdiag.Diagnostics

@@ -216,25 +216,6 @@ func TestSchemaContracts(t *testing.T) {
 			},
 		},
 		{
-			name: "Folder/Resource",
-			got:  FolderSchema(Resource),
-			want: map[string]attrContract{
-				"id":   {Type: schema.TypeString, Required: false, Optional: true, Computed: true, ForceNew: false, Sensitive: false},
-				"name": {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-			},
-		},
-		{
-			name: "Folder/DataSource",
-			got:  FolderSchema(DataSource),
-			want: map[string]attrContract{
-				"filter_collection_id":   {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				"filter_organization_id": {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				"id":                     {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				"name":                   {Type: schema.TypeString, Required: false, Optional: false, Computed: true, ForceNew: false, Sensitive: false},
-				"search":                 {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, AtLeastOneOf: []string{"search", "id"}},
-			},
-		},
-		{
 			name: "OrgCollection/Resource",
 			got:  OrgCollectionSchema(Resource),
 			want: map[string]attrContract{

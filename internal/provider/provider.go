@@ -133,8 +133,9 @@ func (p *bitwardenProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 }
 
 func (p *bitwardenProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	// While muxed with NewSDK and Framework registers no resources/data sources,
-	// SDKv2 owns client login. Skip Framework configure to avoid duplicate auth.
+	// When Framework still registers nothing, SDKv2 alone owns login — skip here
+	// to avoid a second configureClients call. Once any Framework type is
+	// registered (e.g. folder), both mux sides configure independently.
 	if !p.ownsManagedResources(ctx) {
 		return
 	}
@@ -175,6 +176,8 @@ func (p *bitwardenProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
+	// Mux also configures NewSDK separately; both sides log in. CLI login is
+	// largely idempotent (unlocked vault → Sync); embedded creates a second session.
 	clients, err := configureClients(ctx, p.version, cfg)
 	if err != nil {
 		addErr(&resp.Diagnostics, err)
@@ -186,19 +189,19 @@ func (p *bitwardenProvider) Configure(ctx context.Context, req provider.Configur
 }
 
 func (p *bitwardenProvider) ownsManagedResources(ctx context.Context) bool {
-	// True once at least one Framework resource/data source is registered;
-	// until then NewSDK owns login via providerConfigureSDK.
+	// True when Framework registers at least one resource or data source and
+	// must supply ProviderData via Configure. While false, NewSDK owns login.
 	return len(p.Resources(ctx)) > 0 || len(p.DataSources(ctx)) > 0
 }
 
 func (p *bitwardenProvider) Resources(_ context.Context) []func() resource.Resource {
-	// Muxed with SDKv2 (NewSDK): Framework registers no resources yet so type
-	// names do not collide. Later PRs move resources here and remove them from NewSDK.
-	return nil
+	return []func() resource.Resource{
+		NewFolderResource,
+	}
 }
 
 func (p *bitwardenProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	// Muxed with SDKv2 (NewSDK): Framework registers no data sources yet so type
-	// names do not collide. Later PRs move data sources here and remove them from NewSDK.
-	return nil
+	return []func() datasource.DataSource{
+		NewFolderDataSource,
+	}
 }
