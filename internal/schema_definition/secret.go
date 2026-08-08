@@ -1,53 +1,85 @@
 package schema_definition
 
-import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+import (
+	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
-func SecretSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
-	baseSchema := map[string]*schema.Schema{
-		AttributeID: {
-			Description: DescriptionIdentifier,
-			Type:        schema.TypeString,
-			Computed:    schemaType == Resource,
-			Optional:    true,
-		},
-		AttributeKey: {
-			Description: DescriptionName,
-			Type:        schema.TypeString,
-			Optional:    schemaType == DataSource,
-			Required:    schemaType == Resource,
-		},
-		AttributeValue: {
-			Description: DescriptionValue,
-			Type:        schema.TypeString,
-			Computed:    schemaType == DataSource,
-			Required:    schemaType == Resource,
-		},
-		AttributeNote: {
-			Description: DescriptionNote,
-			Type:        schema.TypeString,
-			Computed:    schemaType == DataSource,
-			Required:    schemaType == Resource,
-		},
-		AttributeOrganizationID: {
-			Description: DescriptionOrganizationID,
-			Type:        schema.TypeString,
-			Computed:    true,
-			Optional:    true,
-		},
-		AttributeProjectID: {
-			Description: DescriptionProjectID,
-			Type:        schema.TypeString,
-			Computed:    schemaType == DataSource,
-			Required:    schemaType == Resource,
+	fwstringvalidator "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+)
+
+func SecretResourceSchema() rsschema.Schema {
+	return rsschema.Schema{
+		MarkdownDescription: "Manages a secret.",
+		Attributes: map[string]rsschema.Attribute{
+			AttributeID: rsschema.StringAttribute{
+				MarkdownDescription: DescriptionIdentifier,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			AttributeKey: rsschema.StringAttribute{
+				MarkdownDescription: DescriptionName,
+				Required:            true,
+			},
+			AttributeValue: rsschema.StringAttribute{
+				MarkdownDescription: DescriptionValue,
+				Required:            true,
+			},
+			AttributeNote: rsschema.StringAttribute{
+				MarkdownDescription: DescriptionNote,
+				Required:            true,
+			},
+			AttributeOrganizationID: rsschema.StringAttribute{
+				MarkdownDescription: DescriptionOrganizationID,
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			AttributeProjectID: rsschema.StringAttribute{
+				MarkdownDescription: DescriptionProjectID,
+				Required:            true,
+			},
 		},
 	}
+}
 
-	if schemaType == DataSource {
-		baseSchema[AttributeID].AtLeastOneOf = []string{AttributeID, AttributeKey}
-		baseSchema[AttributeID].ConflictsWith = []string{AttributeKey}
-		baseSchema[AttributeKey].AtLeastOneOf = []string{AttributeID, AttributeKey}
-		baseSchema[AttributeKey].ConflictsWith = []string{AttributeID}
+func SecretDataSourceSchema() dsschema.Schema {
+	return dsschema.Schema{
+		MarkdownDescription: "Use this data source to get information on an existing secret.",
+		Attributes: map[string]dsschema.Attribute{
+			AttributeID: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionIdentifier,
+				Optional:            true,
+				Computed:            true,
+				Validators: []validator.String{
+					fwstringvalidator.ExactlyOneOf(path.MatchRoot(AttributeID), path.MatchRoot(AttributeKey)),
+				},
+			},
+			AttributeKey: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionName,
+				Optional:            true,
+				Computed:            true,
+			},
+			AttributeValue: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionValue,
+				Computed:            true,
+			},
+			AttributeNote: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionNote,
+				Computed:            true,
+			},
+			AttributeOrganizationID: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionOrganizationID,
+				Optional:            true,
+				Computed:            true,
+			},
+			AttributeProjectID: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionProjectID,
+				Computed:            true,
+			},
+		},
 	}
-
-	return baseSchema
 }

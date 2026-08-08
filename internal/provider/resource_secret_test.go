@@ -19,11 +19,11 @@ func TestResourceSecretSchema(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      tfProvider + tfConfigDataSecretWithoutAnyInput(),
-				ExpectError: regexp.MustCompile("Error: Missing required argument"),
+				ExpectError: regexp.MustCompile(`Invalid Attribute Combination|No attribute specified when one \(and only one\) of`),
 			},
 			{
 				Config:      tfProvider + tfConfigDataSecretTooManyInput(),
-				ExpectError: regexp.MustCompile(": conflicts"),
+				ExpectError: regexp.MustCompile(`Invalid Attribute Combination|cannot be specified when|conflicts`),
 			},
 		},
 	})
@@ -40,11 +40,11 @@ func TestResourceSecret(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      tfProvider + tfConfigDataSecretWithoutAnyInput(),
-				ExpectError: regexp.MustCompile("Error: Missing required argument"),
+				ExpectError: regexp.MustCompile(`Invalid Attribute Combination|No attribute specified when one \(and only one\) of`),
 			},
 			{
 				Config:      tfProvider + tfConfigDataSecretTooManyInput(),
-				ExpectError: regexp.MustCompile(": conflicts"),
+				ExpectError: regexp.MustCompile(`Invalid Attribute Combination|cannot be specified when|conflicts`),
 			},
 			{
 				Config:      tfProvider + tfConfigResourceSecret("foo", "\"283e673a-2b95-46b7-9a1e-89b4fcf56f24\""),

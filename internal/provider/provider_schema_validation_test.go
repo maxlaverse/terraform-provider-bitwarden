@@ -13,10 +13,9 @@ import (
 )
 
 // TestProviderSchemaValidity ensures the muxed Framework+SDKv2 provider schemas
-// align (terraform-plugin-mux rejects mismatched provider schemas). bitwarden_folder,
-// bitwarden_project, and the organization data sources are served by Framework;
-// other resources/data sources (including attachments) remain on SDKv2 and are
-// covered by schema_contract_test.go.
+// align (terraform-plugin-mux rejects mismatched provider schemas). Migrated
+// Framework types are asserted below; remaining SDKv2 types (including
+// attachments) are covered by schema_contract_test.go.
 func TestProviderSchemaValidity(t *testing.T) {
 	factory, err := NewProviderServer(versionTestSkippedLogin)
 	if err != nil {
@@ -34,7 +33,7 @@ func TestProviderSchemaValidity(t *testing.T) {
 		}
 	}
 
-	for _, name := range []string{"bitwarden_folder", "bitwarden_project"} {
+	for _, name := range []string{"bitwarden_folder", "bitwarden_project", "bitwarden_secret"} {
 		if _, ok := resp.ResourceSchemas[name]; !ok {
 			t.Fatalf("expected Framework %s resource to be registered", name)
 		}
@@ -42,6 +41,7 @@ func TestProviderSchemaValidity(t *testing.T) {
 	for _, name := range []string{
 		"bitwarden_folder",
 		"bitwarden_project",
+		"bitwarden_secret",
 		"bitwarden_organization",
 		"bitwarden_org_group",
 		"bitwarden_org_member",
