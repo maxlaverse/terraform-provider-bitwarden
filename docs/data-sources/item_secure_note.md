@@ -43,12 +43,12 @@ resource "kubernetes_secret" "preshared_key" {
 
 ### Read-Only
 
-- `attachments` (List of Object) List of item attachments. (see [below for nested schema](#nestedatt--attachments))
+- `attachments` (Attributes List) List of item attachments. (see [below for nested schema](#nestedatt--attachments))
 - `collection_ids` (Set of String) Identifier of the collections the item belongs to.
 - `creation_date` (String) Date the item was created.
 - `deleted_date` (String) Date the item was deleted.
 - `favorite` (Boolean) Mark as a Favorite to have item appear at the top of your Vault in the UI.
-- `field` (List of Object, Sensitive) Extra fields. (see [below for nested schema](#nestedatt--field))
+- `field` (Attributes List, Sensitive) Extra fields. (see [below for nested schema](#nestedatt--field))
 - `folder_id` (String) Identifier of the folder.
 - `name` (String) Name.
 - `notes` (String, Sensitive) Notes.
@@ -61,11 +61,11 @@ resource "kubernetes_secret" "preshared_key" {
 
 Read-Only:
 
-- `file_name` (String)
-- `id` (String)
-- `size` (String)
-- `size_name` (String)
-- `url` (String)
+- `file_name` (String) File name. Required if specifying `content` in a resource.
+- `id` (String) Identifier.
+- `size` (String) Size in bytes
+- `size_name` (String) Size as string
+- `url` (String) URL
 
 
 <a id="nestedatt--field"></a>
@@ -73,8 +73,8 @@ Read-Only:
 
 Read-Only:
 
-- `boolean` (Boolean)
-- `hidden` (String)
-- `linked` (String)
-- `name` (String)
-- `text` (String)
+- `boolean` (Boolean) Value of a boolean field.
+- `hidden` (String) Value of a hidden text field.
+- `linked` (String) Value of a linked field.
+- `name` (String) Name of the field.
+- `text` (String) Value of a text field.

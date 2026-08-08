@@ -40,7 +40,7 @@ resource "local_sensitive_file" "id_rsa" {
 - `collection_ids` (Set of String) Identifier of the collections the item belongs to.
 - `creation_date` (String) Date the item was created.
 - `deleted_date` (String) Date the item was deleted.
-- `field` (List of Object, Sensitive) Extra fields. (see [below for nested schema](#nestedatt--field))
+- `field` (Attributes List, Sensitive) Extra fields. (see [below for nested schema](#nestedatt--field))
 - `folder_id` (String) Identifier of the folder.
 - `key_fingerprint` (String, Sensitive) Key fingerprint.
 - `name` (String) Name.
@@ -56,8 +56,8 @@ resource "local_sensitive_file" "id_rsa" {
 
 Read-Only:
 
-- `boolean` (Boolean)
-- `hidden` (String)
-- `linked` (String)
-- `name` (String)
-- `text` (String)
+- `boolean` (Boolean) Value of a boolean field.
+- `hidden` (String) Value of a hidden text field.
+- `linked` (String) Value of a linked field.
+- `name` (String) Name of the field.
+- `text` (String) Value of a text field.

@@ -204,6 +204,9 @@ func (p *bitwardenProvider) ownsManagedResources(ctx context.Context) bool {
 func (p *bitwardenProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewFolderResource,
+		NewItemLoginResource,
+		NewItemSecureNoteResource,
+		NewItemSSHKeyResource,
 		NewProjectResource,
 		NewSecretResource,
 	}
@@ -212,6 +215,9 @@ func (p *bitwardenProvider) Resources(_ context.Context) []func() resource.Resou
 func (p *bitwardenProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewFolderDataSource,
+		NewItemLoginDataSource,
+		NewItemSecureNoteDataSource,
+		NewItemSSHKeyDataSource,
 		NewOrganizationDataSource,
 		NewOrgGroupDataSource,
 		NewOrgMemberDataSource,
