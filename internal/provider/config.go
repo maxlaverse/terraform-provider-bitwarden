@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -54,6 +55,65 @@ type providerConfig struct {
 
 func (c providerConfig) has(value string) bool { return len(value) > 0 }
 
+// cacheKey identifies equivalent provider configurations so the Framework and
+// SDKv2 halves of a single mux ConfigureProvider RPC can hand off one client.
+func (c providerConfig) cacheKey(version string) string {
+	return strings.Join([]string{
+		version,
+		c.Server,
+		c.Email,
+		c.MasterPassword,
+		c.SessionKey,
+		c.ClientID,
+		c.ClientSecret,
+		c.AccessToken,
+		c.VaultPath,
+		c.ExtraCACertsPath,
+		c.ClientImplementation,
+		fmt.Sprintf("%t", c.ExperimentalEmbeddedClient),
+		fmt.Sprintf("%t", c.ExperimentalDisableSyncAfterWriteVerification),
+	}, "\x00")
+}
+
+var (
+	muxClientsMu    sync.Mutex
+	muxClientsOffer = map[string]*ProviderClients{}
+)
+
+// configureClientsOffer builds clients for the Framework mux half and parks
+// them for the following SDKv2 Configure call. A permanent process-wide cache
+// is intentionally avoided: embedded clients keep an in-memory vault that must
+// be rebuilt on later ConfigureProvider RPCs (e.g. after an external delete).
+func configureClientsOffer(ctx context.Context, version string, cfg providerConfig) (*ProviderClients, error) {
+	clients, err := configureClients(ctx, version, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	key := cfg.cacheKey(version)
+	muxClientsMu.Lock()
+	muxClientsOffer[key] = clients
+	muxClientsMu.Unlock()
+	return clients, nil
+}
+
+// configureClientsTakeOrCreate returns clients parked by configureClientsOffer
+// for this config, or builds a fresh pair when nothing was offered (Framework
+// Configure skipped, or a different config key).
+func configureClientsTakeOrCreate(ctx context.Context, version string, cfg providerConfig) (*ProviderClients, error) {
+	key := cfg.cacheKey(version)
+
+	muxClientsMu.Lock()
+	if offered, ok := muxClientsOffer[key]; ok {
+		delete(muxClientsOffer, key)
+		muxClientsMu.Unlock()
+		return offered, nil
+	}
+	muxClientsMu.Unlock()
+
+	return configureClients(ctx, version, cfg)
+}
+
 // providerConfigureSDK adapts SDKv2 ResourceData into providerConfig and
 // reuses configureClients so both muxed providers share one login path.
 func providerConfigureSDK(version string) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
@@ -62,7 +122,9 @@ func providerConfigureSDK(version string) func(context.Context, *schema.Resource
 		if err := validateProviderConfig(cfg); err != nil {
 			return nil, diag.Errorf("%s", err.Error())
 		}
-		clients, err := configureClients(ctx, version, cfg)
+		// Mux calls Framework Configure first; take its clients when present so
+		// we do not log in twice for the same ConfigureProvider RPC.
+		clients, err := configureClientsTakeOrCreate(ctx, version, cfg)
 		if err != nil {
 			return nil, diag.FromErr(err)
 		}

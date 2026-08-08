@@ -12,8 +12,8 @@ import (
 
 // NewProviderServer returns a Protocol 6 provider server that muxes the
 // Plugin Framework shell (New) with the SDKv2 implementation (NewSDK).
-// Resources/data sources stay on SDKv2 until migrated; the Framework provider
-// currently registers none so type names do not collide.
+// Resources/data sources move to Framework one at a time (folder first); each
+// is removed from NewSDK's maps as it migrates so type names never collide.
 func NewProviderServer(version string) (func() tfprotov6.ProviderServer, error) {
 	ctx := context.Background()
 

@@ -25,7 +25,7 @@ resource "bitwarden_folder" "databases" {
 
 - `name` (String) Name.
 
-### Optional
+### Read-Only
 
 - `id` (String) Identifier.
 
