@@ -134,8 +134,8 @@ func (p *bitwardenProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 
 func (p *bitwardenProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	// When Framework still registers nothing, SDKv2 alone owns login — skip here
-	// to avoid a second configureClients call. Once any Framework type is
-	// registered (e.g. folder), both mux sides configure independently.
+	// to avoid parking unused clients. Once any Framework type is registered,
+	// Configure offers clients for the SDKv2 mux half to take.
 	if !p.ownsManagedResources(ctx) {
 		return
 	}
@@ -176,9 +176,9 @@ func (p *bitwardenProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	// Mux also configures NewSDK separately; both sides log in. CLI login is
-	// largely idempotent (unlocked vault → Sync); embedded creates a second session.
-	clients, err := configureClients(ctx, p.version, cfg)
+	// Mux configures NewSDK next; offer clients so SDKv2 can reuse this login
+	// for the same ConfigureProvider RPC instead of authenticating twice.
+	clients, err := configureClientsOffer(ctx, p.version, cfg)
 	if err != nil {
 		addErr(&resp.Diagnostics, err)
 		return
