@@ -115,7 +115,6 @@ func NewSDK(version string) func() *schema.Provider {
 				"bitwarden_org_group":        dataSourceOrgGroup(),
 				"bitwarden_org_member":       dataSourceOrgMember(),
 				"bitwarden_organization":     dataSourceOrganization(),
-				"bitwarden_project":          dataSourceProject(),
 				"bitwarden_secret":           dataSourceSecret(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
@@ -124,7 +123,6 @@ func NewSDK(version string) func() *schema.Provider {
 				"bitwarden_item_secure_note": resourceItemSecureNote(),
 				"bitwarden_item_ssh_key":     resourceItemSSHKey(),
 				"bitwarden_org_collection":   resourceOrgCollection(),
-				"bitwarden_project":          resourceProject(),
 				"bitwarden_secret":           resourceSecret(),
 			},
 		}
