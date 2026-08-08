@@ -1,26 +1,33 @@
 package schema_definition
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	fwstringvalidator "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 )
 
-func OrganizationSchema() map[string]*schema.Schema {
-	return map[string]*schema.Schema{
-		AttributeID: {
-			Description: DescriptionIdentifier,
-			Type:        schema.TypeString,
-			Optional:    true,
-		},
-		AttributeName: {
-			Description: DescriptionName,
-			Type:        schema.TypeString,
-			Computed:    true,
-		},
-		AttributeFilterSearch: {
-			Description:  DescriptionFilterSearch,
-			Type:         schema.TypeString,
-			Optional:     true,
-			AtLeastOneOf: []string{AttributeFilterSearch, AttributeID},
+func OrganizationDataSourceSchema() dsschema.Schema {
+	return dsschema.Schema{
+		MarkdownDescription: "Use this data source to get information on an existing organization.",
+		Attributes: map[string]dsschema.Attribute{
+			AttributeID: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionIdentifier,
+				Optional:            true,
+				Computed:            true,
+			},
+			AttributeName: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionName,
+				Computed:            true,
+			},
+			AttributeFilterSearch: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionFilterSearch,
+				Optional:            true,
+				Validators: []validator.String{
+					fwstringvalidator.AtLeastOneOf(path.MatchRoot(AttributeFilterSearch), path.MatchRoot(AttributeID)),
+				},
+			},
 		},
 	}
 }

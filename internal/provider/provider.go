@@ -204,6 +204,9 @@ func (p *bitwardenProvider) Resources(_ context.Context) []func() resource.Resou
 func (p *bitwardenProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewFolderDataSource,
+		NewOrganizationDataSource,
+		NewOrgGroupDataSource,
+		NewOrgMemberDataSource,
 		NewProjectDataSource,
 	}
 }
