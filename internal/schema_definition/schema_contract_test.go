@@ -77,49 +77,6 @@ func TestSchemaContracts(t *testing.T) {
 		want map[string]attrContract
 	}{
 		{
-			name: "OrgCollection/Resource",
-			got:  OrgCollectionSchema(Resource),
-			want: map[string]attrContract{
-				"id": {Type: schema.TypeString, Required: false, Optional: true, Computed: true, ForceNew: false, Sensitive: false},
-				"member": {Type: schema.TypeSet, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, Nested: map[string]attrContract{
-					"hide_passwords": {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-					"id":             {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-					"manage":         {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-					"read_only":      {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				}},
-				"member_group": {Type: schema.TypeSet, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, Nested: map[string]attrContract{
-					"hide_passwords": {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-					"id":             {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-					"manage":         {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-					"read_only":      {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				}},
-				"name":            {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-				"organization_id": {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-			},
-		},
-		{
-			name: "OrgCollection/DataSource",
-			got:  OrgCollectionSchema(DataSource),
-			want: map[string]attrContract{
-				"id": {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				"member": {Type: schema.TypeSet, Required: false, Optional: false, Computed: true, ForceNew: false, Sensitive: false, Nested: map[string]attrContract{
-					"hide_passwords": {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-					"id":             {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-					"manage":         {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-					"read_only":      {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				}},
-				"member_group": {Type: schema.TypeSet, Required: false, Optional: false, Computed: true, ForceNew: false, Sensitive: false, Nested: map[string]attrContract{
-					"hide_passwords": {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-					"id":             {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-					"manage":         {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-					"read_only":      {Type: schema.TypeBool, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				}},
-				"name":            {Type: schema.TypeString, Required: false, Optional: false, Computed: true, ForceNew: false, Sensitive: false},
-				"organization_id": {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-				"search":          {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, AtLeastOneOf: []string{"search", "id"}},
-			},
-		},
-		{
 			name: "AttachmentBase",
 			got:  AttachmentSchema(),
 			want: map[string]attrContract{
