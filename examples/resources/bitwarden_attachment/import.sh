@@ -1,1 +1,1 @@
-$ terraform import bitwarden_attachment.example <item_id>/<attachment_id>
+$ terraform import bitwarden_attachment.example <attachment_id>/<item_id>
