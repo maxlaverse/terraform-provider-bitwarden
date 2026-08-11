@@ -1,26 +1,52 @@
 package schema_definition
 
-import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+import (
+	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+)
 
-func ProjectSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
-	return map[string]*schema.Schema{
-		AttributeID: {
-			Description: DescriptionIdentifier,
-			Type:        schema.TypeString,
-			Computed:    schemaType == Resource,
-			Optional:    true,
+func ProjectResourceSchema() rsschema.Schema {
+	return rsschema.Schema{
+		MarkdownDescription: "Manages a Project.",
+		Attributes: map[string]rsschema.Attribute{
+			AttributeID: rsschema.StringAttribute{
+				MarkdownDescription: DescriptionIdentifier,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			AttributeName: rsschema.StringAttribute{
+				MarkdownDescription: DescriptionName,
+				Required:            true,
+			},
+			AttributeOrganizationID: rsschema.StringAttribute{
+				MarkdownDescription: DescriptionOrganizationID,
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
 		},
-		AttributeName: {
-			Description: DescriptionName,
-			Type:        schema.TypeString,
-			Computed:    schemaType == DataSource,
-			Required:    schemaType == Resource,
-		},
-		AttributeOrganizationID: {
-			Description: DescriptionOrganizationID,
-			Type:        schema.TypeString,
-			Computed:    true,
-			Optional:    true,
+	}
+}
+
+func ProjectDataSourceSchema() dsschema.Schema {
+	return dsschema.Schema{
+		MarkdownDescription: "Use this data source to get information on an existing project.",
+		Attributes: map[string]dsschema.Attribute{
+			AttributeID: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionIdentifier,
+				Optional:            true,
+			},
+			AttributeName: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionName,
+				Computed:            true,
+			},
+			AttributeOrganizationID: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionOrganizationID,
+				Optional:            true,
+				Computed:            true,
+			},
 		},
 	}
 }

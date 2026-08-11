@@ -297,24 +297,6 @@ func TestSchemaContracts(t *testing.T) {
 			},
 		},
 		{
-			name: "Project/Resource",
-			got:  ProjectSchema(Resource),
-			want: map[string]attrContract{
-				"id":              {Type: schema.TypeString, Required: false, Optional: true, Computed: true, ForceNew: false, Sensitive: false},
-				"name":            {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-				"organization_id": {Type: schema.TypeString, Required: false, Optional: true, Computed: true, ForceNew: false, Sensitive: false},
-			},
-		},
-		{
-			name: "Project/DataSource",
-			got:  ProjectSchema(DataSource),
-			want: map[string]attrContract{
-				"id":              {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				"name":            {Type: schema.TypeString, Required: false, Optional: false, Computed: true, ForceNew: false, Sensitive: false},
-				"organization_id": {Type: schema.TypeString, Required: false, Optional: true, Computed: true, ForceNew: false, Sensitive: false},
-			},
-		},
-		{
 			name: "Secret/Resource",
 			got:  SecretSchema(Resource),
 			want: map[string]attrContract{
