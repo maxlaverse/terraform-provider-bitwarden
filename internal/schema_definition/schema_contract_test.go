@@ -259,44 +259,6 @@ func TestSchemaContracts(t *testing.T) {
 			},
 		},
 		{
-			name: "OrgGroup/Resource",
-			got:  OrgGroupSchema(Resource),
-			want: map[string]attrContract{
-				"id":              {Type: schema.TypeString, Required: false, Optional: true, Computed: true, ForceNew: false, Sensitive: false},
-				"name":            {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				"organization_id": {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-			},
-		},
-		{
-			name: "OrgGroup/DataSource",
-			got:  OrgGroupSchema(DataSource),
-			want: map[string]attrContract{
-				"filter_name":     {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, AtLeastOneOf: []string{"filter_name", "id"}},
-				"id":              {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				"name":            {Type: schema.TypeString, Required: false, Optional: false, Computed: true, ForceNew: false, Sensitive: false},
-				"organization_id": {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-			},
-		},
-		{
-			name: "OrgMember",
-			got:  OrgMemberSchema(),
-			want: map[string]attrContract{
-				"email":           {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, AtLeastOneOf: []string{"email", "id"}},
-				"id":              {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				"name":            {Type: schema.TypeString, Required: false, Optional: false, Computed: true, ForceNew: false, Sensitive: false},
-				"organization_id": {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-			},
-		},
-		{
-			name: "Organization",
-			got:  OrganizationSchema(),
-			want: map[string]attrContract{
-				"id":     {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false},
-				"name":   {Type: schema.TypeString, Required: false, Optional: false, Computed: true, ForceNew: false, Sensitive: false},
-				"search": {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, AtLeastOneOf: []string{"search", "id"}},
-			},
-		},
-		{
 			name: "Secret/Resource",
 			got:  SecretSchema(Resource),
 			want: map[string]attrContract{

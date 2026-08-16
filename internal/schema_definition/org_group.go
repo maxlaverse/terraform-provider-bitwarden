@@ -1,38 +1,37 @@
 package schema_definition
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	fwstringvalidator "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 )
 
-func OrgGroupSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
-	base := map[string]*schema.Schema{
-		AttributeID: {
-			Description: DescriptionIdentifier,
-			Type:        schema.TypeString,
-			Computed:    schemaType == Resource,
-			Optional:    true,
-		},
-		AttributeOrganizationID: {
-			Description: DescriptionOrganizationID,
-			Type:        schema.TypeString,
-			Required:    true,
-		},
-		AttributeName: {
-			Description: DescriptionName,
-			Type:        schema.TypeString,
-			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
+func OrgGroupDataSourceSchema() dsschema.Schema {
+	return dsschema.Schema{
+		MarkdownDescription: "Use this data source to get information on an existing organization group.",
+		Attributes: map[string]dsschema.Attribute{
+			AttributeID: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionIdentifier,
+				Optional:            true,
+				Computed:            true,
+			},
+			AttributeOrganizationID: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionOrganizationID,
+				Required:            true,
+			},
+			AttributeName: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionName,
+				Computed:            true,
+			},
+			AttributeFilterName: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionFilterName,
+				Optional:            true,
+				Validators: []validator.String{
+					fwstringvalidator.AtLeastOneOf(path.MatchRoot(AttributeFilterName), path.MatchRoot(AttributeID)),
+				},
+			},
 		},
 	}
-
-	if schemaType == DataSource {
-		base[AttributeFilterName] = &schema.Schema{
-			Description:  DescriptionFilterName,
-			Type:         schema.TypeString,
-			Optional:     true,
-			AtLeastOneOf: []string{AttributeFilterName, AttributeID},
-		}
-	}
-
-	return base
 }
