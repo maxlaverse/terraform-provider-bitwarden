@@ -259,30 +259,6 @@ func TestSchemaContracts(t *testing.T) {
 			},
 		},
 		{
-			name: "Secret/Resource",
-			got:  SecretSchema(Resource),
-			want: map[string]attrContract{
-				"id":              {Type: schema.TypeString, Required: false, Optional: true, Computed: true, ForceNew: false, Sensitive: false},
-				"key":             {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-				"note":            {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-				"organization_id": {Type: schema.TypeString, Required: false, Optional: true, Computed: true, ForceNew: false, Sensitive: false},
-				"project_id":      {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-				"value":           {Type: schema.TypeString, Required: true, Optional: false, Computed: false, ForceNew: false, Sensitive: false},
-			},
-		},
-		{
-			name: "Secret/DataSource",
-			got:  SecretSchema(DataSource),
-			want: map[string]attrContract{
-				"id":              {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, ConflictsWith: []string{"key"}, AtLeastOneOf: []string{"id", "key"}},
-				"key":             {Type: schema.TypeString, Required: false, Optional: true, Computed: false, ForceNew: false, Sensitive: false, ConflictsWith: []string{"id"}, AtLeastOneOf: []string{"id", "key"}},
-				"note":            {Type: schema.TypeString, Required: false, Optional: false, Computed: true, ForceNew: false, Sensitive: false},
-				"organization_id": {Type: schema.TypeString, Required: false, Optional: true, Computed: true, ForceNew: false, Sensitive: false},
-				"project_id":      {Type: schema.TypeString, Required: false, Optional: false, Computed: true, ForceNew: false, Sensitive: false},
-				"value":           {Type: schema.TypeString, Required: false, Optional: false, Computed: true, ForceNew: false, Sensitive: false},
-			},
-		},
-		{
 			name: "AttachmentBase",
 			got:  AttachmentSchema(),
 			want: map[string]attrContract{

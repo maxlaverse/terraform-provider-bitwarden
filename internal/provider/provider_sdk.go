@@ -112,7 +112,6 @@ func NewSDK(version string) func() *schema.Provider {
 				"bitwarden_item_secure_note": dataSourceItemSecureNote(),
 				"bitwarden_item_ssh_key":     dataSourceItemSSHKey(),
 				"bitwarden_org_collection":   dataSourceOrgCollection(),
-				"bitwarden_secret":           dataSourceSecret(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
 				"bitwarden_attachment":       resourceAttachment(),
@@ -120,7 +119,6 @@ func NewSDK(version string) func() *schema.Provider {
 				"bitwarden_item_secure_note": resourceItemSecureNote(),
 				"bitwarden_item_ssh_key":     resourceItemSSHKey(),
 				"bitwarden_org_collection":   resourceOrgCollection(),
-				"bitwarden_secret":           resourceSecret(),
 			},
 		}
 

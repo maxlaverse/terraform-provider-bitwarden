@@ -33,8 +33,11 @@ resource "bitwarden_secret" "example" {
 
 ### Optional
 
-- `id` (String) Identifier.
 - `organization_id` (String) Identifier of the organization.
+
+### Read-Only
+
+- `id` (String) Identifier.
 
 ## Import
 
