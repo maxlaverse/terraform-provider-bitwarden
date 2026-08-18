@@ -168,7 +168,7 @@ func (t Test) IntegrationBwsOfficialWithEmbeddedClientArgs(testPattern string) e
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, accTestEnv()...)
-	cmd.Env = append(cmd.Env, "TEST_BACKEND=official")
+	cmd.Env = append(cmd.Env, "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
 	return cmd.Run()
 }
 
