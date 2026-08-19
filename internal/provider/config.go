@@ -38,6 +38,7 @@ const (
 // is populated from either the Plugin Framework model or SDKv2 ResourceData
 // (with environment-variable fallbacks applied) and consumed by
 // configureClients. Empty strings mean "not set" for all string fields.
+// VaultPath is the exception: omitted vs explicit empty vs a path are distinct.
 type providerConfig struct {
 	Server                                        string
 	Email                                         string
@@ -46,11 +47,37 @@ type providerConfig struct {
 	ClientID                                      string
 	ClientSecret                                  string
 	AccessToken                                   string
-	VaultPath                                     string
+	VaultPath                                     vaultPath
 	ExtraCACertsPath                              string
 	ClientImplementation                          string
 	ExperimentalEmbeddedClient                    bool
 	ExperimentalDisableSyncAfterWriteVerification bool
+}
+
+// vaultPath is vault_path after Configure decoding.
+// Zero value (set=false) means omitted. set && value=="" means use the CLI
+// default data directory. set && value!="" is an explicit path.
+type vaultPath struct {
+	set   bool
+	value string
+}
+
+func explicitVaultPath(value string) vaultPath {
+	return vaultPath{set: true, value: value}
+}
+
+func (p vaultPath) cacheKey() string {
+	if !p.set {
+		return "\x00<unset>"
+	}
+	return p.value
+}
+
+func (p vaultPath) appDataDir() (string, bool) {
+	if !p.set || p.value == "" {
+		return "", false
+	}
+	return p.value, true
 }
 
 func (c providerConfig) has(value string) bool { return len(value) > 0 }
@@ -67,7 +94,7 @@ func (c providerConfig) cacheKey(version string) string {
 		c.ClientID,
 		c.ClientSecret,
 		c.AccessToken,
-		c.VaultPath,
+		c.VaultPath.cacheKey(),
 		c.ExtraCACertsPath,
 		c.ClientImplementation,
 		fmt.Sprintf("%t", c.ExperimentalEmbeddedClient),
@@ -141,7 +168,7 @@ func providerConfigFromResourceData(d *schema.ResourceData) providerConfig {
 		ClientID:             stringFromResourceData(d, schema_definition.AttributeClientID),
 		ClientSecret:         stringFromResourceData(d, schema_definition.AttributeClientSecret),
 		AccessToken:          stringFromResourceData(d, schema_definition.AttributeBwsAccessToken),
-		VaultPath:            stringFromResourceData(d, schema_definition.AttributeVaultPath),
+		VaultPath:            vaultPathFromResourceData(d, schema_definition.AttributeVaultPath),
 		ExtraCACertsPath:     stringFromResourceData(d, schema_definition.AttributeExtraCACertsPath),
 		ClientImplementation: stringFromResourceData(d, schema_definition.AttributeClientImplementation),
 	}
@@ -169,11 +196,36 @@ func stringFromResourceData(d *schema.ResourceData, key string) string {
 	return ""
 }
 
+// vaultPathFromResourceData distinguishes an omitted attribute from an
+// explicit empty string. Prefer raw config (null vs "") so muxed SDKv2
+// Configure matches the Framework half; GetOkExists is a fallback for
+// ResourceData without raw config.
+func vaultPathFromResourceData(d *schema.ResourceData, key string) vaultPath {
+	raw := d.GetRawConfig()
+	if !raw.IsNull() && raw.IsKnown() && raw.Type().IsObjectType() {
+		if _, ok := raw.Type().AttributeTypes()[key]; ok {
+			attr := raw.GetAttr(key)
+			if attr.IsNull() || !attr.IsKnown() {
+				return vaultPath{}
+			}
+			return explicitVaultPath(attr.AsString())
+		}
+	}
+
+	v, ok := d.GetOkExists(key)
+	if !ok {
+		return vaultPath{}
+	}
+	s, _ := v.(string)
+	return explicitVaultPath(s)
+}
+
 // applyProviderConfigEnvDefaults fills empty config fields from the environment
 // (and hard-coded defaults), replacing SDKv2 schema DefaultFunc behaviour.
 //
-// Note: an explicitly empty vault_path currently cannot be distinguished from
-// "unset", so "" still falls through to BITWARDENCLI_APPDATA_DIR / .bitwarden/.
+// An explicitly empty vault_path is left empty so the CLI uses its own default
+// data directory. Omitted vault_path still falls through to
+// BITWARDENCLI_APPDATA_DIR / .bitwarden/.
 func applyProviderConfigEnvDefaults(cfg providerConfig) providerConfig {
 	cfg.Server = firstNonEmpty(cfg.Server, envFirst("BW_URL", "BWS_SERVER_URL"), bitwarden.DefaultBitwardenServerURL)
 	cfg.Email = firstNonEmpty(cfg.Email, envFirst("BW_EMAIL"))
@@ -182,7 +234,9 @@ func applyProviderConfigEnvDefaults(cfg providerConfig) providerConfig {
 	cfg.ClientID = firstNonEmpty(cfg.ClientID, envFirst("BW_CLIENTID"))
 	cfg.ClientSecret = firstNonEmpty(cfg.ClientSecret, envFirst("BW_CLIENTSECRET"))
 	cfg.AccessToken = firstNonEmpty(cfg.AccessToken, envFirst("BWS_ACCESS_TOKEN"))
-	cfg.VaultPath = firstNonEmpty(cfg.VaultPath, envFirst("BITWARDENCLI_APPDATA_DIR"), ".bitwarden/")
+	if !cfg.VaultPath.set {
+		cfg.VaultPath = explicitVaultPath(firstNonEmpty(envFirst("BITWARDENCLI_APPDATA_DIR"), ".bitwarden/"))
+	}
 	cfg.ExtraCACertsPath = firstNonEmpty(cfg.ExtraCACertsPath, envFirst("NODE_EXTRA_CA_CERTS"))
 	return cfg
 }
@@ -415,8 +469,8 @@ func logoutIfIdentityChanged(ctx context.Context, cfg providerConfig, bwClient b
 
 func newCLIPasswordManagerClient(cfg providerConfig, version string) (bwcli.PasswordManagerClient, error) {
 	opts := []bwcli.Options{}
-	if cfg.has(cfg.VaultPath) {
-		abs, err := filepath.Abs(cfg.VaultPath)
+	if dir, ok := cfg.VaultPath.appDataDir(); ok {
+		abs, err := filepath.Abs(dir)
 		if err != nil {
 			return nil, err
 		}

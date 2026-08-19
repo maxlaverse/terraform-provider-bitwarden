@@ -540,6 +540,17 @@ func (c *client) env() []string {
 	return defaultEnv
 }
 
+// CLIEnv returns the environment the CLI client would pass to `bw`. Tests use
+// it to assert BITWARDENCLI_APPDATA_DIR handling until we likely make unset
+// vault_path equal the CLI default path in the next major release.
+func CLIEnv(c bitwarden.PasswordManager) ([]string, bool) {
+	cli, ok := c.(*client)
+	if !ok {
+		return nil, false
+	}
+	return cli.env(), true
+}
+
 func (c *client) encode(item interface{}) (string, error) {
 	newOut, err := json.Marshal(item)
 	if err != nil {

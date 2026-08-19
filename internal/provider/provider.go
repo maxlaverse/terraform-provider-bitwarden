@@ -154,7 +154,7 @@ func (p *bitwardenProvider) Configure(ctx context.Context, req provider.Configur
 		ClientID:             model.ClientID.ValueString(),
 		ClientSecret:         model.ClientSecret.ValueString(),
 		AccessToken:          model.AccessToken.ValueString(),
-		VaultPath:            model.VaultPath.ValueString(),
+		VaultPath:            vaultPathFromFramework(model.VaultPath),
 		ExtraCACertsPath:     model.ExtraCACerts.ValueString(),
 		ClientImplementation: model.ClientImplementation.ValueString(),
 	})
@@ -186,6 +186,13 @@ func (p *bitwardenProvider) Configure(ctx context.Context, req provider.Configur
 
 	resp.ResourceData = clients
 	resp.DataSourceData = clients
+}
+
+func vaultPathFromFramework(v types.String) vaultPath {
+	if v.IsNull() || v.IsUnknown() {
+		return vaultPath{}
+	}
+	return explicitVaultPath(v.ValueString())
 }
 
 func (p *bitwardenProvider) ownsManagedResources(ctx context.Context) bool {
