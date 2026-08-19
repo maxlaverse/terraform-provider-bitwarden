@@ -162,4 +162,8 @@ func TestSettingAppDataDir(t *testing.T) {
 
 	pwWithoutCustomAppDataDir := NewPasswordManagerClient().(*client)
 	assert.NotContains(t, strings.Join(pwWithoutCustomAppDataDir.env(), " "), "BITWARDENCLI_APPDATA_DIR")
+	assert.Contains(t, pwWithoutCustomAppDataDir.env(), envKV("PATH"))
+	assert.Contains(t, pwWithoutCustomAppDataDir.env(), envKV("HOME"))
+	assert.Contains(t, pwWithoutCustomAppDataDir.env(), envKV("XDG_CONFIG_HOME"))
+	assert.Contains(t, pwWithoutCustomAppDataDir.env(), envKV("APPDATA"))
 }

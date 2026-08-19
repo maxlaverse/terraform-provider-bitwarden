@@ -527,8 +527,12 @@ func (c *client) cmdWithSession(args ...string) command.Command {
 }
 
 func (c *client) env() []string {
+	// bw default data dir: HOME (macOS/Linux), XDG_CONFIG_HOME (Linux), APPDATA (Windows).
 	defaultEnv := []string{
-		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
+		envKV("PATH"),
+		envKV("HOME"),
+		envKV("XDG_CONFIG_HOME"),
+		envKV("APPDATA"),
 		"BW_NOINTERACTION=true",
 	}
 	if len(c.appDataDir) > 0 {
@@ -538,6 +542,21 @@ func (c *client) env() []string {
 		return append(defaultEnv, fmt.Sprintf("NODE_EXTRA_CA_CERTS=%s", c.extraCACertsPath))
 	}
 	return defaultEnv
+}
+
+func envKV(key string) string {
+	return fmt.Sprintf("%s=%s", key, os.Getenv(key))
+}
+
+// CLIEnv returns the environment the CLI client would pass to `bw`. Tests use
+// it to assert BITWARDENCLI_APPDATA_DIR handling until we likely make unset
+// vault_path equal the CLI default path in the next major release.
+func CLIEnv(c bitwarden.PasswordManager) ([]string, bool) {
+	cli, ok := c.(*client)
+	if !ok {
+		return nil, false
+	}
+	return cli.env(), true
 }
 
 func (c *client) encode(item interface{}) (string, error) {

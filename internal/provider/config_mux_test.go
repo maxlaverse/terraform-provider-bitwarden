@@ -17,7 +17,7 @@ func TestConfigureClientsMuxHandoff(t *testing.T) {
 		ClientID:             "client-id-mux",
 		ClientSecret:         "client-secret-mux",
 		MasterPassword:       "master-password-mux",
-		VaultPath:            t.TempDir(),
+		VaultPath:            explicitVaultPath(t.TempDir()),
 		ClientImplementation: schema_definition.ClientImplementationEmbedded,
 	}
 
@@ -42,7 +42,7 @@ func TestConfigureClientsTakeWithoutOffer(t *testing.T) {
 		ClientID:             "client-id-solo",
 		ClientSecret:         "client-secret-solo",
 		MasterPassword:       "master-password-solo",
-		VaultPath:            t.TempDir(),
+		VaultPath:            explicitVaultPath(t.TempDir()),
 		ClientImplementation: schema_definition.ClientImplementationEmbedded,
 	}
 
@@ -60,7 +60,7 @@ func TestConfigureClientsOfferReplacesOrphan(t *testing.T) {
 		ClientID:             "client-id-orphan",
 		ClientSecret:         "client-secret-orphan",
 		MasterPassword:       "master-password-orphan",
-		VaultPath:            t.TempDir(),
+		VaultPath:            explicitVaultPath(t.TempDir()),
 		ClientImplementation: schema_definition.ClientImplementationEmbedded,
 	}
 
