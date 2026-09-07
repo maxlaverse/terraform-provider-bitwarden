@@ -263,7 +263,7 @@ func (v *secretsManager) GetSecretByKey(ctx context.Context, secretKey string) (
 			objects = append(objects, fmt.Sprintf("%s (%s)", obj.Key, obj.ID))
 		}
 		tflog.Warn(ctx, "Too many objects found", map[string]interface{}{"objects": objects})
-		return nil, fmt.Errorf("too many objects found")
+		return nil, models.ErrTooManyObjectsFound
 	}
 
 	return v.GetSecret(ctx, models.Secret{
