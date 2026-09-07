@@ -37,6 +37,9 @@ The plugin has been tested with the following components:
 The provider is likely to work with older versions of the Bitwarden backends/CLIs, but those haven't necessarily been tested.
 If you encounter issues with recent versions of the Bitwarden CLI, consider trying out the [Embedded Client](#embedded-client).
 
+The `bitwarden_secret` [ephemeral resource](docs/ephemeral-resources/secret.md) requires Terraform 1.10+ or OpenTofu 1.11+.
+It reads an existing Secrets Manager secret without storing its data in plan or state files, using either the CLI or embedded client.
+
 ## Usage
 
 The complete documentation for this provider can be found on the [Terraform Registry docs].

@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	provschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -14,7 +15,10 @@ import (
 )
 
 // Ensure the provider satisfies the framework interface.
-var _ provider.Provider = &bitwardenProvider{}
+var (
+	_ provider.Provider                       = &bitwardenProvider{}
+	_ provider.ProviderWithEphemeralResources = &bitwardenProvider{}
+)
 
 type bitwardenProvider struct {
 	version string
@@ -186,6 +190,7 @@ func (p *bitwardenProvider) Configure(ctx context.Context, req provider.Configur
 
 	resp.ResourceData = clients
 	resp.DataSourceData = clients
+	resp.EphemeralResourceData = clients
 }
 
 func vaultPathFromFramework(v types.String) vaultPath {
@@ -196,9 +201,9 @@ func vaultPathFromFramework(v types.String) vaultPath {
 }
 
 func (p *bitwardenProvider) ownsManagedResources(ctx context.Context) bool {
-	// True when Framework registers at least one resource or data source and
+	// True when Framework registers at least one resource, data source, or ephemeral and
 	// must supply ProviderData via Configure. While false, NewSDK owns login.
-	return len(p.Resources(ctx)) > 0 || len(p.DataSources(ctx)) > 0
+	return len(p.Resources(ctx)) > 0 || len(p.DataSources(ctx)) > 0 || len(p.EphemeralResources(ctx)) > 0
 }
 
 func (p *bitwardenProvider) Resources(_ context.Context) []func() resource.Resource {
@@ -217,5 +222,11 @@ func (p *bitwardenProvider) DataSources(_ context.Context) []func() datasource.D
 		NewOrgMemberDataSource,
 		NewProjectDataSource,
 		NewSecretDataSource,
+	}
+}
+
+func (p *bitwardenProvider) EphemeralResources(_ context.Context) []func() ephemeral.EphemeralResource {
+	return []func() ephemeral.EphemeralResource{
+		NewSecretEphemeralResource,
 	}
 }
