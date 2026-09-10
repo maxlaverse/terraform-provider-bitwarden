@@ -22,14 +22,19 @@ const (
 )
 
 func LoginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
+	passwordSchema := &schema.Schema{
+		Description: DescriptionLoginPassword,
+		Type:        schema.TypeString,
+		Computed:    schemaType == DataSource,
+		Optional:    schemaType == Resource,
+		Sensitive:   true,
+	}
+	if schemaType == Resource {
+		passwordSchema.ConflictsWith = []string{AttributeLoginPasswordWO}
+	}
+
 	base := map[string]*schema.Schema{
-		AttributeLoginPassword: {
-			Description: DescriptionLoginPassword,
-			Type:        schema.TypeString,
-			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
-			Sensitive:   true,
-		},
+		AttributeLoginPassword: passwordSchema,
 		AttributeLoginUsername: {
 			Description: DescriptionLoginUsername,
 			Type:        schema.TypeString,
@@ -73,6 +78,24 @@ func LoginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Description: DescriptionFilterURL,
 			Type:        schema.TypeString,
 			Optional:    true,
+		}
+	}
+
+	if schemaType == Resource {
+		base[AttributeLoginPasswordWO] = &schema.Schema{
+			Description:   DescriptionLoginPasswordWO,
+			Type:          schema.TypeString,
+			Optional:      true,
+			Sensitive:     true,
+			WriteOnly:     true,
+			ConflictsWith: []string{AttributeLoginPassword},
+			RequiredWith:  []string{AttributeLoginPasswordWOVersion},
+		}
+		base[AttributeLoginPasswordWOVersion] = &schema.Schema{
+			Description:  DescriptionLoginPasswordWOVersion,
+			Type:         schema.TypeInt,
+			Optional:     true,
+			RequiredWith: []string{AttributeLoginPasswordWO},
 		}
 	}
 	return base
