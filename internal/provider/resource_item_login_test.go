@@ -56,21 +56,24 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 	})
 }
 
-func TestAccResourceItemLoginPasswordWriteOnly(t *testing.T) {
+func TestAccResourceItemLoginWriteOnly(t *testing.T) {
 	ensureTestConfigurationReady(t)
 
 	resourceName := "bitwarden_item_login.foo"
 	var objectID string
 	bwClient := bwEmbeddedTestClient(t)
 
-	checkBackendPassword := func(expected string) resource.TestCheckFunc {
+	checkBackendCredentials := func(expectedPassword, expectedUsername string) resource.TestCheckFunc {
 		return func(s *terraform.State) error {
 			obj, err := bwClient.GetItem(t.Context(), models.Item{ID: objectID, Object: models.ObjectTypeItem})
 			if err != nil {
 				return err
 			}
-			if obj.Login.Password != expected {
-				return fmt.Errorf("expected backend login password %q, got %q", expected, obj.Login.Password)
+			if obj.Login.Password != expectedPassword {
+				return fmt.Errorf("expected backend login password %q, got %q", expectedPassword, obj.Login.Password)
+			}
+			if obj.Login.Username != expectedUsername {
+				return fmt.Errorf("expected backend login username %q, got %q", expectedUsername, obj.Login.Username)
 			}
 			return nil
 		}
@@ -80,26 +83,28 @@ func TestAccResourceItemLoginPasswordWriteOnly(t *testing.T) {
 		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginPasswordWO("wo-secret-1", 1),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWO("wo-secret-1", "wo-username-1", 1),
 				Check: resource.ComposeTestCheckFunc(
 					getObjectID(resourceName, &objectID),
 					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginPassword),
-					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginPasswordWOVersion, "1"),
-					checkBackendPassword("wo-secret-1"),
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginUsername),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginWOVersion, "1"),
+					checkBackendCredentials("wo-secret-1", "wo-username-1"),
 				),
 			},
-			// Bumping password_wo_version alongside a new password_wo value must
-			// update the item, even though password_wo itself is never in state.
+			// Bumping wo_version alongside new password_wo/username_wo values must
+			// update the item, even though neither is ever in state.
 			{
-				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginPasswordWO("wo-secret-2", 2),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWO("wo-secret-2", "wo-username-2", 2),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginPassword),
-					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginPasswordWOVersion, "2"),
-					checkBackendPassword("wo-secret-2"),
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginUsername),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginWOVersion, "2"),
+					checkBackendCredentials("wo-secret-2", "wo-username-2"),
 				),
 			},
 			{
-				Config:             tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginPasswordWO("wo-secret-2", 2),
+				Config:             tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWO("wo-secret-2", "wo-username-2", 2),
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: false,
 			},
@@ -334,16 +339,17 @@ const tfConfigResourceItemLoginTemplate = `
 	}
 `
 
-func tfConfigResourceItemLoginPasswordWO(password string, version int) string {
+func tfConfigResourceItemLoginWO(password, username string, version int) string {
 	return fmt.Sprintf(`
 	resource "bitwarden_item_login" "foo" {
-		provider 			= bitwarden
+		provider 	= bitwarden
 
-		name     			= "login-wo"
-		password_wo         = %q
-		password_wo_version = %d
+		name        = "login-wo"
+		password_wo = %q
+		username_wo = %q
+		wo_version  = %d
 	}
-`, password, version)
+`, password, username, version)
 }
 
 func tfConfigResourceItemLoginWithCollections(source string, collectionIDs []string) string {

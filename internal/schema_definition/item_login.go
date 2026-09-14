@@ -29,19 +29,21 @@ func LoginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 		Optional:    schemaType == Resource,
 		Sensitive:   true,
 	}
+	usernameSchema := &schema.Schema{
+		Description: DescriptionLoginUsername,
+		Type:        schema.TypeString,
+		Computed:    schemaType == DataSource,
+		Optional:    schemaType == Resource,
+		Sensitive:   true,
+	}
 	if schemaType == Resource {
 		passwordSchema.ConflictsWith = []string{AttributeLoginPasswordWO}
+		usernameSchema.ConflictsWith = []string{AttributeLoginUsernameWO}
 	}
 
 	base := map[string]*schema.Schema{
 		AttributeLoginPassword: passwordSchema,
-		AttributeLoginUsername: {
-			Description: DescriptionLoginUsername,
-			Type:        schema.TypeString,
-			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
-			Sensitive:   true,
-		},
+		AttributeLoginUsername: usernameSchema,
 		AttributeLoginTotp: {
 			Description: DescriptionLoginTotp,
 			Type:        schema.TypeString,
@@ -89,13 +91,22 @@ func LoginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Sensitive:     true,
 			WriteOnly:     true,
 			ConflictsWith: []string{AttributeLoginPassword},
-			RequiredWith:  []string{AttributeLoginPasswordWOVersion},
+			RequiredWith:  []string{AttributeLoginWOVersion},
 		}
-		base[AttributeLoginPasswordWOVersion] = &schema.Schema{
-			Description:  DescriptionLoginPasswordWOVersion,
+		base[AttributeLoginUsernameWO] = &schema.Schema{
+			Description:   DescriptionLoginUsernameWO,
+			Type:          schema.TypeString,
+			Optional:      true,
+			Sensitive:     true,
+			WriteOnly:     true,
+			ConflictsWith: []string{AttributeLoginUsername},
+			RequiredWith:  []string{AttributeLoginWOVersion},
+		}
+		base[AttributeLoginWOVersion] = &schema.Schema{
+			Description:  DescriptionLoginWOVersion,
 			Type:         schema.TypeInt,
 			Optional:     true,
-			RequiredWith: []string{AttributeLoginPasswordWO},
+			RequiredWith: []string{AttributeLoginPasswordWO, AttributeLoginUsernameWO},
 		}
 	}
 	return base

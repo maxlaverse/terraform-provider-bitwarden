@@ -115,21 +115,22 @@ func ItemObjectToSchema(ctx context.Context, obj *models.Item, d AttrData) error
 
 	switch obj.Type {
 	case models.ItemTypeLogin:
-		// A write-only password is never persisted, so leave `password`
-		// alone rather than writing the actual secret back into state.
-		if _, useWriteOnlyPassword := d.GetOk(schema_definition.AttributeLoginPasswordWOVersion); !useWriteOnlyPassword {
+		// A write-only password/username is never persisted, so leave
+		// `password`/`username` alone rather than writing the actual
+		// secrets back into state.
+		if _, useWriteOnlyCredentials := d.GetOk(schema_definition.AttributeLoginWOVersion); !useWriteOnlyCredentials {
 			err = d.Set(schema_definition.AttributeLoginPassword, obj.Login.Password)
+			if err != nil {
+				return err
+			}
+
+			err = d.Set(schema_definition.AttributeLoginUsername, obj.Login.Username)
 			if err != nil {
 				return err
 			}
 		}
 
 		err = d.Set(schema_definition.AttributeLoginTotp, obj.Login.Totp)
-		if err != nil {
-			return err
-		}
-
-		err = d.Set(schema_definition.AttributeLoginUsername, obj.Login.Username)
 		if err != nil {
 			return err
 		}
@@ -219,6 +220,9 @@ func ItemSchemaToObject(attrType models.ItemType) func(ctx context.Context, d At
 				obj.Login.Totp = v
 			}
 			if v, ok := d.Get(schema_definition.AttributeLoginUsername).(string); ok {
+				obj.Login.Username = v
+			}
+			if v, ok := writeOnlyString(d, schema_definition.AttributeLoginUsernameWO); ok {
 				obj.Login.Username = v
 			}
 			if vList, ok := d.Get(schema_definition.AttributeLoginURIs).([]interface{}); ok {

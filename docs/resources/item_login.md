@@ -60,12 +60,13 @@ resource "bitwarden_item_login" "administrative-user" {
 - `notes` (String, Sensitive) Notes.
 - `organization_id` (String) Identifier of the organization.
 - `password` (String, Sensitive) Login password.
-- `password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Login password (write-only). Not stored in state. Requires `password_wo_version` to be set, and bumped whenever the value changes, so Terraform can detect an update. Conflicts with `password`.
-- `password_wo_version` (Number) Used together with `password_wo` to trigger an update: change this value whenever `password_wo` changes.
+- `password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Login password (write-only). Not stored in state. Requires `wo_version` to be set, and bumped whenever `password_wo` or `username_wo` changes, so Terraform can detect an update. Conflicts with `password`.
 - `reprompt` (Boolean) Require master password 're-prompt' when displaying secret in the UI.
 - `totp` (String, Sensitive) Verification code.
 - `uri` (Block List) URI. (see [below for nested schema](#nestedblock--uri))
 - `username` (String, Sensitive) Login username.
+- `username_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Login username (write-only). Not stored in state. Requires `wo_version` to be set, and bumped whenever `password_wo` or `username_wo` changes, so Terraform can detect an update. Conflicts with `username`.
+- `wo_version` (Number) Used together with `password_wo` and `username_wo` to trigger an update: change this value whenever either changes.
 
 ### Read-Only
 
