@@ -22,21 +22,28 @@ const (
 )
 
 func LoginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
+	passwordSchema := &schema.Schema{
+		Description: DescriptionLoginPassword,
+		Type:        schema.TypeString,
+		Computed:    schemaType == DataSource,
+		Optional:    schemaType == Resource,
+		Sensitive:   true,
+	}
+	usernameSchema := &schema.Schema{
+		Description: DescriptionLoginUsername,
+		Type:        schema.TypeString,
+		Computed:    schemaType == DataSource,
+		Optional:    schemaType == Resource,
+		Sensitive:   true,
+	}
+	if schemaType == Resource {
+		passwordSchema.ConflictsWith = []string{AttributeLoginPasswordWO}
+		usernameSchema.ConflictsWith = []string{AttributeLoginUsernameWO}
+	}
+
 	base := map[string]*schema.Schema{
-		AttributeLoginPassword: {
-			Description: DescriptionLoginPassword,
-			Type:        schema.TypeString,
-			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
-			Sensitive:   true,
-		},
-		AttributeLoginUsername: {
-			Description: DescriptionLoginUsername,
-			Type:        schema.TypeString,
-			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
-			Sensitive:   true,
-		},
+		AttributeLoginPassword: passwordSchema,
+		AttributeLoginUsername: usernameSchema,
 		AttributeLoginTotp: {
 			Description: DescriptionLoginTotp,
 			Type:        schema.TypeString,
@@ -73,6 +80,33 @@ func LoginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
 			Description: DescriptionFilterURL,
 			Type:        schema.TypeString,
 			Optional:    true,
+		}
+	}
+
+	if schemaType == Resource {
+		base[AttributeLoginPasswordWO] = &schema.Schema{
+			Description:   DescriptionLoginPasswordWO,
+			Type:          schema.TypeString,
+			Optional:      true,
+			Sensitive:     true,
+			WriteOnly:     true,
+			ConflictsWith: []string{AttributeLoginPassword},
+			RequiredWith:  []string{AttributeLoginWOVersion},
+		}
+		base[AttributeLoginUsernameWO] = &schema.Schema{
+			Description:   DescriptionLoginUsernameWO,
+			Type:          schema.TypeString,
+			Optional:      true,
+			Sensitive:     true,
+			WriteOnly:     true,
+			ConflictsWith: []string{AttributeLoginUsername},
+			RequiredWith:  []string{AttributeLoginWOVersion},
+		}
+		base[AttributeLoginWOVersion] = &schema.Schema{
+			Description:  DescriptionLoginWOVersion,
+			Type:         schema.TypeInt,
+			Optional:     true,
+			RequiredWith: []string{AttributeLoginPasswordWO, AttributeLoginUsernameWO},
 		}
 	}
 	return base

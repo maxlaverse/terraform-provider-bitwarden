@@ -3,9 +3,39 @@ package transformation
 import (
 	"context"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
+
+// rawConfigGetter is implemented by *schema.ResourceData. Write-only attribute
+// values are never available via Get/GetOk (they're not persisted anywhere),
+// so reading them requires the raw config instead.
+type rawConfigGetter interface {
+	GetRawConfig() cty.Value
+}
+
+// writeOnlyString returns the configured value of a write-only string
+// attribute, if any. It's a no-op (ok=false) for AttrData implementations
+// that don't expose raw config (e.g. MapData) or during operations that have
+// no config to read from (e.g. Read, Delete).
+func writeOnlyString(d AttrData, key string) (string, bool) {
+	rc, ok := d.(rawConfigGetter)
+	if !ok {
+		return "", false
+	}
+
+	cfg := rc.GetRawConfig()
+	if cfg.IsNull() || !cfg.Type().IsObjectType() || !cfg.Type().HasAttribute(key) {
+		return "", false
+	}
+
+	v := cfg.GetAttr(key)
+	if v.IsNull() || !v.IsKnown() {
+		return "", false
+	}
+	return v.AsString(), true
+}
 
 func ItemObjectToSchema(ctx context.Context, obj *models.Item, d AttrData) error {
 	if obj == nil {
@@ -85,17 +115,22 @@ func ItemObjectToSchema(ctx context.Context, obj *models.Item, d AttrData) error
 
 	switch obj.Type {
 	case models.ItemTypeLogin:
-		err = d.Set(schema_definition.AttributeLoginPassword, obj.Login.Password)
-		if err != nil {
-			return err
+		// A write-only password/username is never persisted, so leave
+		// `password`/`username` alone rather than writing the actual
+		// secrets back into state.
+		if _, useWriteOnlyCredentials := d.GetOk(schema_definition.AttributeLoginWOVersion); !useWriteOnlyCredentials {
+			err = d.Set(schema_definition.AttributeLoginPassword, obj.Login.Password)
+			if err != nil {
+				return err
+			}
+
+			err = d.Set(schema_definition.AttributeLoginUsername, obj.Login.Username)
+			if err != nil {
+				return err
+			}
 		}
 
 		err = d.Set(schema_definition.AttributeLoginTotp, obj.Login.Totp)
-		if err != nil {
-			return err
-		}
-
-		err = d.Set(schema_definition.AttributeLoginUsername, obj.Login.Username)
 		if err != nil {
 			return err
 		}
@@ -178,10 +213,16 @@ func ItemSchemaToObject(attrType models.ItemType) func(ctx context.Context, d At
 			if v, ok := d.Get(schema_definition.AttributeLoginPassword).(string); ok {
 				obj.Login.Password = v
 			}
+			if v, ok := writeOnlyString(d, schema_definition.AttributeLoginPasswordWO); ok {
+				obj.Login.Password = v
+			}
 			if v, ok := d.Get(schema_definition.AttributeLoginTotp).(string); ok {
 				obj.Login.Totp = v
 			}
 			if v, ok := d.Get(schema_definition.AttributeLoginUsername).(string); ok {
+				obj.Login.Username = v
+			}
+			if v, ok := writeOnlyString(d, schema_definition.AttributeLoginUsernameWO); ok {
 				obj.Login.Username = v
 			}
 			if vList, ok := d.Get(schema_definition.AttributeLoginURIs).([]interface{}); ok {

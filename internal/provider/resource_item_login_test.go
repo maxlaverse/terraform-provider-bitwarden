@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
@@ -50,6 +51,62 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 				ImportStateId:     objectID,
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccResourceItemLoginWriteOnly(t *testing.T) {
+	ensureTestConfigurationReady(t)
+
+	resourceName := "bitwarden_item_login.foo"
+	var objectID string
+	bwClient := bwEmbeddedTestClient(t)
+
+	checkBackendCredentials := func(expectedPassword, expectedUsername string) resource.TestCheckFunc {
+		return func(s *terraform.State) error {
+			obj, err := bwClient.GetItem(t.Context(), models.Item{ID: objectID, Object: models.ObjectTypeItem})
+			if err != nil {
+				return err
+			}
+			if obj.Login.Password != expectedPassword {
+				return fmt.Errorf("expected backend login password %q, got %q", expectedPassword, obj.Login.Password)
+			}
+			if obj.Login.Username != expectedUsername {
+				return fmt.Errorf("expected backend login username %q, got %q", expectedUsername, obj.Login.Username)
+			}
+			return nil
+		}
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWO("wo-secret-1", "wo-username-1", 1),
+				Check: resource.ComposeTestCheckFunc(
+					getObjectID(resourceName, &objectID),
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginPassword),
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginUsername),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginWOVersion, "1"),
+					checkBackendCredentials("wo-secret-1", "wo-username-1"),
+				),
+			},
+			// Bumping wo_version alongside new password_wo/username_wo values must
+			// update the item, even though neither is ever in state.
+			{
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWO("wo-secret-2", "wo-username-2", 2),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginPassword),
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginUsername),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginWOVersion, "2"),
+					checkBackendCredentials("wo-secret-2", "wo-username-2"),
+				),
+			},
+			{
+				Config:             tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWO("wo-secret-2", "wo-username-2", 2),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
 			},
 		},
 	})
@@ -281,6 +338,19 @@ const tfConfigResourceItemLoginTemplate = `
 		}
 	}
 `
+
+func tfConfigResourceItemLoginWO(password, username string, version int) string {
+	return fmt.Sprintf(`
+	resource "bitwarden_item_login" "foo" {
+		provider 	= bitwarden
+
+		name        = "login-wo"
+		password_wo = %q
+		username_wo = %q
+		wo_version  = %d
+	}
+`, password, username, version)
+}
 
 func tfConfigResourceItemLoginWithCollections(source string, collectionIDs []string) string {
 	collectionIDsHCL := "[]"
