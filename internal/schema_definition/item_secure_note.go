@@ -1,26 +1,31 @@
 package schema_definition
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
-func SecureNoteSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
-	base := map[string]*schema.Schema{
-		AttributeFavorite: {
-			Description: DescriptionFavorite,
-			Type:        schema.TypeBool,
-			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
-		},
-		AttributeAttachments: {
-			Description: DescriptionAttachments,
-			Type:        schema.TypeList,
-			Elem: &schema.Resource{
-				Schema: AttachmentSchema(),
-			},
-			Computed: true,
+func SecureNoteResourceSchema() rsschema.Schema {
+	attrs := itemBaseResourceAttributes()
+	attrs[AttributeFavorite] = rsschema.BoolAttribute{Description: DescriptionFavorite, Optional: true, Computed: true}
+	attrs[AttributeAttachments] = attachmentsResourceAttribute()
+
+	return rsschema.Schema{
+		Description: "Manages a secure note item.",
+		Attributes:  attrs,
+		Blocks: map[string]rsschema.Block{
+			AttributeField: fieldResourceBlock(),
 		},
 	}
+}
 
-	return base
+func SecureNoteDataSourceSchema() dsschema.Schema {
+	attrs := itemBaseDataSourceAttributes()
+	attrs[AttributeFavorite] = dsschema.BoolAttribute{Description: DescriptionFavorite, Computed: true}
+	attrs[AttributeAttachments] = attachmentsDataSourceAttribute()
+
+	return dsschema.Schema{
+		Description: "Use this data source to get information on an existing secure note item.",
+		Attributes:  attrs,
+	}
 }

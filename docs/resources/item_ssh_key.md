@@ -40,7 +40,6 @@ resource "bitwarden_item_ssh_key" "id_rsa" {
 - `collection_ids` (Set of String) Identifier of the collections the item belongs to.
 - `field` (Block List) Extra fields. (see [below for nested schema](#nestedblock--field))
 - `folder_id` (String) Identifier of the folder.
-- `id` (String) Identifier.
 - `key_fingerprint` (String, Sensitive) Key fingerprint.
 - `notes` (String, Sensitive) Notes.
 - `organization_id` (String) Identifier of the organization.
@@ -52,6 +51,7 @@ resource "bitwarden_item_ssh_key" "id_rsa" {
 
 - `creation_date` (String) Date the item was created.
 - `deleted_date` (String) Date the item was deleted.
+- `id` (String) Identifier.
 - `revision_date` (String) Last time the item was updated.
 
 <a id="nestedblock--field"></a>
@@ -59,14 +59,14 @@ resource "bitwarden_item_ssh_key" "id_rsa" {
 
 Required:
 
-- `name` (String) Name of the field.
+- `name` (String, Sensitive) Name of the field.
 
 Optional:
 
-- `boolean` (Boolean) Value of a boolean field.
-- `hidden` (String) Value of a hidden text field.
-- `linked` (String) Value of a linked field.
-- `text` (String) Value of a text field.
+- `boolean` (Boolean, Sensitive) Value of a boolean field.
+- `hidden` (String, Sensitive) Value of a hidden text field.
+- `linked` (String, Sensitive) Value of a linked field.
+- `text` (String, Sensitive) Value of a text field.
 
 ## Import
 

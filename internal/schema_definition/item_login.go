@@ -3,9 +3,9 @@ package schema_definition
 import (
 	"context"
 
+	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
@@ -21,65 +21,10 @@ const (
 	URIMatchNeverStr      URIMatchStr = "never"
 )
 
-func LoginSchema(schemaType schemaTypeEnum) map[string]*schema.Schema {
-	base := map[string]*schema.Schema{
-		AttributeLoginPassword: {
-			Description: DescriptionLoginPassword,
-			Type:        schema.TypeString,
-			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
-			Sensitive:   true,
-		},
-		AttributeLoginUsername: {
-			Description: DescriptionLoginUsername,
-			Type:        schema.TypeString,
-			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
-			Sensitive:   true,
-		},
-		AttributeLoginTotp: {
-			Description: DescriptionLoginTotp,
-			Type:        schema.TypeString,
-			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
-			Sensitive:   true,
-		},
-		AttributeLoginURIs: {
-			Description: DescriptionLoginUri,
-			Type:        schema.TypeList,
-			Elem:        uriElem(),
-			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
-			Sensitive:   false,
-		},
-		AttributeFavorite: {
-			Description: DescriptionFavorite,
-			Type:        schema.TypeBool,
-			Computed:    schemaType == DataSource,
-			Optional:    schemaType == Resource,
-		},
-		AttributeAttachments: {
-			Description: DescriptionAttachments,
-			Type:        schema.TypeList,
-			Elem: &schema.Resource{
-				Schema: AttachmentSchema(),
-			},
-			Computed: true,
-		},
-	}
-
-	if schemaType == DataSource {
-		base[AttributeFilterURL] = &schema.Schema{
-			Description: DescriptionFilterURL,
-			Type:        schema.TypeString,
-			Optional:    true,
-		}
-	}
-	return base
-}
-
-func uriElem() *schema.Resource {
-	validMatchStr := []string{
+// ValidURIMatchStrings returns the list of accepted string values for a login
+// URI match strategy.
+func ValidURIMatchStrings() []string {
+	return []string{
 		string(URIMatchDefaultStr),
 		string(URIMatchBaseDomainStr),
 		string(URIMatchHostStr),
@@ -87,23 +32,6 @@ func uriElem() *schema.Resource {
 		string(URIMatchExactStr),
 		string(URIMatchRegExpStr),
 		string(URIMatchNeverStr),
-	}
-
-	return &schema.Resource{
-		Schema: map[string]*schema.Schema{
-			AttributeLoginURIsMatch: {
-				Description:      DescriptionLoginUriMatch,
-				Type:             schema.TypeString,
-				Default:          validMatchStr[0],
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(validMatchStr, false)),
-				Optional:         true,
-			},
-			AttributeLoginURIsValue: {
-				Description: DescriptionLoginUriValue,
-				Type:        schema.TypeString,
-				Required:    true,
-			},
-		},
 	}
 }
 
@@ -153,4 +81,38 @@ func StrMatchToInt(ctx context.Context, match string) *models.URIMatch {
 		return nil
 	}
 	return &v
+}
+
+func LoginResourceSchema() rsschema.Schema {
+	attrs := itemBaseResourceAttributes()
+	attrs[AttributeLoginPassword] = rsschema.StringAttribute{Description: DescriptionLoginPassword, Optional: true, Computed: true, Sensitive: true}
+	attrs[AttributeLoginUsername] = rsschema.StringAttribute{Description: DescriptionLoginUsername, Optional: true, Computed: true, Sensitive: true}
+	attrs[AttributeLoginTotp] = rsschema.StringAttribute{Description: DescriptionLoginTotp, Optional: true, Computed: true, Sensitive: true}
+	attrs[AttributeFavorite] = rsschema.BoolAttribute{Description: DescriptionFavorite, Optional: true, Computed: true}
+	attrs[AttributeAttachments] = attachmentsResourceAttribute()
+
+	return rsschema.Schema{
+		Description: "Manages a login item.",
+		Attributes:  attrs,
+		Blocks: map[string]rsschema.Block{
+			AttributeField:     fieldResourceBlock(),
+			AttributeLoginURIs: uriResourceBlock(),
+		},
+	}
+}
+
+func LoginDataSourceSchema() dsschema.Schema {
+	attrs := itemBaseDataSourceAttributes()
+	attrs[AttributeLoginPassword] = dsschema.StringAttribute{Description: DescriptionLoginPassword, Computed: true, Sensitive: true}
+	attrs[AttributeLoginUsername] = dsschema.StringAttribute{Description: DescriptionLoginUsername, Computed: true, Sensitive: true}
+	attrs[AttributeLoginTotp] = dsschema.StringAttribute{Description: DescriptionLoginTotp, Computed: true, Sensitive: true}
+	attrs[AttributeFavorite] = dsschema.BoolAttribute{Description: DescriptionFavorite, Computed: true}
+	attrs[AttributeLoginURIs] = uriDataSourceAttribute()
+	attrs[AttributeAttachments] = attachmentsDataSourceAttribute()
+	attrs[AttributeFilterURL] = dsschema.StringAttribute{Description: DescriptionFilterURL, Optional: true}
+
+	return dsschema.Schema{
+		Description: "Use this data source to get information on an existing login item.",
+		Attributes:  attrs,
+	}
 }

@@ -1,20 +1,34 @@
 package provider
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/transformation"
 )
 
-func dataSourceItemSSHKey() *schema.Resource {
-	dataSourceItemSSHKeySchema := schema_definition.ItemBaseSchema(schema_definition.DataSource)
-	for k, v := range schema_definition.SSHKeySchema(schema_definition.DataSource) {
-		dataSourceItemSSHKeySchema[k] = v
-	}
+type itemSSHKeyDataSourceModel struct {
+	itemSSHKeyModel
+	itemFilterModel
+}
 
-	return &schema.Resource{
-		Description: "Use this data source to get information on an existing SSH key item.",
-		ReadContext: withPasswordManager(opItemRead(models.ItemTypeSSHKey)),
-		Schema:      dataSourceItemSSHKeySchema,
+func NewItemSSHKeyDataSource() datasource.DataSource {
+	return &itemDataSource[itemSSHKeyDataSourceModel]{
+		typeNameSuffix: "_item_ssh_key",
+		itemType:       models.ItemTypeSSHKey,
+		schema:         schema_definition.SSHKeyDataSourceSchema,
+		prepareAttr: func(ctx context.Context, cfg itemSSHKeyDataSourceModel) (*transformation.MapData, string) {
+			attr := sshKeyToData(ctx, cfg.itemSSHKeyModel)
+			cfg.itemFilterModel.applyTo(attr)
+			return attr, cfg.ID.ValueString()
+		},
+		resultToState: func(attr *transformation.MapData, cfg itemSSHKeyDataSourceModel) itemSSHKeyDataSourceModel {
+			return itemSSHKeyDataSourceModel{
+				itemSSHKeyModel: sshKeyFromData(attr),
+				itemFilterModel: cfg.itemFilterModel,
+			}
+		},
 	}
 }
