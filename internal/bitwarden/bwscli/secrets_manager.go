@@ -5,24 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
 )
 
-type SecretsManagerClient interface {
-	CreateProject(ctx context.Context, project models.Project) (*models.Project, error)
-	CreateSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
-	DeleteProject(ctx context.Context, project models.Project) error
-	DeleteSecret(ctx context.Context, secret models.Secret) error
-	EditProject(ctx context.Context, project models.Project) (*models.Project, error)
-	EditSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
-	GetProject(ctx context.Context, project models.Project) (*models.Project, error)
-	GetSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
-	GetSecretByKey(ctx context.Context, secretKey string) (*models.Secret, error)
-	LoginWithAccessToken(ctx context.Context, accessToken string) error
-}
+type SecretsManagerClient = bitwarden.SecretsManager
 
 func NewSecretsManagerClient(serverURL string, opts ...Options) SecretsManagerClient {
 	c := &client{
@@ -245,6 +236,51 @@ func (c *client) GetSecret(ctx context.Context, secret models.Secret) (*models.S
 	}
 
 	return &secretObj, nil
+}
+
+func (c *client) GetSecretsByIDs(ctx context.Context, ids []string) ([]models.Secret, error) {
+	if err := c.checkAccessToken(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return []models.Secret{}, nil
+	}
+
+	ctx = tflog.OmitLogWithFieldKeys(ctx, "stdout", "stderr")
+	out, err := c.cmdWithAccessToken("secret", "list", "--output", "json").Run(ctx)
+	if err != nil {
+		return nil, remapError(err)
+	}
+	defer clear(out)
+
+	var secrets []models.Secret
+	if err := json.Unmarshal(out, &secrets); err != nil {
+		return nil, fmt.Errorf("unable to parse secret list: %w", err)
+	}
+	defer clear(secrets)
+
+	found := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		found[strings.ToLower(id)] = false
+	}
+	matching := make([]models.Secret, 0, len(found))
+	for _, secret := range secrets {
+		id := strings.ToLower(secret.ID)
+		seen, requested := found[id]
+		if !requested {
+			continue
+		}
+		if seen {
+			return nil, models.ErrTooManyObjectsFound
+		}
+		found[id] = true
+		secret.ID = id
+		matching = append(matching, secret)
+	}
+	if len(matching) != len(found) {
+		return nil, models.ErrObjectNotFound
+	}
+	return matching, nil
 }
 
 func (c *client) GetSecretByKey(ctx context.Context, secretKey string) (*models.Secret, error) {

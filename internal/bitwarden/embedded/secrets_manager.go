@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -16,18 +17,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
 
-type SecretsManager interface {
-	CreateProject(ctx context.Context, project models.Project) (*models.Project, error)
-	CreateSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
-	DeleteProject(ctx context.Context, project models.Project) error
-	DeleteSecret(ctx context.Context, secret models.Secret) error
-	EditProject(ctx context.Context, project models.Project) (*models.Project, error)
-	EditSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
-	GetProject(ctx context.Context, project models.Project) (*models.Project, error)
-	GetSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
-	GetSecretByKey(ctx context.Context, secretKey string) (*models.Secret, error)
-	LoginWithAccessToken(ctx context.Context, accessToken string) error
-}
+type SecretsManager = bitwarden.SecretsManager
 type SecretsManagerOptions func(c bitwarden.SecretsManager)
 
 type SecretType interface {
@@ -233,6 +223,56 @@ func (v *secretsManager) GetSecret(ctx context.Context, secret models.Secret) (*
 	return decSecret, nil
 }
 
+func (v *secretsManager) GetSecretsByIDs(ctx context.Context, ids []string) ([]models.Secret, error) {
+	if v.mainEncryptionKey == nil {
+		return nil, models.ErrLoggedOut
+	}
+
+	// UUIDs are case-insensitive. The server requires distinct IDs and returns
+	// canonical lowercase IDs, even when the input uses different casing.
+	for i := range ids {
+		ids[i] = strings.ToLower(ids[i])
+	}
+	slices.Sort(ids)
+	ids = slices.Compact(ids)
+	if len(ids) == 0 {
+		return []models.Secret{}, nil
+	}
+
+	rawSecrets, err := v.client.GetSecretsByIDs(ctx, ids)
+	if err != nil {
+		if httpErr, ok := webapi.IsHTTPError(err); ok && httpErr.GetStatusCode() == 404 {
+			return nil, models.ErrObjectNotFound
+		}
+		return nil, fmt.Errorf("error getting secrets by IDs: %w", err)
+	}
+
+	// Reject partial, duplicate or unexpected results before decrypting anything.
+	pending := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		pending[id] = struct{}{}
+	}
+	for _, secret := range rawSecrets {
+		if _, requested := pending[secret.ID]; !requested {
+			return nil, fmt.Errorf("batch secret response contains duplicate or unexpected IDs")
+		}
+		delete(pending, secret.ID)
+	}
+	if len(pending) > 0 {
+		return nil, models.ErrObjectNotFound
+	}
+
+	secrets := make([]models.Secret, 0, len(rawSecrets))
+	for _, rawSecret := range rawSecrets {
+		secret, err := decryptSecret(rawSecret, *v.mainEncryptionKey)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting batch secret response: %w", err)
+		}
+		secrets = append(secrets, *secret)
+	}
+	return secrets, nil
+}
+
 func (v *secretsManager) GetSecretByKey(ctx context.Context, secretKey string) (*models.Secret, error) {
 	if v.mainEncryptionKey == nil {
 		return nil, models.ErrLoggedOut
@@ -263,7 +303,7 @@ func (v *secretsManager) GetSecretByKey(ctx context.Context, secretKey string) (
 			objects = append(objects, fmt.Sprintf("%s (%s)", obj.Key, obj.ID))
 		}
 		tflog.Warn(ctx, "Too many objects found", map[string]interface{}{"objects": objects})
-		return nil, fmt.Errorf("too many objects found")
+		return nil, models.ErrTooManyObjectsFound
 	}
 
 	return v.GetSecret(ctx, models.Secret{
