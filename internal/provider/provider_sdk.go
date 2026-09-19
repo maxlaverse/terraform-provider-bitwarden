@@ -107,12 +107,10 @@ func NewSDK(version string) func() *schema.Provider {
 				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
-				"bitwarden_attachment":     dataSourceAttachment(),
-				"bitwarden_org_collection": dataSourceOrgCollection(),
+				"bitwarden_attachment": dataSourceAttachment(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				"bitwarden_attachment":     resourceAttachment(),
-				"bitwarden_org_collection": resourceOrgCollection(),
+				"bitwarden_attachment": resourceAttachment(),
 			},
 		}
 

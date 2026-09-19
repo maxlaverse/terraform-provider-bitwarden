@@ -38,6 +38,7 @@ func TestProviderSchemaValidity(t *testing.T) {
 		"bitwarden_item_login",
 		"bitwarden_item_secure_note",
 		"bitwarden_item_ssh_key",
+		"bitwarden_org_collection",
 		"bitwarden_project",
 		"bitwarden_secret",
 	} {
@@ -50,6 +51,7 @@ func TestProviderSchemaValidity(t *testing.T) {
 		"bitwarden_item_login",
 		"bitwarden_item_secure_note",
 		"bitwarden_item_ssh_key",
+		"bitwarden_org_collection",
 		"bitwarden_project",
 		"bitwarden_secret",
 		"bitwarden_organization",
@@ -62,9 +64,6 @@ func TestProviderSchemaValidity(t *testing.T) {
 	}
 	if _, ok := resp.ResourceSchemas["bitwarden_attachment"]; !ok {
 		t.Fatal("expected SDKv2 bitwarden_attachment resource to remain registered during mux migration")
-	}
-	if _, ok := resp.ResourceSchemas["bitwarden_org_collection"]; !ok {
-		t.Fatal("expected SDKv2 bitwarden_org_collection resource to remain registered during mux migration")
 	}
 }
 

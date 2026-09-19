@@ -207,6 +207,7 @@ func (p *bitwardenProvider) Resources(_ context.Context) []func() resource.Resou
 		NewItemLoginResource,
 		NewItemSecureNoteResource,
 		NewItemSSHKeyResource,
+		NewOrgCollectionResource,
 		NewProjectResource,
 		NewSecretResource,
 	}
@@ -219,6 +220,7 @@ func (p *bitwardenProvider) DataSources(_ context.Context) []func() datasource.D
 		NewItemSecureNoteDataSource,
 		NewItemSSHKeyDataSource,
 		NewOrganizationDataSource,
+		NewOrgCollectionDataSource,
 		NewOrgGroupDataSource,
 		NewOrgMemberDataSource,
 		NewProjectDataSource,
