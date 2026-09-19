@@ -1,6 +1,6 @@
 module github.com/maxlaverse/terraform-provider-bitwarden
 
-go 1.25.8
+go 1.26.0
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -20,7 +20,7 @@ require (
 	github.com/wI2L/jsondiff v0.7.1
 	golang.org/x/crypto v0.55.0
 	golang.org/x/net v0.58.0
-	golang.org/x/sync v0.22.0
+	golang.org/x/sync v0.23.0
 )
 
 require (
