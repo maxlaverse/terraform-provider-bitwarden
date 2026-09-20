@@ -80,8 +80,8 @@ resource "bitwarden_org_collection" "my_collection" {
 
 ### Read-Only
 
-- `member` (Set of Object) [Experimental] Member (Users) of a collection. (see [below for nested schema](#nestedatt--member))
-- `member_group` (Set of Object) [Experimental] Member Groups of a collection. (see [below for nested schema](#nestedatt--member_group))
+- `member` (Attributes Set) [Experimental] Member (Users) of a collection. (see [below for nested schema](#nestedatt--member))
+- `member_group` (Attributes Set) [Experimental] Member Groups of a collection. (see [below for nested schema](#nestedatt--member_group))
 - `name` (String) Name.
 
 <a id="nestedatt--member"></a>
@@ -89,10 +89,10 @@ resource "bitwarden_org_collection" "my_collection" {
 
 Read-Only:
 
-- `hide_passwords` (Boolean)
-- `id` (String)
-- `manage` (Boolean)
-- `read_only` (Boolean)
+- `hide_passwords` (Boolean) [Experimental] Hide passwords.
+- `id` (String) [Experimental] Unique Identifier (UUID) of the user or group member.
+- `manage` (Boolean) [Experimental] Can manage the collection.
+- `read_only` (Boolean) [Experimental] Read/Write permissions.
 
 
 <a id="nestedatt--member_group"></a>
@@ -100,7 +100,7 @@ Read-Only:
 
 Read-Only:
 
-- `hide_passwords` (Boolean)
-- `id` (String)
-- `manage` (Boolean)
-- `read_only` (Boolean)
+- `hide_passwords` (Boolean) [Experimental] Hide passwords.
+- `id` (String) [Experimental] Unique Identifier (UUID) of the user or group member.
+- `manage` (Boolean) [Experimental] Can manage the collection.
+- `read_only` (Boolean) [Experimental] Read/Write permissions.

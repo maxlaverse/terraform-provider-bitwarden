@@ -61,9 +61,12 @@ resource "bitwarden_org_collection" "generated" {
 
 ### Optional
 
-- `id` (String) Identifier.
 - `member` (Block Set) [Experimental] Member (Users) of a collection. (see [below for nested schema](#nestedblock--member))
 - `member_group` (Block Set) [Experimental] Member Groups of a collection. (see [below for nested schema](#nestedblock--member_group))
+
+### Read-Only
+
+- `id` (String) Identifier.
 
 <a id="nestedblock--member"></a>
 ### Nested Schema for `member`
