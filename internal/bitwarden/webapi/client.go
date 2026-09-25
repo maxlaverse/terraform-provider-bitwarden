@@ -806,11 +806,10 @@ func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *htt
 	}
 
 	if len(respBody) == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("empty response body from '%s %s'", httpReq.Method, httpReq.URL)
 	}
 	err = json.Unmarshal(respBody, &res)
 	if err != nil {
-		fmt.Printf("Body to unmarshall: %s\n", string(respBody))
 		return nil, fmt.Errorf("error unmarshalling response from '%s': %w", httpReq.URL, err)
 	}
 
