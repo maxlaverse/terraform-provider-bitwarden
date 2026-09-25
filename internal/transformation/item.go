@@ -296,7 +296,8 @@ func objectLoginURIsFromStruct(ctx context.Context, objUris []models.LoginURI) [
 	uris := make([]interface{}, len(objUris))
 	for k, f := range objUris {
 		uris[k] = map[string]interface{}{
-			schema_definition.AttributeLoginURIsMatch: schema_definition.IntMatchToStr(ctx, f.Match),
+			// Plain string: MapData/Framework mapStr does not accept URIMatchStr.
+			schema_definition.AttributeLoginURIsMatch: string(schema_definition.IntMatchToStr(ctx, f.Match)),
 			schema_definition.AttributeLoginURIsValue: f.URI,
 		}
 	}

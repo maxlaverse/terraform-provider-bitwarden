@@ -54,7 +54,6 @@ resource "bitwarden_item_login" "administrative-user" {
 - `favorite` (Boolean) Mark as a Favorite to have item appear at the top of your Vault in the UI.
 - `field` (Block List) Extra fields. (see [below for nested schema](#nestedblock--field))
 - `folder_id` (String) Identifier of the folder.
-- `id` (String) Identifier.
 - `notes` (String, Sensitive) Notes.
 - `organization_id` (String) Identifier of the organization.
 - `password` (String, Sensitive) Login password.
@@ -65,9 +64,10 @@ resource "bitwarden_item_login" "administrative-user" {
 
 ### Read-Only
 
-- `attachments` (List of Object) List of item attachments. (see [below for nested schema](#nestedatt--attachments))
+- `attachments` (Attributes List) List of item attachments. (see [below for nested schema](#nestedatt--attachments))
 - `creation_date` (String) Date the item was created.
 - `deleted_date` (String) Date the item was deleted.
+- `id` (String) Identifier.
 - `revision_date` (String) Last time the item was updated.
 
 <a id="nestedblock--field"></a>
@@ -75,14 +75,14 @@ resource "bitwarden_item_login" "administrative-user" {
 
 Required:
 
-- `name` (String) Name of the field.
+- `name` (String, Sensitive) Name of the field.
 
 Optional:
 
-- `boolean` (Boolean) Value of a boolean field.
-- `hidden` (String) Value of a hidden text field.
-- `linked` (String) Value of a linked field.
-- `text` (String) Value of a text field.
+- `boolean` (Boolean, Sensitive) Value of a boolean field.
+- `hidden` (String, Sensitive) Value of a hidden text field.
+- `linked` (String, Sensitive) Value of a linked field.
+- `text` (String, Sensitive) Value of a text field.
 
 
 <a id="nestedblock--uri"></a>
@@ -102,11 +102,11 @@ Optional:
 
 Read-Only:
 
-- `file_name` (String)
-- `id` (String)
-- `size` (String)
-- `size_name` (String)
-- `url` (String)
+- `file_name` (String) File name. Required if specifying `content` in a resource.
+- `id` (String) Identifier.
+- `size` (String) Size in bytes
+- `size_name` (String) Size as string
+- `url` (String) URL
 
 ## Import
 

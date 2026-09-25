@@ -1,24 +1,34 @@
 package provider
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/transformation"
 )
 
-func resourceItemSecureNote() *schema.Resource {
-	itemSecureNoteSchema := schema_definition.ItemBaseSchema(schema_definition.Resource)
-	for k, v := range schema_definition.SecureNoteSchema(schema_definition.Resource) {
-		itemSecureNoteSchema[k] = v
-	}
+type itemSecureNoteModel struct {
+	itemVaultModel
+}
 
-	return &schema.Resource{
-		Description:   "Manages a secure note item.",
-		CreateContext: withPasswordManager(opItemCreate(models.ItemTypeSecureNote)),
-		ReadContext:   withPasswordManager(opItemReadIgnoreMissing(models.ItemTypeSecureNote)),
-		UpdateContext: withPasswordManager(opItemUpdate(models.ItemTypeSecureNote)),
-		DeleteContext: withPasswordManager(opItemDelete(models.ItemTypeSecureNote)),
-		Importer:      resourceImporter(opItemImport),
-		Schema:        itemSecureNoteSchema,
+func secureNoteToData(ctx context.Context, model itemSecureNoteModel) *transformation.MapData {
+	return newItemMapData(model.ID.ValueString(), model.itemVaultModel.toDataMap(ctx))
+}
+
+func secureNoteFromData(attr *transformation.MapData) itemSecureNoteModel {
+	return itemSecureNoteModel{
+		itemVaultModel: itemVaultFromValues(attr.Id(), attr.Values()),
+	}
+}
+
+func NewItemSecureNoteResource() resource.Resource {
+	return &itemResource[itemSecureNoteModel]{
+		typeNameSuffix: "_item_secure_note",
+		itemType:       models.ItemTypeSecureNote,
+		schema:         schema_definition.SecureNoteResourceSchema,
+		toData:         secureNoteToData,
+		fromData:       secureNoteFromData,
 	}
 }

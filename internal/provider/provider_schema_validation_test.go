@@ -33,13 +33,25 @@ func TestProviderSchemaValidity(t *testing.T) {
 		}
 	}
 
-	for _, name := range []string{"bitwarden_folder", "bitwarden_project", "bitwarden_secret"} {
+	for _, name := range []string{
+		"bitwarden_folder",
+		"bitwarden_item_login",
+		"bitwarden_item_secure_note",
+		"bitwarden_item_ssh_key",
+		"bitwarden_org_collection",
+		"bitwarden_project",
+		"bitwarden_secret",
+	} {
 		if _, ok := resp.ResourceSchemas[name]; !ok {
 			t.Fatalf("expected Framework %s resource to be registered", name)
 		}
 	}
 	for _, name := range []string{
 		"bitwarden_folder",
+		"bitwarden_item_login",
+		"bitwarden_item_secure_note",
+		"bitwarden_item_ssh_key",
+		"bitwarden_org_collection",
 		"bitwarden_project",
 		"bitwarden_secret",
 		"bitwarden_organization",
