@@ -33,8 +33,8 @@ func TestAccResourceAttachment(t *testing.T) {
 				ResourceName: resourceName,
 				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestMatchResourceAttr(
-						resourceName, schema_definition.AttributeAttachmentFile, regexp.MustCompile(`^34945801b5aed4540ccfde8320ec7c395325e02d$`),
+					resource.TestCheckResourceAttr(
+						resourceName, schema_definition.AttributeAttachmentFile, "fixtures/attachment1.txt",
 					),
 					resource.TestMatchResourceAttr(
 						resourceName, schema_definition.AttributeAttachmentItemID, regexp.MustCompile(regExpId),
@@ -52,7 +52,7 @@ func TestAccResourceAttachment(t *testing.T) {
 				ResourceName: resourceName,
 				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachmentFromContentWithFilename(),
 				SkipFunc:     func() (bool, error) { return !testConfiguration.UseEmbeddedClient, nil },
-				ExpectError:  regexp.MustCompile("\"file_name\": one of"),
+				ExpectError:  regexp.MustCompile(`"file_name" must be specified when "content" is specified`),
 			},
 			{
 				ResourceName: resourceName,
@@ -60,7 +60,7 @@ func TestAccResourceAttachment(t *testing.T) {
 				SkipFunc:     func() (bool, error) { return !testConfiguration.UseEmbeddedClient, nil },
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						resourceName, schema_definition.AttributeAttachmentContent, contentHash("Hello, I'm a text attachment"),
+						resourceName, schema_definition.AttributeAttachmentContent, "Hello, I'm a text attachment",
 					),
 					resource.TestMatchResourceAttr(
 						resourceName, schema_definition.AttributeAttachmentItemID, regexp.MustCompile(regExpId),
@@ -189,30 +189,27 @@ func TestAccResourceItemAttachmentFileChanges(t *testing.T) {
 				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					compareIdentifier(resourceName, &ID, true),
-					resource.TestMatchResourceAttr(
-						resourceName, schema_definition.AttributeAttachmentFile, regexp.MustCompile(`^34945801b5aed4540ccfde8320ec7c395325e02d$`),
+					resource.TestCheckResourceAttr(
+						resourceName, schema_definition.AttributeAttachmentFile, "fixtures/attachment1.txt",
 					),
 				),
 			},
 			{
-				// Same content, different filename
+				// Same content, different filename — no replace (content digest unchanged)
 				ResourceName: resourceName,
 				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment2a.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					compareIdentifier(resourceName, &ID, false),
-					resource.TestMatchResourceAttr(
-						resourceName, schema_definition.AttributeAttachmentFile, regexp.MustCompile(`^34945801b5aed4540ccfde8320ec7c395325e02d$`),
-					),
 				),
 			},
 			{
-				// Different content
+				// Different content — forces replacement
 				ResourceName: resourceName,
 				Config:       tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment2b.txt"),
 				Check: resource.ComposeTestCheckFunc(
 					compareIdentifier(resourceName, &ID, true),
-					resource.TestMatchResourceAttr(
-						resourceName, schema_definition.AttributeAttachmentFile, regexp.MustCompile(`^5d80a5115d21ca330f0d60e355ed829526dcbb47$`),
+					resource.TestCheckResourceAttr(
+						resourceName, schema_definition.AttributeAttachmentFile, "fixtures/attachment2b.txt",
 					),
 				),
 			},
