@@ -228,6 +228,9 @@ func (v *secretsManager) GetSecret(ctx context.Context, secret models.Secret) (*
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting secret '%s': %w", secret.ID, err)
 	}
+	if len(rawSecret.Projects) == 0 {
+		return nil, fmt.Errorf("secret '%s' has no project", secret.ID)
+	}
 	decSecret.ProjectID = rawSecret.Projects[0].ID
 	decSecret.OrganizationID = rawSecret.OrganizationID
 	return decSecret, nil
