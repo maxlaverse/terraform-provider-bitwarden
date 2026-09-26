@@ -72,6 +72,7 @@ type Client interface {
 	GetProject(ctx context.Context, projectId string) (*models.Project, error)
 	GetProjects(ctx context.Context, orgId string) ([]models.Project, error)
 	GetSecret(ctx context.Context, secretId string) (*Secret, error)
+	GetSecretsByIDs(ctx context.Context, ids []string) ([]Secret, error)
 	GetSecrets(ctx context.Context, orgId string) ([]SecretSummary, error)
 	GetUserPublicKey(ctx context.Context, userId string) ([]byte, error)
 	InviteUser(ctx context.Context, orgId string, user InviteUserRequest) error
@@ -524,6 +525,35 @@ func (c *client) GetSecret(ctx context.Context, secretId string) (*Secret, error
 	}
 
 	return doRequest[Secret](ctx, c.httpClient, httpReq)
+}
+
+func (c *client) GetSecretsByIDs(ctx context.Context, ids []string) ([]Secret, error) {
+	if len(ids) == 0 {
+		return []Secret{}, nil
+	}
+
+	request := struct {
+		IDs []string `json:"ids"`
+	}{IDs: ids}
+	httpReq, err := c.prepareAuthenticatedRequest(ctx, "POST", c.serverURL+"/api/secrets/get-by-ids", request)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing batch secret retrieval request: %w", err)
+	}
+	httpReq.Header.Set("Cache-Control", "no-store")
+
+	// Keep response bodies and authentication headers out of ephemeral read logs.
+	ctx = tflog.OmitLogWithFieldKeys(ctx, "request", "response")
+	secrets, err := doRequest[SecretsList](ctx, c.httpClient, httpReq)
+	if err != nil {
+		return nil, err
+	}
+	if secrets == nil {
+		return nil, fmt.Errorf("empty batch secret response")
+	}
+	if secrets.ContinuationToken != nil && *secrets.ContinuationToken != "" {
+		return nil, fmt.Errorf("pagination not supported for batch secret retrieval")
+	}
+	return secrets.Data, nil
 }
 
 func (c *client) GetSecrets(ctx context.Context, orgId string) ([]SecretSummary, error) {

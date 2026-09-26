@@ -37,6 +37,18 @@ The plugin has been tested with the following components:
 The provider is likely to work with older versions of the Bitwarden backends/CLIs, but those haven't necessarily been tested.
 If you encounter issues with recent versions of the Bitwarden CLI, consider trying out the [Embedded Client](#embedded-client).
 
+The `bitwarden_secret` [ephemeral resource](docs/ephemeral-resources/secret.md) requires Terraform 1.10+ or OpenTofu 1.11+.
+It reads an existing Secrets Manager secret without storing its data in plan or state files, using either the CLI or embedded client.
+
+For multiple secrets, the `bitwarden_secrets` [ephemeral resource](docs/ephemeral-resources/secrets.md)
+accepts a set of secret IDs and returns a sensitive map of values keyed by canonical lowercase IDs.
+Both client implementations are supported. The embedded client uses `secrets/get-by-ids`
+to fetch only the requested IDs in one API call per phase. The CLI client runs
+`bws secret list --output json` once per phase, then filters all accessible secrets
+locally by ID. One CLI invocation may make multiple HTTP requests internally.
+Values are still fetched during both plan and apply; this does not skip unchanged secrets
+or cache plaintext values between phases. Empty sets require no secret retrieval request.
+
 ## Usage
 
 The complete documentation for this provider can be found on the [Terraform Registry docs].
