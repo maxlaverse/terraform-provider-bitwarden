@@ -35,6 +35,7 @@ func AttachmentResourceSchema() rsschema.Schema {
 				Validators: []validator.String{
 					fwstringvalidator.ConflictsWith(path.MatchRoot(AttributeAttachmentContent)),
 					fwstringvalidator.AtLeastOneOf(path.MatchRoot(AttributeAttachmentFile), path.MatchRoot(AttributeAttachmentContent)),
+					fileMustBeReadable(),
 				},
 			},
 			AttributeAttachmentContent: rsschema.StringAttribute{

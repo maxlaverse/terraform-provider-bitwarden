@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -42,6 +43,42 @@ func FileSha1Sum(filepath string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+// fileMustBeReadable is SDKv2 fileHashComputable: fail at plan if the path
+// cannot be hashed (missing file, unreadable, …). Without this, CLI apply
+// reports "Cannot find file at …" instead of the OS error.
+type fileMustBeReadableValidator struct{}
+
+var _ validator.String = fileMustBeReadableValidator{}
+
+func fileMustBeReadable() validator.String {
+	return fileMustBeReadableValidator{}
+}
+
+func (v fileMustBeReadableValidator) Description(_ context.Context) string {
+	return "the file must exist and be readable"
+}
+
+func (v fileMustBeReadableValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v fileMustBeReadableValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	filePath := req.ConfigValue.ValueString()
+	if filePath == "" {
+		return
+	}
+	if _, err := FileSha1Sum(filePath); err != nil {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Unable to Compute Attachment File Hash",
+			fmt.Sprintf("unable to compute hash of file: %s", err),
+		)
+	}
 }
 
 // ContentSha1Sum returns the SHA1 hex digest of content.

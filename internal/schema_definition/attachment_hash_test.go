@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,6 +43,17 @@ func TestHashedFileSemanticEquals_DifferentContent(t *testing.T) {
 	equal, diags := a.StringSemanticEquals(t.Context(), b)
 	require.False(t, diags.HasError(), diags.Errors())
 	assert.False(t, equal, "different contents must force replace")
+}
+
+func TestFileMustBeReadable_MissingFile(t *testing.T) {
+	req := validator.StringRequest{
+		Path:        path.Root("file"),
+		ConfigValue: types.StringValue("non-existent"),
+	}
+	resp := &validator.StringResponse{}
+	fileMustBeReadable().ValidateString(t.Context(), req, resp)
+	require.True(t, resp.Diagnostics.HasError())
+	assert.Contains(t, resp.Diagnostics.Errors()[0].Detail(), "no such file or directory")
 }
 
 func TestHashedContentSemanticEquals_LegacySHA1(t *testing.T) {
