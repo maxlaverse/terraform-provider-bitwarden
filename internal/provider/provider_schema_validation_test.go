@@ -12,15 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestProviderSchemaValidity ensures the muxed Framework+SDKv2 provider schemas
-// align (terraform-plugin-mux rejects mismatched provider schemas). All managed
-// types are now on Framework and asserted below; NewSDK's maps are empty.
+// TestProviderSchemaValidity ensures every managed type is registered on the
+// Protocol 6 Plugin Framework server.
 func TestProviderSchemaValidity(t *testing.T) {
-	factory, err := NewProviderServer(versionTestSkippedLogin)
-	if err != nil {
-		t.Fatalf("mux provider schemas must align: %s", err)
-	}
-	server := factory()
+	server := NewProviderServer(versionTestSkippedLogin)()
 
 	resp, err := server.GetProviderSchema(t.Context(), &tfprotov6.GetProviderSchemaRequest{})
 	if err != nil {

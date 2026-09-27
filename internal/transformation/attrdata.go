@@ -1,11 +1,8 @@
 package transformation
 
-// AttrData is an SDK-agnostic view of Terraform resource/data-source attributes.
-// It decouples domain mapping from terraform-plugin-sdk's *schema.ResourceData
-// so the same mapping logic can target Plugin Framework state via MapData.
-//
-// *schema.ResourceData (SDKv2) and *MapData (Framework bridge) both satisfy this
-// interface.
+// AttrData is a view of Terraform resource/data-source attributes used by the
+// shared mapping functions in this package. MapData implements it for Plugin
+// Framework state.
 type AttrData interface {
 	Id() string
 	SetId(id string)
@@ -14,8 +11,8 @@ type AttrData interface {
 	Set(key string, value interface{}) error
 }
 
-// asInterfaceList normalizes SDKv2 *schema.Set values (via List()) and plain
-// slices into []interface{} without importing the SDK.
+// asInterfaceList normalizes values that implement List() and plain slices
+// into []interface{}.
 func asInterfaceList(v interface{}) ([]interface{}, bool) {
 	switch vv := v.(type) {
 	case []interface{}:

@@ -1,13 +1,10 @@
 package provider
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	sdkdiag "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 )
 
@@ -64,39 +61,4 @@ func mapStr(v interface{}) types.String {
 		return types.StringValue(s)
 	}
 	return types.StringNull()
-}
-
-type passwordManagerOperation func(ctx context.Context, d *schema.ResourceData, bwClient bitwarden.PasswordManager) sdkdiag.Diagnostics
-type secretsManagerOperation func(ctx context.Context, d *schema.ResourceData, bwsClient bitwarden.SecretsManager) sdkdiag.Diagnostics
-
-// withPasswordManager wraps an SDKv2 resource operation with a Password Manager client
-// from provider meta. Kept until those resources migrate to Framework.
-func withPasswordManager(resourceAction passwordManagerOperation) func(ctx context.Context, d *schema.ResourceData, meta interface{}) sdkdiag.Diagnostics {
-	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) sdkdiag.Diagnostics {
-		clients, ok := meta.(*ProviderClients)
-		if !ok {
-			return sdkdiag.FromErr(errPasswordManagerRequired)
-		}
-		bwClient, err := clients.RequirePasswordManager()
-		if err != nil {
-			return sdkdiag.FromErr(err)
-		}
-		return resourceAction(ctx, d, bwClient)
-	}
-}
-
-// withSecretsManager wraps an SDKv2 resource operation with a Secrets Manager client
-// from provider meta. Kept until those resources migrate to Framework.
-func withSecretsManager(resourceAction secretsManagerOperation) func(ctx context.Context, d *schema.ResourceData, meta interface{}) sdkdiag.Diagnostics {
-	return func(ctx context.Context, d *schema.ResourceData, meta interface{}) sdkdiag.Diagnostics {
-		clients, ok := meta.(*ProviderClients)
-		if !ok {
-			return sdkdiag.FromErr(errSecretsManagerRequired)
-		}
-		bwsClient, err := clients.RequireSecretsManager()
-		if err != nil {
-			return sdkdiag.FromErr(err)
-		}
-		return resourceAction(ctx, d, bwsClient)
-	}
 }
