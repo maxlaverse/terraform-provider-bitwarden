@@ -106,12 +106,8 @@ func NewSDK(version string) func() *schema.Provider {
 					},
 				},
 			},
-			DataSourcesMap: map[string]*schema.Resource{
-				"bitwarden_attachment": dataSourceAttachment(),
-			},
-			ResourcesMap: map[string]*schema.Resource{
-				"bitwarden_attachment": resourceAttachment(),
-			},
+			DataSourcesMap: map[string]*schema.Resource{},
+			ResourcesMap:   map[string]*schema.Resource{},
 		}
 
 		p.ConfigureContextFunc = providerConfigureSDK(version)

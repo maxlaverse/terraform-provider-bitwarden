@@ -3,7 +3,6 @@
 // Migration note: the provider is temporarily served via terraform-plugin-mux,
 // combining a Plugin Framework shell (New) with the SDKv2 implementation (NewSDK).
 // Shared AttrData transforms plus MapData bridge Framework models to that mapping
-// layer. Resources/data sources move to Framework incrementally (folder, project,
-// org data sources, secret, item login/secure note/SSH key, org_collection);
-// remove NewSDK and mux when nothing remains on SDKv2 (attachment).
+// layer. Resources/data sources move to Framework incrementally; remove NewSDK
+// and mux when the SDKv2 half is empty (attachment was the last type).
 package provider
