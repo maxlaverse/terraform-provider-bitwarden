@@ -29,17 +29,12 @@ func main() {
 	flag.BoolVar(&debug, "debug", false, "set to true to run the provider with support for debuggers like delve")
 	flag.Parse()
 
-	serverFactory, err := provider.NewProviderServer(version)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
 	var serveOpts []tf6server.ServeOpt
 	if debug {
 		serveOpts = append(serveOpts, tf6server.WithManagedDebug())
 	}
 
-	if err := tf6server.Serve(providerAddr, serverFactory, serveOpts...); err != nil {
+	if err := tf6server.Serve(providerAddr, provider.NewProviderServer(version), serveOpts...); err != nil {
 		log.Fatal(err.Error())
 	}
 }

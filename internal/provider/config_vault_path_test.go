@@ -8,12 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/go-cty/cty"
 	fwprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
@@ -59,23 +56,12 @@ func vaultPathAppDataCases(t *testing.T) []vaultPathAppDataCase {
 	}
 }
 
-func TestCLIAppDataDirFromVaultPath_FrameworkConfigure(t *testing.T) {
+func TestCLIAppDataDirFromVaultPath(t *testing.T) {
 	t.Setenv("BITWARDENCLI_APPDATA_DIR", "")
 
 	for _, tc := range vaultPathAppDataCases(t) {
 		t.Run(tc.name, func(t *testing.T) {
 			pm := configureFrameworkWithVaultPath(t, tc.vaultPath)
-			assertCLIAppDataDir(t, pm, tc.wantAppDataDir, tc.expectedDir)
-		})
-	}
-}
-
-func TestCLIAppDataDirFromVaultPath_SDKConfigure(t *testing.T) {
-	t.Setenv("BITWARDENCLI_APPDATA_DIR", "")
-
-	for _, tc := range vaultPathAppDataCases(t) {
-		t.Run(tc.name, func(t *testing.T) {
-			pm := configureSDKWithVaultPath(t, tc.vaultPath)
 			assertCLIAppDataDir(t, pm, tc.wantAppDataDir, tc.expectedDir)
 		})
 	}
@@ -126,40 +112,6 @@ func configureFrameworkWithVaultPath(t *testing.T, vaultPath *string) bitwarden.
 	require.False(t, resp.Diagnostics.HasError(), fmt.Sprintf("%v", resp.Diagnostics))
 
 	clients, ok := resp.ResourceData.(*ProviderClients)
-	require.True(t, ok)
-	pm, err := clients.RequirePasswordManager()
-	require.NoError(t, err)
-	return pm
-}
-
-func configureSDKWithVaultPath(t *testing.T, vaultPath *string) bitwarden.PasswordManager {
-	t.Helper()
-	sdk := NewSDK(versionTestSkippedLogin)()
-
-	raw := map[string]interface{}{
-		schema_definition.AttributeSessionKey: t.Name(),
-	}
-	if vaultPath != nil {
-		raw[schema_definition.AttributeVaultPath] = *vaultPath
-	}
-
-	typ := schema.InternalMap(sdk.Schema).CoreConfigSchema().ImpliedType()
-	vals := make(map[string]cty.Value, len(typ.AttributeTypes()))
-	for name, at := range typ.AttributeTypes() {
-		vals[name] = cty.NullVal(at)
-	}
-	vals[schema_definition.AttributeSessionKey] = cty.StringVal(t.Name())
-	if vaultPath != nil {
-		vals[schema_definition.AttributeVaultPath] = cty.StringVal(*vaultPath)
-	}
-
-	cfg := terraform.NewResourceConfigRaw(raw)
-	cfg.CtyValue = cty.ObjectVal(vals)
-
-	diags := sdk.Configure(t.Context(), cfg)
-	require.False(t, diags.HasError(), diags)
-
-	clients, ok := sdk.Meta().(*ProviderClients)
 	require.True(t, ok)
 	pm, err := clients.RequirePasswordManager()
 	require.NoError(t, err)
