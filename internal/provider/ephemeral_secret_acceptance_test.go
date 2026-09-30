@@ -22,6 +22,11 @@ import (
 const ephemeralCredential = "ephemeral-credential-must-not-be-persisted"
 
 func TestEphemeralSecretProviderConfiguration(t *testing.T) {
+	testEphemeralSecretProviderConfiguration(t, "bitwarden_secret", `id = "secret-id"`, "ephemeral.bitwarden_secret.credential.value")
+}
+
+func testEphemeralSecretProviderConfiguration(t *testing.T, resourceType, selector, credentialExpression string) {
+	t.Helper()
 	check := ephemeralSecretPersistenceCheck{}
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
@@ -32,20 +37,20 @@ func TestEphemeralSecretProviderConfiguration(t *testing.T) {
 			},
 		},
 		Steps: []resource.TestStep{{
-			Config: `
+			Config: fmt.Sprintf(`
 provider "bitwarden" {
   alias        = "source"
   access_token = "bootstrap"
 }
 
-ephemeral "bitwarden_secret" "credential" {
+ephemeral %q "credential" {
   provider = bitwarden.source
-  id       = "secret-id"
+  %s
 }
 
 provider "bitwarden" {
   alias        = "consumer"
-  access_token = ephemeral.bitwarden_secret.credential.value
+  access_token = %s
 }
 
 data "bitwarden_project" "probe" {
@@ -56,7 +61,7 @@ data "bitwarden_project" "probe" {
 output "project_name" {
   value = data.bitwarden_project.probe.name
 }
-`,
+`, resourceType, selector, credentialExpression),
 			ConfigPlanChecks:  resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{check}},
 			ConfigStateChecks: []statecheck.StateCheck{check},
 			Check:             resource.TestCheckOutput("project_name", "public-project"),
