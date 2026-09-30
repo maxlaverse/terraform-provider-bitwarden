@@ -229,5 +229,6 @@ func (p *bitwardenProvider) DataSources(_ context.Context) []func() datasource.D
 func (p *bitwardenProvider) EphemeralResources(_ context.Context) []func() ephemeral.EphemeralResource {
 	return []func() ephemeral.EphemeralResource{
 		NewSecretEphemeralResource,
+		NewSecretsEphemeralResource,
 	}
 }
