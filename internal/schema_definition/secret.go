@@ -11,6 +11,11 @@ import (
 	fwstringvalidator "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 )
 
+const (
+	DescriptionSecretIdentifier = "Identifier of the secret. Specify exactly one of `id` or `key`."
+	DescriptionSecretKey        = "Name of the secret. Must uniquely match a secret accessible to the access token. Specify exactly one of `id` or `key`."
+)
+
 func SecretResourceSchema() rsschema.Schema {
 	return rsschema.Schema{
 		MarkdownDescription: "Manages a secret.",
@@ -51,17 +56,19 @@ func SecretDataSourceSchema() dsschema.Schema {
 		MarkdownDescription: "Use this data source to get information on an existing secret.",
 		Attributes: map[string]dsschema.Attribute{
 			AttributeID: dsschema.StringAttribute{
-				MarkdownDescription: DescriptionIdentifier,
+				MarkdownDescription: DescriptionSecretIdentifier,
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
-					fwstringvalidator.ExactlyOneOf(path.MatchRoot(AttributeID), path.MatchRoot(AttributeKey)),
+					fwstringvalidator.LengthAtLeast(1),
+					fwstringvalidator.ExactlyOneOf(path.MatchRoot(AttributeKey)),
 				},
 			},
 			AttributeKey: dsschema.StringAttribute{
-				MarkdownDescription: DescriptionName,
+				MarkdownDescription: DescriptionSecretKey,
 				Optional:            true,
 				Computed:            true,
+				Validators:          []validator.String{fwstringvalidator.LengthAtLeast(1)},
 			},
 			AttributeValue: dsschema.StringAttribute{
 				MarkdownDescription: DescriptionValue,
