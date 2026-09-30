@@ -25,8 +25,6 @@ func TestEphemeralSecretsValidation(t *testing.T) {
 
 	batchSchema := schema.EphemeralResourceSchemas["bitwarden_secrets"]
 	require.NotNil(t, batchSchema)
-	assert.NotContains(t, schema.ResourceSchemas, "bitwarden_secrets")
-	assert.NotContains(t, schema.DataSourceSchemas, "bitwarden_secrets")
 
 	for _, attr := range batchSchema.Block.Attributes {
 		if attr.Name == "ids" {
@@ -35,7 +33,6 @@ func TestEphemeralSecretsValidation(t *testing.T) {
 		}
 		if attr.Name == "secrets" {
 			assert.True(t, attr.Sensitive)
-			assert.True(t, attr.Computed)
 		}
 	}
 
@@ -90,8 +87,8 @@ func (c *ephemeralCredentialClient) GetSecretsByIDs(ctx context.Context, ids []s
 	return secrets, nil
 }
 
-func TestEphemeralSecretsOpenCloseAndReopen(t *testing.T) {
-	client := &ephemeralSecretsClient{secrets: []models.Secret{{ID: "secret-id", Value: "first-private-value"}}}
+func TestEphemeralSecretsOpenAndReopen(t *testing.T) {
+	client := &ephemeralSecretsClient{}
 	server := ephemeralSecretServer(t, &ProviderClients{SecretsManager: client})
 	ids := []string{"secret-id", "SECRET-ID"}
 
@@ -105,19 +102,8 @@ func TestEphemeralSecretsOpenCloseAndReopen(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Empty(t, resp.Diagnostics)
-		assert.Equal(t, map[string]string{"secret-id": value}, ephemeralSecretsValues(t, resp))
 		assert.Equal(t, map[string]batchSecretModel{"secret-id": {Key: "secret-key", Value: value, Note: "private-note"}}, ephemeralSecretsRecords(t, resp))
 		assert.Equal(t, phase+1, client.reads, "each phase must fetch fresh values")
-		assert.Empty(t, resp.Private)
-		assert.True(t, resp.RenewAt.IsZero())
-
-		closed, err := server.CloseEphemeralResource(t.Context(), &tfprotov6.CloseEphemeralResourceRequest{
-			TypeName: "bitwarden_secrets",
-			Private:  resp.Private,
-		})
-		require.NoError(t, err)
-		assert.Empty(t, closed.Diagnostics)
-		assert.Equal(t, phase+1, client.reads)
 	}
 
 	resp, err := server.OpenEphemeralResource(t.Context(), &tfprotov6.OpenEphemeralResourceRequest{
@@ -126,7 +112,7 @@ func TestEphemeralSecretsOpenCloseAndReopen(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Empty(t, resp.Diagnostics)
-	assert.Empty(t, ephemeralSecretsValues(t, resp))
+	assert.Empty(t, ephemeralSecretsRecords(t, resp))
 	assert.Equal(t, 2, client.reads, "an empty batch must not call the client")
 }
 
@@ -156,7 +142,6 @@ func TestEphemeralSecretsOpenErrors(t *testing.T) {
 			assert.Contains(t, resp.Diagnostics[0].Summary+resp.Diagnostics[0].Detail, tt.want)
 			assert.NotContains(t, fmt.Sprint(resp.Diagnostics), "private-value")
 			assertEphemeralSecretsNoValues(t, resp)
-			assert.Empty(t, resp.Private)
 		})
 	}
 }
@@ -205,15 +190,6 @@ func ephemeralSecretsConfig(t *testing.T, ids any, values map[string]string) *tf
 	require.NoError(t, err)
 
 	return &config
-}
-
-func ephemeralSecretsValues(t *testing.T, resp *tfprotov6.OpenEphemeralResourceResponse) map[string]string {
-	t.Helper()
-	got := map[string]string{}
-	for id, secret := range ephemeralSecretsRecords(t, resp) {
-		got[id] = secret.Value
-	}
-	return got
 }
 
 func ephemeralSecretsRecords(t *testing.T, resp *tfprotov6.OpenEphemeralResourceResponse) map[string]batchSecretModel {

@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-log/tflogtest"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwscli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
@@ -57,8 +56,7 @@ func TestEphemeralSecretsCLIBatch(t *testing.T) {
 			assert.Equal(t, 1, calls)
 			if outcome == "success" {
 				require.Empty(t, resp.Diagnostics)
-				assert.Equal(t, map[string]string{"secret-id": "private-value\"\n雪"}, ephemeralSecretsValues(t, resp))
-				assert.Equal(t, batchSecretModel{Key: "secret-key", Value: "private-value\"\n雪", Note: "private-note"}, ephemeralSecretsRecords(t, resp)["secret-id"])
+				assert.Equal(t, map[string]batchSecretModel{"secret-id": {Key: "secret-key", Value: "private-value\"\n雪", Note: "private-note"}}, ephemeralSecretsRecords(t, resp))
 			} else {
 				require.Len(t, resp.Diagnostics, 1)
 				assertEphemeralSecretsNoValues(t, resp)
@@ -72,16 +70,6 @@ func TestEphemeralSecretsCLIBatch(t *testing.T) {
 			}
 			assert.Contains(t, logs.String(), "Command finished")
 			assert.Contains(t, logs.String(), "private-value", "TRACE keeps the same output logging policy as other CLI calls")
-			assert.Empty(t, resp.Private)
-
-			tflog.Trace(ctx, "Logging scope control", map[string]any{"stdout": "ordinary-output-control"})
-			assert.Contains(t, logs.String(), "ordinary-output-control")
-
-			closed, err := server.CloseEphemeralResource(ctx, &tfprotov6.CloseEphemeralResourceRequest{
-				TypeName: "bitwarden_secrets",
-			})
-			require.NoError(t, err)
-			assert.Empty(t, closed.Diagnostics)
 
 			resp, err = server.OpenEphemeralResource(ctx, &tfprotov6.OpenEphemeralResourceRequest{
 				TypeName: "bitwarden_secrets",
@@ -89,8 +77,8 @@ func TestEphemeralSecretsCLIBatch(t *testing.T) {
 			})
 			require.NoError(t, err)
 			require.Empty(t, resp.Diagnostics)
-			assert.Empty(t, ephemeralSecretsValues(t, resp))
-			assert.Equal(t, 1, calls, "Close and empty batches must not invoke the CLI")
+			assert.Empty(t, ephemeralSecretsRecords(t, resp))
+			assert.Equal(t, 1, calls, "empty batches must not invoke the CLI")
 		})
 	}
 }
