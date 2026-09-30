@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	fwprovider "github.com/hashicorp/terraform-plugin-framework/provider"
@@ -18,21 +17,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
-	"github.com/stretchr/testify/assert"
 )
 
 const ephemeralCredential = "ephemeral-credential-must-not-be-persisted"
 
 func TestEphemeralSecretProviderConfiguration(t *testing.T) {
-	client := &ephemeralCredentialClient{}
 	check := ephemeralSecretPersistenceCheck{}
-	resource.Test(t, resource.TestCase{
-		IsUnitTest: true,
+	resource.UnitTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
 			"bitwarden": func() (tfprotov6.ProviderServer, error) {
 				return providerserver.NewProtocol6(&ephemeralCredentialProvider{
 					bitwardenProvider: &bitwardenProvider{},
-					client:            client,
 				})(), nil
 			},
 		},
@@ -67,15 +62,12 @@ output "project_name" {
 			Check:             resource.TestCheckOutput("project_name", "public-project"),
 		}},
 	})
-	assert.GreaterOrEqual(t, client.reads.Load(), int64(2), "the secret must be opened during plan and apply")
-	assert.Greater(t, client.consumerConfigurations.Load(), int64(0), "the ephemeral credential must configure the consumer")
 }
 
 // Use the real schemas and resource implementations, replacing only backend
 // access so the CLI can exercise ephemeral provider configuration offline.
 type ephemeralCredentialProvider struct {
 	*bitwardenProvider
-	client *ephemeralCredentialClient
 }
 
 func (p *ephemeralCredentialProvider) Configure(ctx context.Context, req fwprovider.ConfigureRequest, resp *fwprovider.ConfigureResponse) {
@@ -84,15 +76,7 @@ func (p *ephemeralCredentialProvider) Configure(ctx context.Context, req fwprovi
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	switch model.AccessToken.ValueString() {
-	case "bootstrap":
-	case ephemeralCredential:
-		p.client.consumerConfigurations.Add(1)
-	default:
-		resp.Diagnostics.AddError("Unexpected credential", "The consumer did not receive the ephemeral value.")
-		return
-	}
-	clients := &ProviderClients{SecretsManager: p.client}
+	clients := &ProviderClients{SecretsManager: &ephemeralCredentialClient{accessToken: model.AccessToken.ValueString()}}
 	resp.ResourceData = clients
 	resp.DataSourceData = clients
 	resp.EphemeralResourceData = clients
@@ -100,16 +84,17 @@ func (p *ephemeralCredentialProvider) Configure(ctx context.Context, req fwprovi
 
 type ephemeralCredentialClient struct {
 	bitwarden.SecretsManager
-	reads                  atomic.Int64
-	consumerConfigurations atomic.Int64
+	accessToken string
 }
 
 func (c *ephemeralCredentialClient) GetSecret(_ context.Context, secret models.Secret) (*models.Secret, error) {
-	c.reads.Add(1)
 	return &models.Secret{ID: secret.ID, Key: "credential", Value: ephemeralCredential, Note: "ephemeral-note-must-not-be-persisted"}, nil
 }
 
 func (c *ephemeralCredentialClient) GetProject(_ context.Context, project models.Project) (*models.Project, error) {
+	if c.accessToken != ephemeralCredential {
+		return nil, fmt.Errorf("consumer did not receive the ephemeral credential")
+	}
 	return &models.Project{ID: project.ID, Name: "public-project", OrganizationID: "organization-id"}, nil
 }
 

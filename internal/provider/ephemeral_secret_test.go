@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	fwprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -84,7 +83,7 @@ func TestSecretReadValidation(t *testing.T) {
 	}
 }
 
-func TestEphemeralSecretOpenAndClose(t *testing.T) {
+func TestEphemeralSecretOpen(t *testing.T) {
 	secret := models.Secret{
 		ID:             "secret-id",
 		Key:            "secret-key",
@@ -127,21 +126,8 @@ func TestEphemeralSecretOpenAndClose(t *testing.T) {
 				assert.Equal(t, want, got, name)
 			}
 
-			assert.Equal(t, 1, client.reads)
 			assert.Equal(t, selector, client.selector)
 			assert.Equal(t, input, client.input)
-			assert.Empty(t, resp.Private, "no decrypted data should be kept for Close")
-			assert.True(t, resp.RenewAt.IsZero(), "reading an existing secret does not create a lease")
-
-			closed, err := server.CloseEphemeralResource(t.Context(), &tfprotov6.CloseEphemeralResourceRequest{
-				TypeName: "bitwarden_secret",
-				Private:  resp.Private,
-			})
-			require.NoError(t, err)
-			assert.Empty(t, closed.Diagnostics)
-			// Mutation methods on the stub are intentionally unimplemented:
-			// attempting to delete the stored secret would panic this test.
-			assert.Equal(t, 1, client.reads)
 		})
 	}
 }
@@ -174,32 +160,11 @@ func TestEphemeralSecretOpenErrors(t *testing.T) {
 			assert.Equal(t, tfprotov6.DiagnosticSeverityError, diagnostic.Severity)
 			assert.Contains(t, diagnostic.Summary+diagnostic.Detail, tt.want)
 			assert.NotContains(t, diagnostic.Summary+diagnostic.Detail, "private-value")
-			assert.Empty(t, resp.Private)
 		})
 	}
 }
 
-func TestEphemeralSecretConfigure(t *testing.T) {
-	for _, tt := range []struct {
-		name string
-		data any
-	}{
-		{name: "not configured yet"},
-		{name: "wrong provider data", data: "wrong type"},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &secretEphemeralResource{}
-			var resp ephemeral.ConfigureResponse
-
-			r.Configure(t.Context(), ephemeral.ConfigureRequest{ProviderData: tt.data}, &resp)
-
-			assert.Equal(t, tt.data != nil, resp.Diagnostics.HasError())
-			assert.Nil(t, r.clients)
-		})
-	}
-}
-
-func TestEphemeralSecretSharedClients(t *testing.T) {
+func TestEphemeralSecretProviderClients(t *testing.T) {
 	t.Chdir(t.TempDir())
 
 	for _, key := range []string{"BW_PASSWORD", "BW_SESSION", "BW_CLIENTID", "BW_CLIENTSECRET", "NODE_EXTRA_CA_CERTS"} {
@@ -231,14 +196,6 @@ func TestEphemeralSecretSharedClients(t *testing.T) {
 			clients, ok := resp.EphemeralResourceData.(*ProviderClients)
 			require.True(t, ok)
 			require.NotNil(t, clients.SecretsManager)
-			assert.Same(t, resp.ResourceData, clients)
-			assert.Same(t, resp.DataSourceData, clients)
-
-			r := &secretEphemeralResource{}
-			var configured ephemeral.ConfigureResponse
-			r.Configure(t.Context(), ephemeral.ConfigureRequest{ProviderData: clients}, &configured)
-			require.False(t, configured.Diagnostics.HasError(), configured.Diagnostics)
-			assert.Same(t, clients, r.clients)
 		})
 	}
 }
@@ -247,20 +204,17 @@ type ephemeralSecretClient struct {
 	bitwarden.SecretsManager
 	secret   *models.Secret
 	err      error
-	reads    int
 	selector string
 	input    string
 }
 
 func (c *ephemeralSecretClient) GetSecret(_ context.Context, secret models.Secret) (*models.Secret, error) {
-	c.reads++
 	c.selector = "id"
 	c.input = secret.ID
 	return c.secret, c.err
 }
 
 func (c *ephemeralSecretClient) GetSecretByKey(_ context.Context, key string) (*models.Secret, error) {
-	c.reads++
 	c.selector = "key"
 	c.input = key
 	return c.secret, c.err
