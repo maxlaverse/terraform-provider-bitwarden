@@ -14,7 +14,6 @@ Reads an existing Secrets Manager secret without persisting its data in plan or 
 
 ```terraform
 # Requires Terraform 1.10+ or OpenTofu 1.11+.
-# Uses the access_token and client_implementation from the Bitwarden provider.
 ephemeral "bitwarden_secret" "example" {
   id = "37a66d6a-96c1-4f04-9a3c-b1fc0135669e"
 }

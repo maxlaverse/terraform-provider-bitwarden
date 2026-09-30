@@ -21,17 +21,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEphemeralSecretValidation(t *testing.T) {
-	factory, err := NewProviderServer(versionTestSkippedLogin)
-	require.NoError(t, err)
-
-	server := factory()
+func TestSecretReadValidation(t *testing.T) {
+	server := NewProviderServer(versionTestSkippedLogin)()
 	schemaResp, err := server.GetProviderSchema(t.Context(), &tfprotov6.GetProviderSchemaRequest{})
 	require.NoError(t, err)
 	require.Empty(t, schemaResp.Diagnostics)
 
 	secretSchema := schemaResp.EphemeralResourceSchemas["bitwarden_secret"]
-	require.NotNil(t, secretSchema, "ephemeral secret must be registered in the mux")
+	require.NotNil(t, secretSchema, "ephemeral secret must be registered")
 
 	for _, attr := range secretSchema.Block.Attributes {
 		if attr.Name == "value" || attr.Name == "note" {
@@ -56,20 +53,34 @@ func TestEphemeralSecretValidation(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			resp, err := server.ValidateEphemeralResourceConfig(t.Context(), &tfprotov6.ValidateEphemeralResourceConfigRequest{
-				TypeName: "bitwarden_secret",
-				Config:   ephemeralSecretConfig(t, tt.attrs),
-			})
-			require.NoError(t, err)
+		for _, kind := range []string{"ephemeral", "data source"} {
+			t.Run(kind+"/"+tt.name, func(t *testing.T) {
+				var diagnostics []*tfprotov6.Diagnostic
+				if kind == "ephemeral" {
+					resp, err := server.ValidateEphemeralResourceConfig(t.Context(), &tfprotov6.ValidateEphemeralResourceConfigRequest{
+						TypeName: "bitwarden_secret",
+						Config:   ephemeralSecretConfig(t, tt.attrs),
+					})
+					require.NoError(t, err)
+					diagnostics = resp.Diagnostics
+				} else {
+					objType := schema_definition.SecretDataSourceSchema().Type().TerraformType(t.Context()).(tftypes.Object)
+					resp, err := server.ValidateDataResourceConfig(t.Context(), &tfprotov6.ValidateDataResourceConfigRequest{
+						TypeName: "bitwarden_secret",
+						Config:   secretReadConfig(t, objType, tt.attrs),
+					})
+					require.NoError(t, err)
+					diagnostics = resp.Diagnostics
+				}
 
-			if tt.wantErr {
-				require.NotEmpty(t, resp.Diagnostics)
-				assert.Equal(t, tfprotov6.DiagnosticSeverityError, resp.Diagnostics[0].Severity)
-			} else {
-				assert.Empty(t, resp.Diagnostics)
-			}
-		})
+				if tt.wantErr {
+					require.NotEmpty(t, diagnostics)
+					assert.Equal(t, tfprotov6.DiagnosticSeverityError, diagnostics[0].Severity)
+				} else {
+					assert.Empty(t, diagnostics)
+				}
+			})
+		}
 	}
 }
 
@@ -220,16 +231,6 @@ func TestEphemeralSecretSharedClients(t *testing.T) {
 			clients, ok := resp.EphemeralResourceData.(*ProviderClients)
 			require.True(t, ok)
 			require.NotNil(t, clients.SecretsManager)
-			t.Cleanup(func() {
-				muxClientsMu.Lock()
-				defer muxClientsMu.Unlock()
-
-				for key, offered := range muxClientsOffer {
-					if offered == clients {
-						delete(muxClientsOffer, key)
-					}
-				}
-			})
 			assert.Same(t, resp.ResourceData, clients)
 			assert.Same(t, resp.DataSourceData, clients)
 
@@ -293,6 +294,12 @@ func ephemeralSecretConfig(t *testing.T, values map[string]any) *tfprotov6.Dynam
 	t.Helper()
 
 	objType := schema_definition.SecretEphemeralResourceSchema().Type().TerraformType(t.Context()).(tftypes.Object)
+	return secretReadConfig(t, objType, values)
+}
+
+func secretReadConfig(t *testing.T, objType tftypes.Object, values map[string]any) *tfprotov6.DynamicValue {
+	t.Helper()
+
 	attrs := make(map[string]tftypes.Value, len(objType.AttributeTypes))
 	for name, typ := range objType.AttributeTypes {
 		attrs[name] = tftypes.NewValue(typ, values[name])

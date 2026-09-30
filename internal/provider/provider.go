@@ -8,9 +8,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	provschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
@@ -29,6 +31,12 @@ func New(version string) func() provider.Provider {
 	return func() provider.Provider {
 		return &bitwardenProvider{version: version}
 	}
+}
+
+// NewProviderServer returns a Protocol 6 server for the Plugin Framework
+// provider. Acc tests and main both serve this factory.
+func NewProviderServer(version string) func() tfprotov6.ProviderServer {
+	return providerserver.NewProtocol6(New(version)())
 }
 
 type experimentalModel struct {
@@ -56,8 +64,6 @@ func (p *bitwardenProvider) Metadata(_ context.Context, _ provider.MetadataReque
 }
 
 func (p *bitwardenProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
-	// Provider schema must match NewSDK for terraform-plugin-mux. Keep flags
-	// (sensitive, markdown descriptions) aligned with the SDKv2 provider schema.
 	resp.Schema = provschema.Schema{
 		Attributes: map[string]provschema.Attribute{
 			// Credential attributes (cross-field rules enforced in validateProviderConfig)
@@ -137,13 +143,6 @@ func (p *bitwardenProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 }
 
 func (p *bitwardenProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	// When Framework still registers nothing, SDKv2 alone owns login — skip here
-	// to avoid parking unused clients. Once any Framework type is registered,
-	// Configure offers clients for the SDKv2 mux half to take.
-	if !p.ownsManagedResources(ctx) {
-		return
-	}
-
 	var model bitwardenProviderModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &model)...)
 	if resp.Diagnostics.HasError() {
@@ -180,9 +179,7 @@ func (p *bitwardenProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	// Mux configures NewSDK next; offer clients so SDKv2 can reuse this login
-	// for the same ConfigureProvider RPC instead of authenticating twice.
-	clients, err := configureClientsOffer(ctx, p.version, cfg)
+	clients, err := configureClients(ctx, p.version, cfg)
 	if err != nil {
 		addErr(&resp.Diagnostics, err)
 		return
@@ -200,14 +197,9 @@ func vaultPathFromFramework(v types.String) vaultPath {
 	return explicitVaultPath(v.ValueString())
 }
 
-func (p *bitwardenProvider) ownsManagedResources(ctx context.Context) bool {
-	// True when Framework registers at least one resource, data source, or ephemeral and
-	// must supply ProviderData via Configure. While false, NewSDK owns login.
-	return len(p.Resources(ctx)) > 0 || len(p.DataSources(ctx)) > 0 || len(p.EphemeralResources(ctx)) > 0
-}
-
 func (p *bitwardenProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		NewAttachmentResource,
 		NewFolderResource,
 		NewItemLoginResource,
 		NewItemSecureNoteResource,
@@ -220,6 +212,7 @@ func (p *bitwardenProvider) Resources(_ context.Context) []func() resource.Resou
 
 func (p *bitwardenProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		NewAttachmentDataSource,
 		NewFolderDataSource,
 		NewItemLoginDataSource,
 		NewItemSecureNoteDataSource,
@@ -236,6 +229,5 @@ func (p *bitwardenProvider) DataSources(_ context.Context) []func() datasource.D
 func (p *bitwardenProvider) EphemeralResources(_ context.Context) []func() ephemeral.EphemeralResource {
 	return []func() ephemeral.EphemeralResource{
 		NewSecretEphemeralResource,
-		NewSecretsEphemeralResource,
 	}
 }

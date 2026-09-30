@@ -12,16 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestProviderSchemaValidity ensures the muxed Framework+SDKv2 provider schemas
-// align (terraform-plugin-mux rejects mismatched provider schemas). Migrated
-// Framework types are asserted below; remaining SDKv2 types (including
-// attachments) are covered by schema_contract_test.go.
+// TestProviderSchemaValidity ensures every managed type is registered on the
+// Protocol 6 Plugin Framework server.
 func TestProviderSchemaValidity(t *testing.T) {
-	factory, err := NewProviderServer(versionTestSkippedLogin)
-	if err != nil {
-		t.Fatalf("mux provider schemas must align: %s", err)
-	}
-	server := factory()
+	server := NewProviderServer(versionTestSkippedLogin)()
 
 	resp, err := server.GetProviderSchema(t.Context(), &tfprotov6.GetProviderSchemaRequest{})
 	if err != nil {
@@ -34,6 +28,7 @@ func TestProviderSchemaValidity(t *testing.T) {
 	}
 
 	for _, name := range []string{
+		"bitwarden_attachment",
 		"bitwarden_folder",
 		"bitwarden_item_login",
 		"bitwarden_item_secure_note",
@@ -47,6 +42,7 @@ func TestProviderSchemaValidity(t *testing.T) {
 		}
 	}
 	for _, name := range []string{
+		"bitwarden_attachment",
 		"bitwarden_folder",
 		"bitwarden_item_login",
 		"bitwarden_item_secure_note",
@@ -61,9 +57,6 @@ func TestProviderSchemaValidity(t *testing.T) {
 		if _, ok := resp.DataSourceSchemas[name]; !ok {
 			t.Fatalf("expected Framework %s data source to be registered", name)
 		}
-	}
-	if _, ok := resp.ResourceSchemas["bitwarden_attachment"]; !ok {
-		t.Fatal("expected SDKv2 bitwarden_attachment resource to remain registered during mux migration")
 	}
 }
 

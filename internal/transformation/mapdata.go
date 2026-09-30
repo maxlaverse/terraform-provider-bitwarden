@@ -28,8 +28,8 @@ func (m *MapData) Get(key string) interface{} {
 	return m.values[key]
 }
 
-// GetOk mimics terraform-plugin-sdk ResourceData.GetOk: false when the key is
-// absent or the value is the type's zero value. Used by ListOptionsFromData.
+// GetOk is false when the key is absent or the value is the type's zero
+// value. Used by ListOptionsFromData.
 func (m *MapData) GetOk(key string) (interface{}, bool) {
 	v, ok := m.values[key]
 	if !ok {

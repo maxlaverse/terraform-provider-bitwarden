@@ -16,7 +16,7 @@ func SecretEphemeralResourceSchema() schema.Schema {
 
 		Attributes: map[string]schema.Attribute{
 			AttributeID: schema.StringAttribute{
-				MarkdownDescription: "Identifier of the secret. Specify exactly one of `id` or `key`.",
+				MarkdownDescription: DescriptionSecretIdentifier,
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -25,7 +25,7 @@ func SecretEphemeralResourceSchema() schema.Schema {
 				},
 			},
 			AttributeKey: schema.StringAttribute{
-				MarkdownDescription: "Name of the secret. Must uniquely match a secret accessible to the access token. Specify exactly one of `id` or `key`.",
+				MarkdownDescription: DescriptionSecretKey,
 				Optional:            true,
 				Computed:            true,
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
