@@ -4,8 +4,13 @@ package provider
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
 	"testing"
 
 	fwprovider "github.com/hashicorp/terraform-plugin-framework/provider"
@@ -15,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -144,6 +150,14 @@ func TestEphemeralSecretOpenErrors(t *testing.T) {
 		{name: "canceled", client: &ephemeralSecretClient{err: context.Canceled}, want: "context canceled"},
 		{name: "raw CLI output", client: &ephemeralSecretClient{err: errors.New("invalid JSON: private-value")}, want: "Client error details are omitted"},
 		{name: "wrapped error", client: &ephemeralSecretClient{err: fmt.Errorf("private-value: %w", models.ErrObjectNotFound)}, want: "object not found"},
+		{name: "unauthorized", client: &ephemeralSecretClient{err: &webapi.HTTPError{StatusCode: http.StatusUnauthorized, Message: "private-value"}}, want: "HTTP 401 (Unauthorized). Check the provider credentials"},
+		{name: "forbidden", client: &ephemeralSecretClient{err: fmt.Errorf("private-value: %w", &webapi.HTTPError{StatusCode: http.StatusForbidden, Message: "private-value"})}, want: "HTTP 403 (Forbidden). Check the access token's permissions"},
+		{name: "rate limited", client: &ephemeralSecretClient{err: &webapi.HTTPError{StatusCode: http.StatusTooManyRequests, Message: "private-value"}}, want: "HTTP 429 (Too Many Requests). The request was rate limited"},
+		{name: "server unavailable", client: &ephemeralSecretClient{err: &webapi.HTTPError{StatusCode: http.StatusServiceUnavailable, Message: "private-value"}}, want: "HTTP 503 (Service Unavailable)"},
+		{name: "DNS error", client: &ephemeralSecretClient{err: &url.Error{Op: "Get", URL: "https://private-value", Err: &net.DNSError{Err: "private-value", Name: "private-value"}}}, want: "DNS error"},
+		{name: "TLS certificate", client: &ephemeralSecretClient{err: &tls.CertificateVerificationError{Err: errors.New("private-value")}}, want: "TLS certificate"},
+		{name: "timeout", client: &ephemeralSecretClient{err: &net.OpError{Op: "private-value", Err: os.ErrDeadlineExceeded}}, want: "request timed out"},
+		{name: "network error", client: &ephemeralSecretClient{err: &net.OpError{Op: "private-value", Err: errors.New("private-value")}}, want: "network error"},
 	}
 
 	for _, tt := range tests {
