@@ -144,7 +144,7 @@ func TestGetOrganizationCollection(t *testing.T) {
 
 func TestErrorContainsCommand(t *testing.T) {
 	removeMocks, _ := test_command.MockCommands(t, map[string]string{
-		"list org-collections --search search": ``,
+		"list org-collections --search search": `THIS_IS_A_SECRET`,
 	})
 	defer removeMocks(t)
 
@@ -152,7 +152,8 @@ func TestErrorContainsCommand(t *testing.T) {
 	_, err := b.FindOrganizationCollection(t.Context(), bitwarden.WithSearch("search"))
 
 	if assert.Error(t, err) {
-		assert.ErrorContains(t, err, "unable to parse result of 'list org-collections', error: 'unexpected end of JSON input', output: ''")
+		assert.ErrorContains(t, err, "unable to parse result of 'list org-collections':")
+		assert.NotContains(t, err.Error(), "THIS_IS_A_SECRET")
 	}
 }
 

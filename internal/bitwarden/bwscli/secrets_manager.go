@@ -77,7 +77,7 @@ func (c *client) CreateProject(ctx context.Context, project models.Project) (*mo
 	var projectObj models.Project
 	err = json.Unmarshal(out, &projectObj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	return &projectObj, nil
@@ -108,7 +108,7 @@ func (c *client) CreateSecret(ctx context.Context, secret models.Secret) (*model
 	var secretObj models.Secret
 	err = json.Unmarshal(out, &secretObj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	return &secretObj, nil
@@ -134,7 +134,7 @@ func (c *client) EditProject(ctx context.Context, project models.Project) (*mode
 	var projectObj models.Project
 	err = json.Unmarshal(out, &projectObj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	return &projectObj, nil
@@ -173,7 +173,7 @@ func (c *client) EditSecret(ctx context.Context, secret models.Secret) (*models.
 	var secretObj models.Secret
 	err = json.Unmarshal(out, &secretObj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	return &secretObj, nil
@@ -216,7 +216,7 @@ func (c *client) GetProject(ctx context.Context, project models.Project) (*model
 	var projectObj models.Project
 	err = json.Unmarshal(out, &projectObj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	return &projectObj, nil
@@ -241,7 +241,7 @@ func (c *client) GetSecret(ctx context.Context, secret models.Secret) (*models.S
 	var secretObj models.Secret
 	err = json.Unmarshal(out, &secretObj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	return &secretObj, nil
@@ -265,7 +265,7 @@ func (c *client) GetSecretByKey(ctx context.Context, secretKey string) (*models.
 	var secrets []models.Secret
 	err = json.Unmarshal(out, &secrets)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	matchingSecrets := []models.Secret{}

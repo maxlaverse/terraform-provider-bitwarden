@@ -25,13 +25,13 @@ func TestRemapError(t *testing.T) {
 		{
 			name:     "anything but not found",
 			stderr:   "Some other error message",
-			expected: fmt.Errorf("'test error' while running 'test': , Some other error message"),
+			expected: fmt.Errorf("'test error' while running 'test'"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmdErr := command.NewError(fmt.Errorf("test error"), []string{"test"}, "", tt.stderr)
+			cmdErr := command.NewError(fmt.Errorf("test error"), []string{"test"}, tt.stderr)
 
 			result := remapError(cmdErr)
 
@@ -40,4 +40,12 @@ func TestRemapError(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("wrapped not found", func(t *testing.T) {
+		cmdErr := command.NewError(fmt.Errorf("test error"), []string{"test"}, "Resource not found.")
+		result := remapError(fmt.Errorf("error editing: %w", cmdErr))
+		if result != models.ErrObjectNotFound {
+			t.Errorf("remapError() = %v, want %v", result, models.ErrObjectNotFound)
+		}
+	})
 }

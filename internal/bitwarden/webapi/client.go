@@ -796,7 +796,7 @@ func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *htt
 		}
 		return nil, &HTTPError{
 			StatusCode: httpResp.StatusCode,
-			Message:    fmt.Sprintf("bad response status code for '%s %s': %d!=200, body:%s", httpReq.Method, httpReq.URL, httpResp.StatusCode, string(respBody)),
+			Message:    fmt.Sprintf("bad response status code for '%s %s': %d!=200", httpReq.Method, httpReq.URL, httpResp.StatusCode),
 		}
 	}
 

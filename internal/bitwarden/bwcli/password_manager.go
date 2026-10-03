@@ -194,7 +194,7 @@ func createObject[T any](ctx context.Context, c *client, obj T, objectType model
 	}
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	// NOTE(maxime): there is no need to sync after creating an item as the
@@ -243,11 +243,11 @@ func editGenericObject[T any](ctx context.Context, c *client, obj T, objectType 
 	}
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 	err = c.Sync(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error syncing: %v, %v", err, string(out))
+		return nil, fmt.Errorf("error syncing: %w", err)
 	}
 
 	return &obj, nil
@@ -272,11 +272,11 @@ func (c *client) editItemCollections(ctx context.Context, objId string, collecti
 	var res models.Item
 	err = json.Unmarshal(out, &res)
 	if err != nil {
-		return nil, newUnmarshallError(err, args, out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 	err = c.Sync(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error syncing: %v, %v", err, string(out))
+		return nil, fmt.Errorf("error syncing: %w", err)
 	}
 	return c.GetItem(ctx, res)
 }
@@ -340,7 +340,7 @@ func getObject[T any](ctx context.Context, c *client, obj T, objectType models.O
 
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	switch itemObj := any(obj).(type) {
@@ -397,7 +397,7 @@ func findGenericObject[T any](ctx context.Context, c *client, objType models.Obj
 	var foundObjects []T
 	err = json.Unmarshal(out, &foundObjects)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	filters := bitwarden.ListObjectsOptionsToFilterOptions(options...)
@@ -486,7 +486,7 @@ func (c *client) Status(ctx context.Context) (*Status, error) {
 	var status Status
 	err = json.Unmarshal(out, &status)
 	if err != nil {
-		return nil, newUnmarshallError(err, []string{"status"}, out)
+		return nil, newUnmarshallError(err, []string{"status"})
 	}
 
 	return &status, nil

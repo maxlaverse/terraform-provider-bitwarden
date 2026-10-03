@@ -1,6 +1,7 @@
 package bwcli
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -13,17 +14,17 @@ var (
 	attachmentNotFoundRegexp = regexp.MustCompile(`^Attachment .* was not found.$`)
 )
 
-func newUnmarshallError(err error, args []string, out []byte) error {
-	return fmt.Errorf("unable to parse result of '%s', error: '%v', output: '%v'", strings.Join(args, " "), err, string(out))
+func newUnmarshallError(err error, args []string) error {
+	return fmt.Errorf("unable to parse result of '%s': %w", strings.Join(args, " "), err)
 }
 
 func remapError(err error) error {
-	v, ok := err.(*command.CommandError)
-	if ok {
+	var cmdErr *command.CommandError
+	if errors.As(err, &cmdErr) {
 		switch {
-		case isObjectNotFoundError(v):
+		case isObjectNotFoundError(cmdErr):
 			return models.ErrObjectNotFound
-		case isAttachmentNotFoundError(v):
+		case isAttachmentNotFoundError(cmdErr):
 			return models.ErrAttachmentNotFound
 		}
 	}
