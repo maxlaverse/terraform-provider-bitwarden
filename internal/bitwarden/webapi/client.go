@@ -784,20 +784,7 @@ func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *htt
 	}
 
 	if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
-		if strings.Contains(httpResp.Header.Get("Content-Type"), "application/json") {
-			var errResp ErrorResponse
-			err = json.Unmarshal(respBody, &errResp)
-			if err == nil && errResp.Object == "error" {
-				return nil, &HTTPError{
-					StatusCode: httpResp.StatusCode,
-					Message:    fmt.Sprintf("the server returned an error: \"%s\" (%d)", errResp.Message, httpResp.StatusCode),
-				}
-			}
-		}
-		return nil, &HTTPError{
-			StatusCode: httpResp.StatusCode,
-			Message:    fmt.Sprintf("bad response status code for '%s %s': %d!=200", httpReq.Method, httpReq.URL, httpResp.StatusCode),
-		}
+		return nil, httpErrorFromResponse(httpReq, httpResp, respBody)
 	}
 
 	var res T
@@ -814,6 +801,58 @@ func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *htt
 	}
 
 	return &res, nil
+}
+
+// RFC 6749 §5.2 token error codes.
+var oauthTokenErrorCodes = map[string]struct{}{
+	"invalid_request":        {},
+	"invalid_client":         {},
+	"invalid_grant":          {},
+	"unauthorized_client":    {},
+	"unsupported_grant_type": {},
+	"invalid_scope":          {},
+}
+
+type oauthTokenError struct {
+	Error            string         `json:"error"`
+	ErrorDescription string         `json:"error_description"`
+	ErrorModel       *ErrorResponse `json:"ErrorModel"`
+}
+
+func httpErrorFromResponse(httpReq *http.Request, httpResp *http.Response, respBody []byte) *HTTPError {
+	if strings.Contains(httpResp.Header.Get("Content-Type"), "application/json") {
+		// /api returns Bitwarden's ErrorResponse ("object": "error"); /identity/connect/token
+		// returns RFC 6749 §5.2 JSON ("error", "error_description") instead.
+		var errResp ErrorResponse
+		if json.Unmarshal(respBody, &errResp) == nil && errResp.Object == "error" {
+			return &HTTPError{
+				StatusCode: httpResp.StatusCode,
+				Message:    fmt.Sprintf("the server returned an error: \"%s\" (%d)", errResp.Message, httpResp.StatusCode),
+			}
+		}
+
+		var oauthErr oauthTokenError
+		if json.Unmarshal(respBody, &oauthErr) == nil {
+			if _, ok := oauthTokenErrorCodes[oauthErr.Error]; ok {
+				msg := oauthErr.ErrorDescription
+				if msg == "" && oauthErr.ErrorModel != nil {
+					msg = oauthErr.ErrorModel.Message
+				}
+				if msg == "" {
+					msg = oauthErr.Error
+				}
+				return &HTTPError{
+					StatusCode: httpResp.StatusCode,
+					Message:    msg,
+				}
+			}
+		}
+	}
+
+	return &HTTPError{
+		StatusCode: httpResp.StatusCode,
+		Message:    fmt.Sprintf("bad response status code for '%s %s': %d!=200", httpReq.Method, httpReq.URL, httpResp.StatusCode),
+	}
 }
 
 func logRequest(ctx context.Context, httpReq *http.Request, reqBody []byte, httpResp *http.Response, respBody []byte, err error) {

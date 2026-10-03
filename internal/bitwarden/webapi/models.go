@@ -305,12 +305,13 @@ type CollectionAccessResponse struct {
 }
 
 type ErrorResponse struct {
-	Message               string        `json:"message"`
-	ValidationErrors      []interface{} `json:"validationErrors"`
-	ExceptionMessage      string        `json:"exceptionMessage"`
-	ExceptionStackTrace   interface{}   `json:"exceptionStackTrace"`
-	InnerExceptionMessage string        `json:"innerExceptionMessage"`
-	Object                string        `json:"object"`
+	Message string `json:"message"`
+	// Bitwarden and Vaultwarden send this as an object (`{"": ["msg"]}`), not an array.
+	ValidationErrors      any         `json:"validationErrors"`
+	ExceptionMessage      string      `json:"exceptionMessage"`
+	ExceptionStackTrace   interface{} `json:"exceptionStackTrace"`
+	InnerExceptionMessage string      `json:"innerExceptionMessage"`
+	Object                string      `json:"object"`
 }
 
 type ConfigResponse struct {

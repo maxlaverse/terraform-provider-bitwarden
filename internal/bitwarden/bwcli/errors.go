@@ -26,6 +26,10 @@ func remapError(err error) error {
 			return models.ErrObjectNotFound
 		case isAttachmentNotFoundError(cmdErr):
 			return models.ErrAttachmentNotFound
+		case strings.Contains(cmdErr.Stderr(), "Username or password is incorrect"):
+			return errors.New("Username or password is incorrect")
+		case strings.Contains(cmdErr.Stderr(), "Invalid master password"):
+			return errors.New("Invalid master password")
 		}
 	}
 	return err

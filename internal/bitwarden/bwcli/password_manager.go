@@ -426,7 +426,7 @@ func findGenericObject[T any](ctx context.Context, c *client, objType models.Obj
 func (c *client) LoginWithPassword(ctx context.Context, username, password string) error {
 	out, err := c.cmd("login", username, "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).Run(ctx)
 	if err != nil {
-		return err
+		return remapError(err)
 	}
 	c.sessionKey = string(out)
 	return nil
@@ -437,7 +437,7 @@ func (c *client) LoginWithPassword(ctx context.Context, username, password strin
 func (c *client) LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error {
 	_, err := c.cmd("login", "--apikey").AppendEnv([]string{fmt.Sprintf("BW_CLIENTID=%s", clientId), fmt.Sprintf("BW_CLIENTSECRET=%s", clientSecret)}).Run(ctx)
 	if err != nil {
-		return err
+		return remapError(err)
 	}
 	return c.Unlock(ctx, password)
 }
@@ -495,7 +495,7 @@ func (c *client) Status(ctx context.Context) (*Status, error) {
 func (c *client) Unlock(ctx context.Context, password string) error {
 	out, err := c.cmd("unlock", "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).Run(ctx)
 	if err != nil {
-		return err
+		return remapError(err)
 	}
 
 	c.sessionKey = string(out)
