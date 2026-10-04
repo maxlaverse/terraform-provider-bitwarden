@@ -158,6 +158,8 @@ The issue [hashicorp/terraform-plugin-sdk#63] tracks discussions for adding such
 If you want find out more about this file, you can read [Terraform's documentation on Data Storage].
 Please note that this file is stored at `<your-project>/.bitwarden/` by default, in order to not interfere with your local Vaults.
 
+Provider logs at the `TRACE` level (`TF_LOG=TRACE`) can contain secrets, such as decrypted CLI output and HTTP request or response bodies. Treat these logs as sensitive: do not share them, and avoid enabling trace logging in CI or other shared environments.
+
 ## Contributing
 
 Bug reports, documentation fixes, and pull requests are welcome.
