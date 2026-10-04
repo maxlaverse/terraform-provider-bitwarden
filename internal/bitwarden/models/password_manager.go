@@ -10,6 +10,7 @@ var (
 	ErrAttachmentNotFound          = errors.New("attachment not found")
 	ErrVaultLocked                 = errors.New("vault is locked")
 	ErrAlreadyLoggedIn             = errors.New("you are already logged in")
+	ErrInvalidCredentials          = errors.New("username or password is incorrect")
 	ErrWrongMasterPassword         = errors.New("invalid master password")
 	ErrLoggedOut                   = errors.New("please login first")
 	ErrItemTypeMismatch            = errors.New("returned object type does not match requested object type")

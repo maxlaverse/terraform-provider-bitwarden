@@ -284,7 +284,7 @@ func (c *client) editItemCollections(ctx context.Context, objId string, collecti
 func (c *client) GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error) {
 	out, err := c.cmdWithSession("get", string(models.ObjectTypeAttachment), attachmentId, "--itemid", itemId, "--raw").Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	return out, nil
@@ -335,7 +335,7 @@ func getObject[T any](ctx context.Context, c *client, obj T, objectType models.O
 
 	out, err := c.cmdWithSession(args...).Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	err = json.Unmarshal(out, &obj)
@@ -391,7 +391,7 @@ func findGenericObject[T any](ctx context.Context, c *client, objType models.Obj
 
 	out, err := c.cmdWithSession(args...).Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	var foundObjects []T
@@ -426,7 +426,7 @@ func findGenericObject[T any](ctx context.Context, c *client, objType models.Obj
 func (c *client) LoginWithPassword(ctx context.Context, username, password string) error {
 	out, err := c.cmd("login", username, "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).Run(ctx)
 	if err != nil {
-		return remapError(err)
+		return err
 	}
 	c.sessionKey = string(out)
 	return nil
@@ -437,7 +437,7 @@ func (c *client) LoginWithPassword(ctx context.Context, username, password strin
 func (c *client) LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error {
 	_, err := c.cmd("login", "--apikey").AppendEnv([]string{fmt.Sprintf("BW_CLIENTID=%s", clientId), fmt.Sprintf("BW_CLIENTSECRET=%s", clientSecret)}).Run(ctx)
 	if err != nil {
-		return remapError(err)
+		return err
 	}
 	return c.Unlock(ctx, password)
 }
@@ -495,7 +495,7 @@ func (c *client) Status(ctx context.Context) (*Status, error) {
 func (c *client) Unlock(ctx context.Context, password string) error {
 	out, err := c.cmd("unlock", "--raw", "--passwordenv", "BW_PASSWORD").AppendEnv([]string{fmt.Sprintf("BW_PASSWORD=%s", password)}).Run(ctx)
 	if err != nil {
-		return remapError(err)
+		return err
 	}
 
 	c.sessionKey = string(out)
@@ -519,7 +519,7 @@ func (c *client) Sync(ctx context.Context) error {
 }
 
 func (c *client) cmd(args ...string) command.Command {
-	return c.newCommand("bw", args...).AppendEnv(c.env())
+	return command.Classify(c.newCommand("bw", args...).AppendEnv(c.env()), remapError)
 }
 
 func (c *client) cmdWithSession(args ...string) command.Command {
