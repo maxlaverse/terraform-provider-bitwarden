@@ -14,7 +14,7 @@ import (
 
 func TestCommandRerunOnMatchingError(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") == "1" {
-		fmt.Println("test: failing on purpose")
+		fmt.Fprintln(os.Stderr, "test: failing on purpose")
 		os.Exit(1)
 		return
 	}
@@ -32,7 +32,7 @@ func TestCommandRerunOnMatchingError(t *testing.T) {
 
 func TestCommandFailsOnUnmatchedError(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") == "1" {
-		fmt.Println("test: failing for other reasons")
+		fmt.Fprintln(os.Stderr, "test: failing for other reasons")
 		os.Exit(1)
 		return
 	}
@@ -54,7 +54,7 @@ type testRetryHandler struct {
 
 func (r *testRetryHandler) IsRetryable(err error, attempt int) bool {
 	r.called = r.called + 1
-	return strings.Contains(err.Error(), "failing on purpose") && attempt < 3
+	return strings.Contains(StderrOrError(err), "failing on purpose") && attempt < 3
 }
 
 func (r *testRetryHandler) Backoff(attempt int) time.Duration {

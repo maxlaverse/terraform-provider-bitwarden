@@ -33,7 +33,7 @@ func TestAccProviderAuthUsernamePassword(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      invalidAccount + testResource,
-				ExpectError: regexp.MustCompile("Username or password is incorrect"),
+				ExpectError: regexp.MustCompile("(?i)username or password is incorrect"),
 			}, {
 				// We need to login with a valid account if we want to be able to
 				// test an invalid master password, as we do bellow.
@@ -41,7 +41,7 @@ func TestAccProviderAuthUsernamePassword(t *testing.T) {
 				Check:  checkResourceId(),
 			}, {
 				Config:      invalidPassword + testResource,
-				ExpectError: regexp.MustCompile("Invalid master password"),
+				ExpectError: regexp.MustCompile("(?i)invalid master password"),
 				SkipFunc:    func() (bool, error) { return testConfiguration.UseEmbeddedClient, nil },
 			}, {
 				// We need to finish with a valid example if we don't want the TestStep to

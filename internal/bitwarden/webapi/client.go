@@ -784,20 +784,7 @@ func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *htt
 	}
 
 	if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
-		if strings.Contains(httpResp.Header.Get("Content-Type"), "application/json") {
-			var errResp ErrorResponse
-			err = json.Unmarshal(respBody, &errResp)
-			if err == nil && errResp.Object == "error" {
-				return nil, &HTTPError{
-					StatusCode: httpResp.StatusCode,
-					Message:    fmt.Sprintf("the server returned an error: \"%s\" (%d)", errResp.Message, httpResp.StatusCode),
-				}
-			}
-		}
-		return nil, &HTTPError{
-			StatusCode: httpResp.StatusCode,
-			Message:    fmt.Sprintf("bad response status code for '%s %s': %d!=200, body:%s", httpReq.Method, httpReq.URL, httpResp.StatusCode, string(respBody)),
-		}
+		return nil, httpErrorFromResponse(httpReq, httpResp, respBody)
 	}
 
 	var res T

@@ -29,7 +29,7 @@ func TestAccDataSourceAttachment(t *testing.T) {
 			},
 			{
 				Config:      tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt") + tfConfigDataAttachmentInexistent(),
-				ExpectError: regexp.MustCompile("Error: attachment not found"),
+				ExpectError: regexp.MustCompile("attachment not found"),
 			},
 			{
 				Config:      tfConfigAttachmentSpecificPasswordManagerProvider() + tfConfigResourceAttachment("fixtures/attachment1.txt") + tfConfigDataAttachmentInexistentItem(),

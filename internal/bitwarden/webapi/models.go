@@ -304,15 +304,6 @@ type CollectionAccessResponse struct {
 	Object            models.ObjectType `json:"object"`
 }
 
-type ErrorResponse struct {
-	Message               string        `json:"message"`
-	ValidationErrors      []interface{} `json:"validationErrors"`
-	ExceptionMessage      string        `json:"exceptionMessage"`
-	ExceptionStackTrace   interface{}   `json:"exceptionStackTrace"`
-	InnerExceptionMessage string        `json:"innerExceptionMessage"`
-	Object                string        `json:"object"`
-}
-
 type ConfigResponse struct {
 	FeatureStates ConfigFeatureStates `json:"featureStates"`
 	Version       string              `json:"version"`
