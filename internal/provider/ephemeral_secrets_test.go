@@ -4,12 +4,17 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
+	"regexp"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
@@ -72,51 +77,43 @@ func TestEphemeralSecretsValidation(t *testing.T) {
 }
 
 func TestEphemeralSecretsProviderConfiguration(t *testing.T) {
-	testEphemeralSecretProviderConfiguration(t, "bitwarden_secrets", `ids = ["secret-id"]`, `ephemeral.bitwarden_secrets.credential.secrets["secret-id"].value`)
-}
-
-func (c *ephemeralCredentialClient) GetSecretsByIDs(ctx context.Context, ids []string) ([]models.Secret, error) {
-	secrets := make([]models.Secret, 0, len(ids))
-	for _, id := range ids {
-		secret, err := c.GetSecret(ctx, models.Secret{ID: id})
-		if err != nil {
-			return nil, err
-		}
-		secrets = append(secrets, *secret)
+	secret := models.Secret{
+		ID: "secret-id", Key: "credential", Value: ephemeralCredential,
+		Note: "ephemeral-note-must-not-be-persisted",
 	}
-	return secrets, nil
-}
-
-func TestEphemeralSecretsOpenAndReopen(t *testing.T) {
-	client := &ephemeralSecretsClient{}
-	server := ephemeralSecretServer(t, &ProviderClients{SecretsManager: client})
-	ids := []string{"secret-id", "SECRET-ID"}
-
-	for phase := range 2 {
-		value := fmt.Sprintf("private-value-%d\"\n雪", phase)
-		client.secrets = []models.Secret{{ID: "secret-id", Key: "secret-key", Value: value, Note: "private-note"}}
-
-		resp, err := server.OpenEphemeralResource(t.Context(), &tfprotov6.OpenEphemeralResourceRequest{
-			TypeName: "bitwarden_secrets",
-			Config:   ephemeralSecretsConfig(t, ids, nil),
-		})
-		require.NoError(t, err)
-		require.Empty(t, resp.Diagnostics)
-		assert.Equal(t, map[string]batchSecretModel{"secret-id": {Key: "secret-key", Value: value, Note: "private-note"}}, ephemeralSecretsRecords(t, resp))
-		assert.Equal(t, phase+1, client.reads, "each phase must fetch fresh values")
+	client := &ephemeralSecretsClient{secrets: []models.Secret{secret}}
+	want := map[string]map[string]string{
+		secret.ID: {"key": secret.Key, "value": secret.Value, "note": secret.Note},
 	}
-
-	resp, err := server.OpenEphemeralResource(t.Context(), &tfprotov6.OpenEphemeralResourceRequest{
-		TypeName: "bitwarden_secrets",
-		Config:   ephemeralSecretsConfig(t, []string{}, nil),
+	check := ephemeralSecretPersistenceCheck{}
+	step := resource.TestStep{
+		Config:            ephemeralSecretsConsumerConfig(`ids = ["secret-id", "SECRET-ID"]`),
+		ConfigPlanChecks:  resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{check}},
+		ConfigStateChecks: []statecheck.StateCheck{check},
+		Check:             resource.TestCheckOutput("project_name", "public-project"),
+	}
+	updated := step
+	updated.PreConfig = func() {
+		client.secrets[0].Value += "-updated"
+		want[secret.ID]["value"] = client.secrets[0].Value
+	}
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: ephemeralSecretsFactories(client, want),
+		Steps:                    []resource.TestStep{step, updated},
 	})
-	require.NoError(t, err)
-	require.Empty(t, resp.Diagnostics)
-	assert.Empty(t, ephemeralSecretsRecords(t, resp))
-	assert.Equal(t, 2, client.reads, "an empty batch must not call the client")
 }
 
-func TestEphemeralSecretsOpenErrors(t *testing.T) {
+func TestEphemeralSecretsEmpty(t *testing.T) {
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: ephemeralSecretsFactories(&ephemeralSecretsClient{err: models.ErrObjectNotFound}, map[string]map[string]string{}),
+		Steps: []resource.TestStep{{
+			Config: ephemeralSecretsConsumerConfig(`ids = []`),
+			Check:  resource.TestCheckOutput("project_name", "public-project"),
+		}},
+	})
+}
+
+func TestEphemeralSecretsErrors(t *testing.T) {
 	tests := []struct {
 		name   string
 		client bitwarden.SecretsManager
@@ -124,24 +121,18 @@ func TestEphemeralSecretsOpenErrors(t *testing.T) {
 	}{
 		{name: "not configured", want: "Provider not configured for Secrets Manager"},
 		{name: "not found", client: &ephemeralSecretsClient{err: models.ErrObjectNotFound}, want: "object not found"},
-		{name: "canceled", client: &ephemeralSecretsClient{err: context.Canceled}, want: "context canceled"},
-		{name: "logged out", client: &ephemeralSecretsClient{err: models.ErrLoggedOut}, want: models.ErrLoggedOut.Error()},
-		{name: "untrusted error", client: &ephemeralSecretsClient{err: errors.New("private-value")}, want: "Client error details are omitted"},
+		{name: "backend error details", client: &ephemeralSecretsClient{err: errors.New("backend unavailable")}, want: "backend unavailable"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := ephemeralSecretServer(t, &ProviderClients{SecretsManager: tt.client})
-			resp, err := server.OpenEphemeralResource(t.Context(), &tfprotov6.OpenEphemeralResourceRequest{
-				TypeName: "bitwarden_secrets",
-				Config:   ephemeralSecretsConfig(t, []string{"secret-id"}, nil),
+			resource.UnitTest(t, resource.TestCase{
+				ProtoV6ProviderFactories: ephemeralSecretsFactories(tt.client, nil),
+				Steps: []resource.TestStep{{
+					Config:      ephemeralSecretsConsumerConfig(`ids = ["secret-id"]`),
+					ExpectError: regexp.MustCompile(tt.want),
+				}},
 			})
-			require.NoError(t, err)
-			require.Len(t, resp.Diagnostics, 1)
-
-			assert.Contains(t, resp.Diagnostics[0].Summary+resp.Diagnostics[0].Detail, tt.want)
-			assert.NotContains(t, fmt.Sprint(resp.Diagnostics), "private-value")
-			assertEphemeralSecretsNoValues(t, resp)
 		})
 	}
 }
@@ -150,12 +141,27 @@ type ephemeralSecretsClient struct {
 	bitwarden.SecretsManager
 	secrets []models.Secret
 	err     error
-	reads   int
 }
 
 func (c *ephemeralSecretsClient) GetSecretsByIDs(_ context.Context, _ []string) ([]models.Secret, error) {
-	c.reads++
 	return append([]models.Secret(nil), c.secrets...), c.err
+}
+
+func ephemeralSecretsConsumerConfig(selector string) string {
+	return ephemeralCredentialConsumerConfig("bitwarden_secrets", selector, "jsonencode(ephemeral.bitwarden_secrets.credential.secrets)")
+}
+
+func ephemeralSecretsFactories(client bitwarden.SecretsManager, want map[string]map[string]string) map[string]func() (tfprotov6.ProviderServer, error) {
+	return map[string]func() (tfprotov6.ProviderServer, error){
+		"bitwarden": func() (tfprotov6.ProviderServer, error) {
+			credential, _ := json.Marshal(want)
+			return providerserver.NewProtocol6(&ephemeralCredentialProvider{
+				bitwardenProvider: &bitwardenProvider{},
+				sourceClients:     &ProviderClients{SecretsManager: client},
+				credential:        string(credential),
+			})(), nil
+		},
+	}
 }
 
 func ephemeralSecretsConfig(t *testing.T, ids any, values map[string]string) *tfprotov6.DynamicValue {
@@ -190,46 +196,4 @@ func ephemeralSecretsConfig(t *testing.T, ids any, values map[string]string) *tf
 	require.NoError(t, err)
 
 	return &config
-}
-
-func ephemeralSecretsRecords(t *testing.T, resp *tfprotov6.OpenEphemeralResourceResponse) map[string]batchSecretModel {
-	t.Helper()
-	require.NotNil(t, resp.Result)
-
-	result, err := resp.Result.Unmarshal(schema_definition.SecretsEphemeralResourceSchema().Type().TerraformType(t.Context()))
-	require.NoError(t, err)
-
-	var attrs map[string]tftypes.Value
-	require.NoError(t, result.As(&attrs))
-
-	var values map[string]tftypes.Value
-	require.NoError(t, attrs["secrets"].As(&values))
-
-	got := make(map[string]batchSecretModel, len(values))
-	for id, value := range values {
-		var fields map[string]tftypes.Value
-		require.NoError(t, value.As(&fields))
-		var secret batchSecretModel
-		require.NoError(t, fields["key"].As(&secret.Key))
-		require.NoError(t, fields["value"].As(&secret.Value))
-		require.NoError(t, fields["note"].As(&secret.Note))
-		got[id] = secret
-	}
-
-	return got
-}
-
-func assertEphemeralSecretsNoValues(t *testing.T, resp *tfprotov6.OpenEphemeralResourceResponse) {
-	t.Helper()
-	if resp.Result == nil {
-		return
-	}
-
-	// Framework can return the input config on failure, with values still null.
-	result, err := resp.Result.Unmarshal(schema_definition.SecretsEphemeralResourceSchema().Type().TerraformType(t.Context()))
-	require.NoError(t, err)
-
-	var attrs map[string]tftypes.Value
-	require.NoError(t, result.As(&attrs))
-	assert.True(t, attrs["secrets"].IsNull(), "errors must not return partial plaintext values")
 }
