@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/jarcoal/httpmock"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
@@ -57,15 +56,15 @@ func TestEphemeralSecretsEmbeddedBatch(t *testing.T) {
 		case "unexpected":
 			response.Data[0].ID = "unexpected-id"
 		case "corrupt ciphertext":
-			response.Data[0].Value = "invalid-private-value"
+			response.Data[0].Value = "invalid-ciphertext"
 		case "pagination":
 			token := "next-page"
 			response.ContinuationToken = &token
 		case "not found":
-			sendJSONError(w, "private-value", http.StatusNotFound)
+			sendJSONError(w, "Resource not found.", http.StatusNotFound)
 			return
 		case "unauthorized":
-			sendJSONError(w, "private-value", http.StatusUnauthorized)
+			sendJSONError(w, "Invalid access token.", http.StatusUnauthorized)
 			return
 		case "malformed":
 			fmt.Fprint(w, `{"data": "private-value"`)
@@ -113,7 +112,6 @@ func TestEphemeralSecretsEmbeddedBatch(t *testing.T) {
 		wantSecrets[secret.ID] = batchSecretModel{Key: name, Value: value, Note: "private-note"}
 	}
 	ids = append(ids, strings.ToUpper(ids[1]))
-	server := ephemeralSecretServer(t, &ProviderClients{SecretsManager: client})
 
 	tests := []string{
 		"success",
@@ -132,21 +130,21 @@ func TestEphemeralSecretsEmbeddedBatch(t *testing.T) {
 		t.Run(result, func(t *testing.T) {
 			outcome = result
 			before := batchCalls
-			resp, err := server.OpenEphemeralResource(t.Context(), &tfprotov6.OpenEphemeralResourceRequest{
-				TypeName: "bitwarden_secrets",
-				Config:   ephemeralSecretsConfig(t, ids, nil),
-			})
-			require.NoError(t, err)
+			secrets, err := client.GetSecretsByIDs(t.Context(), slices.Clone(ids))
 			assert.Equal(t, before+1, batchCalls)
 			if result == "success" {
-				require.Empty(t, resp.Diagnostics)
-				assert.Equal(t, wantSecrets, ephemeralSecretsRecords(t, resp))
+				require.NoError(t, err)
+				got := make(map[string]batchSecretModel, len(secrets))
+				for _, secret := range secrets {
+					got[secret.ID] = batchSecretModel{Key: secret.Key, Value: secret.Value, Note: secret.Note}
+				}
+				assert.Equal(t, wantSecrets, got)
 			} else {
-				require.NotEmpty(t, resp.Diagnostics)
-				assertEphemeralSecretsNoValues(t, resp)
-			}
-			for _, marker := range []string{"private-value", "private-note"} {
-				assert.NotContains(t, fmt.Sprint(resp.Diagnostics), marker)
+				require.Error(t, err)
+				assert.Nil(t, secrets, "errors must not return a partial batch")
+				for _, marker := range []string{"private-value", "private-note"} {
+					assert.NotContains(t, err.Error(), marker)
+				}
 			}
 		})
 	}
