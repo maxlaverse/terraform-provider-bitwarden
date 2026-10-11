@@ -11,8 +11,7 @@ func SecretEphemeralResourceSchema() schema.Schema {
 	return schema.Schema{
 		MarkdownDescription: "Reads an existing Secrets Manager secret without persisting its data in plan or state files. " +
 			"Requires Terraform 1.10+ or OpenTofu 1.11+. " +
-			"Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument. " +
-			"Reading a secret does not create, rotate, or delete it.",
+			"Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument.",
 
 		Attributes: map[string]schema.Attribute{
 			AttributeID: schema.StringAttribute{

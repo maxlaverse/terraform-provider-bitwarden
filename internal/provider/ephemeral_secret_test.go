@@ -3,24 +3,12 @@
 package provider
 
 import (
-	"context"
-	"crypto/tls"
-	"errors"
-	"fmt"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
 	"testing"
 
 	fwprovider "github.com/hashicorp/terraform-plugin-framework/provider"
-	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
-	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -89,95 +77,6 @@ func TestSecretReadValidation(t *testing.T) {
 	}
 }
 
-func TestEphemeralSecretOpen(t *testing.T) {
-	secret := models.Secret{
-		ID:             "secret-id",
-		Key:            "secret-key",
-		Value:          "private-value",
-		Note:           "private-note",
-		OrganizationID: "organization-id",
-		ProjectID:      "project-id",
-	}
-
-	for _, selector := range []string{"id", "key"} {
-		t.Run(selector, func(t *testing.T) {
-			client := &ephemeralSecretClient{secret: &secret}
-			server := ephemeralSecretServer(t, &ProviderClients{SecretsManager: client})
-
-			input := secret.ID
-			if selector == "key" {
-				input = secret.Key
-			}
-
-			resp, err := server.OpenEphemeralResource(t.Context(), &tfprotov6.OpenEphemeralResourceRequest{
-				TypeName: "bitwarden_secret",
-				Config:   ephemeralSecretConfig(t, map[string]any{selector: input}),
-			})
-			require.NoError(t, err)
-			require.Empty(t, resp.Diagnostics)
-			require.NotNil(t, resp.Result)
-
-			result, err := resp.Result.Unmarshal(schema_definition.SecretEphemeralResourceSchema().Type().TerraformType(t.Context()))
-			require.NoError(t, err)
-
-			var attrs map[string]tftypes.Value
-			require.NoError(t, result.As(&attrs))
-
-			for name, want := range map[string]string{
-				"id": secret.ID, "key": secret.Key, "value": secret.Value,
-				"note": secret.Note, "organization_id": secret.OrganizationID, "project_id": secret.ProjectID,
-			} {
-				var got string
-				require.NoError(t, attrs[name].As(&got))
-				assert.Equal(t, want, got, name)
-			}
-
-			assert.Equal(t, selector, client.selector)
-			assert.Equal(t, input, client.input)
-		})
-	}
-}
-
-func TestEphemeralSecretOpenErrors(t *testing.T) {
-	tests := []struct {
-		name   string
-		client bitwarden.SecretsManager
-		want   string
-	}{
-		{name: "no Secrets Manager client", want: "Provider not configured for Secrets Manager"},
-		{name: "not found", client: &ephemeralSecretClient{err: models.ErrObjectNotFound}, want: "object not found"},
-		{name: "ambiguous key", client: &ephemeralSecretClient{err: models.ErrTooManyObjectsFound}, want: "too many objects found"},
-		{name: "canceled", client: &ephemeralSecretClient{err: context.Canceled}, want: "context canceled"},
-		{name: "raw CLI output", client: &ephemeralSecretClient{err: errors.New("invalid JSON: private-value")}, want: "Client error details are omitted"},
-		{name: "wrapped error", client: &ephemeralSecretClient{err: fmt.Errorf("private-value: %w", models.ErrObjectNotFound)}, want: "object not found"},
-		{name: "unauthorized", client: &ephemeralSecretClient{err: &webapi.HTTPError{StatusCode: http.StatusUnauthorized, Message: "private-value"}}, want: "HTTP 401 (Unauthorized). Check the provider credentials"},
-		{name: "forbidden", client: &ephemeralSecretClient{err: fmt.Errorf("private-value: %w", &webapi.HTTPError{StatusCode: http.StatusForbidden, Message: "private-value"})}, want: "HTTP 403 (Forbidden). Check the access token's permissions"},
-		{name: "rate limited", client: &ephemeralSecretClient{err: &webapi.HTTPError{StatusCode: http.StatusTooManyRequests, Message: "private-value"}}, want: "HTTP 429 (Too Many Requests). The request was rate limited"},
-		{name: "server unavailable", client: &ephemeralSecretClient{err: &webapi.HTTPError{StatusCode: http.StatusServiceUnavailable, Message: "private-value"}}, want: "HTTP 503 (Service Unavailable)"},
-		{name: "DNS error", client: &ephemeralSecretClient{err: &url.Error{Op: "Get", URL: "https://private-value", Err: &net.DNSError{Err: "private-value", Name: "private-value"}}}, want: "DNS error"},
-		{name: "TLS certificate", client: &ephemeralSecretClient{err: &tls.CertificateVerificationError{Err: errors.New("private-value")}}, want: "TLS certificate"},
-		{name: "timeout", client: &ephemeralSecretClient{err: &net.OpError{Op: "private-value", Err: os.ErrDeadlineExceeded}}, want: "request timed out"},
-		{name: "network error", client: &ephemeralSecretClient{err: &net.OpError{Op: "private-value", Err: errors.New("private-value")}}, want: "network error"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			server := ephemeralSecretServer(t, &ProviderClients{SecretsManager: tt.client})
-			resp, err := server.OpenEphemeralResource(t.Context(), &tfprotov6.OpenEphemeralResourceRequest{
-				TypeName: "bitwarden_secret",
-				Config:   ephemeralSecretConfig(t, map[string]any{"key": "secret-key"}),
-			})
-			require.NoError(t, err)
-			require.Len(t, resp.Diagnostics, 1)
-
-			diagnostic := resp.Diagnostics[0]
-			assert.Equal(t, tfprotov6.DiagnosticSeverityError, diagnostic.Severity)
-			assert.Contains(t, diagnostic.Summary+diagnostic.Detail, tt.want)
-			assert.NotContains(t, diagnostic.Summary+diagnostic.Detail, "private-value")
-		})
-	}
-}
-
 func TestEphemeralSecretProviderClients(t *testing.T) {
 	t.Chdir(t.TempDir())
 
@@ -212,50 +111,6 @@ func TestEphemeralSecretProviderClients(t *testing.T) {
 			require.NotNil(t, clients.SecretsManager)
 		})
 	}
-}
-
-type ephemeralSecretClient struct {
-	bitwarden.SecretsManager
-	secret   *models.Secret
-	err      error
-	selector string
-	input    string
-}
-
-func (c *ephemeralSecretClient) GetSecret(_ context.Context, secret models.Secret) (*models.Secret, error) {
-	c.selector = "id"
-	c.input = secret.ID
-	return c.secret, c.err
-}
-
-func (c *ephemeralSecretClient) GetSecretByKey(_ context.Context, key string) (*models.Secret, error) {
-	c.selector = "key"
-	c.input = key
-	return c.secret, c.err
-}
-
-type ephemeralSecretTestProvider struct {
-	*bitwardenProvider
-	clients *ProviderClients
-}
-
-func (p *ephemeralSecretTestProvider) Configure(_ context.Context, _ fwprovider.ConfigureRequest, resp *fwprovider.ConfigureResponse) {
-	resp.EphemeralResourceData = p.clients
-}
-
-func ephemeralSecretServer(t *testing.T, clients *ProviderClients) tfprotov6.ProviderServer {
-	t.Helper()
-
-	server := providerserver.NewProtocol6(&ephemeralSecretTestProvider{
-		bitwardenProvider: &bitwardenProvider{},
-		clients:           clients,
-	})()
-
-	resp, err := server.ConfigureProvider(t.Context(), &tfprotov6.ConfigureProviderRequest{})
-	require.NoError(t, err)
-	require.Empty(t, resp.Diagnostics)
-
-	return server
 }
 
 func ephemeralSecretConfig(t *testing.T, values map[string]any) *tfprotov6.DynamicValue {

@@ -3,12 +3,12 @@
 page_title: "bitwarden_secret Ephemeral Resource - terraform-provider-bitwarden"
 subcategory: ""
 description: |-
-  Reads an existing Secrets Manager secret without persisting its data in plan or state files. Requires Terraform 1.10+ or OpenTofu 1.11+. Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument. Reading a secret does not create, rotate, or delete it.
+  Reads an existing Secrets Manager secret without persisting its data in plan or state files. Requires Terraform 1.10+ or OpenTofu 1.11+. Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument.
 ---
 
 # bitwarden_secret (Ephemeral Resource)
 
-Reads an existing Secrets Manager secret without persisting its data in plan or state files. Requires Terraform 1.10+ or OpenTofu 1.11+. Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument. Reading a secret does not create, rotate, or delete it.
+Reads an existing Secrets Manager secret without persisting its data in plan or state files. Requires Terraform 1.10+ or OpenTofu 1.11+. Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument.
 
 ## Example Usage
 
