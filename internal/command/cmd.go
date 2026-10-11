@@ -59,7 +59,7 @@ func (c *command) Run(ctx context.Context) ([]byte, error) {
 	if err != nil {
 		tflog.Error(ctx, "Command finished with error", map[string]interface{}{"error": err})
 		tflog.Trace(ctx, "Command outputs", map[string]interface{}{"stdout": stdOut.String(), "stderr": stdErr.String()})
-		return nil, NewError(err, c.args, stdOut.String(), stdErr.String())
+		return nil, NewError(err, c.args, stdErr.String())
 	}
 	tflog.Debug(ctx, "Command finished with success")
 	tflog.Trace(ctx, "Command outputs", map[string]interface{}{"stdout": stdOut.String(), "stderr": stdErr.String()})

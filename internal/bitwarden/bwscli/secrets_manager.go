@@ -71,13 +71,13 @@ func (c *client) CreateProject(ctx context.Context, project models.Project) (*mo
 
 	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	var projectObj models.Project
 	err = json.Unmarshal(out, &projectObj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	return &projectObj, nil
@@ -102,13 +102,13 @@ func (c *client) CreateSecret(ctx context.Context, secret models.Secret) (*model
 
 	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	var secretObj models.Secret
 	err = json.Unmarshal(out, &secretObj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	return &secretObj, nil
@@ -128,13 +128,13 @@ func (c *client) EditProject(ctx context.Context, project models.Project) (*mode
 
 	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	var projectObj models.Project
 	err = json.Unmarshal(out, &projectObj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	return &projectObj, nil
@@ -167,13 +167,13 @@ func (c *client) EditSecret(ctx context.Context, secret models.Secret) (*models.
 
 	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	var secretObj models.Secret
 	err = json.Unmarshal(out, &secretObj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	return &secretObj, nil
@@ -185,7 +185,7 @@ func (c *client) DeleteProject(ctx context.Context, project models.Project) erro
 	}
 
 	_, err := c.cmdWithAccessToken("project", "delete", project.ID).Run(ctx)
-	return remapError(err)
+	return err
 }
 
 func (c *client) DeleteSecret(ctx context.Context, secret models.Secret) error {
@@ -194,7 +194,7 @@ func (c *client) DeleteSecret(ctx context.Context, secret models.Secret) error {
 	}
 
 	_, err := c.cmdWithAccessToken("secret", "delete", secret.ID).Run(ctx)
-	return remapError(err)
+	return err
 }
 
 func (c *client) GetProject(ctx context.Context, project models.Project) (*models.Project, error) {
@@ -210,13 +210,13 @@ func (c *client) GetProject(ctx context.Context, project models.Project) (*model
 
 	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	var projectObj models.Project
 	err = json.Unmarshal(out, &projectObj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	return &projectObj, nil
@@ -235,13 +235,13 @@ func (c *client) GetSecret(ctx context.Context, secret models.Secret) (*models.S
 
 	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	var secretObj models.Secret
 	err = json.Unmarshal(out, &secretObj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	return &secretObj, nil
@@ -259,13 +259,13 @@ func (c *client) GetSecretByKey(ctx context.Context, secretKey string) (*models.
 
 	out, err := c.cmdWithAccessToken(args...).Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	var secrets []models.Secret
 	err = json.Unmarshal(out, &secrets)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	matchingSecrets := []models.Secret{}
@@ -286,7 +286,7 @@ func (c *client) GetSecretByKey(ctx context.Context, secretKey string) (*models.
 }
 
 func (c *client) cmdWithAccessToken(args ...string) command.Command {
-	return c.newCommand("bws", args...).AppendEnv(c.env())
+	return command.Classify(c.newCommand("bws", args...).AppendEnv(c.env()), remapError)
 }
 
 func (c *client) checkAccessToken() error {

@@ -194,7 +194,7 @@ func createObject[T any](ctx context.Context, c *client, obj T, objectType model
 	}
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	// NOTE(maxime): there is no need to sync after creating an item as the
@@ -243,11 +243,11 @@ func editGenericObject[T any](ctx context.Context, c *client, obj T, objectType 
 	}
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 	err = c.Sync(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error syncing: %v, %v", err, string(out))
+		return nil, fmt.Errorf("error syncing: %w", err)
 	}
 
 	return &obj, nil
@@ -272,11 +272,11 @@ func (c *client) editItemCollections(ctx context.Context, objId string, collecti
 	var res models.Item
 	err = json.Unmarshal(out, &res)
 	if err != nil {
-		return nil, newUnmarshallError(err, args, out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 	err = c.Sync(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error syncing: %v, %v", err, string(out))
+		return nil, fmt.Errorf("error syncing: %w", err)
 	}
 	return c.GetItem(ctx, res)
 }
@@ -284,7 +284,7 @@ func (c *client) editItemCollections(ctx context.Context, objId string, collecti
 func (c *client) GetAttachment(ctx context.Context, itemId, attachmentId string) ([]byte, error) {
 	out, err := c.cmdWithSession("get", string(models.ObjectTypeAttachment), attachmentId, "--itemid", itemId, "--raw").Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	return out, nil
@@ -335,12 +335,12 @@ func getObject[T any](ctx context.Context, c *client, obj T, objectType models.O
 
 	out, err := c.cmdWithSession(args...).Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	err = json.Unmarshal(out, &obj)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	switch itemObj := any(obj).(type) {
@@ -391,13 +391,13 @@ func findGenericObject[T any](ctx context.Context, c *client, objType models.Obj
 
 	out, err := c.cmdWithSession(args...).Run(ctx)
 	if err != nil {
-		return nil, remapError(err)
+		return nil, err
 	}
 
 	var foundObjects []T
 	err = json.Unmarshal(out, &foundObjects)
 	if err != nil {
-		return nil, newUnmarshallError(err, args[0:2], out)
+		return nil, newUnmarshallError(err, args[0:2])
 	}
 
 	filters := bitwarden.ListObjectsOptionsToFilterOptions(options...)
@@ -486,7 +486,7 @@ func (c *client) Status(ctx context.Context) (*Status, error) {
 	var status Status
 	err = json.Unmarshal(out, &status)
 	if err != nil {
-		return nil, newUnmarshallError(err, []string{"status"}, out)
+		return nil, newUnmarshallError(err, []string{"status"})
 	}
 
 	return &status, nil
@@ -519,7 +519,7 @@ func (c *client) Sync(ctx context.Context) error {
 }
 
 func (c *client) cmd(args ...string) command.Command {
-	return c.newCommand("bw", args...).AppendEnv(c.env())
+	return command.Classify(c.newCommand("bw", args...).AppendEnv(c.env()), remapError)
 }
 
 func (c *client) cmdWithSession(args ...string) command.Command {

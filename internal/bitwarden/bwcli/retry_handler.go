@@ -4,6 +4,8 @@ import (
 	"math"
 	"strings"
 	"time"
+
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/command"
 )
 
 const (
@@ -15,7 +17,7 @@ type retryHandler struct {
 }
 
 func (r *retryHandler) IsRetryable(err error, attempt int) bool {
-	return strings.Contains(err.Error(), rateLimitExceededError) && attempt < 3
+	return strings.Contains(command.StderrOrError(err), rateLimitExceededError) && attempt < 3
 }
 
 func (r *retryHandler) Backoff(attempt int) time.Duration {

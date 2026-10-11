@@ -19,6 +19,7 @@ This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 - [Usage](#usage)
 - [Embedded Client](#embedded-client)
 - [Security Considerations](#secutiry-considerations)
+- [Contributing](#contributing)
 - [Developing the Provider](#developing-the-provider)
 - [License](#license)
 
@@ -160,6 +161,33 @@ The issue [hashicorp/terraform-plugin-sdk#63] tracks discussions for adding such
 
 If you want find out more about this file, you can read [Terraform's documentation on Data Storage].
 Please note that this file is stored at `<your-project>/.bitwarden/` by default, in order to not interfere with your local Vaults.
+
+Provider logs at the `TRACE` level (`TF_LOG=TRACE`) can contain secrets, such as decrypted CLI output and HTTP request or response bodies. Treat these logs as sensitive: do not share them, and avoid enabling trace logging in CI or other shared environments.
+
+## Contributing
+
+Bug reports, documentation fixes, and pull requests are welcome.
+
+This provider is maintained by a single person. For anything more than a small fix, the problem belongs in an issue and the PR should link to it.
+
+### Issues
+
+- Search existing issues first.
+- For bugs, follow the issue template.
+- For new resources, schema changes, or anything with more than one reasonable design, open an issue before a PR. That’s where to agree on the problem and the approach.
+
+### Pull requests
+
+Link to an issue that already explains the problem. If there isn’t one, the PR should say:
+
+- **what is painful today**, and in which situation
+- **why this approach**, including what you considered instead
+
+Keep PRs focused (one problem per PR), add tests for new behavior, and run `mage docs` if you change schemas or examples.
+
+See [Developing the Provider](#developing-the-provider) for how to build and test locally.
+
+By participating, you agree to follow the [Code of Conduct](.github/CODE_OF_CONDUCT.md).
 
 ## Developing the Provider
 

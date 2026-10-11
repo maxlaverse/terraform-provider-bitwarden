@@ -39,10 +39,30 @@ func TestDoRequest_MalformedJSONReturnsError(t *testing.T) {
 	assert.NotContains(t, err.Error(), body)
 }
 
+func TestDoRequest_HTTPErrorUsesRecognizedMessage(t *testing.T) {
+	res, err := doTestErrorRequest[jsonObject](t, http.StatusBadRequest, []byte(`{"object":"error","message":"cipher not found"}`))
+
+	assert.Nil(t, res)
+	require.EqualError(t, err, `the server returned an error: "cipher not found" (400)`)
+}
+
 func doTestRequest[T any](t *testing.T, body []byte) (*T, error) {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}))
+	t.Cleanup(server.Close)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	return doRequest[T](t.Context(), server.Client(), req)
+}
+
+func doTestErrorRequest[T any](t *testing.T, status int, body []byte) (*T, error) {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(status)
 		_, _ = w.Write(body)
 	}))
 	t.Cleanup(server.Close)
