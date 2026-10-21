@@ -67,20 +67,24 @@ func TestEphemeralSecretErrors(t *testing.T) {
 }
 
 func ephemeralSecretConsumerConfig(selector string) string {
+	return ephemeralCredentialConsumerConfig("bitwarden_secret", selector, "jsonencode(ephemeral.bitwarden_secret.credential)")
+}
+
+func ephemeralCredentialConsumerConfig(resourceType, selector, credentialExpression string) string {
 	return fmt.Sprintf(`
 provider "bitwarden" {
   alias        = "source"
   access_token = "bootstrap"
 }
 
-ephemeral "bitwarden_secret" "credential" {
+ephemeral %q "credential" {
   provider = bitwarden.source
   %s
 }
 
 provider "bitwarden" {
   alias        = "consumer"
-  access_token = jsonencode(ephemeral.bitwarden_secret.credential)
+  access_token = %s
 }
 
 data "bitwarden_project" "probe" {
@@ -91,7 +95,7 @@ data "bitwarden_project" "probe" {
 output "project_name" {
   value = data.bitwarden_project.probe.name
 }
-`, selector)
+`, resourceType, selector, credentialExpression)
 }
 
 func ephemeralCredentialFactories(clients *ProviderClients, secret models.Secret) map[string]func() (tfprotov6.ProviderServer, error) {

@@ -41,6 +41,10 @@ If you encounter issues with recent versions of the Bitwarden CLI, consider tryi
 Ephemeral resources require Terraform 1.10+ or OpenTofu 1.11+.
 The `bitwarden_secret` [ephemeral resource](docs/ephemeral-resources/secret.md).
 
+For multiple secrets, the `bitwarden_secrets` [ephemeral resource](docs/ephemeral-resources/secrets.md)
+accepts a set of secret IDs and returns a sensitive map of objects containing `value`, `key`, and `note`,
+keyed by canonical lowercase IDs.
+
 ## Usage
 
 The complete documentation for this provider can be found on the [Terraform Registry docs].
