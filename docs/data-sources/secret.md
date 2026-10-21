@@ -33,8 +33,8 @@ resource "kubernetes_secret" "vpn_credentials" {
 
 ### Optional
 
-- `id` (String) Identifier.
-- `key` (String) Name.
+- `id` (String) Identifier of the secret. Specify exactly one of `id` or `key`.
+- `key` (String) Name of the secret. Must uniquely match a secret accessible to the access token. Specify exactly one of `id` or `key`.
 - `organization_id` (String) Identifier of the organization.
 
 ### Read-Only
