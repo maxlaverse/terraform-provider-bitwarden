@@ -35,7 +35,7 @@ inputs:
   openTofuVersion:
     description: 'Version of OpenTofu to install'
     required: false
-    default: 'v1.9.0'
+    default: 'v1.12.6'
     type: string
   deviceIdentifier:
     description: 'Device Identifier'

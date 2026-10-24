@@ -2,10 +2,8 @@ data "bitwarden_organization" "terraform" {
   search = "Terraform"
 }
 
-# Organization 
 resource "bitwarden_folder" "databases" {
-  organization_id = data.bitwarden_organization.terraform.id
-  name            = "Databases"
+  name = "Databases"
 }
 
 resource "bitwarden_item_login" "vpn_credentials" {
@@ -14,7 +12,7 @@ resource "bitwarden_item_login" "vpn_credentials" {
 
   name     = "VPN access for Databases"
   username = "example"
-  password = random_password.example.result
+  password = "<sensitive>"
 }
 
 data "bitwarden_item_secure_note" "vpn_preshared_key" {

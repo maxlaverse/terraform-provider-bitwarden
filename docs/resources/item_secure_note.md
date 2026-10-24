@@ -18,7 +18,8 @@ data "bitwarden_organization" "terraform" {
 }
 
 data "bitwarden_org_collection" "engineering" {
-  search = "Engineering"
+  search          = "Engineering"
+  organization_id = data.bitwarden_organization.terraform.id
 }
 
 data "bitwarden_folder" "databases" {

@@ -18,7 +18,7 @@ This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 - [Supported Versions](#supported-versions)
 - [Usage](#usage)
 - [Embedded Client](#embedded-client)
-- [Security Considerations](#secutiry-considerations)
+- [Security Considerations](#security-considerations)
 - [Contributing](#contributing)
 - [Developing the Provider](#developing-the-provider)
 - [License](#license)
@@ -27,19 +27,16 @@ This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 
 The plugin has been tested with the following components:
 
-- [Terraform] v1.11.4 / [OpenTofu] v1.10.0
+- [Terraform] v1.11.4 / [OpenTofu] v1.12.6
 - [Bitwarden CLI] v2025.4.0 (when not using the [Embedded Client](#embedded-client))
 - [BWS CLI] v1.0.0 (when not using the [Embedded Client](#embedded-client))
 - [Vaultwarden] v1.33.2
 - official [bitwarden.com] servers v2025.6.2
 
-**Minimum Terraform/OpenTofu:** 1.1.5 or later (Protocol 6). Older CLIs that only speak Protocol 5 are not supported.
+**Minimum Terraform:** 1.10 or later. **Minimum OpenTofu:** 1.12 or later (Protocol 6). Older CLIs that only speak Protocol 5 are not supported.
 
 The provider is likely to work with older versions of the Bitwarden backends/CLIs, but those haven't necessarily been tested.
 If you encounter issues with recent versions of the Bitwarden CLI, consider trying out the [Embedded Client](#embedded-client).
-
-Ephemeral resources require Terraform 1.10+ or OpenTofu 1.11+.
-The `bitwarden_secret` [ephemeral resource](docs/ephemeral-resources/secret.md).
 
 ## Usage
 
@@ -52,7 +49,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.20.0"
+      version = ">= 0.22.0"
     }
   }
 }
@@ -82,6 +79,7 @@ resource "bitwarden_secret" "example" {
 
   key   = "ACCESS_KEY"
   value = "THIS-VALUE"
+  note  = "Access key for the example project"
 }
 ```
 
@@ -94,7 +92,7 @@ terraform {
   required_providers {
     bitwarden = {
       source  = "maxlaverse/bitwarden"
-      version = ">= 0.20.0"
+      version = ">= 0.22.0"
     }
   }
 }
@@ -154,11 +152,10 @@ The choice depends on your needs: the official CLIs leverage Bitwarden's proven 
 
 ## Security Considerations
 
-When not using the [Embedded Client](#embedded-client), the provider downloads the encrypted Vault locally during _plan_ or _apply_ operations as would the Bitwarden CLI if you used it directly.
-Currently, the Terraform SDK doesn't offer a way to remove the encrypted Vault once changes have been applied.
-The issue [hashicorp/terraform-plugin-sdk#63] tracks discussions for adding such a feature.
+When not using the [Embedded Client](#embedded-client), the provider downloads the encrypted Vault locally during _plan_ or _apply_ operations, as the Bitwarden CLI would if you used it directly.
+There is currently no plugin hook to remove that encrypted Vault once changes have been applied.
 
-If you want find out more about this file, you can read [Terraform's documentation on Data Storage].
+If you want to find out more about this file, you can read [Bitwarden's documentation on data storage].
 Please note that this file is stored at `<your-project>/.bitwarden/` by default, in order to not interfere with your local Vaults.
 
 Provider logs at the `TRACE` level (`TF_LOG=TRACE`) can contain secrets, such as decrypted CLI output and HTTP request or response bodies. Treat these logs as sensitive: do not share them, and avoid enabling trace logging in CI or other shared environments.
@@ -191,7 +188,7 @@ By participating, you agree to follow the [Code of Conduct](.github/CODE_OF_COND
 ## Developing the Provider
 
 If you wish to work on the provider, you need the following software:
-- [Go] 1.24.1
+- [Go] 1.27.1
 - [Mage] 1.15.0
 - [Docker Compose] 2.35.0
 
@@ -200,7 +197,7 @@ Mage is a make/rake-like build tool using Go. You can list all available targets
 ### Building the Provider
 
 To compile the provider, run `mage build`.
-You can then instruct Terraform use your compiled version of the provider by running `mage setup:install`.
+You can then instruct Terraform to use your compiled version of the provider by running `mage setup:install`.
 
 ### Running Tests
 
@@ -219,7 +216,7 @@ The provider includes several types of tests:
    $ mage test:integrationPwdOfficialWithEmbeddedClient
    ```
 
-   b. With the Embedded Client against a local Vaultwarden instance. First ensure start Vaultwarden locally:
+   b. With the Embedded Client against a local Vaultwarden instance. First start Vaultwarden locally:
    ```sh
    $ mage vaultwarden
    ```
@@ -228,7 +225,7 @@ The provider includes several types of tests:
    $ mage test:integrationPwdVaultwardenWithEmbeddedClient
    ```
 
-   c. With the Bitwarden CLI against a local Vaultwarden instance. First ensure start Vaultwarden locally:
+   c. With the Bitwarden CLI against a local Vaultwarden instance. First start Vaultwarden locally:
    ```sh
    $ mage vaultwarden
    ```
@@ -267,11 +264,10 @@ Users are strongly encouraged to perform regular backups of their files and data
 Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more information.
 
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
-[BWS CLI]: https://github.com/bitwarden/sdk-sm/releases
+[BWS CLI]: https://bitwarden.com/help/secrets-manager-cli/
 [Docker]: https://www.docker.com/products/docker-desktop
 [Docker Compose]: https://docs.docker.com/compose/install/
 [Go]: https://golang.org/doc/install
-[hashicorp/terraform-plugin-sdk#63]: https://github.com/hashicorp/terraform-plugin-sdk/issues/63
 [Mage]: https://magefile.org/
 [OpenTofu]: https://opentofu.org/
 [Password Manager]: https://bitwarden.com/products/personal/
@@ -279,6 +275,6 @@ Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more informa
 [Terraform]: https://www.terraform.io/downloads.html
 [Terraform Registry docs]: https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs
 [OpenTofu Registry docs]: https://search.opentofu.org/provider/maxlaverse/bitwarden/latest
-[Terraform's documentation on Data Storage]: https://bitwarden.com/help/data-storage/#on-your-local-machine
+[Bitwarden's documentation on data storage]: https://bitwarden.com/help/data-storage/#on-your-local-machine
 [Vaultwarden]: https://www.vaultwarden.net/
 [bitwarden.com]: https://bitwarden.com

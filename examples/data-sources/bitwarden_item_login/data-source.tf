@@ -10,7 +10,7 @@ resource "kubernetes_secret" "vpn_credentials" {
   }
 
   data = {
-    "USERNAME" = data.bitwarden_item_secure_note.vpn_credentials.username
-    "PASSWORD" = data.bitwarden_item_secure_note.vpn_credentials.password
+    "USERNAME" = data.bitwarden_item_login.vpn_credentials.username
+    "PASSWORD" = data.bitwarden_item_login.vpn_credentials.password
   }
 }
