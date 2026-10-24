@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -129,8 +130,8 @@ func Decrypt(encString *encryptedstring.EncryptedString, key *symmetrickey.Key) 
 	}
 
 	computedHmac := helpers.HMACSum(append(append([]byte{}, encString.IV...), encString.Data...), key.MacKey, sha256.New)
-	if !bytes.Equal(computedHmac, encString.Hmac) {
-		return nil, fmt.Errorf("hmac comparison failed: %v != %v", computedHmac, encString.Hmac)
+	if !hmac.Equal(computedHmac, encString.Hmac) {
+		return nil, fmt.Errorf("hmac comparison failed")
 	}
 	decData, err := aes256Decode(encString.Data, key.EncryptionKey, encString.IV)
 	if err != nil {
