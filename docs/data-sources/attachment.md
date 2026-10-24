@@ -29,7 +29,7 @@ resource "kubernetes_secret" "ssh_keys" {
   }
 
   data = {
-    "private.key" = data.bitwarden_attachment.vpn_ssh_private_key.content
+    "private.key" = data.bitwarden_attachment.ssh_private_key.content
   }
 }
 ```

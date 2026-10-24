@@ -3,16 +3,18 @@
 page_title: "bitwarden_secret Data Source - terraform-provider-bitwarden"
 subcategory: ""
 description: |-
-  Use this data source to get information on an existing secret.
+  Use this data source to get information on an existing Secrets Manager secret. The secret value and note are stored in Terraform plan and state. To read a secret without persisting it, use the bitwarden_secret ephemeral resource.
 ---
 
 # bitwarden_secret (Data Source)
 
-Use this data source to get information on an existing secret.
+Use this data source to get information on an existing Secrets Manager secret. The secret value and note are stored in Terraform plan and state. To read a secret without persisting it, use the `bitwarden_secret` ephemeral resource.
 
 ## Example Usage
 
 ```terraform
+# Values from this data source are stored in Terraform state. Use
+# ephemeral.bitwarden_secret when the secret should not be persisted.
 data "bitwarden_secret" "example" {
   id = "37a66d6a-96c1-4f04-9a3c-b1fc0135669e"
 }
@@ -23,7 +25,7 @@ resource "kubernetes_secret" "vpn_credentials" {
   }
 
   data = {
-    "PASSWORD" = data.bitwarden_secret.value
+    "PASSWORD" = data.bitwarden_secret.example.value
   }
 }
 ```

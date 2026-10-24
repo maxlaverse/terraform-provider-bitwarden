@@ -1,1 +1,1 @@
-$ terraform import bitwarden_item_login.example <login_item_id>
+$ terraform import bitwarden_item_ssh_key.example <ssh_key_item_id>

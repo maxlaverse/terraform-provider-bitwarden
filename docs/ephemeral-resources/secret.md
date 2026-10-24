@@ -3,17 +3,16 @@
 page_title: "bitwarden_secret Ephemeral Resource - terraform-provider-bitwarden"
 subcategory: ""
 description: |-
-  Reads an existing Secrets Manager secret without persisting its data in plan or state files. Requires Terraform 1.10+ or OpenTofu 1.11+. Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument.
+  Reads an existing Secrets Manager secret without persisting its data in plan or state files. Unlike the bitwarden_secret data source, values are not stored in plan or state. Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument.
 ---
 
 # bitwarden_secret (Ephemeral Resource)
 
-Reads an existing Secrets Manager secret without persisting its data in plan or state files. Requires Terraform 1.10+ or OpenTofu 1.11+. Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument.
+Reads an existing Secrets Manager secret without persisting its data in plan or state files. Unlike the `bitwarden_secret` data source, values are not stored in plan or state. Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument.
 
 ## Example Usage
 
 ```terraform
-# Requires Terraform 1.10+ or OpenTofu 1.11+.
 ephemeral "bitwarden_secret" "example" {
   id = "37a66d6a-96c1-4f04-9a3c-b1fc0135669e"
 }
@@ -25,9 +24,10 @@ ephemeral "bitwarden_secret" "by_key" {
 
 # Pass ephemeral.bitwarden_secret.example.value to a provider configuration
 # or a write-only resource argument. Ordinary resource arguments and root
-# outputs cannot accept ephemeral values.
+# outputs cannot accept ephemeral values. Prefer this over
+# data.bitwarden_secret when the value should not be stored in state.
 #
-# Write-only arguments require Terraform 1.11+ or OpenTofu 1.11+ and explicit
+# Write-only arguments require Terraform 1.11+ and explicit
 # support in the receiving provider. Use that resource's documented version
 # or revision argument to trigger updates when the secret changes.
 ```

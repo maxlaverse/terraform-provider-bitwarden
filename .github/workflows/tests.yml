@@ -30,8 +30,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
-        with:
-          openTofuVersion: 'v1.12.6'
       - run: mage test:offline
       - name: Code Coverage
         continue-on-error: true
@@ -45,8 +43,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup-test
-        with:
-          openTofuVersion: 'v1.11.0'
       - run: mage test:docs
 
   password_manager_vaultwarden_cli:

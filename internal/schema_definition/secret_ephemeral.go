@@ -10,7 +10,7 @@ import (
 func SecretEphemeralResourceSchema() schema.Schema {
 	return schema.Schema{
 		MarkdownDescription: "Reads an existing Secrets Manager secret without persisting its data in plan or state files. " +
-			"Requires Terraform 1.10+ or OpenTofu 1.11+. " +
+			"Unlike the `bitwarden_secret` data source, values are not stored in plan or state. " +
 			"Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument.",
 
 		Attributes: map[string]schema.Attribute{
