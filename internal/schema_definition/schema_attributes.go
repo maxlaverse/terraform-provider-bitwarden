@@ -89,16 +89,16 @@ const (
 	DescriptionItemAttachmentFileName        = "File name. Required if specifying `content` in a resource."
 	DescriptionItemAttachmentSize            = "Size in bytes"
 	DescriptionItemAttachmentSizeName        = "Size as string"
-	DescriptionItemAttachmentURL             = "URL"
+	DescriptionItemAttachmentURL             = "Download URL of the attachment. May include a short-lived access token."
 	DescriptionKeyFingerprint                = "Key fingerprint."
 	DescriptionLoginPassword                 = "Login password."
 	DescriptionLoginUri                      = "URI."
 	DescriptionLoginUriMatch                 = "URI Match"
 	DescriptionLoginUriValue                 = "URI Value"
-	DescriptionLoginTotp                     = "Verification code."
+	DescriptionLoginTotp                     = "TOTP authenticator secret (the seed, not a generated one-time code)."
 	DescriptionLoginUsername                 = "Login username."
-	DescriptionName                          = "Name."
-	DescriptionNotes                         = "Notes."
+	DescriptionName                          = "Name of the object."
+	DescriptionNotes                         = "Free-form notes."
 	DescriptionOrganizationID                = "Identifier of the organization."
 	DescriptionPrivateKey                    = "Private key."
 	DescriptionPublicKey                     = "Public key."
@@ -106,8 +106,8 @@ const (
 	DescriptionRevisionDate                  = "Last time the item was updated."
 
 	// Secret specific attributes
-	DescriptionValue     = "Value."
-	DescriptionNote      = "Note."
+	DescriptionValue     = "Value of the secret."
+	DescriptionNote      = "Note attached to the secret."
 	DescriptionProjectID = "Identifier of the project."
 
 	// Provider field attributes

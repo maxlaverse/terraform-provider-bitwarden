@@ -41,6 +41,7 @@ func AttachmentResourceSchema() rsschema.Schema {
 			AttributeAttachmentContent: rsschema.StringAttribute{
 				MarkdownDescription: DescriptionItemAttachmentContent,
 				Optional:            true,
+				Sensitive:           true,
 				// Same digest rules as `file`, for the raw body.
 				CustomType:    HashedContentType{},
 				PlanModifiers: AttachmentContentPlanModifiers(),
@@ -74,6 +75,7 @@ func AttachmentResourceSchema() rsschema.Schema {
 			AttributeAttachmentURL: rsschema.StringAttribute{
 				MarkdownDescription: DescriptionItemAttachmentURL,
 				Computed:            true,
+				Sensitive:           true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 		},
@@ -95,6 +97,7 @@ func AttachmentDataSourceSchema() dsschema.Schema {
 			AttributeAttachmentContent: dsschema.StringAttribute{
 				MarkdownDescription: DescriptionItemAttachmentContent,
 				Computed:            true,
+				Sensitive:           true,
 			},
 		},
 	}
