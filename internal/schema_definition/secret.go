@@ -53,7 +53,9 @@ func SecretResourceSchema() rsschema.Schema {
 
 func SecretDataSourceSchema() dsschema.Schema {
 	return dsschema.Schema{
-		MarkdownDescription: "Use this data source to get information on an existing secret.",
+		MarkdownDescription: "Use this data source to get information on an existing Secrets Manager secret. " +
+			"The secret value and note are stored in Terraform plan and state. " +
+			"To read a secret without persisting it, use the `bitwarden_secret` ephemeral resource.",
 		Attributes: map[string]dsschema.Attribute{
 			AttributeID: dsschema.StringAttribute{
 				MarkdownDescription: DescriptionSecretIdentifier,

@@ -20,7 +20,7 @@ data "bitwarden_item_ssh_key" "git_ssh_key" {
 resource "local_sensitive_file" "id_rsa" {
   filename        = "id_rsa"
   file_permission = "600"
-  content         = data.bitwarden_item_ssh_key.id_rsa.private_key
+  content         = data.bitwarden_item_ssh_key.git_ssh_key.private_key
 }
 ```
 

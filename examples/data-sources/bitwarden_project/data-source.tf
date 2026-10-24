@@ -7,4 +7,5 @@ resource "bitwarden_secret" "example" {
 
   key   = "ACCESS_KEY"
   value = "THIS-VALUE"
+  note  = "Access key for the example project"
 }

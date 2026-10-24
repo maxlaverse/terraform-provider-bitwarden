@@ -75,5 +75,5 @@ Import is supported using the following syntax:
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-$ terraform import bitwarden_item_login.example <login_item_id>
+$ terraform import bitwarden_item_ssh_key.example <ssh_key_item_id>
 ```

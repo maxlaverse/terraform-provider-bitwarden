@@ -29,7 +29,7 @@ resource "bitwarden_item_login" "administrative_user" {
   password = "<sensitive>"
 
   organization_id = data.bitwarden_organization.terraform.id
-  collection_ids  = [data.bitwarden_org_collection.terraform.id]
+  collection_ids  = [data.bitwarden_org_collection.engineering.id]
 }
 
 # Example of usage with ACLs:
@@ -58,10 +58,6 @@ resource "bitwarden_org_collection" "my_collection" {
       id        = member.value.id
       read_only = true
     }
-  }
-
-  member {
-    id = data.bitwarden_org_member.john.id
   }
 }
 ```

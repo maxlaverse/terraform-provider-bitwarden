@@ -18,7 +18,8 @@ data "bitwarden_organization" "terraform" {
 }
 
 data "bitwarden_org_collection" "engineering" {
-  search = "Engineering"
+  search          = "Engineering"
+  organization_id = data.bitwarden_organization.terraform.id
 }
 
 data "bitwarden_folder" "databases" {
@@ -31,8 +32,8 @@ resource "bitwarden_item_login" "administrative-user" {
   password = "<sensitive>"
 
   folder_id       = data.bitwarden_folder.databases.id
-  organization_id = bitwarden_organization.terraform.id
-  collection_ids  = [bitwarden_org_collection.engineering.id]
+  organization_id = data.bitwarden_organization.terraform.id
+  collection_ids  = [data.bitwarden_org_collection.engineering.id]
 
   field {
     name = "category"

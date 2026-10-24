@@ -24,7 +24,7 @@ func accTestEnv() []string {
 			return append([]string{"TF_ACC_TERRAFORM_PATH=" + path}, base...)
 		}
 	}
-	return append([]string{"TF_ACC_TERRAFORM_VERSION=1.9.0"}, base...)
+	return append([]string{"TF_ACC_TERRAFORM_VERSION=1.11.4"}, base...)
 }
 
 type Test mg.Namespace
