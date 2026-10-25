@@ -188,7 +188,7 @@ By participating, you agree to follow the [Code of Conduct](.github/CODE_OF_COND
 ## Developing the Provider
 
 If you wish to work on the provider, you need the following software:
-- [Go] 1.27.1
+- [Go] 1.27.3
 - [Mage] 1.15.0
 - [Docker Compose] 2.35.0
 
