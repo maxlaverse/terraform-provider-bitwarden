@@ -152,7 +152,7 @@ func TestDecryptAccountSecretPbkdf2(t *testing.T) {
 	if !assert.NoError(t, err) {
 		return
 	}
-	assert.Equal(t, "NJ0uDK79BMZShPanVpmJM8efx5VFlij9wzf92Sys59o=", accountSecrets.MasterPasswordHash)
+	assert.Equal(t, "vyw5VldFKVjJBPQMUB5S+DLKT84BhuwslvOIxAj8Fps=", accountSecrets.MasterPasswordHash)
 
 	pemdata := pem.EncodeToMemory(
 		&pem.Block{

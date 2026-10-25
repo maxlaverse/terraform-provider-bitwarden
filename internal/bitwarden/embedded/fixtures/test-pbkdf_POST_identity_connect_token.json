@@ -1,10 +1,10 @@
 {
     "ForcePasswordReset": false,
     "Kdf": 0,
-    "KdfIterations": 1000,
+    "KdfIterations": 5000,
     "KdfMemory": 0,
     "KdfParallelism": 0,
-    "Key": "2.9emRj4E0CufYeTubNh1pOw==|DcVCgNpMe8sTCm1+GFU73UXtLHp8wej7hkKvViFcMzSc9Op5utgIzA9JLMLpIGt8BMVjQ8HcJsjFDqz5k6cJNtBe7sOnuuQEu5H9j3VUkXg=|Mglsw8JLvh5yYPe+CY9wCIrQ7Y52/OQqz6NNsTmgtqI=",
+    "Key": "2.SYmPbtNv0yZ6TrC/GU4byA==|oNUTfmp+L58GtcMIo51uY0HEKKd52eMPdL4DScEaGwUcTRm/AZOvB5Nhbkj3EeV5JEGOnMd4qkGhx0qFadKqc3a4w8HJJwHhlrDEEmb5ARo=|XW8LP8hoWMY8Xczxz0oKjc/rIJKnFV1UaIPZK30oakQ=",
     "MasterPasswordPolicy": {
         "object": "masterPasswordPolicy"
     },

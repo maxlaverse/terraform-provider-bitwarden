@@ -30,7 +30,7 @@ func TestCreateTestAccounts(t *testing.T) {
 
 	createTestAccount(t, Pdkdf2Mocks, models.KdfConfiguration{
 		KdfType:       models.KdfTypePBKDF2_SHA256,
-		KdfIterations: 1000,
+		KdfIterations: 5000,
 	}, true)
 	createTestAccount(t, Argon2Mocks, models.KdfConfiguration{
 		KdfType:        models.KdfTypeArgon2,
