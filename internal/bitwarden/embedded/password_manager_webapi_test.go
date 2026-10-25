@@ -24,7 +24,7 @@ func TestLoginAsPasswordLoadsAccountInformationForPbkdf2(t *testing.T) {
 	assert.Equal(t, "API", vault.loginAccount.VaultFormat)
 	assert.Equal(t, AccountPbkdf2.Email, vault.loginAccount.Email)
 	assert.Equal(t, models.KdfTypePBKDF2_SHA256, vault.loginAccount.KdfConfig.KdfType)
-	assert.Equal(t, 1000, vault.loginAccount.KdfConfig.KdfIterations)
+	assert.Equal(t, 5000, vault.loginAccount.KdfConfig.KdfIterations)
 	assert.Equal(t, AccountPbkdf2.ProtectedRSAPrivateKey, vault.loginAccount.ProtectedRSAPrivateKey)
 	assert.Equal(t, AccountPbkdf2.ProtectedSymmetricKey, vault.loginAccount.ProtectedSymmetricKey)
 }
@@ -42,7 +42,7 @@ func TestLoginAsAPILoadsAccountInformationForPbkdf2(t *testing.T) {
 	assert.Equal(t, "API", vault.loginAccount.VaultFormat)
 	assert.Equal(t, AccountPbkdf2.Email, vault.loginAccount.Email)
 	assert.Equal(t, models.KdfTypePBKDF2_SHA256, vault.loginAccount.KdfConfig.KdfType)
-	assert.Equal(t, 1000, vault.loginAccount.KdfConfig.KdfIterations)
+	assert.Equal(t, 5000, vault.loginAccount.KdfConfig.KdfIterations)
 	assert.Equal(t, AccountPbkdf2.ProtectedRSAPrivateKey, vault.loginAccount.ProtectedRSAPrivateKey)
 	assert.Equal(t, AccountPbkdf2.ProtectedSymmetricKey, vault.loginAccount.ProtectedSymmetricKey)
 }
