@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	DescriptionSecretIdentifier = "Identifier of the secret. Specify exactly one of `id` or `key`."
-	DescriptionSecretKey        = "Name of the secret. Must uniquely match a secret accessible to the access token. Specify exactly one of `id` or `key`."
+	DescriptionSecretIdentifier  = "Identifier of the secret. Specify exactly one of `id` or `key`."
+	DescriptionSecretKey         = "Name of the Secrets Manager secret. Must uniquely match a secret accessible to the access token. Specify exactly one of `id` or `key`."
+	DescriptionSecretResourceKey = "Name of the Secrets Manager secret. Distinct from Password Manager item names."
 )
 
 func SecretResourceSchema() rsschema.Schema {
@@ -26,16 +27,18 @@ func SecretResourceSchema() rsschema.Schema {
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			AttributeKey: rsschema.StringAttribute{
-				MarkdownDescription: DescriptionName,
+				MarkdownDescription: DescriptionSecretResourceKey,
 				Required:            true,
 			},
 			AttributeValue: rsschema.StringAttribute{
 				MarkdownDescription: DescriptionValue,
 				Required:            true,
+				Sensitive:           true,
 			},
 			AttributeNote: rsschema.StringAttribute{
 				MarkdownDescription: DescriptionNote,
 				Required:            true,
+				Sensitive:           true,
 			},
 			AttributeOrganizationID: rsschema.StringAttribute{
 				MarkdownDescription: DescriptionOrganizationID,
@@ -75,10 +78,12 @@ func SecretDataSourceSchema() dsschema.Schema {
 			AttributeValue: dsschema.StringAttribute{
 				MarkdownDescription: DescriptionValue,
 				Computed:            true,
+				Sensitive:           true,
 			},
 			AttributeNote: dsschema.StringAttribute{
 				MarkdownDescription: DescriptionNote,
 				Computed:            true,
+				Sensitive:           true,
 			},
 			AttributeOrganizationID: dsschema.StringAttribute{
 				MarkdownDescription: DescriptionOrganizationID,
