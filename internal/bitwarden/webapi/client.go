@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/keybuilder"
@@ -149,17 +150,20 @@ func (c *client) CreateOrganizationGroup(ctx context.Context, obj models.OrgGrou
 }
 
 func (c *client) CreateItem(ctx context.Context, obj models.Item) (*models.Item, error) {
-	var err error
+	cipherReq, err := c.newCipherRequest(obj)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing object create request: %w", err)
+	}
+
 	var httpReq *http.Request
 	if len(obj.CollectionIds) != 0 {
-		// if len(obj.CollectionIds) != 0 || obj.Type == models.ItemTypeSSHKey {
 		cipherCreationRequest := CreateCipherRequest{
-			Cipher:        obj,
+			Cipher:        cipherReq,
 			CollectionIds: obj.CollectionIds,
 		}
 		httpReq, err = c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/ciphers/create", c.serverURL), cipherCreationRequest)
 	} else {
-		httpReq, err = c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/ciphers", c.serverURL), obj)
+		httpReq, err = c.prepareAuthenticatedRequest(ctx, "POST", fmt.Sprintf("%s/api/ciphers", c.serverURL), cipherReq)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error preparing object create request: %w", err)
@@ -342,7 +346,12 @@ func (c *client) EditFolder(ctx context.Context, obj models.Folder) (*models.Fol
 }
 
 func (c *client) EditItem(ctx context.Context, obj models.Item) (*models.Item, error) {
-	req, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/ciphers/%s", c.serverURL, obj.ID), obj)
+	cipherReq, err := c.newCipherRequest(obj)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing item edition request: %w", err)
+	}
+
+	req, err := c.prepareAuthenticatedRequest(ctx, "PUT", fmt.Sprintf("%s/api/ciphers/%s", c.serverURL, obj.ID), cipherReq)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing item edition request: %w", err)
 	}
@@ -709,6 +718,35 @@ func (c *client) UploadContentToUrl(ctx context.Context, provider CloudStoragePr
 
 	_, err = doRequest[[]byte](ctx, c.httpClient, httpReq)
 	return err
+}
+
+func (c *client) newCipherRequest(obj models.Item) (CipherRequest, error) {
+	accountUUID, err := accountUUIDFromAccessToken(c.sessionAccessToken)
+	if err != nil {
+		return CipherRequest{}, err
+	}
+
+	return CipherRequest{
+		Item:         obj,
+		EncryptedFor: accountUUID,
+	}, nil
+}
+
+func accountUUIDFromAccessToken(accessToken string) (string, error) {
+	if len(accessToken) == 0 {
+		return "", fmt.Errorf("no session access token found - you need to login first")
+	}
+
+	claims := jwt.RegisteredClaims{}
+	_, _, err := jwt.NewParser().ParseUnverified(accessToken, &claims)
+	if err != nil {
+		return "", fmt.Errorf("error parsing session access token: %w", err)
+	}
+	if claims.Subject == "" {
+		return "", fmt.Errorf("session access token missing subject")
+	}
+
+	return claims.Subject, nil
 }
 
 func (c *client) prepareAuthenticatedRequest(ctx context.Context, reqMethod, reqUrl string, reqBody interface{}) (*http.Request, error) {
