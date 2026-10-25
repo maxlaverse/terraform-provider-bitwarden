@@ -198,9 +198,16 @@ type Collection struct {
 	Users          []CollectionMember `json:"users"`
 }
 
+// CipherRequest is the HTTP body for cipher create/update. EncryptedFor is the
+// acting user's UUID, matching official clients since web-v2025.6.0.
+type CipherRequest struct {
+	models.Item
+	EncryptedFor string `json:"encryptedFor"`
+}
+
 type CreateCipherRequest struct {
-	Cipher        models.Item `json:"cipher"`
-	CollectionIds []string    `json:"collectionIds"`
+	Cipher        CipherRequest `json:"cipher"`
+	CollectionIds []string      `json:"collectionIds"`
 }
 
 type SyncResponse struct {
