@@ -5,6 +5,7 @@ package crypto
 import (
 	"crypto/x509"
 	"encoding/base64"
+	"fmt"
 	"testing"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
@@ -28,6 +29,19 @@ func TestDecryptEncryptionKey(t *testing.T) {
 	encryptionKey, err := DecryptEncryptionKey(testEncryptedEncryptionKey, *preloginKey)
 	assert.NoError(t, err)
 	assert.Equal(t, testEncryptionKey, encryptionKey.Key)
+}
+
+func TestDecryptHmacMismatchOmitsMacBytes(t *testing.T) {
+	key, err := symmetrickey.NewFromRawBytes(testEncryptionKey)
+	assert.NoError(t, err)
+
+	enc, err := Encrypt([]byte("secret-plaintext"), *key)
+	assert.NoError(t, err)
+
+	enc.Hmac[0] ^= 0xff
+	_, err = Decrypt(enc, key)
+	assert.EqualError(t, err, "hmac comparison failed")
+	assert.NotContains(t, err.Error(), fmt.Sprintf("%v", enc.Hmac))
 }
 
 func TestDecryptPrivateKey(t *testing.T) {
