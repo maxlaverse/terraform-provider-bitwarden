@@ -121,7 +121,7 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	giveUp := isLastPossibleAttempt || !isRetriable
 
 	debugInfo := map[string]interface{}{
-		"url":               httpReq.URL.RequestURI(),
+		"path":              httpReq.URL.Path,
 		"method":            httpReq.Method,
 		"attempt_number":    attemptNumber,
 		"is_last_attempt":   isLastPossibleAttempt,

@@ -3,10 +3,13 @@
 package webapi
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-log/tflogtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,6 +47,40 @@ func TestDoRequest_HTTPErrorUsesRecognizedMessage(t *testing.T) {
 
 	assert.Nil(t, res)
 	require.EqualError(t, err, `the server returned an error: "cipher not found" (400)`)
+}
+
+func TestDoRequest_TraceLogsOmitBodiesAndAuthorization(t *testing.T) {
+	var logs bytes.Buffer
+	ctx := tflogtest.RootLogger(t.Context(), &logs)
+
+	const token = "Bearer secret-token"
+	const reqSecret = `{"password":"super-secret-password"}`
+	const respSecret = `{"id":"ok","access_token":"leaked-access-token"}`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Set-Cookie", "session=leaked-session-cookie")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(respSecret))
+	}))
+	t.Cleanup(server.Close)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, server.URL+"/identity/connect/token?code=oauth-secret", strings.NewReader(reqSecret))
+	require.NoError(t, err)
+	req.Header.Set("Authorization", token)
+
+	res, err := doRequest[jsonObject](ctx, server.Client(), req)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, "ok", res.ID)
+
+	logOut := logs.String()
+	assert.Contains(t, logOut, "/identity/connect/token")
+	assert.NotContains(t, logOut, "secret-token")
+	assert.NotContains(t, logOut, "super-secret-password")
+	assert.NotContains(t, logOut, "leaked-access-token")
+	assert.NotContains(t, logOut, "leaked-session-cookie")
+	assert.NotContains(t, logOut, "oauth-secret")
+	assert.NotContains(t, logOut, "Authorization")
 }
 
 func doTestRequest[T any](t *testing.T, body []byte) (*T, error) {

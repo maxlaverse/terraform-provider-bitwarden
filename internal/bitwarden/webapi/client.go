@@ -807,8 +807,6 @@ func (c *client) prepareGenericRequest(ctx context.Context, reqMethod, reqUrl st
 }
 
 func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *http.Request) (*T, error) {
-	reqBody := readAndRestoreRequestBody(ctx, httpReq)
-
 	httpResp, err := httpClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("error doing request to '%s': %w", httpReq.URL, err)
@@ -816,7 +814,7 @@ func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *htt
 	defer httpResp.Body.Close()
 
 	respBody, err := io.ReadAll(httpResp.Body)
-	logRequest(ctx, httpReq, reqBody, httpResp, respBody, err)
+	logRequest(ctx, httpReq, httpResp, err)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body from '%s %s': %w", httpReq.Method, httpReq.URL, err)
 	}
@@ -841,62 +839,25 @@ func doRequest[T any](ctx context.Context, httpClient *http.Client, httpReq *htt
 	return &res, nil
 }
 
-func logRequest(ctx context.Context, httpReq *http.Request, reqBody []byte, httpResp *http.Response, respBody []byte, err error) {
-	requestInfo := map[string]interface{}{}
-	responseInfo := map[string]interface{}{}
+func logRequest(ctx context.Context, httpReq *http.Request, httpResp *http.Response, err error) {
+	fields := map[string]interface{}{}
 
 	if httpReq != nil {
-		requestInfo["url"] = httpReq.URL.RequestURI()
-		requestInfo["method"] = httpReq.Method
-		requestInfo["headers"] = httpReq.Header
-		if len(reqBody) > 0 {
-			requestInfo["body"] = string(reqBody)
+		fields["method"] = httpReq.Method
+		if httpReq.URL != nil {
+			fields["path"] = httpReq.URL.Path
 		}
 	}
 
 	if httpResp != nil {
-		responseInfo["status_code"] = httpResp.StatusCode
-		responseInfo["headers"] = httpResp.Header
-		if len(respBody) > 0 {
-			responseInfo["body"] = string(respBody)
-		}
-	}
-
-	debugInfo := map[string]interface{}{
-		"request":  requestInfo,
-		"response": responseInfo,
+		fields["status_code"] = httpResp.StatusCode
 	}
 
 	if err != nil {
-		debugInfo["error"] = err.Error()
+		fields["error"] = err.Error()
 	}
 
-	tflog.Trace(ctx, "Request to Bitwarden server ", debugInfo)
-}
-
-func readAndRestoreRequestBody(ctx context.Context, httpReq *http.Request) []byte {
-	if httpReq.Body == nil {
-		return nil
-	}
-
-	bodyCopy, newBody, err := readReader(httpReq.Body)
-	if err != nil {
-		tflog.Trace(ctx, "Unable to re-read request body", map[string]interface{}{"error": err})
-	}
-	httpReq.Body = newBody
-	return bodyCopy
-}
-
-func readReader(rc io.ReadCloser) ([]byte, io.ReadCloser, error) {
-	var buf bytes.Buffer
-
-	tee := io.TeeReader(rc, &buf)
-
-	body, err := io.ReadAll(tee)
-	if err != nil {
-		return nil, nil, err
-	}
-	return body, io.NopCloser(bytes.NewReader(buf.Bytes())), nil
+	tflog.Trace(ctx, "Request to Bitwarden server", fields)
 }
 
 func handleRedirect(req *http.Request, via []*http.Request) error {

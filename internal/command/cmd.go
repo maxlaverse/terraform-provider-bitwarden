@@ -45,8 +45,13 @@ func (c *command) WithStdin(dir string) Command {
 }
 
 func (c *command) Run(ctx context.Context) ([]byte, error) {
-	ctx = tflog.SetField(ctx, "command", c.args)
-	tflog.Debug(ctx, "Running command")
+	// Never attach argv, stdout, or stderr to logs: bw/bws payloads include
+	// decrypted secrets. commandSummary is the subcommand only (e.g. "create item").
+	fields := map[string]interface{}{
+		"binary":  c.binary,
+		"command": commandSummary(c.args),
+	}
+	tflog.Debug(ctx, "Running command", fields)
 
 	var stdOut, stdErr bytes.Buffer
 	cmd := exec.CommandContext(ctx, c.binary, c.args...)
@@ -57,12 +62,10 @@ func (c *command) Run(ctx context.Context) ([]byte, error) {
 
 	err := cmd.Run()
 	if err != nil {
-		tflog.Error(ctx, "Command finished with error", map[string]interface{}{"error": err})
-		tflog.Trace(ctx, "Command outputs", map[string]interface{}{"stdout": stdOut.String(), "stderr": stdErr.String()})
+		tflog.Error(ctx, "Command finished with error", map[string]interface{}{"error": err, "binary": c.binary, "command": commandSummary(c.args)})
 		return nil, NewError(err, c.args, stdErr.String())
 	}
-	tflog.Debug(ctx, "Command finished with success")
-	tflog.Trace(ctx, "Command outputs", map[string]interface{}{"stdout": stdOut.String(), "stderr": stdErr.String()})
+	tflog.Debug(ctx, "Command finished with success", fields)
 
 	return stdOut.Bytes(), nil
 }

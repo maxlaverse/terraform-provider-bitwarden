@@ -158,7 +158,7 @@ There is currently no plugin hook to remove that encrypted Vault once changes ha
 If you want to find out more about this file, you can read [Bitwarden's documentation on data storage].
 Please note that this file is stored at `<your-project>/.bitwarden/` by default, in order to not interfere with your local Vaults.
 
-Provider logs at the `TRACE` level (`TF_LOG=TRACE`) can contain secrets, such as decrypted CLI output and HTTP request or response bodies. Treat these logs as sensitive: do not share them, and avoid enabling trace logging in CI or other shared environments.
+When using the official CLIs instead of the embedded client, `bws secret create` and `bws secret edit` pass secret values on the process command line.
 
 ## Contributing
 
