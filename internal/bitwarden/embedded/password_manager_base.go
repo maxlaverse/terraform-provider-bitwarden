@@ -998,12 +998,6 @@ func matchHost(url1, url2 string) (bool, error) {
 
 func verifyDecryptedObject[T any](ctx context.Context, actual, expected T) error {
 	err := compareObjects(ctx, actual, expected)
-	if err != nil {
-		tflog.Trace(ctx, fmt.Sprintf("verifyDecryptedObject: error object details."), map[string]interface{}{
-			"actual":   actual,
-			"expected": expected,
-		})
-	}
 	if err != nil && panicOnEncryptionErrors {
 		panic(err)
 	} else if err != nil {

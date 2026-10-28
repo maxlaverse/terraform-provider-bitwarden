@@ -88,6 +88,8 @@ func (c *client) CreateSecret(ctx context.Context, secret models.Secret) (*model
 		return nil, err
 	}
 
+	// BWS CLI has no stdin or --value-file option, so the secret remains on argv.
+	// See https://github.com/bitwarden/sdk-sm/issues/1568
 	args := []string{
 		"secret",
 		"create",
@@ -154,6 +156,8 @@ func (c *client) EditSecret(ctx context.Context, secret models.Secret) (*models.
 		args = append(args, "--key", secret.Key)
 	}
 	if secret.Value != "" {
+		// BWS CLI has no stdin or --value-file option, so the secret remains on argv.
+		// See https://github.com/bitwarden/sdk-sm/issues/1568
 		args = append(args, "--value", secret.Value)
 	}
 	if secret.Note != "" {

@@ -3,6 +3,7 @@
 package embedded
 
 import (
+	"bytes"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -11,9 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-log/tflogtest"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/crypto/symmetrickey"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -90,6 +93,21 @@ func TestCompareNestedObjects(t *testing.T) {
 	}
 	assert.NoError(t, compareObjects(t.Context(), obj1, obj2, "/attachments/*/url"))
 	assert.Error(t, compareObjects(t.Context(), obj1, obj3, "/attachments/*/url"))
+}
+
+func TestVerifyDecryptedObjectOmitsSecretsFromLogs(t *testing.T) {
+	var logs bytes.Buffer
+	ctx := tflogtest.RootLogger(t.Context(), &logs)
+
+	actual := models.Item{Login: models.Login{Password: "hunter2-secret"}}
+	expected := models.Item{Login: models.Login{Password: "other-password"}}
+
+	err := verifyDecryptedObject(ctx, actual, expected)
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "hunter2-secret")
+	assert.NotContains(t, err.Error(), "other-password")
+	assert.NotContains(t, logs.String(), "hunter2-secret")
+	assert.NotContains(t, logs.String(), "other-password")
 }
 
 func TestMatchUrl(t *testing.T) {

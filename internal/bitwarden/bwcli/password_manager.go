@@ -181,14 +181,13 @@ func createObject[T any](ctx context.Context, c *client, obj T, objectType model
 	args := []string{
 		"create",
 		string(objectType),
-		objEncoded,
 	}
 
 	switch orgObj := any(obj).(type) {
 	case models.OrgCollection:
 		args = append(args, "--organizationid", orgObj.OrganizationID)
 	}
-	out, err := c.cmdWithSession(args...).Run(ctx)
+	out, err := c.cmdWithSession(args...).WithStdin(objEncoded).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -235,9 +234,7 @@ func editGenericObject[T any](ctx context.Context, c *client, obj T, objectType 
 		args = append(args, "--organizationid", orgObj.OrganizationID)
 	}
 
-	args = append(args, []string{objEncoded}...)
-
-	out, err := c.cmdWithSession(args...).Run(ctx)
+	out, err := c.cmdWithSession(args...).WithStdin(objEncoded).Run(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -263,9 +260,8 @@ func (c *client) editItemCollections(ctx context.Context, objId string, collecti
 		"edit",
 		"item-collections",
 		objId,
-		string(collectionIdsJSON),
 	}
-	out, err := c.cmdWithSession(args...).Run(ctx)
+	out, err := c.cmdWithSession(args...).WithStdin(collectionIdsJSON).Run(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error editing item collections: %w", err)
 	}

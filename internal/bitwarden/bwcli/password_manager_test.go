@@ -13,8 +13,9 @@ import (
 )
 
 func TestCreateObjectEncoding(t *testing.T) {
+	const encoded = "eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwic3NoS2V5Ijp7fSwidHlwZSI6MX0"
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwic3NoS2V5Ijp7fSwidHlwZSI6MX0": `{}`,
+		"create item": `{}`,
 	})
 	defer removeMocks(t)
 
@@ -33,13 +34,14 @@ func TestCreateObjectEncoding(t *testing.T) {
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
-		assert.Equal(t, "create item eyJmaWVsZHMiOlt7Im5hbWUiOiJ0ZXN0IiwidmFsdWUiOiJwYXNzZWQiLCJ0eXBlIjowLCJsaW5rZWRJZCI6bnVsbH1dLCJsb2dpbiI6e30sIm9iamVjdCI6Iml0ZW0iLCJzZWN1cmVOb3RlIjp7fSwic3NoS2V5Ijp7fSwidHlwZSI6MX0", commandsExecuted()[0])
+		assertStdinCommand(t, commandsExecuted()[0], "create item", encoded)
 	}
 }
 
 func TestCreateOrgCollection(t *testing.T) {
+	const encoded = "eyJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ"
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"create org-collection eyJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ --organizationid org-id": `{}`,
+		"create org-collection --organizationid org-id": `{}`,
 	})
 	defer removeMocks(t)
 
@@ -52,13 +54,14 @@ func TestCreateOrgCollection(t *testing.T) {
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 1) {
-		assert.Equal(t, "create org-collection eyJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ --organizationid org-id", commandsExecuted()[0])
+		assertStdinCommand(t, commandsExecuted()[0], "create org-collection --organizationid org-id", encoded)
 	}
 }
 
 func TestEditOrgCollection(t *testing.T) {
+	const encoded = "eyJpZCI6IjEyMzQiLCJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ"
 	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
-		"edit org-collection 1234 --organizationid org-id eyJpZCI6IjEyMzQiLCJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ": `{}`,
+		"edit org-collection 1234 --organizationid org-id": `{}`,
 		"sync": `{}`,
 	})
 	defer removeMocks(t)
@@ -73,7 +76,7 @@ func TestEditOrgCollection(t *testing.T) {
 
 	assert.NoError(t, err)
 	if assert.Len(t, commandsExecuted(), 2) {
-		assert.Equal(t, "edit org-collection 1234 --organizationid org-id eyJpZCI6IjEyMzQiLCJuYW1lIjoidGVzdCIsIm9iamVjdCI6Im9yZy1jb2xsZWN0aW9uIiwib3JnYW5pemF0aW9uSWQiOiJvcmctaWQiLCJ1c2VycyI6bnVsbCwiZ3JvdXBzIjpudWxsfQ", commandsExecuted()[0])
+		assertStdinCommand(t, commandsExecuted()[0], "edit org-collection 1234 --organizationid org-id", encoded)
 	}
 }
 
@@ -167,4 +170,10 @@ func TestSettingAppDataDir(t *testing.T) {
 	assert.Contains(t, pwWithoutCustomAppDataDir.env(), envKV("HOME"))
 	assert.Contains(t, pwWithoutCustomAppDataDir.env(), envKV("XDG_CONFIG_HOME"))
 	assert.Contains(t, pwWithoutCustomAppDataDir.env(), envKV("APPDATA"))
+}
+
+func assertStdinCommand(t *testing.T, executed, args, stdin string) {
+	t.Helper()
+	assert.Equal(t, stdin+":/:"+args, executed)
+	assert.NotContains(t, args, stdin)
 }
