@@ -38,6 +38,10 @@ The plugin has been tested with the following components:
 The provider is likely to work with older versions of the Bitwarden backends/CLIs, but those haven't necessarily been tested.
 If you encounter issues with recent versions of the Bitwarden CLI, consider trying out the [Embedded Client](#embedded-client).
 
+For multiple secrets, the `bitwarden_secrets` [ephemeral resource](docs/ephemeral-resources/secrets.md)
+accepts a set of secret IDs and returns a sensitive map of objects containing `value`, `key`, and `note`,
+keyed by canonical lowercase IDs.
+
 ## Usage
 
 The complete documentation for this provider can be found on the [Terraform Registry docs].
