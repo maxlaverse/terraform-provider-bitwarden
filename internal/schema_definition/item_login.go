@@ -3,8 +3,11 @@ package schema_definition
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
@@ -86,6 +89,17 @@ func StrMatchToInt(ctx context.Context, match string) *models.URIMatch {
 func LoginResourceSchema() rsschema.Schema {
 	attrs := itemBaseResourceAttributes()
 	attrs[AttributeLoginPassword] = rsschema.StringAttribute{Description: DescriptionLoginPassword, Optional: true, Computed: true, Sensitive: true}
+	attrs[AttributeLoginPasswordWO] = rsschema.StringAttribute{
+		Description: DescriptionLoginPasswordWO,
+		Optional:    true,
+		Sensitive:   true,
+		WriteOnly:   true,
+		Validators: []validator.String{
+			stringvalidator.ConflictsWith(path.MatchRoot(AttributeLoginPassword)),
+			stringvalidator.AlsoRequires(path.MatchRoot(AttributeLoginPasswordWOVersion)),
+		},
+	}
+	attrs[AttributeLoginPasswordWOVersion] = rsschema.Int64Attribute{Description: DescriptionLoginPasswordWOVersion, Optional: true}
 	attrs[AttributeLoginUsername] = rsschema.StringAttribute{Description: DescriptionLoginUsername, Optional: true, Computed: true, Sensitive: true}
 	attrs[AttributeLoginTotp] = rsschema.StringAttribute{Description: DescriptionLoginTotp, Optional: true, Computed: true, Sensitive: true}
 	attrs[AttributeFavorite] = rsschema.BoolAttribute{Description: DescriptionFavorite, Optional: true, Computed: true}

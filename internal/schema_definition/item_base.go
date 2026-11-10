@@ -169,7 +169,7 @@ func itemBaseResourceAttributes() map[string]rsschema.Attribute {
 			Description:   DescriptionOrganizationID,
 			Optional:      true,
 			Computed:      true,
-			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown(), stringplanmodifier.RequiresReplace()},
 		},
 		AttributeReprompt: rsschema.BoolAttribute{
 			Description: DescriptionReprompt,
