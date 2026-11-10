@@ -432,3 +432,57 @@ func TestAccResourceItemLoginPasswordWriteOnly(t *testing.T) {
 		},
 	})
 }
+
+func TestAccResourceItemLoginFieldsWriteOnly(t *testing.T) {
+	ensureTestConfigurationReady(t)
+
+	resourceName := "bitwarden_item_login.wof"
+	var objectID string
+	cfg := func(secret string, version int) string {
+		return tfConfigPasswordManagerProvider(testAccountFullAdmin) + fmt.Sprintf(`
+	resource "bitwarden_item_login" "wof" {
+		provider = bitwarden
+		name     = "login-fields-write-only"
+		field {
+			name = "type"
+			text = "generic"
+		}
+		fields_wo         = { "client-secret" = %q }
+		fields_wo_version = %d
+	}
+	data "bitwarden_item_login" "wof_read" {
+		provider = bitwarden
+		id       = bitwarden_item_login.wof.id
+	}
+`, secret, version)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: cfg("first-secret", 1),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "field.#", "1"),
+					resource.TestCheckNoResourceAttr(resourceName, "fields_wo"),
+					resource.TestCheckResourceAttr(resourceName, "fields_wo_version", "1"),
+					getObjectID(resourceName, &objectID),
+					resource.TestCheckResourceAttr("data.bitwarden_item_login.wof_read", "field.#", "2"),
+					resource.TestCheckResourceAttr("data.bitwarden_item_login.wof_read", "field.1.hidden", "first-secret"),
+				),
+			},
+			{
+				// same version, new value: not re-sent into the plan, no diff
+				Config: cfg("ignored-secret", 1),
+				Check:  resource.TestCheckResourceAttr("data.bitwarden_item_login.wof_read", "field.1.hidden", "first-secret"),
+			},
+			{
+				Config: cfg("second-secret", 2),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrPtr(resourceName, "id", &objectID),
+					resource.TestCheckResourceAttr("data.bitwarden_item_login.wof_read", "field.1.hidden", "second-secret"),
+				),
+			},
+		},
+	})
+}
