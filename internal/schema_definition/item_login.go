@@ -3,12 +3,14 @@ package schema_definition
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/mapvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	epschema "github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
@@ -101,6 +103,17 @@ func LoginResourceSchema() rsschema.Schema {
 		},
 	}
 	attrs[AttributeLoginPasswordWOVersion] = rsschema.Int64Attribute{Description: DescriptionLoginPasswordWOVersion, Optional: true}
+	attrs[AttributeLoginFieldsWO] = rsschema.MapAttribute{
+		Description: DescriptionLoginFieldsWO,
+		ElementType: types.StringType,
+		Optional:    true,
+		Sensitive:   true,
+		WriteOnly:   true,
+		Validators: []validator.Map{
+			mapvalidator.AlsoRequires(path.MatchRoot(AttributeLoginFieldsWOVersion)),
+		},
+	}
+	attrs[AttributeLoginFieldsWOVersion] = rsschema.Int64Attribute{Description: DescriptionLoginFieldsWOVersion, Optional: true}
 	attrs[AttributeLoginUsername] = rsschema.StringAttribute{Description: DescriptionLoginUsername, Optional: true, Computed: true, Sensitive: true}
 	attrs[AttributeLoginTotp] = rsschema.StringAttribute{Description: DescriptionLoginTotp, Optional: true, Computed: true, Sensitive: true}
 	attrs[AttributeFavorite] = rsschema.BoolAttribute{Description: DescriptionFavorite, Optional: true, Computed: true}

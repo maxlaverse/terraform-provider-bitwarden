@@ -60,6 +60,8 @@ resource "bitwarden_item_login" "administrative-user" {
 - `password` (String, Sensitive) Login password.
 - `password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only login password. Never stored in plan or state. Requires Terraform 1.11+. Conflicts with `password`.
 - `password_wo_version` (Number) Change this number to make Terraform re-send `password_wo`, which is invisible to diffs. Required with `password_wo`.
+- `fields_wo` (Map of String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only map of hidden custom field name to value. Values are sent to Bitwarden but never stored in Terraform state or plan; a name must not also appear in a `field` block. Requires `fields_wo_version`.
+- `fields_wo_version` (Number) Change this number to make Terraform re-send `fields_wo`, which is invisible to diffs. Required with `fields_wo`.
 - `reprompt` (Boolean) Require master password 're-prompt' when displaying secret in the UI.
 - `totp` (String, Sensitive) TOTP authenticator secret (the seed, not a generated one-time code).
 - `uri` (Block List) URI. (see [below for nested schema](#nestedblock--uri))
