@@ -4,6 +4,7 @@ import (
 	"context"
 
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	epschema "github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
@@ -112,7 +113,27 @@ func LoginDataSourceSchema() dsschema.Schema {
 	attrs[AttributeFilterURL] = dsschema.StringAttribute{Description: DescriptionFilterURL, Optional: true}
 
 	return dsschema.Schema{
-		Description: "Use this data source to get information on an existing login item.",
-		Attributes:  attrs,
+		MarkdownDescription: "Use this data source to get information on an existing login item. " +
+			"The login username, password, TOTP, notes, and fields are stored in Terraform plan and state. " +
+			"To read a login item without persisting it, use the `bitwarden_item_login` ephemeral resource.",
+		Attributes: attrs,
+	}
+}
+
+func LoginEphemeralResourceSchema() epschema.Schema {
+	attrs := itemBaseEphemeralAttributes()
+	attrs[AttributeLoginPassword] = epschema.StringAttribute{Description: DescriptionLoginPassword, Computed: true, Sensitive: true}
+	attrs[AttributeLoginUsername] = epschema.StringAttribute{Description: DescriptionLoginUsername, Computed: true, Sensitive: true}
+	attrs[AttributeLoginTotp] = epschema.StringAttribute{Description: DescriptionLoginTotp, Computed: true, Sensitive: true}
+	attrs[AttributeFavorite] = epschema.BoolAttribute{Description: DescriptionFavorite, Computed: true}
+	attrs[AttributeLoginURIs] = uriEphemeralAttribute()
+	attrs[AttributeAttachments] = attachmentsEphemeralAttribute()
+	attrs[AttributeFilterURL] = epschema.StringAttribute{Description: DescriptionFilterURL, Optional: true}
+
+	return epschema.Schema{
+		MarkdownDescription: "Reads an existing Password Manager login item without persisting its data in plan or state files. " +
+			"Unlike the `bitwarden_item_login` data source, values are not stored in plan or state. " +
+			"Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument.",
+		Attributes: attrs,
 	}
 }

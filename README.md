@@ -127,6 +127,11 @@ resource "bitwarden_item_login" "example" {
 data "bitwarden_item_login" "example" {
   search = "Example"
 }
+
+# or read credentials without persisting them in state
+ephemeral "bitwarden_item_login" "example" {
+  search = "Example"
+}
 ```
 
 See the [examples](./examples/) directory for more examples.

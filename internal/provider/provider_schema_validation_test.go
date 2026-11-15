@@ -58,6 +58,14 @@ func TestProviderSchemaValidity(t *testing.T) {
 			t.Fatalf("expected Framework %s data source to be registered", name)
 		}
 	}
+	for _, name := range []string{
+		"bitwarden_item_login",
+		"bitwarden_secret",
+	} {
+		if _, ok := resp.EphemeralResourceSchemas[name]; !ok {
+			t.Fatalf("expected Framework %s ephemeral resource to be registered", name)
+		}
+	}
 }
 
 func TestProviderAuthUsingAPIKey(t *testing.T) {

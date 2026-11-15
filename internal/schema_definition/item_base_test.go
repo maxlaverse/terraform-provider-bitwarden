@@ -20,6 +20,14 @@ func TestSensisitiveFieldsAreMarkedAsSensitive(t *testing.T) {
 	}
 
 	assert.ElementsMatch(t, []string{"notes", "field", "password", "username", "totp"}, sensitiveFields)
+
+	ephemeralSensitive := []string{}
+	for k, v := range LoginEphemeralResourceSchema().Attributes {
+		if v.IsSensitive() {
+			ephemeralSensitive = append(ephemeralSensitive, k)
+		}
+	}
+	assert.ElementsMatch(t, []string{"notes", "field", "password", "username", "totp"}, ephemeralSensitive)
 }
 
 func TestResourceFieldNestedAttributesAreSensitive(t *testing.T) {
