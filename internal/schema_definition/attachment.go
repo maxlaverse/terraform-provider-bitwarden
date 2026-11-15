@@ -2,6 +2,7 @@ package schema_definition
 
 import (
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	epschema "github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -84,7 +85,9 @@ func AttachmentResourceSchema() rsschema.Schema {
 
 func AttachmentDataSourceSchema() dsschema.Schema {
 	return dsschema.Schema{
-		MarkdownDescription: "Use this data source to get the content on an existing item's attachment.",
+		MarkdownDescription: "Use this data source to get the content on an existing item's attachment. " +
+			"The attachment content is stored in Terraform plan and state. " +
+			"To read an attachment without persisting it, use the `bitwarden_attachment` ephemeral resource.",
 		Attributes: map[string]dsschema.Attribute{
 			AttributeID: dsschema.StringAttribute{
 				MarkdownDescription: DescriptionIdentifier,
@@ -95,6 +98,29 @@ func AttachmentDataSourceSchema() dsschema.Schema {
 				Required:            true,
 			},
 			AttributeAttachmentContent: dsschema.StringAttribute{
+				MarkdownDescription: DescriptionItemAttachmentContent,
+				Computed:            true,
+				Sensitive:           true,
+			},
+		},
+	}
+}
+
+func AttachmentEphemeralResourceSchema() epschema.Schema {
+	return epschema.Schema{
+		MarkdownDescription: "Reads an existing item attachment without persisting its content in plan or state files. " +
+			"Unlike the `bitwarden_attachment` data source, values are not stored in plan or state. " +
+			"Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument.",
+		Attributes: map[string]epschema.Attribute{
+			AttributeID: epschema.StringAttribute{
+				MarkdownDescription: DescriptionIdentifier,
+				Required:            true,
+			},
+			AttributeAttachmentItemID: epschema.StringAttribute{
+				MarkdownDescription: DescriptionItemIdentifier,
+				Required:            true,
+			},
+			AttributeAttachmentContent: epschema.StringAttribute{
 				MarkdownDescription: DescriptionItemAttachmentContent,
 				Computed:            true,
 				Sensitive:           true,

@@ -3,16 +3,18 @@
 page_title: "bitwarden_attachment Data Source - bitwarden"
 subcategory: ""
 description: |-
-  Use this data source to get the content on an existing item's attachment.
+  Use this data source to get the content on an existing item's attachment. The attachment content is stored in Terraform plan and state. To read an attachment without persisting it, use the bitwarden_attachment ephemeral resource.
 ---
 
 # bitwarden_attachment (Data Source)
 
-Use this data source to get the content on an existing item's attachment.
+Use this data source to get the content on an existing item's attachment. The attachment content is stored in Terraform plan and state. To read an attachment without persisting it, use the `bitwarden_attachment` ephemeral resource.
 
 ## Example Usage
 
 ```terraform
+# Values from this data source are stored in Terraform state. Use
+# ephemeral.bitwarden_attachment when the content should not be persisted.
 data "bitwarden_item_login" "ssh" {
   search = "VPN/Credentials"
 }
