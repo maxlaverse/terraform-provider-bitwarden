@@ -270,10 +270,35 @@ func TestRetryRoundTripper_5xxWithPOST(t *testing.T) {
 	lowerBackoffFactor()
 	defer lowerBackoffFactor()
 
-	// Create a transport that returns 503 (5xx) with POST - should not retry because POST is not retryable
+	// 503 on POST (e.g. /identity/connect/token) is retried; the body is rewound.
 	transport := &mockTransport{
 		responses: []*http.Response{
 			{StatusCode: http.StatusServiceUnavailable},
+			{StatusCode: http.StatusOK},
+		},
+		errors: []error{nil, nil},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
+	rrt.Transport = transport
+
+	req, err := http.NewRequest("POST", "http://example.com/identity/connect/token", bytes.NewReader([]byte("grant_type=client_credentials")))
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, 2, transport.index)
+}
+
+func TestRetryRoundTripper_500WithPOST(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	// 500 on POST is not retried: the write may already have been applied.
+	transport := &mockTransport{
+		responses: []*http.Response{
+			{StatusCode: http.StatusInternalServerError},
 		},
 		errors: []error{nil},
 	}
@@ -281,12 +306,12 @@ func TestRetryRoundTripper_5xxWithPOST(t *testing.T) {
 	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
 	rrt.Transport = transport
 
-	req, err := http.NewRequest("POST", "http://example.com", nil)
+	req, err := http.NewRequest("POST", "http://example.com", bytes.NewReader([]byte("body")))
 	require.NoError(t, err)
 
 	resp, err := rrt.RoundTrip(req)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	assert.Equal(t, 1, transport.index)
 }
 

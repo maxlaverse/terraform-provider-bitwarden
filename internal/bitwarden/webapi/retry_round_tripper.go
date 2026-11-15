@@ -295,16 +295,20 @@ func preserveResponseBody(resp *http.Response) error {
 }
 
 // isRetriableStatusCode determines if a status code is retryable based on the HTTP method.
-// - 4xx status codes: retryable for both GET and POST
-// - 5xx status codes: retryable for GET only if the code is in retryableStatusCodes
+// - 4xx status codes (currently 429): retryable for both GET and POST
+// - 503: retryable for GET and POST (service unavailable; the request was not processed)
+// - other listed 5xx (currently 500): retryable for GET only, to avoid duplicating writes
 func isRetriableStatusCode(method string, statusCode int) bool {
 	if !slices.Contains(retryableStatusCodes, statusCode) {
 		return false
 	}
 
+	isGetOrPost := method == http.MethodGet || method == http.MethodPost
 	switch {
 	case statusCode >= 400 && statusCode < 500:
-		return method == http.MethodGet || method == http.MethodPost
+		return isGetOrPost
+	case statusCode == http.StatusServiceUnavailable:
+		return isGetOrPost
 	case statusCode >= 500 && statusCode < 600:
 		return method == http.MethodGet
 	}
