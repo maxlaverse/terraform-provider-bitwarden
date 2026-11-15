@@ -3,16 +3,18 @@
 page_title: "bitwarden_item_secure_note Data Source - bitwarden"
 subcategory: ""
 description: |-
-  Use this data source to get information on an existing secure note item.
+  Use this data source to get information on an existing secure note item. The notes and fields are stored in Terraform plan and state. To read a secure note item without persisting it, use the bitwarden_item_secure_note ephemeral resource.
 ---
 
 # bitwarden_item_secure_note (Data Source)
 
-Use this data source to get information on an existing secure note item.
+Use this data source to get information on an existing secure note item. The notes and fields are stored in Terraform plan and state. To read a secure note item without persisting it, use the `bitwarden_item_secure_note` ephemeral resource.
 
 ## Example Usage
 
 ```terraform
+# Values from this data source are stored in Terraform state. Use
+# ephemeral.bitwarden_item_secure_note when the note should not be persisted.
 data "bitwarden_item_secure_note" "vpn_preshared_key" {
   search = "VPN/Pre-sharedSecret"
 }

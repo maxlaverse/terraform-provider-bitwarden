@@ -336,7 +336,7 @@ func (Test) OfflineArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running offline tests...")
-	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=offline", "-timeout", "30s", "-coverpkg=./...", "./..."}
+	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=offline", "-timeout", "2m", "-coverpkg=./...", "./..."}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern)
 	}

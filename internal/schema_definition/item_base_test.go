@@ -36,6 +36,14 @@ func TestSensisitiveFieldsAreMarkedAsSensitive(t *testing.T) {
 		}
 	}
 	assert.ElementsMatch(t, []string{"notes", "field", "private_key", "public_key", "key_fingerprint"}, sshSensitive)
+
+	noteSensitive := []string{}
+	for k, v := range SecureNoteEphemeralResourceSchema().Attributes {
+		if v.IsSensitive() {
+			noteSensitive = append(noteSensitive, k)
+		}
+	}
+	assert.ElementsMatch(t, []string{"notes", "field"}, noteSensitive)
 }
 
 func TestResourceFieldNestedAttributesAreSensitive(t *testing.T) {

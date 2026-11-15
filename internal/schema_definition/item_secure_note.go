@@ -2,6 +2,7 @@ package schema_definition
 
 import (
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	epschema "github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
@@ -25,7 +26,22 @@ func SecureNoteDataSourceSchema() dsschema.Schema {
 	attrs[AttributeAttachments] = attachmentsDataSourceAttribute()
 
 	return dsschema.Schema{
-		Description: "Use this data source to get information on an existing secure note item.",
-		Attributes:  attrs,
+		MarkdownDescription: "Use this data source to get information on an existing secure note item. " +
+			"The notes and fields are stored in Terraform plan and state. " +
+			"To read a secure note item without persisting it, use the `bitwarden_item_secure_note` ephemeral resource.",
+		Attributes: attrs,
+	}
+}
+
+func SecureNoteEphemeralResourceSchema() epschema.Schema {
+	attrs := itemBaseEphemeralAttributes()
+	attrs[AttributeFavorite] = epschema.BoolAttribute{Description: DescriptionFavorite, Computed: true}
+	attrs[AttributeAttachments] = attachmentsEphemeralAttribute()
+
+	return epschema.Schema{
+		MarkdownDescription: "Reads an existing Password Manager secure note item without persisting its data in plan or state files. " +
+			"Unlike the `bitwarden_item_secure_note` data source, values are not stored in plan or state. " +
+			"Use the result in an ephemeral context, such as a provider configuration or a write-only resource argument.",
+		Attributes: attrs,
 	}
 }
