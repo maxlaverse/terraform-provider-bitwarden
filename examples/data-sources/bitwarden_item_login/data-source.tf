@@ -1,3 +1,5 @@
+# Values from this data source are stored in Terraform state. Use
+# ephemeral.bitwarden_item_login when credentials should not be persisted.
 data "bitwarden_item_login" "vpn_credentials" {
   search = "VPN/Credentials"
 }

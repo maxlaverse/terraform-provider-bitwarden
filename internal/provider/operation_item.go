@@ -6,6 +6,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
+	epschema "github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -222,4 +224,61 @@ func (d *itemDataSource[T]) Read(ctx context.Context, req datasource.ReadRequest
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, d.resultToState(attr, cfg))...)
+}
+
+type itemEphemeralResource[T any] struct {
+	clients        *ProviderClients
+	typeNameSuffix string
+	itemType       models.ItemType
+	schema         func() epschema.Schema
+	// prepareAttr builds the lookup MapData (including filters) from config and
+	// returns the optional explicit object ID for Get vs Search.
+	prepareAttr func(context.Context, T) (attr *transformation.MapData, objectID string)
+	// resultToState merges the API-backed MapData with the original config
+	// (typically to preserve filter attributes).
+	resultToState func(attr *transformation.MapData, cfg T) T
+}
+
+func (r *itemEphemeralResource[T]) Metadata(_ context.Context, req ephemeral.MetadataRequest, resp *ephemeral.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + r.typeNameSuffix
+}
+
+func (r *itemEphemeralResource[T]) Schema(_ context.Context, _ ephemeral.SchemaRequest, resp *ephemeral.SchemaResponse) {
+	resp.Schema = r.schema()
+}
+
+func (r *itemEphemeralResource[T]) Configure(_ context.Context, req ephemeral.ConfigureRequest, resp *ephemeral.ConfigureResponse) {
+	clients, ok := clientsFromProviderData(req.ProviderData, &resp.Diagnostics)
+	if !ok {
+		return
+	}
+	r.clients = clients
+}
+
+func (r *itemEphemeralResource[T]) Open(ctx context.Context, req ephemeral.OpenRequest, resp *ephemeral.OpenResponse) {
+	var cfg T
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	bwClient, ok := requirePasswordManager(r.clients, &resp.Diagnostics)
+	if !ok {
+		return
+	}
+
+	attr, objectID := r.prepareAttr(ctx, cfg)
+
+	var err error
+	if objectID != "" {
+		err = itemGet(ctx, bwClient, r.itemType, attr)
+	} else {
+		err = itemSearch(ctx, bwClient, r.itemType, attr)
+	}
+	if err != nil {
+		addErr(&resp.Diagnostics, err)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.Result.Set(ctx, r.resultToState(attr, cfg))...)
 }

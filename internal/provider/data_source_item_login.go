@@ -21,18 +21,22 @@ func NewItemLoginDataSource() datasource.DataSource {
 		typeNameSuffix: "_item_login",
 		itemType:       models.ItemTypeLogin,
 		schema:         schema_definition.LoginDataSourceSchema,
-		prepareAttr: func(ctx context.Context, cfg itemLoginDataSourceModel) (*transformation.MapData, string) {
-			attr := loginToData(ctx, cfg.itemLoginModel)
-			cfg.itemFilterModel.applyTo(attr)
-			_ = attr.Set(schema_definition.AttributeFilterURL, cfg.FilterURL.ValueString())
-			return attr, cfg.ID.ValueString()
-		},
-		resultToState: func(attr *transformation.MapData, cfg itemLoginDataSourceModel) itemLoginDataSourceModel {
-			return itemLoginDataSourceModel{
-				itemLoginModel:  loginFromData(attr),
-				itemFilterModel: cfg.itemFilterModel,
-				FilterURL:       cfg.FilterURL,
-			}
-		},
+		prepareAttr:    prepareItemLoginAttr,
+		resultToState:  itemLoginResultToState,
+	}
+}
+
+func prepareItemLoginAttr(ctx context.Context, cfg itemLoginDataSourceModel) (*transformation.MapData, string) {
+	attr := loginToData(ctx, cfg.itemLoginModel)
+	cfg.itemFilterModel.applyTo(attr)
+	_ = attr.Set(schema_definition.AttributeFilterURL, cfg.FilterURL.ValueString())
+	return attr, cfg.ID.ValueString()
+}
+
+func itemLoginResultToState(attr *transformation.MapData, cfg itemLoginDataSourceModel) itemLoginDataSourceModel {
+	return itemLoginDataSourceModel{
+		itemLoginModel:  loginFromData(attr),
+		itemFilterModel: cfg.itemFilterModel,
+		FilterURL:       cfg.FilterURL,
 	}
 }
