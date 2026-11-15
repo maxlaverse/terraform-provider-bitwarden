@@ -3,16 +3,18 @@
 page_title: "bitwarden_item_ssh_key Data Source - bitwarden"
 subcategory: ""
 description: |-
-  Use this data source to get information on an existing SSH key item.
+  Use this data source to get information on an existing SSH key item. The private key, public key, fingerprint, notes, and fields are stored in Terraform plan and state. To read an SSH key item without persisting it, use the bitwarden_item_ssh_key ephemeral resource.
 ---
 
 # bitwarden_item_ssh_key (Data Source)
 
-Use this data source to get information on an existing SSH key item.
+Use this data source to get information on an existing SSH key item. The private key, public key, fingerprint, notes, and fields are stored in Terraform plan and state. To read an SSH key item without persisting it, use the `bitwarden_item_ssh_key` ephemeral resource.
 
 ## Example Usage
 
 ```terraform
+# Values from this data source are stored in Terraform state. Use
+# ephemeral.bitwarden_item_ssh_key when the key should not be persisted.
 data "bitwarden_item_ssh_key" "git_ssh_key" {
   search = "Git/SSH Key"
 }
