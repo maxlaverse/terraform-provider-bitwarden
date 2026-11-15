@@ -60,6 +60,7 @@ func TestProviderSchemaValidity(t *testing.T) {
 	}
 	for _, name := range []string{
 		"bitwarden_item_login",
+		"bitwarden_item_secure_note",
 		"bitwarden_item_ssh_key",
 		"bitwarden_secret",
 	} {

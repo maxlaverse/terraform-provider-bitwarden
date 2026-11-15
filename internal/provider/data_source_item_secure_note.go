@@ -19,16 +19,20 @@ func NewItemSecureNoteDataSource() datasource.DataSource {
 		typeNameSuffix: "_item_secure_note",
 		itemType:       models.ItemTypeSecureNote,
 		schema:         schema_definition.SecureNoteDataSourceSchema,
-		prepareAttr: func(ctx context.Context, cfg itemSecureNoteDataSourceModel) (*transformation.MapData, string) {
-			attr := secureNoteToData(ctx, cfg.itemSecureNoteModel)
-			cfg.itemFilterModel.applyTo(attr)
-			return attr, cfg.ID.ValueString()
-		},
-		resultToState: func(attr *transformation.MapData, cfg itemSecureNoteDataSourceModel) itemSecureNoteDataSourceModel {
-			return itemSecureNoteDataSourceModel{
-				itemSecureNoteModel: secureNoteFromData(attr),
-				itemFilterModel:     cfg.itemFilterModel,
-			}
-		},
+		prepareAttr:    prepareItemSecureNoteAttr,
+		resultToState:  itemSecureNoteResultToState,
+	}
+}
+
+func prepareItemSecureNoteAttr(ctx context.Context, cfg itemSecureNoteDataSourceModel) (*transformation.MapData, string) {
+	attr := secureNoteToData(ctx, cfg.itemSecureNoteModel)
+	cfg.itemFilterModel.applyTo(attr)
+	return attr, cfg.ID.ValueString()
+}
+
+func itemSecureNoteResultToState(attr *transformation.MapData, cfg itemSecureNoteDataSourceModel) itemSecureNoteDataSourceModel {
+	return itemSecureNoteDataSourceModel{
+		itemSecureNoteModel: secureNoteFromData(attr),
+		itemFilterModel:     cfg.itemFilterModel,
 	}
 }
