@@ -45,7 +45,7 @@ func tfConfigResourceItemSecureNote() string {
 		organization_id     = "%s"
 		collection_ids		= ["%s"]
 		folder_id 			= "%s"
-		name     			= "secure-bar"
+		name     			= "%s"
 		notes 				= "notes"
 		reprompt			= true
 		favorite            = true 
@@ -65,7 +65,7 @@ func tfConfigResourceItemSecureNote() string {
 			hidden = "value-hidden"
 		}
 	}
-`, testConfiguration.Resources.OrganizationID, testConfiguration.Resources.CollectionID, testConfiguration.Resources.FolderID)
+`, testConfiguration.Resources.OrganizationID, testConfiguration.Resources.CollectionID, testConfiguration.Resources.FolderID, testName("secure-bar"))
 }
 
 func checkItemSecureNote(resourceName string) resource.TestCheckFunc {

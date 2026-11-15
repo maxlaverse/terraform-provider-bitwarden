@@ -52,27 +52,27 @@ func TestResourceSecret(t *testing.T) {
 			},
 			// Test Creating Secret with INEXISTENT Project
 			{
-				Config: tfProvider + tfConfigResourceProject("foo", "project-foo") + tfConfigResourceSecret("foo", projectResourceId),
+				Config: tfProvider + tfConfigResourceProject("foo", testName("project-foo")) + tfConfigResourceSecret("foo", projectResourceId),
 				Check:  checkSecret("bitwarden_secret.foo"),
 			},
 			// Test Sourcing Secret by ID
 			{
-				Config: tfProvider + tfConfigResourceProject("foo", "project-foo") + tfConfigResourceSecret("foo", projectResourceId) + tfConfigDataSecretByID("bitwarden_secret.foo.id"),
+				Config: tfProvider + tfConfigResourceProject("foo", testName("project-foo")) + tfConfigResourceSecret("foo", projectResourceId) + tfConfigDataSecretByID("bitwarden_secret.foo.id"),
 				Check:  checkSecret("data.bitwarden_secret.foo_data"),
 			},
 			// Test Sourcing Secret by ID with NO MATCH
 			{
-				Config:      tfProvider + tfConfigResourceProject("foo", "project-foo") + tfConfigResourceSecret("foo", projectResourceId) + tfConfigDataSecretByID("\"27a0007a-a517-4f25-8c2e-baf31ca3b034\""),
+				Config:      tfProvider + tfConfigResourceProject("foo", testName("project-foo")) + tfConfigResourceSecret("foo", projectResourceId) + tfConfigDataSecretByID("\"27a0007a-a517-4f25-8c2e-baf31ca3b034\""),
 				ExpectError: regexp.MustCompile("Error: object not found"),
 			},
 			// Test Sourcing Secret by KEY
 			{
-				Config: tfProvider + tfConfigResourceProject("foo", "project-foo") + tfConfigResourceSecret("foo", projectResourceId) + tfConfigDataSecretByKey(),
+				Config: tfProvider + tfConfigResourceProject("foo", testName("project-foo")) + tfConfigResourceSecret("foo", projectResourceId) + tfConfigDataSecretByKey(),
 				Check:  checkSecret("data.bitwarden_secret.foo_data"),
 			},
 			// Test Sourcing Secret with MULTIPLE MATCHES
 			{
-				Config:      tfProvider + tfConfigResourceProject("foo", "project-foo") + tfConfigResourceSecret("foo", projectResourceId) + tfConfigResourceSecret("foo2", projectResourceId) + tfConfigDataSecretByKey(),
+				Config:      tfProvider + tfConfigResourceProject("foo", testName("project-foo")) + tfConfigResourceSecret("foo", projectResourceId) + tfConfigResourceSecret("foo2", projectResourceId) + tfConfigDataSecretByKey(),
 				ExpectError: regexp.MustCompile("Error: too many objects found"),
 			},
 		},
@@ -82,7 +82,7 @@ func TestResourceSecret(t *testing.T) {
 func checkSecret(fullRessourceName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
 		resource.TestMatchResourceAttr(fullRessourceName, schema_definition.AttributeID, regexp.MustCompile("^([a-z0-9-]+)$")),
-		resource.TestCheckResourceAttr(fullRessourceName, schema_definition.AttributeKey, "login-bar"),
+		resource.TestCheckResourceAttr(fullRessourceName, schema_definition.AttributeKey, testName("login-bar")),
 		resource.TestCheckResourceAttr(fullRessourceName, schema_definition.AttributeValue, "value-bar"),
 		resource.TestCheckResourceAttr(fullRessourceName, schema_definition.AttributeNote, "note-bar"),
 		resource.TestMatchResourceAttr(fullRessourceName, schema_definition.AttributeProjectID, regexp.MustCompile("^([a-z0-9-]+)$")),
@@ -99,13 +99,13 @@ data "bitwarden_secret" "foo_data" {
 }
 
 func tfConfigDataSecretByKey() string {
-	return `
+	return fmt.Sprintf(`
 data "bitwarden_secret" "foo_data" {
 	provider	= bitwarden
 
-	key = "login-bar"
+	key = "%s"
 }
-`
+`, testName("login-bar"))
 }
 
 func tfConfigDataSecretWithoutAnyInput() string {
@@ -132,10 +132,10 @@ func tfConfigResourceSecret(resourceName, projectResourceId string) string {
 	resource "bitwarden_secret" "%s" {
 		provider = bitwarden
 
-		key = "login-bar"
+		key = "%s"
 		value = "value-bar"
 		note = "note-bar"
 		project_id = %s
 	}
-`, resourceName, projectResourceId)
+`, resourceName, testName("login-bar"), projectResourceId)
 }

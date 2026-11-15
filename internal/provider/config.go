@@ -404,7 +404,11 @@ func getOrGenerateDeviceIdentifier(ctx context.Context) (string, error) {
 	return deviceId, nil
 }
 
-func ensureLoggedInEmbeddedSecretsManager(ctx context.Context, cfg providerConfig, bwClient embedded.SecretsManager) error {
+type secretsManagerLogin interface {
+	LoginWithAccessToken(ctx context.Context, accessToken string) error
+}
+
+func ensureLoggedInEmbeddedSecretsManager(ctx context.Context, cfg providerConfig, bwClient secretsManagerLogin) error {
 	if !cfg.has(cfg.AccessToken) {
 		return fmt.Errorf("access token is required")
 	}

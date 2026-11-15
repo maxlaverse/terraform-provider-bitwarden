@@ -30,6 +30,7 @@ var providerFactories = map[string]func() (tfprotov6.ProviderServer, error){
 }
 
 func ensureTestConfigurationReady(t *testing.T) {
+	bindTestName(t)
 	ensureTestAccountsExist(t)
 	ensureTestResourcesExist(t)
 }
@@ -121,6 +122,7 @@ func tfConfigAttachmentSpecificPasswordManagerProvider() string {
 }
 
 func testOrRealSecretsManagerProvider(t *testing.T) (string, func()) {
+	bindTestName(t)
 	if IsOfficialBackend() {
 		t.Logf("Using real Bitwarden Secrets Manager")
 		return tfConfigSecretsManagerProvider(), func() {}

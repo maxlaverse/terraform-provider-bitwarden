@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"crypto/rand"
 	"fmt"
 	"os"
 	"path"
@@ -10,6 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/joho/godotenv"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
@@ -23,6 +25,8 @@ const (
 	defaultTestPassword = "test1234"
 
 	accountTypePremium = "premium"
+
+	testResourceNamePrefix = "tfacc"
 )
 
 type testBackendType string
@@ -63,6 +67,7 @@ type testConfigStruct struct {
 		GroupName      string
 	}
 	UniqueTestIdentifier          string
+	currentTestName               string
 	ServerURL                     string
 	ReverseProxyServerURL         string
 	UseEmbeddedClient             bool
@@ -152,6 +157,7 @@ func init() {
 
 	loadEnvironmentVariablesFromFiles()
 	loadTestServerConfiguration()
+	loadUniqueTestIdentifier()
 	loadTestAccountsConfiguration()
 	loadTestResourcesConfiguration()
 }
@@ -208,8 +214,67 @@ func loadOfficialBackendAccounts() {
 	}
 }
 
+func loadUniqueTestIdentifier() {
+	if v := os.Getenv("TEST_UNIQUE_IDENTIFIER"); v != "" {
+		testConfiguration.UniqueTestIdentifier = v
+		return
+	}
+
+	suffix := randomAlphaNum(4)
+	if runID := os.Getenv("GITHUB_RUN_ID"); runID != "" {
+		testConfiguration.UniqueTestIdentifier = fmt.Sprintf("%s-%s", runID, suffix)
+		return
+	}
+
+	testConfiguration.UniqueTestIdentifier = fmt.Sprintf("%d-%s", time.Now().UnixMilli(), suffix)
+}
+
+func randomAlphaNum(n int) string {
+	const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		panic(fmt.Sprintf("generating unique test identifier: %v", err))
+	}
+	for i := range b {
+		b[i] = alphabet[int(b[i])%len(alphabet)]
+	}
+	return string(b)
+}
+
+func bindTestName(t *testing.T) {
+	t.Helper()
+	testConfiguration.currentTestName = sanitizeTestName(t.Name())
+}
+
+func sanitizeTestName(name string) string {
+	name = strings.ToLower(name)
+	var b strings.Builder
+	for _, r := range name {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('-')
+		}
+	}
+	return strings.Trim(b.String(), "-")
+}
+
+// testName returns a unique object name for this suite/test, prefixed so leftovers
+// can be identified and swept without touching fixture resources.
+func testName(suffix string) string {
+	parts := []string{testResourceNamePrefix, testConfiguration.UniqueTestIdentifier}
+	if testConfiguration.currentTestName != "" {
+		parts = append(parts, testConfiguration.currentTestName)
+	}
+	parts = append(parts, suffix)
+	return strings.Join(parts, "-")
+}
+
+func testUsername() string {
+	return testName("test-username")
+}
+
 func loadVaultwardenBackendAccounts() {
-	testConfiguration.UniqueTestIdentifier = fmt.Sprintf("%02d%02d%02d", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 	baseName := fmt.Sprintf("test-%s", testConfiguration.UniqueTestIdentifier)
 	basePassword := defaultTestPassword
 

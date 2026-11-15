@@ -51,6 +51,7 @@ type PasswordManagerClient interface {
 	GetOrganizationMember(context.Context, models.OrgMember) (*models.OrgMember, error)
 	InviteUser(ctx context.Context, orgId, userEmail string, memberRoleType models.OrgMemberRoleType) error
 	IsSyncAfterWriteVerificationDisabled() bool
+	ListSyncedObjects() (items []models.Item, folders []models.Folder, collections []models.OrgCollection)
 	LoginWithAPIKey(ctx context.Context, password, clientId, clientSecret string) error
 	LoginWithPassword(ctx context.Context, username, password string) error
 	Logout(ctx context.Context) error
@@ -1097,6 +1098,25 @@ func (v *webAPIVault) Sync(ctx context.Context) error {
 	defer v.vaultOperationMutex.Unlock()
 
 	return v.sync(ctx)
+}
+
+// ListSyncedObjects returns decrypted items, folders, and collections from the
+// in-memory vault. Call Sync() first. Collection membership details may be missing.
+func (v *webAPIVault) ListSyncedObjects() (items []models.Item, folders []models.Folder, collections []models.OrgCollection) {
+	v.vaultOperationMutex.RLock()
+	defer v.vaultOperationMutex.RUnlock()
+
+	for _, raw := range v.objectStore {
+		switch obj := raw.(type) {
+		case models.Item:
+			items = append(items, obj)
+		case models.Folder:
+			folders = append(folders, obj)
+		case models.OrgCollection:
+			collections = append(collections, obj)
+		}
+	}
+	return
 }
 
 func (v *webAPIVault) sync(ctx context.Context) error {

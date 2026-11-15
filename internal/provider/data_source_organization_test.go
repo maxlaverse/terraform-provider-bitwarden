@@ -22,8 +22,8 @@ func TestAccDataSourceOrganizationAttributes(t *testing.T) {
 			resourceName, schema_definition.AttributeName, "TestOrganization",
 		)
 	} else {
-		nameAssertion = resource.TestMatchResourceAttr(
-			resourceName, schema_definition.AttributeName, regexp.MustCompile("^org-([0-9]{6})$"),
+		nameAssertion = resource.TestCheckResourceAttr(
+			resourceName, schema_definition.AttributeName, "org-"+testConfiguration.UniqueTestIdentifier,
 		)
 	}
 

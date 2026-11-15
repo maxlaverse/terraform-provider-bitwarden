@@ -26,6 +26,8 @@ type SecretsManager interface {
 	GetProject(ctx context.Context, project models.Project) (*models.Project, error)
 	GetSecret(ctx context.Context, secret models.Secret) (*models.Secret, error)
 	GetSecretByKey(ctx context.Context, secretKey string) (*models.Secret, error)
+	ListProjects(ctx context.Context) ([]models.Project, error)
+	ListSecrets(ctx context.Context) ([]models.Secret, error)
 	LoginWithAccessToken(ctx context.Context, accessToken string) error
 }
 type SecretsManagerOptions func(c bitwarden.SecretsManager)
@@ -272,6 +274,48 @@ func (v *secretsManager) GetSecretByKey(ctx context.Context, secretKey string) (
 	return v.GetSecret(ctx, models.Secret{
 		ID: secretIDsFound[0].ID,
 	})
+}
+
+func (v *secretsManager) ListSecrets(ctx context.Context) ([]models.Secret, error) {
+	if v.mainEncryptionKey == nil {
+		return nil, models.ErrLoggedOut
+	}
+
+	secretSummaries, err := v.client.GetSecrets(ctx, v.mainOrganizationId)
+	if err != nil {
+		return nil, fmt.Errorf("error listing secrets: %w", err)
+	}
+
+	out := make([]models.Secret, 0, len(secretSummaries))
+	for _, secret := range secretSummaries {
+		decSecret, err := decryptSecret(secret, *v.mainEncryptionKey)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting secret summary '%s': %w", secret.ID, err)
+		}
+		out = append(out, *decSecret)
+	}
+	return out, nil
+}
+
+func (v *secretsManager) ListProjects(ctx context.Context) ([]models.Project, error) {
+	if v.mainEncryptionKey == nil {
+		return nil, models.ErrLoggedOut
+	}
+
+	projects, err := v.client.GetProjects(ctx, v.mainOrganizationId)
+	if err != nil {
+		return nil, fmt.Errorf("error listing projects: %w", err)
+	}
+
+	out := make([]models.Project, 0, len(projects))
+	for _, project := range projects {
+		dec, err := decryptProject(project, *v.mainEncryptionKey)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting project '%s': %w", project.ID, err)
+		}
+		out = append(out, *dec)
+	}
+	return out, nil
 }
 
 func (v *secretsManager) LoginWithAccessToken(ctx context.Context, accessToken string) error {

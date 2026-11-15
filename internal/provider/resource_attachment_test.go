@@ -273,7 +273,7 @@ func tfConfigResourceAttachment(filepath string) string {
 resource "bitwarden_item_login" "foo" {
 	provider = bitwarden
 
-	name     = "foo"
+	name     = "` + testName("foo") + `"
 }
 
 resource "bitwarden_attachment" "foo" {
@@ -290,7 +290,7 @@ func tfConfigResourceOrganizationAttachment(filepath, organizationID string) str
 resource "bitwarden_item_login" "foo" {
 	provider = bitwarden
 
-	name     = "foo"
+	name     = "` + testName("foo") + `"
 	organization_id = "` + organizationID + `"
 	collection_ids = [
 		"` + testConfiguration.Resources.CollectionID + `"
@@ -311,7 +311,7 @@ func tfConfigResourceAttachmentFromContent(content string) string {
 resource "bitwarden_item_login" "foo" {
 	provider = bitwarden
 
-	name     = "foo"
+	name     = "` + testName("foo") + `"
 }
 
 resource "bitwarden_attachment" "foo" {
@@ -329,7 +329,7 @@ func tfConfigResourceAttachmentFromContentWithFilename() string {
 resource "bitwarden_item_login" "foo" {
 	provider = bitwarden
 
-	name     = "foo"
+	name     = "` + testName("foo") + `"
 }
 
 resource "bitwarden_attachment" "foo" {
@@ -346,7 +346,7 @@ func tfConfigResourceMultiAttachment() string {
 resource "bitwarden_item_login" "foo" {
 	provider = bitwarden
 
-	name     = "foo"
+	name     = "` + testName("foo") + `"
 }
 
 resource "bitwarden_attachment" "foo" {

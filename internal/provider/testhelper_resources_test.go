@@ -101,6 +101,7 @@ func ensureTestResourcesExist(t *testing.T) {
 }
 
 func ensureTestAccountsExist(t *testing.T) {
+	bindTestName(t)
 	if testConfiguration.WasAccountCreationAttempted(t) {
 		return
 	}
