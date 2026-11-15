@@ -9,7 +9,7 @@ description: |-
 Use the Bitwarden provider to manage your [Password Manager] Logins and Secure Notes, and [Secrets Manager] Secrets.
 You must configure the provider with proper credentials before you can use it.
 If you're not using `client_implementation = "embedded"`, you also need a [Password Manager CLI][Bitwarden CLI] or [Secrets Manager CLI][BWS CLI] installed locally.
-Password Manager login items can be read with the `bitwarden_item_login` data source or, without storing values in plan or state, with the `bitwarden_item_login` ephemeral resource.
+Password Manager login items and SSH keys can be read without storing values in plan or state with the `bitwarden_item_login` and `bitwarden_item_ssh_key` ephemeral resources.
 Secrets Manager secrets can be read with the `bitwarden_secret` data source or, without storing values in plan or state, with the `bitwarden_secret` ephemeral resource.
 
 -> **Note:** This provider requires Terraform 1.10 or later, or OpenTofu 1.12 or later (Protocol 6).
@@ -83,7 +83,7 @@ The Password Manager accepts different combinations of credentials to authentica
 * _Email and Password_ (requires `email` and `master_password` to be set) (prefer _Personal API keys_ instead).
 * User-provided _Session Key_ (requires `session_key` to be set), which only works with a pre-downloaded Vault (See _Generating a Session Key_).
 
-To read an existing login item without storing it in plan or state, use the `bitwarden_item_login` ephemeral resource instead of the data source.
+To read an existing login item or SSH key without storing it in plan or state, use the corresponding ephemeral resource instead of the data source.
 
 #### Generating a Client ID and Secret
 The recommended way to interact with your Password Manager Vault using the Bitwarden Provider Terraform plugin is to generate an API key.

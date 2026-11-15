@@ -19,16 +19,20 @@ func NewItemSSHKeyDataSource() datasource.DataSource {
 		typeNameSuffix: "_item_ssh_key",
 		itemType:       models.ItemTypeSSHKey,
 		schema:         schema_definition.SSHKeyDataSourceSchema,
-		prepareAttr: func(ctx context.Context, cfg itemSSHKeyDataSourceModel) (*transformation.MapData, string) {
-			attr := sshKeyToData(ctx, cfg.itemSSHKeyModel)
-			cfg.itemFilterModel.applyTo(attr)
-			return attr, cfg.ID.ValueString()
-		},
-		resultToState: func(attr *transformation.MapData, cfg itemSSHKeyDataSourceModel) itemSSHKeyDataSourceModel {
-			return itemSSHKeyDataSourceModel{
-				itemSSHKeyModel: sshKeyFromData(attr),
-				itemFilterModel: cfg.itemFilterModel,
-			}
-		},
+		prepareAttr:    prepareItemSSHKeyAttr,
+		resultToState:  itemSSHKeyResultToState,
+	}
+}
+
+func prepareItemSSHKeyAttr(ctx context.Context, cfg itemSSHKeyDataSourceModel) (*transformation.MapData, string) {
+	attr := sshKeyToData(ctx, cfg.itemSSHKeyModel)
+	cfg.itemFilterModel.applyTo(attr)
+	return attr, cfg.ID.ValueString()
+}
+
+func itemSSHKeyResultToState(attr *transformation.MapData, cfg itemSSHKeyDataSourceModel) itemSSHKeyDataSourceModel {
+	return itemSSHKeyDataSourceModel{
+		itemSSHKeyModel: sshKeyFromData(attr),
+		itemFilterModel: cfg.itemFilterModel,
 	}
 }
