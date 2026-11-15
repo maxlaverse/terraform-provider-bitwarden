@@ -134,6 +134,7 @@ jobs:
     concurrency:
       group: official-bitwarden-eu-pm
       cancel-in-progress: false
+      queue: max
 
     # Only runs after the Secrets Manager to prevent rate limiting on login.
     needs: [secrets_manager_bitwarden_embedded, secrets_manager_bitwarden_cli, check_secrets]
@@ -185,6 +186,7 @@ jobs:
     concurrency:
       group: official-bitwarden-eu-sm
       cancel-in-progress: false
+      queue: max
     needs: [check_secrets]
     if: needs.check_secrets.outputs.has_secrets == 'true'
     env:
@@ -213,6 +215,7 @@ jobs:
     concurrency:
       group: official-bitwarden-eu-sm
       cancel-in-progress: false
+      queue: max
     needs: [check_secrets, secrets_manager_bitwarden_cli]
     if: needs.check_secrets.outputs.has_secrets == 'true'
     env:
