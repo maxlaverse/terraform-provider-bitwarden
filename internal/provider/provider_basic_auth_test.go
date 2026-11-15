@@ -11,14 +11,14 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 )
 
-const (
-	testResource = `
+func tfConfigAuthTestResource() string {
+	return fmt.Sprintf(`
 	resource "bitwarden_item_login" "foo" {
 		provider = bitwarden
-		name     = "test"
+		name     = "%s"
 	}
-	`
-)
+	`, testName("test"))
+}
 
 func TestAccProviderAuthUsernamePassword(t *testing.T) {
 	SkipIfOfficialBackend(t, "Skipping test because official backend asks for a code to be sent to the email address")
@@ -32,21 +32,21 @@ func TestAccProviderAuthUsernamePassword(t *testing.T) {
 		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      invalidAccount + testResource,
+				Config:      invalidAccount + tfConfigAuthTestResource(),
 				ExpectError: regexp.MustCompile("(?i)username or password is incorrect"),
 			}, {
 				// We need to login with a valid account if we want to be able to
 				// test an invalid master password, as we do bellow.
-				Config: validProvider + testResource,
+				Config: validProvider + tfConfigAuthTestResource(),
 				Check:  checkResourceId(),
 			}, {
-				Config:      invalidPassword + testResource,
+				Config:      invalidPassword + tfConfigAuthTestResource(),
 				ExpectError: regexp.MustCompile("(?i)invalid master password"),
 				SkipFunc:    func() (bool, error) { return testConfiguration.UseEmbeddedClient, nil },
 			}, {
 				// We need to finish with a valid example if we don't want the TestStep to
 				// fail on post-destroy.
-				Config:   validProvider + testResource,
+				Config:   validProvider + tfConfigAuthTestResource(),
 				Check:    checkResourceId(),
 				SkipFunc: func() (bool, error) { return testConfiguration.UseEmbeddedClient, nil },
 			},
@@ -67,13 +67,13 @@ func TestAccProviderAuthSessionKey(t *testing.T) {
 		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      invalidProvider + testResource,
+				Config:      invalidProvider + tfConfigAuthTestResource(),
 				ExpectError: regexp.MustCompile("unable to unlock Vault with provided session key"),
 			},
 			{
 				// We need to finish with a valid example if we don't want the TestStep to
 				// fail on post-destroy.
-				Config: validProvider + testResource,
+				Config: validProvider + tfConfigAuthTestResource(),
 				Check:  checkResourceId(),
 			},
 		},

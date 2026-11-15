@@ -19,23 +19,23 @@ func TestResourceProject(t *testing.T) {
 		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfProvider + tfConfigResourceProject("foo", "project-foo"),
-				Check:  checkProject("bitwarden_project.foo", "project-foo"),
+				Config: tfProvider + tfConfigResourceProject("foo", testName("project-foo")),
+				Check:  checkProject("bitwarden_project.foo", testName("project-foo")),
 			},
 			// Test Sourcing Project by ID
 			{
-				Config: tfProvider + tfConfigResourceProject("foo", "project-foo") + tfConfigDataProjectByID("bitwarden_project.foo.id"),
-				Check:  checkProject("data.bitwarden_project.foo_data", "project-foo"),
+				Config: tfProvider + tfConfigResourceProject("foo", testName("project-foo")) + tfConfigDataProjectByID("bitwarden_project.foo.id"),
+				Check:  checkProject("data.bitwarden_project.foo_data", testName("project-foo")),
 			},
 			// Test Sourcing Project by ID with NO MATCH
 			{
-				Config:      tfProvider + tfConfigResourceProject("foo", "project-foo") + tfConfigDataProjectByID("\"27a0007a-a517-4f25-8c2e-baf31ca3b034\""),
+				Config:      tfProvider + tfConfigResourceProject("foo", testName("project-foo")) + tfConfigDataProjectByID("\"27a0007a-a517-4f25-8c2e-baf31ca3b034\""),
 				ExpectError: regexp.MustCompile("Error: object not found"),
 			},
 			// Test Editing Project
 			{
-				Config: tfProvider + tfConfigResourceProject("foo", "project-bar"),
-				Check:  checkProject("bitwarden_project.foo", "project-bar"),
+				Config: tfProvider + tfConfigResourceProject("foo", testName("project-bar")),
+				Check:  checkProject("bitwarden_project.foo", testName("project-bar")),
 			},
 		},
 	})

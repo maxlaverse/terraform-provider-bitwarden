@@ -26,10 +26,10 @@ func TestAccResourceOrgCollection(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection("org-col-bar", false),
+				Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection(testName("org-col-bar"), false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						resourceName, schema_definition.AttributeName, "org-col-bar",
+						resourceName, schema_definition.AttributeName, testName("org-col-bar"),
 					),
 					resource.TestMatchResourceAttr(
 						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
@@ -40,10 +40,10 @@ func TestAccResourceOrgCollection(t *testing.T) {
 			// Renaming collection
 			{
 				ResourceName: resourceName,
-				Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection("org-col-new-name-bar", false),
+				Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection(testName("org-col-new-name-bar"), false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						resourceName, schema_definition.AttributeName, "org-col-new-name-bar",
+						resourceName, schema_definition.AttributeName, testName("org-col-new-name-bar"),
 					),
 					resource.TestMatchResourceAttr(
 						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
@@ -74,10 +74,10 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// 1. Create an org-collection with ourself as the only member
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection("org-col-bar", true),
+					Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection(testName("org-col-bar"), true),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
-							resourceName, schema_definition.AttributeName, "org-col-bar",
+							resourceName, schema_definition.AttributeName, testName("org-col-bar"),
 						),
 						resource.TestMatchResourceAttr(
 							resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
@@ -100,12 +100,12 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// 2. Add another member to the collection
 				{
 					ResourceName: resourceName,
-					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection("org-col-bar", true,
+					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection(testName("org-col-bar"), true,
 						memberBlock(testConfiguration.Accounts[testAccountOrgUser].UserIdInTestOrganization, nil),
 					),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
-							resourceName, schema_definition.AttributeName, "org-col-bar",
+							resourceName, schema_definition.AttributeName, testName("org-col-bar"),
 						),
 						resource.TestMatchResourceAttr(
 							resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
@@ -135,10 +135,10 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// 3. Remove the other member from the collection
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection("org-col-bar", true),
+					Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection(testName("org-col-bar"), true),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
-							resourceName, schema_definition.AttributeName, "org-col-bar",
+							resourceName, schema_definition.AttributeName, testName("org-col-bar"),
 						),
 						resource.TestCheckResourceAttr(
 							resourceName, "member.#", "1",
@@ -168,10 +168,10 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection("org-col-bar", false),
+					Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection(testName("org-col-bar"), false),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
-							resourceName, schema_definition.AttributeName, "org-col-bar",
+							resourceName, schema_definition.AttributeName, testName("org-col-bar"),
 						),
 						resource.TestMatchResourceAttr(
 							resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
@@ -182,12 +182,12 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// 2. Adding one member
 				{
 					ResourceName: resourceName,
-					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection("org-col-bar", false,
+					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection(testName("org-col-bar"), false,
 						memberBlock(testConfiguration.Accounts[testAccountOrgUser].UserIdInTestOrganization, nil),
 					),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
-							resourceName, schema_definition.AttributeName, "org-col-bar",
+							resourceName, schema_definition.AttributeName, testName("org-col-bar"),
 						),
 						resource.TestMatchResourceAttr(
 							resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
@@ -207,7 +207,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// 3. Adding a second member with permission set 1
 				{
 					ResourceName: resourceName,
-					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection("org-col-bar", false,
+					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection(testName("org-col-bar"), false,
 						memberBlock(testConfiguration.Accounts[testAccountOrgUser].UserIdInTestOrganization, nil),
 						memberBlock(testConfiguration.Accounts[testAccountOrgManager].UserIdInTestOrganization, map[string]string{
 							"read_only":      "false",
@@ -216,7 +216,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 					),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
-							resourceName, schema_definition.AttributeName, "org-col-bar",
+							resourceName, schema_definition.AttributeName, testName("org-col-bar"),
 						),
 						resource.TestMatchResourceAttr(
 							resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
@@ -237,7 +237,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// 4. Changing second member to permissions set 2
 				{
 					ResourceName: resourceName,
-					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection("org-col-bar", false,
+					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection(testName("org-col-bar"), false,
 						memberBlock(testConfiguration.Accounts[testAccountOrgUser].UserIdInTestOrganization, nil),
 						memberBlock(testConfiguration.Accounts[testAccountOrgManager].UserIdInTestOrganization, map[string]string{
 							"read_only":      "true",
@@ -246,7 +246,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 					),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
-							resourceName, schema_definition.AttributeName, "org-col-bar",
+							resourceName, schema_definition.AttributeName, testName("org-col-bar"),
 						),
 						resource.TestMatchResourceAttr(
 							resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
@@ -266,12 +266,12 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// 5. Removing permissions
 				{
 					ResourceName: resourceName,
-					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection("org-col-bar", false,
+					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection(testName("org-col-bar"), false,
 						memberBlock(testConfiguration.Accounts[testAccountOrgUser].UserIdInTestOrganization, nil),
 					),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
-							resourceName, schema_definition.AttributeName, "org-col-bar",
+							resourceName, schema_definition.AttributeName, testName("org-col-bar"),
 						),
 						resource.TestMatchResourceAttr(
 							resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
@@ -291,14 +291,14 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// 6. Adding one member group
 				{
 					ResourceName: resourceName,
-					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigDataOrgGroup() + tfConfigResourceOrgCollection("org-col-bar", false,
+					Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigDataOrgGroup() + tfConfigResourceOrgCollection(testName("org-col-bar"), false,
 						groupMemberBlock("data.bitwarden_org_group.default_group.id", map[string]string{
 							"manage": "true",
 						}),
 					),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
-							resourceName, schema_definition.AttributeName, "org-col-bar",
+							resourceName, schema_definition.AttributeName, testName("org-col-bar"),
 						),
 						resource.TestMatchResourceAttr(
 							resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
@@ -330,10 +330,10 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection("org-col-bar", false),
+					Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection(testName("org-col-bar"), false),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(
-							resourceName, schema_definition.AttributeName, "org-col-bar",
+							resourceName, schema_definition.AttributeName, testName("org-col-bar"),
 						),
 						resource.TestMatchResourceAttr(
 							resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),
@@ -344,7 +344,7 @@ func TestAccResourceOrgCollectionACLs(t *testing.T) {
 				// Adding one member
 				{
 					ResourceName: resourceName,
-					Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection("org-col-bar", true),
+					Config:       tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceOrgCollection(testName("org-col-bar"), true),
 					ExpectError:  regexp.MustCompile("managing collection memberships is only supported by the embedded client"),
 				},
 			},
@@ -372,14 +372,14 @@ func TestAccResourceOrgCollectionWithLowerPrivileges(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ResourceName: resourceName,
-				Config: tfConfigPasswordManagerProvider(account) + tfConfigResourceOrgCollection("org-col-bar", false,
+				Config: tfConfigPasswordManagerProvider(account) + tfConfigResourceOrgCollection(testName("org-col-bar"), false,
 					memberBlock(testConfiguration.Accounts[account].UserIdInTestOrganization, map[string]string{
 						"manage": "true",
 					}),
 				),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						resourceName, schema_definition.AttributeName, "org-col-bar",
+						resourceName, schema_definition.AttributeName, testName("org-col-bar"),
 					),
 					resource.TestMatchResourceAttr(
 						resourceName, schema_definition.AttributeID, regexp.MustCompile(regExpId),

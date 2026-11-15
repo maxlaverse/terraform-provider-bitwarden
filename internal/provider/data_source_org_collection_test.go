@@ -22,8 +22,8 @@ func TestAccDataSourceOrgCollection(t *testing.T) {
 			resourceName, schema_definition.AttributeName, "Default collection",
 		)
 	} else {
-		nameAssertion = resource.TestMatchResourceAttr(
-			resourceName, schema_definition.AttributeName, regexp.MustCompile("^coll-([0-9]{6})$"),
+		nameAssertion = resource.TestCheckResourceAttr(
+			resourceName, schema_definition.AttributeName, "coll-"+testConfiguration.UniqueTestIdentifier,
 		)
 	}
 
@@ -44,13 +44,17 @@ func TestAccDataSourceOrgCollection(t *testing.T) {
 }
 
 func tfConfigDataOrgCollection() string {
+	search := "Default collection"
+	if IsVaultwardenBackend() {
+		search = "coll-" + testConfiguration.UniqueTestIdentifier
+	}
 	return fmt.Sprintf(`
 data "bitwarden_org_collection" "foo_data" {
 	provider	= bitwarden
 
 	organization_id = "%s"
 
-	search 	= "col"
+	search 	= "%s"
 }
-`, testConfiguration.Resources.OrganizationID)
+`, testConfiguration.Resources.OrganizationID, search)
 }

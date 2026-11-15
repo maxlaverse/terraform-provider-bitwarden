@@ -61,15 +61,15 @@ func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("search"),
 			},
 			{
-				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("search") + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("search") + tfConfigDataItemLoginWithSearchAndOrg(testUsername()),
 				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},
 			{
-				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("search") + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("search") + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchAndOrg(testUsername()),
 				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},
 			{
-				Config:      tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("search") + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchOnly("test-username"),
+				Config:      tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("search") + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchOnly(testUsername()),
 				ExpectError: regexp.MustCompile("Error: too many objects found"),
 			},
 			{
@@ -78,7 +78,7 @@ func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 			},
 			// Test: differentiate between items with the same username based on URL
 			{
-				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("search") + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchAndUrl("test-username", "https://host"),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLogin("search") + tfConfigResourceItemLoginDuplicate() + tfConfigDataItemLoginWithSearchAndUrl(testUsername(), "https://host"),
 				Check:  checkItemLogin("data.bitwarden_item_login.foo_data"),
 			},
 			// Test: soft-deleting objects are not returned
@@ -86,7 +86,7 @@ func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin),
 			},
 			{
-				Config:      tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigDataItemLoginWithSearchAndOrg("test-username"),
+				Config:      tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigDataItemLoginWithSearchAndOrg(testUsername()),
 				ExpectError: regexp.MustCompile("Error: no object found matching the filter"),
 			},
 			// Test: search for a secure note item with a login data source should fail
@@ -97,7 +97,7 @@ func TestAccDataSourceItemLoginBySearch(t *testing.T) {
 				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemSecureNote(),
 			},
 			{
-				Config:      tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemSecureNote() + tfConfigDataItemLoginWithSearchAndOrg("secure-bar"),
+				Config:      tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemSecureNote() + tfConfigDataItemLoginWithSearchAndOrg(testName("secure-bar")),
 				ExpectError: regexp.MustCompile("Error: no object found matching the filter"),
 			},
 		},
@@ -137,14 +137,14 @@ data "bitwarden_item_login" "foo_data" {
 }
 
 func tfConfigResourceItemLoginDuplicate() string {
-	return `
+	return fmt.Sprintf(`
 	resource "bitwarden_item_login" "foo_duplicate" {
 		provider 			= bitwarden
 
-		name 					= "another item with username 'test-username'"
-		username 			= "test-username"
+		name 					= "%s"
+		username 			= "%s"
 	}
-	`
+	`, testName("duplicate-login"), testUsername())
 }
 
 func tfConfigDataItemLogin() string {

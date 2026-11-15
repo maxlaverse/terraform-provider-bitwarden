@@ -97,6 +97,34 @@ func (t Test) All() error {
 	return nil
 }
 
+func officialSweepEnv() []string {
+	return []string{"TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1"}
+}
+
+// Sweep leftover Password Manager resources from the official Bitwarden test account.
+func (t Test) SweepOfficialPasswordManager() error {
+	mg.Deps(InstallDeps)
+
+	fmt.Println("Sweeping leftover official Password Manager test resources...")
+	cmd := exec.Command("go", "test", "-count=1", "-timeout", "5m", "-tags=integration", "-run", "^$", "./internal/provider/")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = append(os.Environ(), officialSweepEnv()...)
+	return cmd.Run()
+}
+
+// Sweep leftover Secrets Manager resources from the official Bitwarden test account.
+func (t Test) SweepOfficialSecretsManager() error {
+	mg.Deps(InstallDeps)
+
+	fmt.Println("Sweeping leftover official Secrets Manager test resources...")
+	cmd := exec.Command("go", "test", "-count=1", "-timeout", "5m", "-tags=integrationBws", "-run", "^$", "./internal/provider/")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = append(os.Environ(), officialSweepEnv()...)
+	return cmd.Run()
+}
+
 // Run Password Manager integration tests with embedded client on bitwarden.com.
 func (t Test) IntegrationPwdOfficialWithEmbeddedClient() error {
 	return t.IntegrationPwdOfficialWithEmbeddedClientArgs("")

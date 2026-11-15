@@ -15,10 +15,10 @@ func TestAccDataSourceFolderAttributes(t *testing.T) {
 		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceFolder("folder-bar"),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceFolder(testName("folder-bar")),
 			},
 			{
-				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceFolder("folder-bar") + tfConfigDataFolder(),
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceFolder(testName("folder-bar")) + tfConfigDataFolder(),
 				Check:  checkObject("data.bitwarden_folder.foo_data"),
 			},
 		},
@@ -30,7 +30,7 @@ func tfConfigDataFolder() string {
 data "bitwarden_folder" "foo_data" {
 	provider	= bitwarden
 
-	search 	= "folder-bar"
+	search 	= "` + testName("folder-bar") + `"
 }
 `
 }

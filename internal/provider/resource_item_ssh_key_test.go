@@ -57,7 +57,7 @@ func tfConfigResourceItemSSHKey() string {
 		organization_id     = "%s"
 		collection_ids		= ["%s"]
 		folder_id 			= "%s"
-		name     			= "ssh-key-bar"
+		name     			= "%s"
 		reprompt			= true
 		notes 				= "notes"
 		private_key			= <<-EOT
@@ -81,7 +81,7 @@ EOT
 			hidden = "value-hidden"
 		}
 	}
-`, testConfiguration.Resources.OrganizationID, testConfiguration.Resources.CollectionID, testConfiguration.Resources.FolderID, examplePrivateKey)
+`, testConfiguration.Resources.OrganizationID, testConfiguration.Resources.CollectionID, testConfiguration.Resources.FolderID, testName("ssh-key-bar"), examplePrivateKey)
 }
 
 func checkItemSSHKey(resourceName string) resource.TestCheckFunc {

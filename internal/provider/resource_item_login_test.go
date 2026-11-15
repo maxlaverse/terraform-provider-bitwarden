@@ -67,7 +67,7 @@ func TestAccResourceItemLoginAddRemoveCollection(t *testing.T) {
 	loginTestCol, err := bwClient.CreateOrganizationCollection(t.Context(), models.OrgCollection{
 		Object:         models.ObjectTypeOrgCollection,
 		OrganizationID: testConfiguration.Resources.OrganizationID,
-		Name:           fmt.Sprintf("login-test-col-%s", testConfiguration.UniqueTestIdentifier),
+		Name:           testName("login-test-col"),
 		Users: []models.OrgCollectionMember{
 			{Id: testConfiguration.Accounts[testAccountOrgOwner].UserIdInTestOrganization, Manage: true},
 		},
@@ -187,24 +187,24 @@ func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 }
 
 func tfConfigResourceItemLoginSmall() string {
-	return `
+	return fmt.Sprintf(`
 	resource "bitwarden_item_login" "foo" {
 		provider 			= bitwarden
 
-		name     			= "login-bar"
+		name     			= "%s"
 	}
-`
+`, testName("login-bar"))
 }
 
 func tfConfigResourceItemManyLogins() string {
-	return `
+	return fmt.Sprintf(`
 	resource "bitwarden_item_login" "foo" {
 		provider 			= bitwarden
 
 		count    = 100
-		name     = "Login Item ${count.index + 1}"
+		name     = "%s Login Item ${count.index + 1}"
 	}
-`
+`, testName("many"))
 }
 
 func tfConfigResourceItemLogin(source string) string {
@@ -218,10 +218,10 @@ const tfConfigResourceItemLoginTemplate = `
 		organization_id     = "%s"
 		collection_ids		= %s
 		folder_id 			= "%s"
-		username 			= "test-username"
+		username 			= "%s"
 		password 			= "test-password"
 		totp 				= "1234"
-		name     			= "login-bar"
+		name     			= "%s"
 		notes 				= "notes-%s"
 		reprompt			= true
 		favorite            = true
@@ -292,7 +292,7 @@ func tfConfigResourceItemLoginWithCollections(source string, collectionIDs []str
 		collectionIDsHCL = "[" + strings.Join(quoted, ", ") + "]"
 	}
 	return fmt.Sprintf(tfConfigResourceItemLoginTemplate,
-		testConfiguration.Resources.OrganizationID, collectionIDsHCL, testConfiguration.Resources.FolderID, source)
+		testConfiguration.Resources.OrganizationID, collectionIDsHCL, testConfiguration.Resources.FolderID, testUsername(), testName("login-bar"), source)
 }
 
 // tfConfigResourceItemLoginWithCollectionRefs is like tfConfigResourceItemLoginWithCollections but allows Terraform refs in collection_ids (e.g. bitwarden_org_collection.foo.id).
@@ -304,7 +304,7 @@ func tfConfigResourceItemLoginWithCollectionRefs(source string, literalIDs []str
 	parts = append(parts, refs...)
 	collectionIDsHCL := "[" + strings.Join(parts, ", ") + "]"
 	return fmt.Sprintf(tfConfigResourceItemLoginTemplate,
-		testConfiguration.Resources.OrganizationID, collectionIDsHCL, testConfiguration.Resources.FolderID, source)
+		testConfiguration.Resources.OrganizationID, collectionIDsHCL, testConfiguration.Resources.FolderID, testUsername(), testName("login-bar"), source)
 }
 
 func checkItemLogin(resourceName string) resource.TestCheckFunc {
@@ -313,8 +313,8 @@ func checkItemLogin(resourceName string) resource.TestCheckFunc {
 		resource.TestMatchResourceAttr(
 			resourceName, schema_definition.AttributeFavorite, regexp.MustCompile("^true"),
 		),
-		resource.TestMatchResourceAttr(
-			resourceName, schema_definition.AttributeLoginUsername, regexp.MustCompile("^test-username$"),
+		resource.TestCheckResourceAttr(
+			resourceName, schema_definition.AttributeLoginUsername, testUsername(),
 		),
 		resource.TestMatchResourceAttr(
 			resourceName, schema_definition.AttributeLoginPassword, regexp.MustCompile("^test-password$"),
