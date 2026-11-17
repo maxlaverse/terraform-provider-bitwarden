@@ -27,6 +27,8 @@ func TestLoginAsPasswordLoadsAccountInformationForPbkdf2(t *testing.T) {
 	assert.Equal(t, 5000, vault.loginAccount.KdfConfig.KdfIterations)
 	assert.Equal(t, AccountPbkdf2.ProtectedRSAPrivateKey, vault.loginAccount.ProtectedRSAPrivateKey)
 	assert.Equal(t, AccountPbkdf2.ProtectedSymmetricKey, vault.loginAccount.ProtectedSymmetricKey)
+	assert.Equal(t, webapi.ServerTypeBitwarden, vault.ServerType())
+	assert.Equal(t, "2025.6.1", vault.ServerVersion())
 }
 
 func TestLoginAsAPILoadsAccountInformationForPbkdf2(t *testing.T) {
@@ -157,6 +159,23 @@ func TestItemCreationInOrganization(t *testing.T) {
 
 	assert.Equal(t, "Item in org Vault", obj.Name)
 	assert.Equal(t, "my-org-username", obj.Login.Username)
+}
+
+func TestApplyServerConfigStoresServerType(t *testing.T) {
+	t.Parallel()
+
+	vaultwarden := webAPIVault{}
+	vaultwarden.applyServerConfig(t.Context(), &webapi.ConfigResponse{
+		Version: "2026.6.0",
+		Server:  &webapi.ConfigServer{Name: "Vaultwarden"},
+	})
+	assert.Equal(t, webapi.ServerTypeVaultwarden, vaultwarden.ServerType())
+	assert.Equal(t, "2026.6.0", vaultwarden.ServerVersion())
+
+	official := webAPIVault{}
+	official.applyServerConfig(t.Context(), &webapi.ConfigResponse{Version: "2025.6.2"})
+	assert.Equal(t, webapi.ServerTypeBitwarden, official.ServerType())
+	assert.Equal(t, "2025.6.2", official.ServerVersion())
 }
 
 func TestVerifyObjectAfterWrite(t *testing.T) {

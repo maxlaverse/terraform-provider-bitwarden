@@ -56,6 +56,8 @@ type PasswordManagerClient interface {
 	LoginWithPassword(ctx context.Context, username, password string) error
 	Logout(ctx context.Context) error
 	RegisterUser(ctx context.Context, name, username, password string, kdfConfig models.KdfConfiguration) error
+	ServerType() webapi.ServerType
+	ServerVersion() string
 	Sync(ctx context.Context) error
 	Unlock(ctx context.Context, password string) error
 }
@@ -144,6 +146,8 @@ type webAPIVault struct {
 	clientOpts   []webapi.Options
 	serverConfig struct {
 		disableCipherKeyEncryption bool
+		serverType                 webapi.ServerType
+		version                    string
 	}
 
 	syncAfterWrite                   bool
@@ -1195,11 +1199,34 @@ func (v *webAPIVault) continueLoginWithTokens(ctx context.Context, tokenResp web
 		return fmt.Errorf("error getting config: %w", err)
 	}
 
+	v.applyServerConfig(ctx, config)
+
+	return v.sync(ctx)
+}
+
+func (v *webAPIVault) applyServerConfig(ctx context.Context, config *webapi.ConfigResponse) {
+	if config == nil {
+		return
+	}
+
 	if config.FeatureStates.CipherKeyEncryption {
 		v.serverConfig.disableCipherKeyEncryption = true
 	}
 
-	return v.sync(ctx)
+	v.serverConfig.serverType = config.ServerType()
+	v.serverConfig.version = config.Version
+	tflog.Info(ctx, "Detected password manager server", map[string]interface{}{
+		"server_type": v.serverConfig.serverType,
+		"version":     v.serverConfig.version,
+	})
+}
+
+func (v *webAPIVault) ServerType() webapi.ServerType {
+	return v.serverConfig.serverType
+}
+
+func (v *webAPIVault) ServerVersion() string {
+	return v.serverConfig.version
 }
 
 func (v *webAPIVault) getUserPublicKey(ctx context.Context, userId string) (*rsa.PublicKey, error) {
