@@ -17,7 +17,7 @@ This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 
 - [Supported Versions](#supported-versions)
 - [Usage](#usage)
-- [Embedded Client](#embedded-client)
+- [Client Implementation](#client-implementation)
 - [Security Considerations](#security-considerations)
 - [Contributing](#contributing)
 - [Developing the Provider](#developing-the-provider)
@@ -28,19 +28,20 @@ This project is not associated with the Bitwarden project nor Bitwarden, Inc.
 The plugin has been tested with the following components:
 
 - [Terraform] v1.11.4 / [OpenTofu] v1.12.6
-- [Bitwarden CLI] v2025.4.0 (when not using the [Embedded Client](#embedded-client))
-- [BWS CLI] v1.0.0 (when not using the [Embedded Client](#embedded-client))
+- [Bitwarden CLI] v2025.4.0 (when not using the [embedded client](#client-implementation))
+- [BWS CLI] v1.0.0 (when not using the [embedded client](#client-implementation))
 - [Vaultwarden] v1.33.2
 - official [bitwarden.com] servers v2025.6.2
 
 **Minimum Terraform:** 1.10 or later. **Minimum OpenTofu:** 1.12 or later (Protocol 6). Older CLIs that only speak Protocol 5 are not supported.
 
 The provider is likely to work with older versions of the Bitwarden backends/CLIs, but those haven't necessarily been tested.
-If you encounter issues with recent versions of the Bitwarden CLI, consider trying out the [Embedded Client](#embedded-client).
+If you encounter issues with recent versions of the Bitwarden CLI, consider trying out the [embedded client](#client-implementation).
 
 ## Usage
 
 The complete documentation for this provider can be found on the [Terraform Registry docs].
+Walkthroughs for [authentication][Auth guide], [client implementation][Client Implementation guide], and [ephemeral resources][Ephemeral Resources guide] are published with each release (also on the [OpenTofu Registry docs]).
 
 ### Bitwarden Secret
 
@@ -62,8 +63,7 @@ provider "bitwarden" {
   # Vaults. You can also use the embedded client instead, which removes
   # the need for locally installed binaries.
   #
-  # Learn more about the implications by reading the "Client Implementation"
-  # section below.
+  # See the Client Implementation guide.
   #
   # client_implementation = "embedded"
 }
@@ -110,8 +110,7 @@ provider "bitwarden" {
   # Vaults. You can also use the embedded client instead, which removes
   # the need for locally installed binaries.
   #
-  # Learn more about the implications by reading the "Client Implementation"
-  # section below.
+  # See the Client Implementation guide.
   #
   # client_implementation = "embedded"
 }
@@ -138,32 +137,13 @@ See the [examples](./examples/) directory for more examples.
 
 ## Client Implementation
 
-The Bitwarden provider offers two client implementations to interact with your Vault:
+By default the provider shells out to the official [Bitwarden CLI] and [BWS CLI]. Set `client_implementation = "embedded"` to talk to Bitwarden servers directly, without those binaries.
 
-### Official Bitwarden CLIs (Default)
-By default, the provider uses the official Bitwarden command-line tools ([Bitwarden CLI] for Password Manager and [BWS CLI] for Secrets Manager). This approach leverages the battle-tested reliability of Bitwarden's own tooling, backed by their engineering team and security expertise.
-
-The trade-off is that you need to pre-install the appropriate CLI tools in your Terraform environment. Additionally, the Password Manager CLI (requiring Node.js) can create performance bottlenecks when managing many resources due to process spawning overhead.
-
-### Embedded Client
-The provider also includes an embedded client that communicates directly with Bitwarden servers without external dependencies. This eliminates the need to install separate CLI tools and provides better performance by avoiding external process spawning, making it particularly beneficial for managing large resource sets.
-
-However, this implementation is developed and maintained by a single person as a community project without company resources. While effort goes into ensuring security and correctness, it lacks the extensive security review, testing infrastructure, and dedicated security team that backs Bitwarden's official tools.
-
-### Choosing Your Implementation
-
-The choice depends on your needs: the official CLIs leverage Bitwarden's proven tooling, while the embedded client is a community project offering performance benefits and zero external dependencies. The embedded client aims for security and correctness, and code reviews are always welcome to help improve it.
-
+The embedded client is faster and has no extra install, but it is a community project. Trade-offs, including local Vault files and device identifiers, are in the [Client Implementation guide].
 
 ## Security Considerations
 
-When not using the [Embedded Client](#embedded-client), the provider downloads the encrypted Vault locally during _plan_ or _apply_ operations, as the Bitwarden CLI would if you used it directly.
-There is currently no plugin hook to remove that encrypted Vault once changes have been applied.
-
-If you want to find out more about this file, you can read [Bitwarden's documentation on data storage].
-Please note that this file is stored at `<your-project>/.bitwarden/` by default, in order to not interfere with your local Vaults.
-
-When using the official CLIs instead of the embedded client, `bws secret create` and `bws secret edit` pass secret values on the process command line.
+When using the official CLIs, the provider keeps an encrypted Vault copy under `.bitwarden/` by default, and `bws` may pass secret values on the process command line. Details are in the [Client Implementation guide].
 
 ## Contributing
 
@@ -280,6 +260,8 @@ Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more informa
 [Terraform]: https://www.terraform.io/downloads.html
 [Terraform Registry docs]: https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs
 [OpenTofu Registry docs]: https://search.opentofu.org/provider/maxlaverse/bitwarden/latest
-[Bitwarden's documentation on data storage]: https://bitwarden.com/help/data-storage/#on-your-local-machine
+[Auth guide]: https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs/guides/authentication
+[Client Implementation guide]: https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs/guides/client-implementation
+[Ephemeral Resources guide]: https://registry.terraform.io/providers/maxlaverse/bitwarden/latest/docs/guides/ephemeral-resources
 [Vaultwarden]: https://www.vaultwarden.net/
 [bitwarden.com]: https://bitwarden.com
