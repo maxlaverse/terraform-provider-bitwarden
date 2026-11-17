@@ -15,8 +15,7 @@ provider "bitwarden" {
   # Vaults. You can also use the embedded client instead, which removes
   # the need for locally installed binaries.
   #
-  # Learn more about the implications by reading the "Client Implementation"
-  # section below.
+  # See the Client Implementation guide.
   #
   # client_implementation = "embedded"
 }

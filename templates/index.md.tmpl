@@ -9,8 +9,7 @@ description: |-
 Use the Bitwarden provider to manage your [Password Manager] Logins and Secure Notes, and [Secrets Manager] Secrets.
 You must configure the provider with proper credentials before you can use it.
 If you're not using `client_implementation = "embedded"`, you also need a [Password Manager CLI][Bitwarden CLI] or [Secrets Manager CLI][BWS CLI] installed locally.
-Password Manager login items, SSH keys, and secure notes can be read without storing values in plan or state with the `bitwarden_item_login`, `bitwarden_item_ssh_key`, and `bitwarden_item_secure_note` ephemeral resources.
-Secrets Manager secrets can be read with the `bitwarden_secret` data source or, without storing values in plan or state, with the `bitwarden_secret` ephemeral resource.
+To read credentials without storing them in plan or state, use [ephemeral resources](guides/ephemeral-resources).
 
 -> **Note:** This provider requires Terraform 1.10 or later, or OpenTofu 1.12 or later (Protocol 6).
 
@@ -18,81 +17,11 @@ Secrets Manager secrets can be read with the `bitwarden_secret` data source or, 
 
 {{tffile "examples/quick/provider.tf"}}
 
-## Client Implementation
+## Guides
 
-The Bitwarden provider offers two client implementations to interact with your Vault:
-
-### Official Bitwarden CLIs (Default)
-By default, the provider uses the official Bitwarden command-line tools ([Bitwarden CLI] for Password Manager and [BWS CLI] for Secrets Manager). This approach leverages the battle-tested reliability of Bitwarden's own tooling, backed by their engineering team and security expertise.
-
-The trade-off is that you need to pre-install the appropriate CLI tools in your Terraform environment. Additionally, the Password Manager CLI (requiring Node.js) can create performance bottlenecks when managing many resources due to process spawning overhead.
-
-### Embedded Client
-The provider also includes an embedded client that communicates directly with Bitwarden servers without external dependencies. Set `client_implementation = "embedded"` to use it. This eliminates the need to install separate CLI tools and provides better performance by avoiding external process spawning, making it particularly beneficial for managing large resource sets.
-
-However, this implementation is developed and maintained by a single person as a community project without company resources. While effort goes into ensuring security and correctness, it lacks the extensive security review, testing infrastructure, and dedicated security team that backs Bitwarden's official tools.
-
-When using the embedded client in CI or containers, the provider stores a device identifier in `.bitwarden/device_identifier`. If that file is missing, a new one is generated each run and Bitwarden may send "new device logged in" emails. To avoid that, persist `.bitwarden/device_identifier` (e.g. in a secret or volume) and restore it before running Terraform.
-
-### Choosing Your Implementation
-
-The choice depends on your needs: the official CLIs leverage Bitwarden's proven tooling, while the embedded client is a community project offering performance benefits and zero external dependencies. The embedded client aims for security and correctness, and code reviews are always welcome to help improve it.
-
-## Authentication
-Depending on the type of credentials you use, you'll be able to connect either with a Password Manager or Secrets Manager.
-If you want your workspace to interact with both, have a look at [provider aliases].
-
-### Password Manager
-The Password Manager accepts different combinations of credentials to authenticate:
-* _[Personal API Key]_ (requires `master_password`, `client_id` and `client_secret` to be set).
-* _Email and Password_ (requires `email` and `master_password` to be set) (prefer _Personal API keys_ instead).
-* User-provided _Session Key_ (requires `session_key` to be set), which only works with a pre-downloaded Vault (See _Generating a Session Key_).
-
-To read an existing login item, SSH key, or secure note without storing it in plan or state, use the corresponding ephemeral resource instead of the data source.
-
-#### Generating a Client ID and Secret
-The recommended way to interact with your Password Manager Vault using the Bitwarden Provider Terraform plugin is to generate an API key.
-This allows you to easily revoke access to your Vault without having to change your master password.
-
-In order to generate a pair of Client ID and Secret, you need to:
-1. Connect to your Vault on https://vault.bitwarden.com, or your self-hosted instance
-2. Click on _Settings_ and then _My Account_
-3. Scroll down to the _API Key_ section
-4. Click on _View API Key_ (or maybe another label if it's the first time)
-5. Save the API credentials somewhere safe
-
-#### Generating a Session Key
-
-If you don't want to use an API key, you can use a Session Key instead.
-When doing so, it's your responsibility to:
-* ensure the validity of the Session Key
-* keep the Session Key safe
-* revoke it when you don't need it anymore
-
-You can generate a Session Key by running the following command in your Terraform Workspace:
-```console
-BITWARDENCLI_APPDATA_DIR=.bitwarden bw login
-
-# or if you use a custom vault path
-BITWARDENCLI_APPDATA_DIR=<vault_path> bw login
-```
-
-A Session Key is bound to a local copy of a Vault. It's therefore important that you set the right `BITWARDENCLI_APPDATA_DIR` to the path where your Vault is stored.
-
-### Secrets Manager
-The Secrets Manager only accepts [Access Tokens] (requires `access_token` to be set).
-To read an existing secret without storing it in plan or state, use the `bitwarden_secret` ephemeral resource instead of the data source.
-
-In order to generate an Access Token you need to:
-1. Connect to your Vault on https://vault.bitwarden.com
-2. Ensure the _Secrets Manager_ section is selected (bottom left)
-3. Click on _Machine accounts_
-4. Click on _New_
-5. Click on your generated Machine Account
-6. Select the _Access Tokens_ tab
-7. Created a new Access Token and save it somewhere safe
-
--> **Note:** By default, new machine accounts are not assigned to any projects. After creating a machine account, make sure it is added to the project(s) you want to access, with either "Can Read" or "Can Read & Write" permissions. If the machine account does not have access to the project, you will encounter an `Error: object not found` when attempting to use/create secrets from that project.
+* [Authentication](guides/authentication) — Password Manager and Secrets Manager credentials, including provider aliases.
+* [Client Implementation](guides/client-implementation) — official CLIs versus the embedded client, and where data is stored locally.
+* [Using Ephemeral Resources](guides/ephemeral-resources) — read secrets and items without persisting them in plan or state.
 
 ## Configuration
 Configuration for the Bitwarden Provider can be derived from two sources:
@@ -113,9 +42,7 @@ provider "bitwarden" {
   #
   # server = "https://vault.bitwarden.eu"
 
-  # If you have the opportunity, you can try out the embedded client which
-  # removes the need for a locally installed Bitwarden CLI.
-  #
+  # See the Client Implementation guide.
   # client_implementation = "embedded"
 }
 ```
@@ -141,6 +68,3 @@ export BW_CLIENTSECRET="my-client-secret"
 [Secrets Manager]: https://bitwarden.com/products/secrets-manager/
 [Bitwarden CLI]: https://bitwarden.com/help/article/cli/#download-and-install
 [BWS CLI]: https://bitwarden.com/help/secrets-manager-cli/
-[Access Tokens]: https://bitwarden.com/help/access-tokens/
-[Personal API Key]: https://bitwarden.com/help/personal-api-key/
-[provider aliases]: https://developer.hashicorp.com/terraform/language/providers/configuration#alias-multiple-provider-configurations
