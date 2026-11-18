@@ -20,6 +20,7 @@ Use them when a credential should be passed into another provider configuration 
 | `bitwarden_item_login` | Password Manager | `username`, `password`, `totp` |
 | `bitwarden_item_ssh_key` | Password Manager | `private_key` |
 | `bitwarden_item_secure_note` | Password Manager | `notes` |
+| `bitwarden_attachment` | Password Manager | `content` |
 
 Each type has a matching data source. Prefer the ephemeral resource unless you need the value in an ordinary resource argument or a root output, which cannot accept ephemeral values.
 
@@ -74,4 +75,4 @@ resource "aws_secretsmanager_secret_version" "db" {
 
 This example uses the AWS provider's write-only `secret_string_wo` argument. Any provider that exposes a compatible write-only argument works the same way. See that resource's documentation for the version or revision argument to bump when the secret changes.
 
-Lookup arguments (`id`, `key`, `search`, and filters) and the full attribute list for each ephemeral type are documented with the schema on the Terraform Registry.
+Lookup arguments (`id`, `item_id`, `key`, `search`, and filters) and the full attribute list for each ephemeral type are documented with the schema on the Terraform Registry.

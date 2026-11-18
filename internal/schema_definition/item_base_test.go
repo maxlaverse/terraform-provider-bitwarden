@@ -79,6 +79,10 @@ func TestAttachmentContentAndURLAreSensitive(t *testing.T) {
 	dsContent, ok := AttachmentDataSourceSchema().Attributes[AttributeAttachmentContent]
 	require.True(t, ok)
 	assert.True(t, dsContent.IsSensitive(), "data source content should be Sensitive")
+
+	ephemeralContent, ok := AttachmentEphemeralResourceSchema().Attributes[AttributeAttachmentContent]
+	require.True(t, ok)
+	assert.True(t, ephemeralContent.IsSensitive(), "ephemeral content should be Sensitive")
 }
 
 func TestSecretKeyDescriptionIsNotGenericName(t *testing.T) {

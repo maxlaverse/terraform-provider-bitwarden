@@ -1,3 +1,5 @@
+# Values from this data source are stored in Terraform state. Use
+# ephemeral.bitwarden_attachment when the content should not be persisted.
 data "bitwarden_item_login" "ssh" {
   search = "VPN/Credentials"
 }
