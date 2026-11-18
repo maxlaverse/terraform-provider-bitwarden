@@ -287,6 +287,11 @@ type SecretsWithProjectsList struct {
 	Object   string           `json:"object"`
 }
 
+type SecretsList struct {
+	Data              []Secret `json:"data"`
+	ContinuationToken *string  `json:"continuationToken"`
+}
+
 type CreateSecretRequest struct {
 	Key                    string                  `json:"key"`
 	Value                  string                  `json:"value"`
