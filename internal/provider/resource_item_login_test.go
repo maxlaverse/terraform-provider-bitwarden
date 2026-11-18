@@ -5,11 +5,13 @@ package provider
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
@@ -382,51 +384,96 @@ func checkItemLoginUriMatches(resourceName string) resource.TestCheckFunc {
 	)
 }
 
+// checkStoredLogin reads the item straight from the backend, so write-only secrets never enter Terraform state.
+func checkStoredLogin(t *testing.T, resourceName string, check func(*models.Item) error) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("Not found: %s", resourceName)
+		}
+		item, err := bwEmbeddedTestClient(t).GetItem(t.Context(), models.Item{ID: rs.Primary.ID})
+		if err != nil {
+			return err
+		}
+		return check(item)
+	}
+}
+
+func storedPassword(t *testing.T, resourceName, want string) resource.TestCheckFunc {
+	return checkStoredLogin(t, resourceName, func(item *models.Item) error {
+		if item.Login.Password != want {
+			return fmt.Errorf("stored password mismatch: want %q, got %q", want, item.Login.Password)
+		}
+		return nil
+	})
+}
+
+func storedFields(t *testing.T, resourceName string, want map[string]string) resource.TestCheckFunc {
+	return checkStoredLogin(t, resourceName, func(item *models.Item) error {
+		got := map[string]string{}
+		for _, f := range item.Fields {
+			got[f.Name] = f.Value
+		}
+		if !reflect.DeepEqual(got, want) {
+			return fmt.Errorf("stored fields mismatch: want %v, got %v", want, got)
+		}
+		return nil
+	})
+}
+
 func TestAccResourceItemLoginPasswordWriteOnly(t *testing.T) {
 	ensureTestConfigurationReady(t)
 
 	resourceName := "bitwarden_item_login.wo"
 	var objectID string
-	cfg := func(pw string, version int) string {
+	cfg := func(name, pw string, version int) string {
 		return tfConfigPasswordManagerProvider(testAccountFullAdmin) + fmt.Sprintf(`
 	resource "bitwarden_item_login" "wo" {
 		provider            = bitwarden
-		name                = "login-write-only"
+		name                = %q
 		username            = "wo-user"
 		password_wo         = %q
 		password_wo_version = %d
 	}
-	data "bitwarden_item_login" "wo_read" {
-		provider = bitwarden
-		id       = bitwarden_item_login.wo.id
+`, name, pw, version)
 	}
-`, pw, version)
-	}
+	noSecretInState := resource.ComposeTestCheckFunc(
+		resource.TestCheckNoResourceAttr(resourceName, "password"),
+		resource.TestCheckNoResourceAttr(resourceName, "password_wo"),
+	)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: cfg("first-secret", 1),
+				Config: cfg("login-write-only", "first-secret", 1),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckNoResourceAttr(resourceName, "password"),
-					resource.TestCheckNoResourceAttr(resourceName, "password_wo"),
+					noSecretInState,
 					resource.TestCheckResourceAttr(resourceName, "password_wo_version", "1"),
 					getObjectID(resourceName, &objectID),
-					resource.TestCheckResourceAttr("data.bitwarden_item_login.wo_read", "password", "first-secret"),
+					storedPassword(t, resourceName, "first-secret"),
 				),
 			},
 			{
-				// same version, new value: not re-sent, backend keeps the old one
-				Config: cfg("ignored-secret", 1),
-				Check:  resource.TestCheckResourceAttr("data.bitwarden_item_login.wo_read", "password", "first-secret"),
+				// same version, new value: the stored password is kept
+				Config: cfg("login-write-only", "ignored-secret", 1),
+				Check:  storedPassword(t, resourceName, "first-secret"),
 			},
 			{
-				Config: cfg("second-secret", 2),
+				// unrelated update with an unchanged version must neither blank nor rotate the password
+				Config: cfg("login-write-only-renamed", "ignored-secret", 1),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckNoResourceAttr(resourceName, "password"),
+					noSecretInState,
 					resource.TestCheckResourceAttrPtr(resourceName, "id", &objectID),
-					resource.TestCheckResourceAttr("data.bitwarden_item_login.wo_read", "password", "second-secret"),
+					storedPassword(t, resourceName, "first-secret"),
+				),
+			},
+			{
+				Config: cfg("login-write-only-renamed", "second-secret", 2),
+				Check: resource.ComposeTestCheckFunc(
+					noSecretInState,
+					resource.TestCheckResourceAttrPtr(resourceName, "id", &objectID),
+					storedPassword(t, resourceName, "second-secret"),
 				),
 			},
 		},
@@ -438,11 +485,11 @@ func TestAccResourceItemLoginFieldsWriteOnly(t *testing.T) {
 
 	resourceName := "bitwarden_item_login.wof"
 	var objectID string
-	cfg := func(secret string, version int) string {
+	cfg := func(name, secret string, version int) string {
 		return tfConfigPasswordManagerProvider(testAccountFullAdmin) + fmt.Sprintf(`
 	resource "bitwarden_item_login" "wof" {
 		provider = bitwarden
-		name     = "login-fields-write-only"
+		name     = %q
 		field {
 			name = "type"
 			text = "generic"
@@ -450,37 +497,40 @@ func TestAccResourceItemLoginFieldsWriteOnly(t *testing.T) {
 		fields_wo         = { "client-secret" = %q }
 		fields_wo_version = %d
 	}
-	data "bitwarden_item_login" "wof_read" {
-		provider = bitwarden
-		id       = bitwarden_item_login.wof.id
+`, name, secret, version)
 	}
-`, secret, version)
-	}
+	noSecretInState := resource.ComposeTestCheckFunc(
+		resource.TestCheckResourceAttr(resourceName, "field.#", "1"),
+		resource.TestCheckNoResourceAttr(resourceName, "fields_wo"),
+	)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: cfg("first-secret", 1),
+				Config: cfg("login-fields-write-only", "first-secret", 1),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "field.#", "1"),
-					resource.TestCheckNoResourceAttr(resourceName, "fields_wo"),
+					noSecretInState,
 					resource.TestCheckResourceAttr(resourceName, "fields_wo_version", "1"),
 					getObjectID(resourceName, &objectID),
-					resource.TestCheckResourceAttr("data.bitwarden_item_login.wof_read", "field.#", "2"),
-					resource.TestCheckResourceAttr("data.bitwarden_item_login.wof_read", "field.1.hidden", "first-secret"),
+					storedFields(t, resourceName, map[string]string{"type": "generic", "client-secret": "first-secret"}),
 				),
 			},
 			{
-				// same version, new value: not re-sent into the plan, no diff
-				Config: cfg("ignored-secret", 1),
-				Check:  resource.TestCheckResourceAttr("data.bitwarden_item_login.wof_read", "field.1.hidden", "first-secret"),
+				// unrelated update with an unchanged version must keep the stored write-only field
+				Config: cfg("login-fields-write-only-renamed", "ignored-secret", 1),
+				Check: resource.ComposeTestCheckFunc(
+					noSecretInState,
+					resource.TestCheckResourceAttrPtr(resourceName, "id", &objectID),
+					storedFields(t, resourceName, map[string]string{"type": "generic", "client-secret": "first-secret"}),
+				),
 			},
 			{
-				Config: cfg("second-secret", 2),
+				Config: cfg("login-fields-write-only-renamed", "second-secret", 2),
 				Check: resource.ComposeTestCheckFunc(
+					noSecretInState,
 					resource.TestCheckResourceAttrPtr(resourceName, "id", &objectID),
-					resource.TestCheckResourceAttr("data.bitwarden_item_login.wof_read", "field.1.hidden", "second-secret"),
+					storedFields(t, resourceName, map[string]string{"type": "generic", "client-secret": "second-secret"}),
 				),
 			},
 		},

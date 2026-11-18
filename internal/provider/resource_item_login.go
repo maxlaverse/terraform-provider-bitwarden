@@ -52,7 +52,6 @@ func loginFromData(attr *transformation.MapData) itemLoginModel {
 	}
 }
 
-// loginOverlayConfig injects the write-only password, readable only from config, into the API payload.
 func loginResourceToData(ctx context.Context, m itemLoginResourceModel) *transformation.MapData {
 	return loginToData(ctx, m.itemLoginModel)
 }
@@ -61,35 +60,65 @@ func loginResourceFromData(attr *transformation.MapData) itemLoginResourceModel 
 	return itemLoginResourceModel{itemLoginModel: loginFromData(attr), FieldsWO: types.MapNull(types.StringType)}
 }
 
-func loginOverlayConfig(ctx context.Context, cfg tfsdk.Config, data *transformation.MapData) diag.Diagnostics {
+// loginOverlayConfig injects write-only values (readable only from config) into the payload, re-sending them only when their version changes.
+func loginOverlayConfig(ctx context.Context, cfg tfsdk.Config, prior *itemLoginResourceModel, data *transformation.MapData, current currentItemFunc) diag.Diagnostics {
 	var pw types.String
+	var pwVersion, fwVersion types.Int64
+	var fw types.Map
 	diags := cfg.GetAttribute(ctx, path.Root(schema_definition.AttributeLoginPasswordWO), &pw)
+	diags.Append(cfg.GetAttribute(ctx, path.Root(schema_definition.AttributeLoginPasswordWOVersion), &pwVersion)...)
+	diags.Append(cfg.GetAttribute(ctx, path.Root(schema_definition.AttributeLoginFieldsWO), &fw)...)
+	diags.Append(cfg.GetAttribute(ctx, path.Root(schema_definition.AttributeLoginFieldsWOVersion), &fwVersion)...)
 	if diags.HasError() {
 		return diags
 	}
-	if !pw.IsNull() && !pw.IsUnknown() {
-		data.Values()[schema_definition.AttributeLoginPassword] = pw.ValueString()
+
+	var stored *transformation.MapData
+	fetch := func() bool {
+		if stored != nil {
+			return true
+		}
+		cur, err := current()
+		if err != nil {
+			addErr(&diags, err)
+			return false
+		}
+		stored = cur
+		return true
 	}
 
-	var fw types.Map
-	diags.Append(cfg.GetAttribute(ctx, path.Root(schema_definition.AttributeLoginFieldsWO), &fw)...)
+	values := data.Values()
+	resend := func(old, now types.Int64) bool { return prior == nil || !old.Equal(now) }
+
+	switch {
+	case !pw.IsNull() && !pw.IsUnknown():
+		if resend(prior.passwordVersion(), pwVersion) {
+			values[schema_definition.AttributeLoginPassword] = pw.ValueString()
+		} else if fetch() {
+			values[schema_definition.AttributeLoginPassword] = stored.Values()[schema_definition.AttributeLoginPassword]
+		}
+	case prior != nil && !prior.PasswordWOVersion.IsNull() && values[schema_definition.AttributeLoginPassword] == "":
+		// password_wo was dropped without a replacement: keep the stored password instead of blanking it
+		if fetch() {
+			values[schema_definition.AttributeLoginPassword] = stored.Values()[schema_definition.AttributeLoginPassword]
+		}
+	}
 	if diags.HasError() || fw.IsNull() || fw.IsUnknown() {
 		return diags
 	}
-	fields, _ := data.Values()[schema_definition.AttributeField].([]interface{})
-	declared := map[string]bool{}
-	for _, f := range fields {
-		if m, ok := f.(map[string]interface{}); ok {
-			if n, ok := m[schema_definition.AttributeFieldName].(string); ok {
-				declared[n] = true
-			}
-		}
-	}
+
+	fields, _ := values[schema_definition.AttributeField].([]interface{})
+	declared := fieldNames(fields)
 	names := make([]string, 0, len(fw.Elements()))
 	for n := range fw.Elements() {
 		names = append(names, n)
 	}
 	sort.Strings(names)
+	keepStored := !resend(prior.fieldsVersion(), fwVersion)
+	var storedHidden map[string]string
+	if keepStored && fetch() {
+		storedHidden = hiddenFields(stored.Values()[schema_definition.AttributeField])
+	}
 	for _, n := range names {
 		v, ok := fw.Elements()[n].(types.String)
 		if !ok || v.IsNull() || v.IsUnknown() {
@@ -99,12 +128,84 @@ func loginOverlayConfig(ctx context.Context, cfg tfsdk.Config, data *transformat
 			diags.AddError("Duplicate custom field", "Field "+n+" is set in both a `field` block and `fields_wo`.")
 			return diags
 		}
+		value := v.ValueString()
+		if old, found := storedHidden[n]; keepStored && found {
+			value = old
+		}
 		fields = append(fields, map[string]interface{}{
 			schema_definition.AttributeFieldName:   n,
-			schema_definition.AttributeFieldHidden: v.ValueString(),
+			schema_definition.AttributeFieldHidden: value,
 		})
 	}
-	data.Values()[schema_definition.AttributeField] = fields
+	values[schema_definition.AttributeField] = fields
+	return diags
+}
+
+func (m *itemLoginResourceModel) passwordVersion() types.Int64 {
+	if m == nil {
+		return types.Int64Null()
+	}
+	return m.PasswordWOVersion
+}
+
+func (m *itemLoginResourceModel) fieldsVersion() types.Int64 {
+	if m == nil {
+		return types.Int64Null()
+	}
+	return m.FieldsWOVersion
+}
+
+func fieldNames(fields []interface{}) map[string]bool {
+	names := map[string]bool{}
+	for _, f := range fields {
+		if m, ok := f.(map[string]interface{}); ok {
+			if n, ok := m[schema_definition.AttributeFieldName].(string); ok {
+				names[n] = true
+			}
+		}
+	}
+	return names
+}
+
+func hiddenFields(v interface{}) map[string]string {
+	out := map[string]string{}
+	fields, _ := v.([]interface{})
+	for _, f := range fields {
+		m, ok := f.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		n, _ := m[schema_definition.AttributeFieldName].(string)
+		if h, ok := m[schema_definition.AttributeFieldHidden].(string); ok && h != "" {
+			out[n] = h
+		}
+	}
+	return out
+}
+
+// loginValidateConfig rejects write-only field names that collide with declared `field` blocks.
+func loginValidateConfig(ctx context.Context, cfg tfsdk.Config) diag.Diagnostics {
+	var fw types.Map
+	var blocks types.List
+	diags := cfg.GetAttribute(ctx, path.Root(schema_definition.AttributeLoginFieldsWO), &fw)
+	diags.Append(cfg.GetAttribute(ctx, path.Root(schema_definition.AttributeField), &blocks)...)
+	if diags.HasError() || fw.IsNull() || fw.IsUnknown() || blocks.IsUnknown() {
+		return diags
+	}
+	for _, e := range blocks.Elements() {
+		o, ok := e.(types.Object)
+		if !ok {
+			continue
+		}
+		n, ok := o.Attributes()[schema_definition.AttributeFieldName].(types.String)
+		if !ok || n.IsNull() || n.IsUnknown() {
+			continue
+		}
+		if _, dup := fw.Elements()[n.ValueString()]; dup {
+			diags.AddAttributeError(path.Root(schema_definition.AttributeLoginFieldsWO), "Duplicate custom field",
+				"Field "+n.ValueString()+" is set in both a `field` block and `fields_wo`.")
+		}
+	}
 	return diags
 }
 
@@ -149,6 +250,7 @@ func NewItemLoginResource() resource.Resource {
 		toData:         loginResourceToData,
 		fromData:       loginResourceFromData,
 		overlayConfig:  loginOverlayConfig,
+		validateConfig: loginValidateConfig,
 		finalize:       loginFinalize,
 	}
 }
