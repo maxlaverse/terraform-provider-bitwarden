@@ -6,11 +6,13 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	epschema "github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
@@ -56,6 +58,29 @@ type itemResource[T any] struct {
 	schema         func() rsschema.Schema
 	toData         func(context.Context, T) *transformation.MapData
 	fromData       func(*transformation.MapData) T
+	// overlayConfig adds config-only (write-only) values to the API payload; prior is nil on create.
+	overlayConfig func(ctx context.Context, cfg tfsdk.Config, prior *T, data *transformation.MapData, current currentItemFunc) diag.Diagnostics
+	// validateConfig checks cross-attribute rules on the raw config.
+	validateConfig func(context.Context, tfsdk.Config) diag.Diagnostics
+	// finalize adjusts the model written to state, given the prior plan/state.
+	finalize func(out *T, prior T)
+}
+
+// currentItemFunc fetches the item as stored in the backend.
+type currentItemFunc func() (*transformation.MapData, error)
+
+func (r *itemResource[T]) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	if r.validateConfig != nil {
+		resp.Diagnostics.Append(r.validateConfig(ctx, req.Config)...)
+	}
+}
+
+func (r *itemResource[T]) toState(attr *transformation.MapData, prior T) T {
+	out := r.fromData(attr)
+	if r.finalize != nil {
+		r.finalize(&out, prior)
+	}
+	return out
 }
 
 func (r *itemResource[T]) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -87,12 +112,18 @@ func (r *itemResource[T]) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	attr := r.toData(ctx, plan)
+	if r.overlayConfig != nil {
+		resp.Diagnostics.Append(r.overlayConfig(ctx, req.Config, nil, attr, nil)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
 	if err := itemApply(ctx, r.itemType, attr, bwClient.CreateItem); err != nil {
 		addErr(&resp.Diagnostics, err)
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, r.fromData(attr))...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, r.toState(attr, plan))...)
 }
 
 func (r *itemResource[T]) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -122,7 +153,7 @@ func (r *itemResource[T]) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, r.fromData(attr))...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, r.toState(attr, state))...)
 }
 
 func (r *itemResource[T]) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -137,13 +168,29 @@ func (r *itemResource[T]) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
+	var prior T
+	resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	attr := r.toData(ctx, plan)
+	if r.overlayConfig != nil {
+		current := func() (*transformation.MapData, error) {
+			cur := r.toData(ctx, prior)
+			return cur, itemGet(ctx, bwClient, r.itemType, cur)
+		}
+		resp.Diagnostics.Append(r.overlayConfig(ctx, req.Config, &prior, attr, current)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
 	if err := itemApply(ctx, r.itemType, attr, bwClient.EditItem); err != nil {
 		addErr(&resp.Diagnostics, err)
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, r.fromData(attr))...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, r.toState(attr, plan))...)
 }
 
 func (r *itemResource[T]) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

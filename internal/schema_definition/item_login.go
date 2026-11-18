@@ -3,9 +3,15 @@ package schema_definition
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/mapvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	epschema "github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
@@ -87,6 +93,45 @@ func StrMatchToInt(ctx context.Context, match string) *models.URIMatch {
 func LoginResourceSchema() rsschema.Schema {
 	attrs := itemBaseResourceAttributes()
 	attrs[AttributeLoginPassword] = rsschema.StringAttribute{Description: DescriptionLoginPassword, Optional: true, Computed: true, Sensitive: true}
+	attrs[AttributeLoginPasswordWO] = rsschema.StringAttribute{
+		Description: DescriptionLoginPasswordWO,
+		Optional:    true,
+		Sensitive:   true,
+		WriteOnly:   true,
+		Validators: []validator.String{
+			stringvalidator.ConflictsWith(path.MatchRoot(AttributeLoginPassword)),
+			stringvalidator.AlsoRequires(path.MatchRoot(AttributeLoginPasswordWOVersion)),
+			stringvalidator.LengthAtLeast(1),
+		},
+	}
+	attrs[AttributeLoginPasswordWOVersion] = rsschema.Int64Attribute{
+		Description: DescriptionLoginPasswordWOVersion,
+		Optional:    true,
+		Validators: []validator.Int64{
+			int64validator.AtLeast(0),
+			int64validator.AlsoRequires(path.MatchRoot(AttributeLoginPasswordWO)),
+		},
+	}
+	attrs[AttributeLoginFieldsWO] = rsschema.MapAttribute{
+		Description: DescriptionLoginFieldsWO,
+		ElementType: types.StringType,
+		Optional:    true,
+		Sensitive:   true,
+		WriteOnly:   true,
+		Validators: []validator.Map{
+			mapvalidator.AlsoRequires(path.MatchRoot(AttributeLoginFieldsWOVersion)),
+			mapvalidator.SizeAtLeast(1),
+			mapvalidator.KeysAre(stringvalidator.LengthAtLeast(1)),
+		},
+	}
+	attrs[AttributeLoginFieldsWOVersion] = rsschema.Int64Attribute{
+		Description: DescriptionLoginFieldsWOVersion,
+		Optional:    true,
+		Validators: []validator.Int64{
+			int64validator.AtLeast(0),
+			int64validator.AlsoRequires(path.MatchRoot(AttributeLoginFieldsWO)),
+		},
+	}
 	attrs[AttributeLoginUsername] = rsschema.StringAttribute{Description: DescriptionLoginUsername, Optional: true, Computed: true, Sensitive: true}
 	attrs[AttributeLoginTotp] = rsschema.StringAttribute{Description: DescriptionLoginTotp, Optional: true, Computed: true, Sensitive: true}
 	attrs[AttributeFavorite] = rsschema.BoolAttribute{Description: DescriptionFavorite, Optional: true, Computed: true}
