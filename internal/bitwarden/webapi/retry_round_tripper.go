@@ -98,7 +98,7 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	resp, err := rrt.Transport.RoundTrip(httpReq.WithContext(reqCtx))
 
 	// A request is successful if there's no error, we got a response, and the status code is not retryable
-	isSuccessful := err == nil && resp != nil && !isRetriableStatusCode(httpReq.Method, resp.StatusCode)
+	isSuccessful := err == nil && resp != nil && !isRetriableStatusCode(httpReq, resp.StatusCode)
 
 	// Success: return response, no retry.
 	if isSuccessful {
@@ -244,7 +244,7 @@ func isRetriableForResponsePhase(httpReq *http.Request) bool {
 	if httpReq == nil {
 		return false
 	}
-	if httpReq.Method == http.MethodGet {
+	if isReadOnlyRequest(httpReq) {
 		return true
 	}
 	if httpReq.Method == http.MethodPost && httpReq.Header.Get("Authorization") == "" {
@@ -288,25 +288,32 @@ func preserveResponseBody(resp *http.Response) error {
 	return nil
 }
 
-// isRetriableStatusCode determines if a status code is retryable based on the HTTP method.
-// - 429: retryable for all methods (rate limit; the request was not processed)
-// - 503: retryable for GET and POST (service unavailable; the request was not processed)
-// - other listed 5xx (currently 500): retryable for GET only, to avoid duplicating writes
-func isRetriableStatusCode(method string, statusCode int) bool {
+// readOnlyRequestKey marks requests that read using POST and can be retried
+// under the same conditions as GETs.
+type readOnlyRequestKey struct{}
+
+func isReadOnlyRequest(req *http.Request) bool {
+	return req.Method == http.MethodGet || req.Context().Value(readOnlyRequestKey{}) == true
+}
+
+// isRetriableStatusCode determines whether a response can be retried.
+// 429 is retryable for all methods. 503 is retryable for GET and POST.
+// Other listed server errors are retryable only for read-only requests.
+func isRetriableStatusCode(req *http.Request, statusCode int) bool {
 	if !slices.Contains(retryableStatusCodes, statusCode) {
 		return false
 	}
 
-	isGetOrPost := method == http.MethodGet || method == http.MethodPost
 	switch {
 	case statusCode == http.StatusTooManyRequests:
 		return true
 	case statusCode == http.StatusServiceUnavailable:
-		return isGetOrPost
+		return req.Method == http.MethodGet || req.Method == http.MethodPost
 	case statusCode >= 500 && statusCode < 600:
-		return method == http.MethodGet
+		return isReadOnlyRequest(req)
+	default:
+		return false
 	}
-	return false
 }
 
 // bufferRequestBody reads the request body so it can be replayed on retry.
@@ -339,7 +346,7 @@ func retriableReasons(err error, httpReq *http.Request, resp *http.Response) []s
 	if isRetriableForResponsePhase(httpReq) && isResponseHeaderTimeout(err) {
 		reasons = append(reasons, "response_header_timeout")
 	}
-	if resp != nil && isRetriableStatusCode(httpReq.Method, resp.StatusCode) {
+	if resp != nil && isRetriableStatusCode(httpReq, resp.StatusCode) {
 		reasons = append(reasons, "retriable_http_status_code")
 	}
 	if isRetriableForResponsePhase(httpReq) && isContextTimeout(err) {
