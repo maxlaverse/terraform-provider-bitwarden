@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
@@ -53,6 +54,212 @@ func TestAccResourceItemLoginAttributes(t *testing.T) {
 			},
 		},
 	})
+}
+
+// checkBackendLoginCredentials fetches the item straight from the backend
+// (bypassing Terraform state entirely) and asserts its password/username.
+// The client is created (and logged in/synced) lazily, when the check
+// actually runs, rather than up front when the test steps are constructed --
+// otherwise it would sync before the item even exists.
+func checkBackendLoginCredentials(t *testing.T, objectID *string, expectedPassword, expectedUsername string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		obj, err := bwEmbeddedTestClient(t).GetItem(t.Context(), models.Item{ID: *objectID, Object: models.ObjectTypeItem})
+		if err != nil {
+			return err
+		}
+		if obj.Login.Password != expectedPassword {
+			return fmt.Errorf("expected backend login password %q, got %q", expectedPassword, obj.Login.Password)
+		}
+		if obj.Login.Username != expectedUsername {
+			return fmt.Errorf("expected backend login username %q, got %q", expectedUsername, obj.Login.Username)
+		}
+		return nil
+	}
+}
+
+// TestAccResourceItemLoginWriteOnly covers the maintainer-requested scenarios
+// for password_wo/username_wo/wo_version:
+//   - bumping wo_version alongside new password_wo/username_wo values updates
+//     the item, even though neither is ever in state;
+//   - the plan stays empty when wo_version is unchanged, even if
+//     password_wo/username_wo would evaluate to a different value on this
+//     apply (e.g. fed by an ephemeral resource that produces a fresh value
+//     every time);
+//   - changing an unrelated attribute while wo_version is unchanged must not
+//     change the vault password/username, even though password_wo/username_wo
+//     are reconfigured with different (would-be) values alongside it.
+func TestAccResourceItemLoginWriteOnly(t *testing.T) {
+	ensureTestConfigurationReady(t)
+
+	resourceName := "bitwarden_item_login.foo"
+	name := testName("login-wo")
+	var objectID string
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWO(name, "wo-secret-1", "wo-username-1", 1, ""),
+				Check: resource.ComposeTestCheckFunc(
+					getObjectID(resourceName, &objectID),
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginPassword),
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginUsername),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginWOVersion, "1"),
+					checkBackendLoginCredentials(t, &objectID, "wo-secret-1", "wo-username-1"),
+				),
+			},
+			// Bumping wo_version alongside new password_wo/username_wo values must
+			// update the item, even though neither is ever in state.
+			{
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWO(name, "wo-secret-2", "wo-username-2", 2, ""),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrPtr(resourceName, schema_definition.AttributeID, &objectID),
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginPassword),
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginUsername),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginWOVersion, "2"),
+					checkBackendLoginCredentials(t, &objectID, "wo-secret-2", "wo-username-2"),
+				),
+			},
+			// Same config, same wo_version: the plan must stay empty.
+			{
+				Config:             tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWO(name, "wo-secret-2", "wo-username-2", 2, ""),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+			// wo_version unchanged, but password_wo/username_wo now evaluate to a
+			// different literal (simulating an ephemeral resource producing a new
+			// value on every apply): the plan must still be empty, since
+			// write-only attributes never contribute to the diff.
+			{
+				Config:             tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWO(name, "wo-secret-3-unused", "wo-username-3-unused", 2, ""),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+			// wo_version unchanged, but an unrelated attribute (totp) changes, and
+			// password_wo/username_wo evaluate to different (would-be) values:
+			// totp must update, but the vault password/username must not change.
+			{
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWO(name, "wo-secret-4-unused", "wo-username-4-unused", 2, "4321"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginTotp, "4321"),
+					checkBackendLoginCredentials(t, &objectID, "wo-secret-2", "wo-username-2"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccResourceItemLoginWriteOnlyPartial checks that password_wo can be
+// paired with a plain (non-write-only) username, and the other way around --
+// the two write-only attributes must not be required together.
+func TestAccResourceItemLoginWriteOnlyPartial(t *testing.T) {
+	ensureTestConfigurationReady(t)
+
+	resourceName := "bitwarden_item_login.foo"
+	name := testName("login-wo-partial")
+	var objectID string
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + fmt.Sprintf(`
+	resource "bitwarden_item_login" "foo" {
+		provider 		= bitwarden
+
+		organization_id = %q
+		name        	= %q
+		username    	= "plain-username"
+		password_wo 	= "wo-secret-1"
+		wo_version  	= 1
+	}
+`, testConfiguration.Resources.OrganizationID, name),
+				Check: resource.ComposeTestCheckFunc(
+					getObjectID(resourceName, &objectID),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginUsername, "plain-username"),
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginPassword),
+					checkBackendLoginCredentials(t, &objectID, "wo-secret-1", "plain-username"),
+				),
+			},
+			// Bumping wo_version rotates the password alone; the plain username is
+			// left as configured, without ever needing username_wo.
+			{
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + fmt.Sprintf(`
+	resource "bitwarden_item_login" "foo" {
+		provider 		= bitwarden
+
+		organization_id = %q
+		name        	= %q
+		username    	= "plain-username"
+		password_wo 	= "wo-secret-2"
+		wo_version  	= 2
+	}
+`, testConfiguration.Resources.OrganizationID, name),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginUsername, "plain-username"),
+					checkBackendLoginCredentials(t, &objectID, "wo-secret-2", "plain-username"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccResourceItemLoginMigrateToWriteOnly checks that migrating an item
+// from a plain password to password_wo removes the secret from state.
+func TestAccResourceItemLoginMigrateToWriteOnly(t *testing.T) {
+	ensureTestConfigurationReady(t)
+
+	resourceName := "bitwarden_item_login.foo"
+	name := testName("login-wo-migrate")
+	var objectID string
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + fmt.Sprintf(`
+	resource "bitwarden_item_login" "foo" {
+		provider 		= bitwarden
+
+		organization_id = %q
+		name     		= %q
+		username 		= "plain-username"
+		password 		= "plain-password"
+	}
+`, testConfiguration.Resources.OrganizationID, name),
+				Check: resource.ComposeTestCheckFunc(
+					getObjectID(resourceName, &objectID),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginPassword, "plain-password"),
+				),
+			},
+			{
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginWO(name, "migrated-secret", "migrated-username", 1, ""),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginPassword),
+					resource.TestCheckNoResourceAttr(resourceName, schema_definition.AttributeLoginUsername),
+					checkBackendLoginCredentials(t, &objectID, "migrated-secret", "migrated-username"),
+				),
+			},
+		},
+	})
+}
+
+func tfConfigResourceItemLoginWO(name, password, username string, version int, totp string) string {
+	totpAttr := ""
+	if totp != "" {
+		totpAttr = fmt.Sprintf("\t\ttotp        = %q\n", totp)
+	}
+	return fmt.Sprintf(`
+	resource "bitwarden_item_login" "foo" {
+		provider 		= bitwarden
+
+		organization_id = %q
+		name        	= %q
+		password_wo 	= %q
+		username_wo 	= %q
+		wo_version  	= %d
+%s	}
+`, testConfiguration.Resources.OrganizationID, name, password, username, version, totpAttr)
 }
 
 func TestAccResourceItemLoginAddRemoveCollection(t *testing.T) {
