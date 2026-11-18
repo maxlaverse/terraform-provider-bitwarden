@@ -6,11 +6,13 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	epschema "github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
@@ -56,6 +58,12 @@ type itemResource[T any] struct {
 	schema         func() rsschema.Schema
 	toData         func(context.Context, T) *transformation.MapData
 	fromData       func(*transformation.MapData) T
+	// prepareWriteOnly, if set, resolves write-only attribute values into
+	// attr right before it's sent to the API. Write-only values are only
+	// ever available from the raw config (Terraform always nulls them out
+	// of plan and state), hence cfg rather than the plan model. state is
+	// nil during Create.
+	prepareWriteOnly func(ctx context.Context, bwClient bitwarden.PasswordManager, cfg tfsdk.Config, state *T, plan T, attr *transformation.MapData, diags *diag.Diagnostics)
 }
 
 func (r *itemResource[T]) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -87,6 +95,12 @@ func (r *itemResource[T]) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	attr := r.toData(ctx, plan)
+	if r.prepareWriteOnly != nil {
+		r.prepareWriteOnly(ctx, bwClient, req.Config, nil, plan, attr, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
 	if err := itemApply(ctx, r.itemType, attr, bwClient.CreateItem); err != nil {
 		addErr(&resp.Diagnostics, err)
 		return
@@ -138,6 +152,18 @@ func (r *itemResource[T]) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	attr := r.toData(ctx, plan)
+	if r.prepareWriteOnly != nil {
+		var state T
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		r.prepareWriteOnly(ctx, bwClient, req.Config, &state, plan, attr, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
 	if err := itemApply(ctx, r.itemType, attr, bwClient.EditItem); err != nil {
 		addErr(&resp.Diagnostics, err)
 		return
