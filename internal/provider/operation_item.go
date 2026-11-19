@@ -64,6 +64,16 @@ type itemResource[T any] struct {
 	// of plan and state), hence cfg rather than the plan model. state is
 	// nil during Create.
 	prepareWriteOnly func(ctx context.Context, bwClient bitwarden.PasswordManager, cfg tfsdk.Config, state *T, plan T, attr *transformation.MapData, diags *diag.Diagnostics)
+	// modifyPlan, if set, adjusts the plan of an existing resource (never
+	// called on create or destroy).
+	modifyPlan func(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse)
+}
+
+func (r *itemResource[T]) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if r.modifyPlan == nil || req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return
+	}
+	r.modifyPlan(ctx, req, resp)
 }
 
 func (r *itemResource[T]) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

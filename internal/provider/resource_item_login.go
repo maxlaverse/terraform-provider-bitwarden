@@ -116,14 +116,23 @@ func loginPrepareWriteOnly(ctx context.Context, bwClient bitwarden.PasswordManag
 		return
 	}
 
-	rotate := state == nil || !state.WOVersion.Equal(plan.WOVersion)
-	if rotate {
-		if usingPasswordWO {
-			_ = attr.Set(schema_definition.AttributeLoginPassword, passwordWO.ValueString())
-		}
-		if usingUsernameWO {
-			_ = attr.Set(schema_definition.AttributeLoginUsername, usernameWO.ValueString())
-		}
+	// A plain value still in state means the attribute is being migrated to its
+	// write-only variant, which has to be applied even if wo_version is
+	// unchanged.
+	versionChanged := state == nil || !state.WOVersion.Equal(plan.WOVersion)
+	rotatePassword := usingPasswordWO && (versionChanged || !state.Password.IsNull())
+	rotateUsername := usingUsernameWO && (versionChanged || !state.Username.IsNull())
+
+	if rotatePassword {
+		_ = attr.Set(schema_definition.AttributeLoginPassword, passwordWO.ValueString())
+	}
+	if rotateUsername {
+		_ = attr.Set(schema_definition.AttributeLoginUsername, usernameWO.ValueString())
+	}
+
+	keepPassword := usingPasswordWO && !rotatePassword
+	keepUsername := usingUsernameWO && !rotateUsername
+	if !keepPassword && !keepUsername {
 		return
 	}
 
@@ -132,11 +141,39 @@ func loginPrepareWriteOnly(ctx context.Context, bwClient bitwarden.PasswordManag
 		diags.AddError("Reading current login before update", err.Error())
 		return
 	}
-	if usingPasswordWO {
+	if keepPassword {
 		_ = attr.Set(schema_definition.AttributeLoginPassword, obj.Login.Password)
 	}
-	if usingUsernameWO {
+	if keepUsername {
 		_ = attr.Set(schema_definition.AttributeLoginUsername, obj.Login.Username)
+	}
+}
+
+// loginModifyPlan plans password/username as null whenever their write-only
+// variant is configured. Without it, a plain value already in state (e.g. when
+// migrating from password to password_wo) would be carried over as-is: no diff,
+// no update, and the secret stays in state. When that value is actually being
+// dropped, revision_date is marked unknown since the framework only does so for
+// diffs it detected itself.
+func loginModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	for _, a := range []struct{ plain, writeOnly string }{
+		{schema_definition.AttributeLoginPassword, schema_definition.AttributeLoginPasswordWO},
+		{schema_definition.AttributeLoginUsername, schema_definition.AttributeLoginUsernameWO},
+	} {
+		var writeOnly, current types.String
+		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root(a.writeOnly), &writeOnly)...)
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root(a.plain), &current)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if writeOnly.IsNull() {
+			continue
+		}
+
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root(a.plain), types.StringNull())...)
+		if !current.IsNull() {
+			resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root(schema_definition.AttributeRevisionDate), types.StringUnknown())...)
+		}
 	}
 }
 
@@ -148,5 +185,6 @@ func NewItemLoginResource() resource.Resource {
 		toData:           loginResourceToData,
 		fromData:         loginResourceFromData,
 		prepareWriteOnly: loginPrepareWriteOnly,
+		modifyPlan:       loginModifyPlan,
 	}
 }
