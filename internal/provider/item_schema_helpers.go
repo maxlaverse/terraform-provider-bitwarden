@@ -15,6 +15,16 @@ func mapBool(v interface{}) types.Bool {
 	return types.BoolNull()
 }
 
+func mapInt64(v interface{}) types.Int64 {
+	switch vv := v.(type) {
+	case int64:
+		return types.Int64Value(vv)
+	case int:
+		return types.Int64Value(int64(vv))
+	}
+	return types.Int64Null()
+}
+
 func strFromAttr(v attr.Value) string {
 	if s, ok := v.(types.String); ok {
 		return s.ValueString()

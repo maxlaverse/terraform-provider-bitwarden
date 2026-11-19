@@ -75,4 +75,6 @@ resource "aws_secretsmanager_secret_version" "db" {
 
 This example uses the AWS provider's write-only `secret_string_wo` argument. Any provider that exposes a compatible write-only argument works the same way. See that resource's documentation for the version or revision argument to bump when the secret changes.
 
+`bitwarden_item_login` itself exposes `password_wo`/`username_wo` write-only arguments, so Bitwarden can be the receiving end too - generating and storing a secret without it ever reaching state. See [Working with Secrets](write-only-attributes.md) for walkthroughs of that, including how to safely reuse the same secret across multiple resources.
+
 Lookup arguments (`id`, `item_id`, `key`, `search`, and filters) and the full attribute list for each ephemeral type are documented with the schema on the Terraform Registry.

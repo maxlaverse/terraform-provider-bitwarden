@@ -3,8 +3,12 @@ package provider
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/schema_definition"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/transformation"
@@ -38,12 +42,149 @@ func loginFromData(attr *transformation.MapData) itemLoginModel {
 	}
 }
 
+// itemLoginResourceModel extends itemLoginModel with the write-only
+// attributes, which only the resource (not the data source or ephemeral
+// resource) exposes.
+type itemLoginResourceModel struct {
+	itemLoginModel
+	PasswordWO types.String `tfsdk:"password_wo"`
+	UsernameWO types.String `tfsdk:"username_wo"`
+	WOVersion  types.Int64  `tfsdk:"wo_version"`
+}
+
+func loginResourceToData(ctx context.Context, model itemLoginResourceModel) *transformation.MapData {
+	attr := loginToData(ctx, model.itemLoginModel)
+
+	// password/username are never known from the typed model alone once a
+	// write-only variant is in play (Terraform always nulls password_wo /
+	// username_wo out of plan and state). Default to "write-only in use"
+	// whenever the plain attribute is currently null; loginPrepareWriteOnly
+	// then corrects this with the authoritative answer taken from config on
+	// Create/Update. Read has no such hook, but by then a prior Create/Update
+	// has already nulled out the plain attribute in state if it's write-only
+	// sourced, so the same check is accurate there too -- except right after
+	// Import, where every attribute (including the Required Name) is null in
+	// the skeleton state handed to the following Read. There's no way to tell
+	// whether such an item was write-only sourced, so default to "no" (mirror
+	// normally), matching every other write-only Terraform resource.
+	isFreshImport := model.Name.IsNull()
+	_ = attr.Set(schema_definition.AttributeLoginPasswordWO, !isFreshImport && model.Password.IsNull())
+	_ = attr.Set(schema_definition.AttributeLoginUsernameWO, !isFreshImport && model.Username.IsNull())
+	if model.WOVersion.IsNull() {
+		_ = attr.Set(schema_definition.AttributeLoginWOVersion, nil)
+	} else {
+		_ = attr.Set(schema_definition.AttributeLoginWOVersion, model.WOVersion.ValueInt64())
+	}
+	return attr
+}
+
+// loginResourceFromData intentionally leaves PasswordWO/UsernameWO unset
+// (null): write-only attribute values must never be persisted to state.
+func loginResourceFromData(attr *transformation.MapData) itemLoginResourceModel {
+	return itemLoginResourceModel{
+		itemLoginModel: loginFromData(attr),
+		WOVersion:      mapInt64(attr.Values()[schema_definition.AttributeLoginWOVersion]),
+	}
+}
+
+// loginPrepareWriteOnly resolves password_wo/username_wo into attr right
+// before it's sent to the API. Their value is only ever available from the
+// raw config (Terraform always nulls them out of plan and state), so it's
+// read from cfg rather than the plan model.
+//
+// On update, the write-only value is only re-applied when wo_version has
+// actually changed since the last apply (state is nil on create, where it's
+// always applied). Otherwise -- e.g. another attribute changed, or
+// password_wo/username_wo are fed by an ephemeral resource that produces a
+// fresh value on every apply -- the vault credentials must be left exactly
+// as they are; since they're never in state, that requires fetching the
+// item's current value from the backend rather than just leaving attr alone.
+func loginPrepareWriteOnly(ctx context.Context, bwClient bitwarden.PasswordManager, cfg tfsdk.Config, state *itemLoginResourceModel, plan itemLoginResourceModel, attr *transformation.MapData, diags *diag.Diagnostics) {
+	var passwordWO, usernameWO types.String
+	diags.Append(cfg.GetAttribute(ctx, path.Root(schema_definition.AttributeLoginPasswordWO), &passwordWO)...)
+	diags.Append(cfg.GetAttribute(ctx, path.Root(schema_definition.AttributeLoginUsernameWO), &usernameWO)...)
+	if diags.HasError() {
+		return
+	}
+
+	usingPasswordWO := !passwordWO.IsNull()
+	usingUsernameWO := !usernameWO.IsNull()
+	_ = attr.Set(schema_definition.AttributeLoginPasswordWO, usingPasswordWO)
+	_ = attr.Set(schema_definition.AttributeLoginUsernameWO, usingUsernameWO)
+
+	if !usingPasswordWO && !usingUsernameWO {
+		return
+	}
+
+	// A plain value still in state means the attribute is being migrated to its
+	// write-only variant, which has to be applied even if wo_version is
+	// unchanged.
+	versionChanged := state == nil || !state.WOVersion.Equal(plan.WOVersion)
+	rotatePassword := usingPasswordWO && (versionChanged || !state.Password.IsNull())
+	rotateUsername := usingUsernameWO && (versionChanged || !state.Username.IsNull())
+
+	if rotatePassword {
+		_ = attr.Set(schema_definition.AttributeLoginPassword, passwordWO.ValueString())
+	}
+	if rotateUsername {
+		_ = attr.Set(schema_definition.AttributeLoginUsername, usernameWO.ValueString())
+	}
+
+	keepPassword := usingPasswordWO && !rotatePassword
+	keepUsername := usingUsernameWO && !rotateUsername
+	if !keepPassword && !keepUsername {
+		return
+	}
+
+	obj, err := bwClient.GetItem(ctx, models.Item{ID: plan.ID.ValueString(), Object: models.ObjectTypeItem})
+	if err != nil {
+		diags.AddError("Reading current login before update", err.Error())
+		return
+	}
+	if keepPassword {
+		_ = attr.Set(schema_definition.AttributeLoginPassword, obj.Login.Password)
+	}
+	if keepUsername {
+		_ = attr.Set(schema_definition.AttributeLoginUsername, obj.Login.Username)
+	}
+}
+
+// loginModifyPlan plans password/username as null whenever their write-only
+// variant is configured. Without it, a plain value already in state (e.g. when
+// migrating from password to password_wo) would be carried over as-is: no diff,
+// no update, and the secret stays in state. When that value is actually being
+// dropped, revision_date is marked unknown since the framework only does so for
+// diffs it detected itself.
+func loginModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	for _, a := range []struct{ plain, writeOnly string }{
+		{schema_definition.AttributeLoginPassword, schema_definition.AttributeLoginPasswordWO},
+		{schema_definition.AttributeLoginUsername, schema_definition.AttributeLoginUsernameWO},
+	} {
+		var writeOnly, current types.String
+		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root(a.writeOnly), &writeOnly)...)
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root(a.plain), &current)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if writeOnly.IsNull() {
+			continue
+		}
+
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root(a.plain), types.StringNull())...)
+		if !current.IsNull() {
+			resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root(schema_definition.AttributeRevisionDate), types.StringUnknown())...)
+		}
+	}
+}
+
 func NewItemLoginResource() resource.Resource {
-	return &itemResource[itemLoginModel]{
-		typeNameSuffix: "_item_login",
-		itemType:       models.ItemTypeLogin,
-		schema:         schema_definition.LoginResourceSchema,
-		toData:         loginToData,
-		fromData:       loginFromData,
+	return &itemResource[itemLoginResourceModel]{
+		typeNameSuffix:   "_item_login",
+		itemType:         models.ItemTypeLogin,
+		schema:           schema_definition.LoginResourceSchema,
+		toData:           loginResourceToData,
+		fromData:         loginResourceFromData,
+		prepareWriteOnly: loginPrepareWriteOnly,
+		modifyPlan:       loginModifyPlan,
 	}
 }

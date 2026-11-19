@@ -58,10 +58,13 @@ resource "bitwarden_item_login" "administrative-user" {
 - `notes` (String, Sensitive) Free-form notes.
 - `organization_id` (String) Identifier of the organization.
 - `password` (String, Sensitive) Login password.
+- `password_wo` (String, Sensitive, Write-Only) Login password (write-only). Not stored in state. Conflicts with `password`. Requires `wo_version`.
 - `reprompt` (Boolean) Require master password 're-prompt' when displaying secret in the UI.
 - `totp` (String, Sensitive) TOTP authenticator secret (the seed, not a generated one-time code).
 - `uri` (Block List) URI. (see [below for nested schema](#nestedblock--uri))
 - `username` (String, Sensitive) Login username.
+- `username_wo` (String, Sensitive, Write-Only) Login username (write-only). Not stored in state. Conflicts with `username`. Requires `wo_version`.
+- `wo_version` (Number) Bump this value to apply a new `password_wo`/`username_wo`. Left unchanged, the login's password/username are left untouched, even if `password_wo`/`username_wo` evaluate to a different value (e.g. when sourced from an ephemeral resource).
 
 ### Read-Only
 
