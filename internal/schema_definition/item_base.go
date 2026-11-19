@@ -166,10 +166,15 @@ func itemBaseResourceAttributes() map[string]rsschema.Attribute {
 			Sensitive:   true,
 		},
 		AttributeOrganizationID: rsschema.StringAttribute{
-			Description:   DescriptionOrganizationID,
-			Optional:      true,
-			Computed:      true,
-			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			Description: DescriptionOrganizationID,
+			Optional:    true,
+			Computed:    true,
+			// Optional+Computed can plan as unknown; RequiresReplace would then
+			// recreate the item. UseStateForUnknown keeps the prior value.
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+				stringplanmodifier.RequiresReplace(),
+			},
 		},
 		AttributeReprompt: rsschema.BoolAttribute{
 			Description: DescriptionReprompt,

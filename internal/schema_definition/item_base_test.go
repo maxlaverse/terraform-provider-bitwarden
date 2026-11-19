@@ -3,9 +3,15 @@
 package schema_definition
 
 import (
+	"context"
 	"testing"
 
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -97,4 +103,64 @@ func TestLoginTotpDescriptionIsTheSeed(t *testing.T) {
 	require.True(t, ok)
 	assert.Contains(t, attr.GetDescription(), "seed")
 	assert.NotEqual(t, "Verification code.", attr.GetDescription())
+}
+
+func TestItemResourceOrganizationIDPlanModifiers(t *testing.T) {
+	for name, schema := range map[string]rsschema.Schema{
+		"login":       LoginResourceSchema(),
+		"secure_note": SecureNoteResourceSchema(),
+		"ssh_key":     SSHKeyResourceSchema(),
+	} {
+		attr, ok := schema.Attributes[AttributeOrganizationID].(rsschema.StringAttribute)
+		require.Truef(t, ok, "%s organization_id", name)
+		require.Lenf(t, attr.PlanModifiers, 2, "%s organization_id", name)
+		// RequiresReplace() values are not comparable (function field).
+		assert.IsTypef(t, stringplanmodifier.UseStateForUnknown(), attr.PlanModifiers[0], "%s organization_id[0]", name)
+		assert.IsTypef(t, stringplanmodifier.RequiresReplace(), attr.PlanModifiers[1], "%s organization_id[1]", name)
+	}
+}
+
+// Personal items omit organization_id, so Plugin Framework plans it as unknown
+// on any other attribute change. RequiresReplace then treats that unknown as a
+// possible org move and recreates the item.
+func TestOrganizationIDUnknownPlanRequiresReplaceWithoutUseStateForUnknown(t *testing.T) {
+	req, resp := unknownOrganizationIDPlan(t)
+
+	stringplanmodifier.RequiresReplace().PlanModifyString(context.Background(), req, resp)
+
+	assert.True(t, resp.RequiresReplace, "unknown organization_id must force replacement without UseStateForUnknown")
+}
+
+func TestOrganizationIDUnknownPlanDoesNotReplaceWithItemSchemaModifiers(t *testing.T) {
+	attr, ok := LoginResourceSchema().Attributes[AttributeOrganizationID].(rsschema.StringAttribute)
+	require.True(t, ok)
+
+	req, resp := unknownOrganizationIDPlan(t)
+	for _, m := range attr.PlanModifiers {
+		m.PlanModifyString(context.Background(), req, resp)
+		req.PlanValue = resp.PlanValue
+	}
+
+	assert.False(t, resp.RequiresReplace)
+	assert.Equal(t, types.StringValue(""), resp.PlanValue)
+}
+
+func unknownOrganizationIDPlan(t *testing.T) (planmodifier.StringRequest, *planmodifier.StringResponse) {
+	t.Helper()
+
+	// Non-null resource plan/state so RequiresReplace does not treat this as create/destroy.
+	raw := tftypes.NewValue(tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{"id": tftypes.String},
+	}, map[string]tftypes.Value{
+		"id": tftypes.NewValue(tftypes.String, "item-1"),
+	})
+
+	req := planmodifier.StringRequest{
+		ConfigValue: types.StringNull(),
+		PlanValue:   types.StringUnknown(),
+		StateValue:  types.StringValue(""),
+		Plan:        tfsdk.Plan{Raw: raw},
+		State:       tfsdk.State{Raw: raw},
+	}
+	return req, &planmodifier.StringResponse{PlanValue: req.PlanValue}
 }
