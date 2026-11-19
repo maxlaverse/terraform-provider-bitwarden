@@ -2,6 +2,7 @@ package webapi
 
 import (
 	"crypto/rsa"
+	"strings"
 	"time"
 
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
@@ -311,11 +312,34 @@ type CollectionAccessResponse struct {
 	Object            models.ObjectType `json:"object"`
 }
 
+type ServerType string
+
+const (
+	ServerTypeBitwarden   ServerType = "bitwarden"
+	ServerTypeVaultwarden ServerType = "vaultwarden"
+)
+
 type ConfigResponse struct {
 	FeatureStates ConfigFeatureStates `json:"featureStates"`
 	Version       string              `json:"version"`
+	Server        *ConfigServer       `json:"server"`
+}
+
+type ConfigServer struct {
+	Name    string `json:"name"`
+	URL     string `json:"url"`
+	Version string `json:"version,omitempty"`
 }
 
 type ConfigFeatureStates struct {
 	CipherKeyEncryption bool `json:"cipher-key-encryption"`
+}
+
+// ServerType reports which password-manager backend /api/config identified.
+// Official Bitwarden (cloud and self-hosted) leaves `server` null.
+func (c *ConfigResponse) ServerType() ServerType {
+	if c != nil && c.Server != nil && strings.EqualFold(c.Server.Name, "Vaultwarden") {
+		return ServerTypeVaultwarden
+	}
+	return ServerTypeBitwarden
 }
