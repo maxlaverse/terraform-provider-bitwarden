@@ -73,7 +73,7 @@ type Client interface {
 	GetProject(ctx context.Context, projectId string) (*models.Project, error)
 	GetProjects(ctx context.Context, orgId string) ([]models.Project, error)
 	GetSecret(ctx context.Context, secretId string) (*Secret, error)
-	GetSecretsByIDs(ctx context.Context, ids []string) ([]Secret, error)
+	GetSecretsByIDs(ctx context.Context, ids []string) (*SecretsList, error)
 	GetSecrets(ctx context.Context, orgId string) ([]SecretSummary, error)
 	GetUserPublicKey(ctx context.Context, userId string) ([]byte, error)
 	InviteUser(ctx context.Context, orgId string, user InviteUserRequest) error
@@ -536,7 +536,7 @@ func (c *client) GetSecret(ctx context.Context, secretId string) (*Secret, error
 	return doRequest[Secret](ctx, c.httpClient, httpReq)
 }
 
-func (c *client) GetSecretsByIDs(ctx context.Context, ids []string) ([]Secret, error) {
+func (c *client) GetSecretsByIDs(ctx context.Context, ids []string) (*SecretsList, error) {
 	request := struct {
 		IDs []string `json:"ids"`
 	}{IDs: ids}
@@ -547,16 +547,7 @@ func (c *client) GetSecretsByIDs(ctx context.Context, ids []string) ([]Secret, e
 		return nil, fmt.Errorf("error preparing batch secret retrieval request: %w", err)
 	}
 
-	secrets, err := doRequest[SecretsList](ctx, c.httpClient, httpReq)
-	if err != nil {
-		return nil, err
-	}
-
-	if secrets.ContinuationToken != nil && *secrets.ContinuationToken != "" {
-		return nil, fmt.Errorf("pagination not supported for batch secret retrieval")
-	}
-
-	return secrets.Data, nil
+	return doRequest[SecretsList](ctx, c.httpClient, httpReq)
 }
 
 func (c *client) GetSecrets(ctx context.Context, orgId string) ([]SecretSummary, error) {

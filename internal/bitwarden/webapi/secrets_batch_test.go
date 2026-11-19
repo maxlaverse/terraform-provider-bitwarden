@@ -45,10 +45,10 @@ func TestGetSecretsByIDsRetriesInternalServerError(t *testing.T) {
 		httpClient:         &http.Client{Transport: retry},
 	}
 
-	secrets, err := client.GetSecretsByIDs(t.Context(), []string{"first", "second"})
+	page, err := client.GetSecretsByIDs(t.Context(), []string{"first", "second"})
 	require.NoError(t, err)
-	require.Len(t, secrets, 2)
-	assert.Equal(t, "first", secrets[0].ID)
-	assert.Equal(t, "encrypted-value", secrets[0].Value)
+	require.Len(t, page.Data, 2)
+	assert.Equal(t, "first", page.Data[0].ID)
+	assert.Equal(t, "encrypted-value", page.Data[0].Value)
 	assert.Equal(t, 2, attempts)
 }
