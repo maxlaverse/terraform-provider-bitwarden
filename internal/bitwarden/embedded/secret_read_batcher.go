@@ -5,17 +5,18 @@ import (
 	"maps"
 	"net/http"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 )
 
 const (
-	secretReadBatchWindow = 5 * time.Millisecond
-	secretReadBatchSize   = 10
+	secretReadDebounceWindow = 5 * time.Millisecond
+
+	// A full batch can be dispatched immediately at Terraform's default parallelism of 10.
+	secretReadBatchSize = 10
 )
 
 // A batcher belongs to one authenticated Secrets Manager client. It only
@@ -33,10 +34,8 @@ type secretReadBatch struct {
 	timer  *time.Timer
 	done   chan struct{}
 
-	// The batcher mutex protects the waiter counts. Once a batch is dispatched,
-	// ids is immutable and the worker can read it without holding the mutex.
-	ids     map[string]int
-	waiters int
+	// Number of callers waiting for each ID, protected by the batcher mutex.
+	ids map[string]int
 
 	// The worker publishes these before closing done.
 	results map[string]*webapi.Secret
@@ -48,14 +47,8 @@ func (b *secretReadBatcher) get(ctx context.Context, id string) (*webapi.Secret,
 		return nil, err
 	}
 
-	parsedID, err := uuid.Parse(id)
-	if err != nil || !strings.EqualFold(id, parsedID.String()) {
-		return b.client.GetSecret(ctx, id)
-	}
-
-	canonicalID := parsedID.String()
-	batch := b.enqueue(ctx, canonicalID)
-	defer b.release(batch, canonicalID)
+	batch := b.enqueue(ctx, id)
+	defer b.release(batch, id)
 
 	select {
 	case <-ctx.Done():
@@ -71,7 +64,7 @@ func (b *secretReadBatcher) get(ctx context.Context, id string) (*webapi.Secret,
 		return nil, batch.err
 	}
 
-	if secret := batch.results[canonicalID]; secret != nil && len(secret.Projects) > 0 && secret.Projects[0].ID != "" {
+	if secret := batch.results[id]; secret != nil && len(secret.Projects) > 0 && secret.Projects[0].ID != "" {
 		return secret, nil
 	}
 
@@ -95,14 +88,13 @@ func (b *secretReadBatcher) enqueue(ctx context.Context, id string) *secretReadB
 			done:   make(chan struct{}),
 			ids:    make(map[string]int),
 		}
-		batch.timer = time.AfterFunc(secretReadBatchWindow, func() {
+		batch.timer = time.AfterFunc(secretReadDebounceWindow, func() {
 			b.flush(batch)
 		})
 		b.pending = batch
 	}
 
 	batch.ids[id]++
-	batch.waiters++
 
 	if len(batch.ids) == secretReadBatchSize {
 		b.dispatchLocked(batch)
@@ -131,39 +123,36 @@ func (b *secretReadBatcher) dispatchLocked(batch *secretReadBatch) {
 		return
 	}
 
-	go b.readBatch(batch)
+	ids := slices.Collect(maps.Keys(batch.ids))
+	go b.readBatch(batch, ids)
 }
 
 func (b *secretReadBatcher) release(batch *secretReadBatch, id string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	batch.waiters--
+	batch.ids[id]--
+	if batch.ids[id] == 0 {
+		delete(batch.ids, id)
+	}
+
+	if len(batch.ids) > 0 {
+		return
+	}
 
 	if b.pending == batch {
-		batch.ids[id]--
-		if batch.ids[id] == 0 {
-			delete(batch.ids, id)
-		}
-
-		if batch.waiters == 0 {
-			batch.timer.Stop()
-			b.pending = nil
-		}
+		batch.timer.Stop()
+		b.pending = nil
 	}
 
-	if batch.waiters == 0 {
-		batch.cancel()
-	}
+	batch.cancel()
 }
 
-func (b *secretReadBatcher) readBatch(batch *secretReadBatch) {
+func (b *secretReadBatcher) readBatch(batch *secretReadBatch, ids []string) {
 	defer close(batch.done)
 	defer batch.cancel()
 
-	ids := slices.Collect(maps.Keys(batch.ids))
-
-	secrets, err := b.client.GetSecretsByIDs(batch.ctx, ids)
+	page, err := b.client.GetSecretsByIDs(batch.ctx, ids)
 	if err != nil {
 		if !retryAsSingleReads(err) {
 			batch.err = err
@@ -172,17 +161,20 @@ func (b *secretReadBatcher) readBatch(batch *secretReadBatch) {
 		return
 	}
 
-	results := make(map[string]*webapi.Secret, len(secrets))
+	if page.ContinuationToken != nil && *page.ContinuationToken != "" {
+		tflog.Warn(batch.ctx, "Retrying paginated Bitwarden get-by-ids response with individual GETs")
+		return
+	}
 
-	for i := range secrets {
-		secret := &secrets[i]
-		id := strings.ToLower(secret.ID)
+	results := make(map[string]*webapi.Secret, len(page.Data))
 
-		if batch.ids[id] == 0 || results[id] != nil {
+	for i := range page.Data {
+		secret := &page.Data[i]
+		if !slices.Contains(ids, secret.ID) || results[secret.ID] != nil {
 			return
 		}
 
-		results[id] = secret
+		results[secret.ID] = secret
 	}
 
 	batch.results = results
@@ -197,7 +189,7 @@ func retryAsSingleReads(err error) bool {
 	switch httpErr.GetStatusCode() {
 	case http.StatusBadRequest, http.StatusNotFound, http.StatusMethodNotAllowed, http.StatusNotImplemented:
 		// Bitwarden returns 404 for the entire batch if any ID cannot be read.
-		// Older servers can reject the endpoint or the request entirely.
+		// Servers predating Bitwarden v2023.9.0 may not have the endpoint.
 		return true
 	default:
 		return false

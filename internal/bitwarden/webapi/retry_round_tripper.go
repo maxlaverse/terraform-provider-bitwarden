@@ -244,8 +244,8 @@ func isContextTimeout(err error) bool {
 }
 
 // isRetriableForResponsePhase reports whether response-phase timeouts (headers,
-// read, or context) should be retried: GET always, or POST when unauthenticated
-// (no Authorization header).
+// read, or context) should be retried. This includes GETs, requests marked as
+// read-only, and unauthenticated POSTs.
 func isRetriableForResponsePhase(httpReq *http.Request) bool {
 	if httpReq == nil {
 		return false

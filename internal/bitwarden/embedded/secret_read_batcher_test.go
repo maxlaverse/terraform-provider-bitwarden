@@ -5,30 +5,29 @@ package embedded
 import (
 	"context"
 	"net/http"
-	"strings"
+	"strconv"
 	"testing"
 	"testing/synctest"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/webapi"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	firstSecretID  = "aaaaaaaa-0000-4000-8000-000000000001"
-	secondSecretID = "bbbbbbbb-0000-4000-8000-000000000002"
+	firstSecretID  = "Secret-A"
+	secondSecretID = "secret-a"
 )
 
 func TestSecretReadBatcherGroupsConcurrentReads(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		batchIDs := make(chan []string, 1)
 		client := &testSecretReadClient{
-			batch: func(_ context.Context, ids []string) ([]webapi.Secret, error) {
+			batch: func(_ context.Context, ids []string) (*webapi.SecretsList, error) {
 				batchIDs <- ids
 
-				return []webapi.Secret{testSecret(secondSecretID), testSecret(firstSecretID)}, nil
+				return &webapi.SecretsList{Data: []webapi.Secret{testSecret(secondSecretID), testSecret(firstSecretID)}}, nil
 			},
 			single: func(_ context.Context, id string) (*webapi.Secret, error) {
 				secret := testSecret(id)
@@ -40,7 +39,7 @@ func TestSecretReadBatcherGroupsConcurrentReads(t *testing.T) {
 		batcher := &secretReadBatcher{client: client}
 
 		first := readSecretAsync(t.Context(), batcher, firstSecretID)
-		duplicate := readSecretAsync(t.Context(), batcher, strings.ToUpper(firstSecretID))
+		duplicate := readSecretAsync(t.Context(), batcher, firstSecretID)
 		second := readSecretAsync(t.Context(), batcher, secondSecretID)
 
 		require.Equal(t, testSecret(firstSecretID), takeSecret(t, first))
@@ -58,7 +57,7 @@ func TestSecretReadBatcherDispatchesFullBatchImmediately(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		dispatchedAt := make(chan time.Time, 1)
 		client := &testSecretReadClient{
-			batch: func(_ context.Context, ids []string) ([]webapi.Secret, error) {
+			batch: func(_ context.Context, ids []string) (*webapi.SecretsList, error) {
 				dispatchedAt <- time.Now()
 
 				secrets := make([]webapi.Secret, 0, len(ids))
@@ -66,7 +65,7 @@ func TestSecretReadBatcherDispatchesFullBatchImmediately(t *testing.T) {
 					secrets = append(secrets, testSecret(id))
 				}
 
-				return secrets, nil
+				return &webapi.SecretsList{Data: secrets}, nil
 			},
 		}
 		batcher := &secretReadBatcher{client: client}
@@ -74,8 +73,8 @@ func TestSecretReadBatcherDispatchesFullBatchImmediately(t *testing.T) {
 		start := time.Now()
 		reads := make([]<-chan secretReadResult, 0, secretReadBatchSize)
 
-		for range secretReadBatchSize {
-			reads = append(reads, readSecretAsync(t.Context(), batcher, uuid.NewString()))
+		for i := range secretReadBatchSize {
+			reads = append(reads, readSecretAsync(t.Context(), batcher, strconv.Itoa(i)))
 		}
 
 		require.Equal(t, start, <-dispatchedAt)
@@ -86,39 +85,55 @@ func TestSecretReadBatcherDispatchesFullBatchImmediately(t *testing.T) {
 	})
 }
 
-func TestSecretReadBatcherFallsBackAfterNotFound(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		notFound := &webapi.HTTPError{StatusCode: http.StatusNotFound}
-		calls := make(chan string, 3)
-		client := &testSecretReadClient{
-			batch: func(_ context.Context, _ []string) ([]webapi.Secret, error) {
-				calls <- "batch"
+func TestSecretReadBatcherFallsBackToIndividualReads(t *testing.T) {
+	notFound := &webapi.HTTPError{StatusCode: http.StatusNotFound}
+	next := "next-page"
 
-				return nil, notFound
-			},
-			single: func(_ context.Context, id string) (*webapi.Secret, error) {
-				calls <- id
+	for _, tc := range []struct {
+		name string
+		page *webapi.SecretsList
+		err  error
+	}{
+		{name: "not found", err: notFound},
+		{name: "paginated response", page: &webapi.SecretsList{
+			Data:              []webapi.Secret{testSecret(secondSecretID)},
+			ContinuationToken: &next,
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				calls := make(chan string, 3)
+				client := &testSecretReadClient{
+					batch: func(_ context.Context, _ []string) (*webapi.SecretsList, error) {
+						calls <- "batch"
 
-				if id == secondSecretID {
-					return nil, notFound
+						return tc.page, tc.err
+					},
+					single: func(_ context.Context, id string) (*webapi.Secret, error) {
+						calls <- id
+
+						if id == secondSecretID {
+							return nil, notFound
+						}
+
+						secret := testSecret(id)
+						return &secret, nil
+					},
 				}
+				batcher := &secretReadBatcher{client: client}
 
-				secret := testSecret(id)
-				return &secret, nil
-			},
-		}
-		batcher := &secretReadBatcher{client: client}
+				present := readSecretAsync(t.Context(), batcher, firstSecretID)
+				missing := readSecretAsync(t.Context(), batcher, secondSecretID)
 
-		present := readSecretAsync(t.Context(), batcher, firstSecretID)
-		missing := readSecretAsync(t.Context(), batcher, secondSecretID)
+				require.Equal(t, testSecret(firstSecretID), takeSecret(t, present))
+				require.ErrorIs(t, (<-missing).err, notFound)
 
-		require.Equal(t, testSecret(firstSecretID), takeSecret(t, present))
-		require.ErrorIs(t, (<-missing).err, notFound)
-
-		require.Len(t, calls, 3)
-		require.Equal(t, "batch", <-calls)
-		require.ElementsMatch(t, []string{firstSecretID, secondSecretID}, []string{<-calls, <-calls})
-	})
+				require.Len(t, calls, 3)
+				require.Equal(t, "batch", <-calls)
+				require.ElementsMatch(t, []string{firstSecretID, secondSecretID}, []string{<-calls, <-calls})
+			})
+		})
+	}
 }
 
 func TestSecretReadBatcherFallsBackForIncompleteProjectMetadata(t *testing.T) {
@@ -129,8 +144,8 @@ func TestSecretReadBatcherFallsBackForIncompleteProjectMetadata(t *testing.T) {
 
 		singleIDs := make(chan string, 2)
 		client := &testSecretReadClient{
-			batch: func(_ context.Context, _ []string) ([]webapi.Secret, error) {
-				return []webapi.Secret{secondSecret, firstSecret}, nil
+			batch: func(_ context.Context, _ []string) (*webapi.SecretsList, error) {
+				return &webapi.SecretsList{Data: []webapi.Secret{secondSecret, firstSecret}}, nil
 			},
 			single: func(_ context.Context, id string) (*webapi.Secret, error) {
 				singleIDs <- id
@@ -155,7 +170,7 @@ func TestSecretReadBatcherDoesNotFanOutRateLimitErrors(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		throttled := &webapi.HTTPError{StatusCode: http.StatusTooManyRequests}
 		client := &testSecretReadClient{
-			batch: func(_ context.Context, _ []string) ([]webapi.Secret, error) {
+			batch: func(_ context.Context, _ []string) (*webapi.SecretsList, error) {
 				return nil, throttled
 			},
 		}
@@ -173,7 +188,7 @@ func TestSecretReadBatcherCancelsSharedReadWhenLastCallerLeaves(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		batchContext := make(chan context.Context, 1)
 		client := &testSecretReadClient{
-			batch: func(ctx context.Context, _ []string) ([]webapi.Secret, error) {
+			batch: func(ctx context.Context, _ []string) (*webapi.SecretsList, error) {
 				batchContext <- ctx
 				<-ctx.Done()
 
@@ -191,11 +206,13 @@ func TestSecretReadBatcherCancelsSharedReadWhenLastCallerLeaves(t *testing.T) {
 		first := readSecretAsync(firstCtx, batcher, firstSecretID)
 		synctest.Wait()
 		second := readSecretAsync(secondCtx, batcher, secondSecretID)
+		duplicate := readSecretAsync(firstCtx, batcher, secondSecretID)
 
 		shared := <-batchContext
 		cancelFirst()
 
 		require.ErrorIs(t, (<-first).err, context.Canceled)
+		require.ErrorIs(t, (<-duplicate).err, context.Canceled)
 		require.NoError(t, shared.Err())
 
 		cancelSecond()
@@ -207,7 +224,7 @@ func TestSecretReadBatcherCancelsSharedReadWhenLastCallerLeaves(t *testing.T) {
 
 type testSecretReadClient struct {
 	webapi.Client
-	batch  func(context.Context, []string) ([]webapi.Secret, error)
+	batch  func(context.Context, []string) (*webapi.SecretsList, error)
 	single func(context.Context, string) (*webapi.Secret, error)
 }
 
@@ -215,7 +232,7 @@ func (c *testSecretReadClient) GetSecret(ctx context.Context, id string) (*webap
 	return c.single(ctx, id)
 }
 
-func (c *testSecretReadClient) GetSecretsByIDs(ctx context.Context, ids []string) ([]webapi.Secret, error) {
+func (c *testSecretReadClient) GetSecretsByIDs(ctx context.Context, ids []string) (*webapi.SecretsList, error) {
 	return c.batch(ctx, ids)
 }
 
