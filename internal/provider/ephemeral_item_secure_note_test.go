@@ -13,7 +13,7 @@ import (
 )
 
 func TestItemSecureNoteReadValidation(t *testing.T) {
-	server := NewProviderServer(versionTestSkippedLogin)()
+	server := NewProviderServer("", WithSkipLogin())()
 	schemaResp, err := server.GetProviderSchema(t.Context(), &tfprotov6.GetProviderSchemaRequest{})
 	require.NoError(t, err)
 	require.Empty(t, schemaResp.Diagnostics)

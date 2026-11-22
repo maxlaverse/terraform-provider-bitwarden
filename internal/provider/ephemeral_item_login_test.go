@@ -15,7 +15,7 @@ import (
 )
 
 func TestItemLoginReadValidation(t *testing.T) {
-	server := NewProviderServer(versionTestSkippedLogin)()
+	server := NewProviderServer("", WithSkipLogin())()
 	schemaResp, err := server.GetProviderSchema(t.Context(), &tfprotov6.GetProviderSchemaRequest{})
 	require.NoError(t, err)
 	require.Empty(t, schemaResp.Diagnostics)
@@ -97,7 +97,7 @@ func TestEphemeralItemLoginProviderClients(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := New(versionTestSkippedLogin)()
+			p := New("", WithSkipLogin())()
 			var schemaResp fwprovider.SchemaResponse
 			p.Schema(t.Context(), fwprovider.SchemaRequest{}, &schemaResp)
 

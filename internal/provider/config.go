@@ -25,12 +25,6 @@ const (
 	LoginMethodAccessToken    LoginMethod = iota
 )
 
-const (
-	versionTestDefault         = ""
-	versionTestDisabledRetries = "--disable-retries--"
-	versionTestSkippedLogin    = "--skip-login--"
-)
-
 // providerConfig is a client-agnostic representation of the provider block. It
 // is populated from the Plugin Framework model (with environment-variable
 // fallbacks applied) and consumed by configureClients. Empty strings mean
@@ -148,8 +142,8 @@ func validateProviderConfig(cfg providerConfig) error {
 // configureClients builds the Bitwarden clients described by the provider
 // configuration. It mirrors the behaviour of the historical SDKv2
 // providerConfigure implementation.
-func configureClients(ctx context.Context, version string, cfg providerConfig) (*ProviderClients, error) {
-	shouldLogin := !strings.Contains(version, versionTestSkippedLogin)
+func configureClients(ctx context.Context, version string, cfg providerConfig, opts providerOptions) (*ProviderClients, error) {
+	shouldLogin := !opts.skipLogin
 
 	hasAccessToken := cfg.has(cfg.AccessToken)
 	useEmbeddedClient := getClientImplementation(cfg) == schema_definition.ClientImplementationEmbedded
@@ -159,7 +153,7 @@ func configureClients(ctx context.Context, version string, cfg providerConfig) (
 	}
 
 	if useEmbeddedClient && !hasAccessToken {
-		bwClient, err := newEmbeddedPasswordManagerClient(ctx, cfg, version)
+		bwClient, err := newEmbeddedPasswordManagerClient(ctx, cfg, version, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -171,7 +165,7 @@ func configureClients(ctx context.Context, version string, cfg providerConfig) (
 		}
 		return &ProviderClients{PasswordManager: bwClient}, nil
 	} else if useEmbeddedClient && hasAccessToken {
-		bwsClient, err := newEmbeddedSecretsManagerClient(ctx, cfg, version)
+		bwsClient, err := newEmbeddedSecretsManagerClient(ctx, cfg, version, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -183,7 +177,7 @@ func configureClients(ctx context.Context, version string, cfg providerConfig) (
 		}
 		return &ProviderClients{SecretsManager: bwsClient}, nil
 	} else if !useEmbeddedClient && hasAccessToken {
-		bwsClient, err := newCLISecretsManagerClient(ctx, cfg, version)
+		bwsClient, err := newCLISecretsManagerClient(ctx, cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -197,7 +191,7 @@ func configureClients(ctx context.Context, version string, cfg providerConfig) (
 		return &ProviderClients{SecretsManager: bwsClient}, nil
 	}
 
-	bwClient, err := newCLIPasswordManagerClient(cfg, version)
+	bwClient, err := newCLIPasswordManagerClient(cfg, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +201,7 @@ func configureClients(ctx context.Context, version string, cfg providerConfig) (
 	}
 
 	if shouldLogin {
-		if err = ensureLoggedInCLIPasswordManager(ctx, cfg, bwClient); err != nil {
+		if err = ensureLoggedInCLIPasswordManager(ctx, cfg, bwClient, opts.disableConfigureSync); err != nil {
 			return nil, err
 		}
 	}
@@ -232,7 +226,7 @@ func getClientImplementation(cfg providerConfig) string {
 	return cfg.ClientImplementation
 }
 
-func ensureLoggedInCLIPasswordManager(ctx context.Context, cfg providerConfig, bwClient bwcli.PasswordManagerClient) error {
+func ensureLoggedInCLIPasswordManager(ctx context.Context, cfg providerConfig, bwClient bwcli.PasswordManagerClient, skipConfigureSync bool) error {
 	status, err := bwClient.Status(ctx)
 	if err != nil {
 		return err
@@ -246,6 +240,9 @@ func ensureLoggedInCLIPasswordManager(ctx context.Context, cfg providerConfig, b
 	//             be done. This should happen when a session key is provided.
 	//             => return
 	if status.Status == bwcli.StatusUnlocked {
+		if skipConfigureSync {
+			return nil
+		}
 		return bwClient.Sync(ctx)
 	}
 
@@ -257,6 +254,9 @@ func ensureLoggedInCLIPasswordManager(ctx context.Context, cfg providerConfig, b
 			return err
 		}
 
+		if skipConfigureSync {
+			return nil
+		}
 		return bwClient.Sync(ctx)
 	}
 
@@ -319,7 +319,7 @@ func logoutIfIdentityChanged(ctx context.Context, cfg providerConfig, bwClient b
 	return nil
 }
 
-func newCLIPasswordManagerClient(cfg providerConfig, version string) (bwcli.PasswordManagerClient, error) {
+func newCLIPasswordManagerClient(cfg providerConfig, pOpts providerOptions) (bwcli.PasswordManagerClient, error) {
 	opts := []bwcli.Options{}
 	if dir, ok := cfg.VaultPath.appDataDir(); ok {
 		abs, err := filepath.Abs(dir)
@@ -333,7 +333,7 @@ func newCLIPasswordManagerClient(cfg providerConfig, version string) (bwcli.Pass
 		opts = append(opts, bwcli.WithExtraCACertsPath(cfg.ExtraCACertsPath))
 	}
 
-	if version == versionTestDisabledRetries {
+	if pOpts.disableRetries {
 		// During development, we disable retry backoffs to make some operations faster.
 		opts = append(opts, bwcli.DisableRetryBackoff())
 	}
@@ -341,14 +341,14 @@ func newCLIPasswordManagerClient(cfg providerConfig, version string) (bwcli.Pass
 	return bwcli.NewPasswordManagerClient(opts...), nil
 }
 
-func newEmbeddedPasswordManagerClient(ctx context.Context, cfg providerConfig, version string) (bitwarden.PasswordManager, error) {
+func newEmbeddedPasswordManagerClient(ctx context.Context, cfg providerConfig, version string, pOpts providerOptions) (bitwarden.PasswordManager, error) {
 	deviceId, err := getOrGenerateDeviceIdentifier(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	opts := []embedded.PasswordManagerOptions{
-		embedded.WithPasswordManagerHttpOptions(buildWebapiOptions(version)...),
+		embedded.WithPasswordManagerHttpOptions(buildWebapiOptions(pOpts)...),
 	}
 
 	if cfg.ExperimentalDisableSyncAfterWriteVerification {
@@ -358,22 +358,22 @@ func newEmbeddedPasswordManagerClient(ctx context.Context, cfg providerConfig, v
 	return embedded.NewPasswordManagerClient(cfg.Server, deviceId, version, opts...), nil
 }
 
-func newEmbeddedSecretsManagerClient(ctx context.Context, cfg providerConfig, version string) (bitwarden.SecretsManager, error) {
+func newEmbeddedSecretsManagerClient(ctx context.Context, cfg providerConfig, version string, pOpts providerOptions) (bitwarden.SecretsManager, error) {
 	deviceId, err := getOrGenerateDeviceIdentifier(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return embedded.NewSecretsManagerClient(cfg.Server, deviceId, version, embedded.WithSecretsManagerHttpOptions(buildWebapiOptions(version)...)), nil
+	return embedded.NewSecretsManagerClient(cfg.Server, deviceId, version, embedded.WithSecretsManagerHttpOptions(buildWebapiOptions(pOpts)...)), nil
 }
 
-func newCLISecretsManagerClient(_ context.Context, cfg providerConfig, _ string) (bitwarden.SecretsManager, error) {
+func newCLISecretsManagerClient(_ context.Context, cfg providerConfig) (bitwarden.SecretsManager, error) {
 	return bwscli.NewSecretsManagerClient(cfg.Server), nil
 }
 
-func buildWebapiOptions(version string) []webapi.Options {
+func buildWebapiOptions(pOpts providerOptions) []webapi.Options {
 	webapiOpts := []webapi.Options{}
-	if version == versionTestDisabledRetries {
+	if pOpts.disableRetries {
 		// During development, we don't want to wait on any sporadic errors.
 		webapiOpts = append(webapiOpts, webapi.DisableRetries())
 	}

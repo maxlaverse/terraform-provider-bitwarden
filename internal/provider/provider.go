@@ -24,19 +24,55 @@ var (
 
 type bitwardenProvider struct {
 	version string
+	opts    providerOptions
+}
+
+// ProviderOption configures test-only provider behaviour. Production
+// (main.go) passes none; version stays a real version string.
+type ProviderOption func(*providerOptions)
+
+type providerOptions struct {
+	skipLogin            bool
+	disableRetries       bool
+	disableConfigureSync bool
+}
+
+// WithSkipLogin skips vault login during Configure. Used by unit tests that
+// only exercise schema or configuration wiring.
+func WithSkipLogin() ProviderOption {
+	return func(o *providerOptions) { o.skipLogin = true }
+}
+
+// WithDisableRetries turns off HTTP and CLI retry backoffs.
+func WithDisableRetries() ProviderOption {
+	return func(o *providerOptions) { o.disableRetries = true }
+}
+
+// WithDisableConfigureSync skips Sync() after status/unlock on Configure.
+// CLI acceptance tests use this to avoid a bw spawn on every Terraform command.
+func WithDisableConfigureSync() ProviderOption {
+	return func(o *providerOptions) { o.disableConfigureSync = true }
+}
+
+func applyProviderOptions(opts []ProviderOption) providerOptions {
+	var o providerOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+	return o
 }
 
 // New returns a Plugin Framework provider factory.
-func New(version string) func() provider.Provider {
+func New(version string, opts ...ProviderOption) func() provider.Provider {
 	return func() provider.Provider {
-		return &bitwardenProvider{version: version}
+		return &bitwardenProvider{version: version, opts: applyProviderOptions(opts)}
 	}
 }
 
 // NewProviderServer returns a Protocol 6 server for the Plugin Framework
 // provider. Acc tests and main both serve this factory.
-func NewProviderServer(version string) func() tfprotov6.ProviderServer {
-	return providerserver.NewProtocol6(New(version)())
+func NewProviderServer(version string, opts ...ProviderOption) func() tfprotov6.ProviderServer {
+	return providerserver.NewProtocol6(New(version, opts...)())
 }
 
 type experimentalModel struct {
@@ -179,7 +215,7 @@ func (p *bitwardenProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	clients, err := configureClients(ctx, p.version, cfg)
+	clients, err := configureClients(ctx, p.version, cfg, p.opts)
 	if err != nil {
 		addErr(&resp.Diagnostics, err)
 		return

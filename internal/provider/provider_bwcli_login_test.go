@@ -24,7 +24,7 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedOnDifferentServer(t *t
 		MasterPassword: "master-password-9",
 	}
 
-	_, err := configureClients(t.Context(), versionTestDisabledRetries, cfg)
+	_, err := configureClients(t.Context(), "", cfg, providerOptions{disableRetries: true})
 	if !assert.NoError(t, err) {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestProviderReauthenticateWithPasswordIfAuthenticatedWithDifferentUser(t *t
 		MasterPassword: "master-password-9",
 	}
 
-	_, err := configureClients(t.Context(), versionTestDisabledRetries, cfg)
+	_, err := configureClients(t.Context(), "", cfg, providerOptions{disableRetries: true})
 	if !assert.NoError(t, err) {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestProviderDoesntLogoutFirstIfUnauthenticated(t *testing.T) {
 		MasterPassword: "master-password-9",
 	}
 
-	_, err := configureClients(t.Context(), versionTestDisabledRetries, cfg)
+	_, err := configureClients(t.Context(), "", cfg, providerOptions{disableRetries: true})
 	if !assert.NoError(t, err) {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -100,9 +100,7 @@ func TestProviderWithSessionKeySync(t *testing.T) {
 		SessionKey: "abcd1234",
 	}
 
-	// We specifically set the provider's version to something else than 'versionTestDisabledRetries'
-	// in order to capture 'sync' calls.
-	_, err := configureClients(t.Context(), "not-dev", cfg)
+	_, err := configureClients(t.Context(), "", cfg, providerOptions{})
 	if !assert.NoError(t, err) {
 		t.Fatal(err)
 	}
@@ -110,6 +108,29 @@ func TestProviderWithSessionKeySync(t *testing.T) {
 	assert.Equal(t, []string{
 		"status",
 		"sync",
+	}, commandsExecuted())
+}
+
+func TestProviderWithSessionKeySkipsConfigureSync(t *testing.T) {
+	removeMocks, commandsExecuted := test_command.MockCommands(t, map[string]string{
+		"status": `{"serverURL": "http://127.0.0.1/", "userEmail": "test@laverse.net", "status": "unlocked"}`,
+		"sync":   ``,
+	})
+	defer removeMocks(t)
+
+	cfg := providerConfig{
+		Server:     "http://127.0.0.1/",
+		Email:      "test@laverse.net",
+		SessionKey: "abcd1234",
+	}
+
+	_, err := configureClients(t.Context(), "", cfg, providerOptions{disableConfigureSync: true})
+	if !assert.NoError(t, err) {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, []string{
+		"status",
 	}, commandsExecuted())
 }
 
@@ -125,7 +146,7 @@ func TestProviderRetryOnRateLimitExceeded(t *testing.T) {
 		SessionKey: "abcd1234",
 	}
 
-	_, err := configureClients(t.Context(), versionTestDisabledRetries, cfg)
+	_, err := configureClients(t.Context(), "", cfg, providerOptions{disableRetries: true})
 
 	if assert.Error(t, err) {
 		assert.Equal(t, "failing command 'status' for test purposes: Rate limit exceeded. Try again later.", err.Error())
@@ -149,7 +170,7 @@ func TestProviderReturnUnhandledError(t *testing.T) {
 		SessionKey: "abcd1234",
 	}
 
-	_, err := configureClients(t.Context(), versionTestDisabledRetries, cfg)
+	_, err := configureClients(t.Context(), "", cfg, providerOptions{disableRetries: true})
 
 	if assert.Error(t, err) {
 		assert.Equal(t, "failing command 'status' for test purposes: Something unknown and bad happened.", err.Error())

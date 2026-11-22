@@ -15,7 +15,7 @@ import (
 // TestProviderSchemaValidity ensures every managed type is registered on the
 // Protocol 6 Plugin Framework server.
 func TestProviderSchemaValidity(t *testing.T) {
-	server := NewProviderServer(versionTestSkippedLogin)()
+	server := NewProviderServer("", WithSkipLogin())()
 
 	resp, err := server.GetProviderSchema(t.Context(), &tfprotov6.GetProviderSchemaRequest{})
 	if err != nil {
@@ -81,7 +81,7 @@ func TestProviderAuthUsingAPIKey(t *testing.T) {
 	}
 	assert.NoError(t, validateProviderConfig(cfg))
 
-	clients, err := configureClients(t.Context(), versionTestSkippedLogin, cfg)
+	clients, err := configureClients(t.Context(), "", cfg, providerOptions{skipLogin: true})
 	assert.NoError(t, err)
 
 	pm, err := clients.RequirePasswordManager()
@@ -100,7 +100,7 @@ func TestProviderAuthUsingAPIAndEmbedded(t *testing.T) {
 	}
 	assert.NoError(t, validateProviderConfig(cfg))
 
-	clients, err := configureClients(t.Context(), versionTestSkippedLogin, cfg)
+	clients, err := configureClients(t.Context(), "", cfg, providerOptions{skipLogin: true})
 	assert.NoError(t, err)
 
 	pm, err := clients.RequirePasswordManager()
@@ -116,7 +116,7 @@ func TestProviderAuthUsingSessionKey(t *testing.T) {
 	}
 	assert.NoError(t, validateProviderConfig(cfg))
 
-	clients, err := configureClients(t.Context(), versionTestSkippedLogin, cfg)
+	clients, err := configureClients(t.Context(), "", cfg, providerOptions{skipLogin: true})
 	assert.NoError(t, err)
 
 	pm, err := clients.RequirePasswordManager()
@@ -131,7 +131,7 @@ func TestProviderAuthUsingAccessToken(t *testing.T) {
 	}
 	assert.NoError(t, validateProviderConfig(cfg))
 
-	clients, err := configureClients(t.Context(), versionTestSkippedLogin, cfg)
+	clients, err := configureClients(t.Context(), "", cfg, providerOptions{skipLogin: true})
 	assert.NoError(t, err)
 
 	sm, err := clients.RequireSecretsManager()
@@ -216,7 +216,7 @@ func TestSyncAfterWriteVerificationDisabled(t *testing.T) {
 	}
 	assert.NoError(t, validateProviderConfig(cfg))
 
-	clients, err := configureClients(t.Context(), versionTestSkippedLogin, cfg)
+	clients, err := configureClients(t.Context(), "", cfg, providerOptions{skipLogin: true})
 	assert.NoError(t, err)
 
 	pm, err := clients.RequirePasswordManager()
@@ -236,7 +236,7 @@ func TestProviderAuthUsingExperimentalEmbeddedClient_BackwardCompatibility(t *te
 	}
 	assert.NoError(t, validateProviderConfig(cfg))
 
-	clients, err := configureClients(t.Context(), versionTestSkippedLogin, cfg)
+	clients, err := configureClients(t.Context(), "", cfg, providerOptions{skipLogin: true})
 	assert.NoError(t, err)
 
 	pm, err := clients.RequirePasswordManager()
