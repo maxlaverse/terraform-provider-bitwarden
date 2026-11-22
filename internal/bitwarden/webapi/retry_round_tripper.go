@@ -64,17 +64,11 @@ func (rrt *RetryRoundTripper) RoundTrip(httpReq *http.Request) (*http.Response, 
 
 	ctx := httpReq.Context()
 
-	// Buffer request body for potential retries. POST requests can get 429/503
+	// Buffer request body for potential retries. Writes (POST/PUT/…) can get 429
 	// and be retried; once the body is read by the transport it cannot be read again.
-	var bodyBuf []byte
-	if httpReq.Body != nil && httpReq.Method == http.MethodPost {
-		var readErr error
-		bodyBuf, readErr = io.ReadAll(httpReq.Body)
-		httpReq.Body.Close()
-		if readErr != nil {
-			return nil, fmt.Errorf("buffer request body for retry: %w", readErr)
-		}
-		httpReq.Body = io.NopCloser(bytes.NewReader(bodyBuf))
+	bodyBuf, readErr := bufferRequestBody(httpReq)
+	if readErr != nil {
+		return nil, readErr
 	}
 
 	attemptNumber := 0
@@ -295,7 +289,7 @@ func preserveResponseBody(resp *http.Response) error {
 }
 
 // isRetriableStatusCode determines if a status code is retryable based on the HTTP method.
-// - 4xx status codes (currently 429): retryable for both GET and POST
+// - 429: retryable for all methods (rate limit; the request was not processed)
 // - 503: retryable for GET and POST (service unavailable; the request was not processed)
 // - other listed 5xx (currently 500): retryable for GET only, to avoid duplicating writes
 func isRetriableStatusCode(method string, statusCode int) bool {
@@ -305,14 +299,28 @@ func isRetriableStatusCode(method string, statusCode int) bool {
 
 	isGetOrPost := method == http.MethodGet || method == http.MethodPost
 	switch {
-	case statusCode >= 400 && statusCode < 500:
-		return isGetOrPost
+	case statusCode == http.StatusTooManyRequests:
+		return true
 	case statusCode == http.StatusServiceUnavailable:
 		return isGetOrPost
 	case statusCode >= 500 && statusCode < 600:
 		return method == http.MethodGet
 	}
 	return false
+}
+
+// bufferRequestBody reads the request body so it can be replayed on retry.
+func bufferRequestBody(httpReq *http.Request) ([]byte, error) {
+	if httpReq.Body == nil || httpReq.Body == http.NoBody {
+		return nil, nil
+	}
+	bodyBuf, err := io.ReadAll(httpReq.Body)
+	httpReq.Body.Close()
+	if err != nil {
+		return nil, fmt.Errorf("buffer request body for retry: %w", err)
+	}
+	httpReq.Body = io.NopCloser(bytes.NewReader(bodyBuf))
+	return bodyBuf, nil
 }
 
 // retriableReasons returns the reasons why a request is retriable (e.g. dial_error, read_timeout).

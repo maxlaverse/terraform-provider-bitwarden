@@ -189,6 +189,75 @@ func TestRetryRoundTripper_4xxWithPOSTRewindsBody(t *testing.T) {
 	assert.Equal(t, body, bodies[1], "retry should send same body (rewound)")
 }
 
+func TestRetryRoundTripper_4xxWithPUT(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	// PUT cipher updates get 429 on repush; rate limit means the write was not applied.
+	transport := &mockTransport{
+		responses: []*http.Response{
+			{StatusCode: http.StatusTooManyRequests},
+			{StatusCode: http.StatusOK},
+		},
+		errors: []error{nil, nil},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
+	rrt.Transport = transport
+
+	req, err := http.NewRequest("PUT", "http://example.com/api/ciphers/item-id", bytes.NewReader([]byte(`{"name":"login"}`)))
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, 2, transport.index)
+}
+
+func TestRetryRoundTripper_4xxWithPUTRewindsBody(t *testing.T) {
+	lowerBackoffFactor()
+	defer lowerBackoffFactor()
+
+	var bodies [][]byte
+	var bodiesMu sync.Mutex
+	transport := &mockTransport{
+		responses: []*http.Response{
+			{StatusCode: http.StatusTooManyRequests},
+			{StatusCode: http.StatusOK},
+		},
+		errors: []error{nil, nil},
+	}
+	recordBodyTransport := &roundTripFunc{
+		fn: func(req *http.Request) (*http.Response, error) {
+			var body []byte
+			if req.Body != nil {
+				body, _ = io.ReadAll(req.Body)
+			}
+			bodiesMu.Lock()
+			bodies = append(bodies, body)
+			bodiesMu.Unlock()
+			return transport.RoundTrip(req)
+		},
+	}
+
+	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
+	rrt.Transport = recordBodyTransport
+
+	body := []byte(`{"type":1,"name":"login"}`)
+	req, err := http.NewRequest("PUT", "http://example.com/api/ciphers/item-id", bytes.NewReader(body))
+	require.NoError(t, err)
+
+	resp, err := rrt.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, 2, transport.index)
+	bodiesMu.Lock()
+	defer bodiesMu.Unlock()
+	require.Len(t, bodies, 2, "body should have been sent on both attempts")
+	assert.Equal(t, body, bodies[0], "first attempt should send full body")
+	assert.Equal(t, body, bodies[1], "retry should send same body (rewound)")
+}
+
 func TestRetryRoundTripper_429RetriedIndefinitely(t *testing.T) {
 	lowerBackoffFactor()
 	defer lowerBackoffFactor()
