@@ -13,9 +13,13 @@ import (
 )
 
 const (
+	// In testing, 5 ms grouped concurrent reads while keeping the wait for an
+	// isolated read short. A longer window only helps a partial batch if
+	// another read can start before the timer fires.
 	secretReadDebounceWindow = 5 * time.Millisecond
 
-	// A full batch can be dispatched immediately at Terraform's default parallelism of 10.
+	// Terraform defaults to ten concurrent operations. When ten distinct reads
+	// are waiting, one must finish before the graph can start another.
 	secretReadBatchSize = 10
 )
 
