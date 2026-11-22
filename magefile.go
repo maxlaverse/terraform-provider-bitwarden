@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/magefile/mage/mg"
 )
@@ -25,6 +26,36 @@ func accTestEnv() []string {
 		}
 	}
 	return append([]string{"TF_ACC_TERRAFORM_VERSION=1.11.4"}, base...)
+}
+
+// overlayEnv copies os.Environ() and applies overrides. Duplicate keys are
+// removed first so the override wins: Go's env lookup uses the first value,
+// so appending TEST_BACKEND=official after a shell TEST_BACKEND=vaultwarden
+// would otherwise keep the mock backend.
+//
+// Integration targets also pass -count=1: go test's cache ignores TEST_BACKEND,
+// so an official run could replay a cached mock-server result.
+func overlayEnv(overrides ...string) []string {
+	keys := make(map[string]struct{}, len(overrides))
+	for _, o := range overrides {
+		k, _, _ := strings.Cut(o, "=")
+		keys[k] = struct{}{}
+	}
+
+	env := os.Environ()
+	out := make([]string, 0, len(env)+len(overrides))
+	for _, e := range env {
+		k, _, _ := strings.Cut(e, "=")
+		if _, found := keys[k]; found {
+			continue
+		}
+		out = append(out, e)
+	}
+	return append(out, overrides...)
+}
+
+func goTestEnv(overrides ...string) []string {
+	return overlayEnv(append(accTestEnv(), overrides...)...)
 }
 
 type Test mg.Namespace
@@ -109,7 +140,7 @@ func (t Test) SweepOfficialPasswordManager() error {
 	cmd := exec.Command("go", "test", "-count=1", "-timeout", "5m", "-tags=integration", "-run", "^$", "./internal/provider/")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = append(os.Environ(), officialSweepEnv()...)
+	cmd.Env = overlayEnv(officialSweepEnv()...)
 	return cmd.Run()
 }
 
@@ -121,7 +152,7 @@ func (t Test) SweepOfficialSecretsManager() error {
 	cmd := exec.Command("go", "test", "-count=1", "-timeout", "5m", "-tags=integrationBws", "-run", "^$", "./internal/provider/")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = append(os.Environ(), officialSweepEnv()...)
+	cmd.Env = overlayEnv(officialSweepEnv()...)
 	return cmd.Run()
 }
 
@@ -135,7 +166,7 @@ func (t Test) IntegrationPwdOfficialWithEmbeddedClientArgs(testPattern string) e
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Password Manager integration tests with embedded client on official bitwarden.com instances...")
-	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integration", "-coverpkg=./...", "./..."}
+	args := []string{"test", "-count=1", "-v", "-race", "-coverprofile=profile.cov", "-tags=integration", "-coverpkg=./...", "./..."}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern, "-timeout", "1m")
 	} else {
@@ -144,9 +175,7 @@ func (t Test) IntegrationPwdOfficialWithEmbeddedClientArgs(testPattern string) e
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, accTestEnv()...)
-	cmd.Env = append(cmd.Env, "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
+	cmd.Env = goTestEnv("TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
 	return cmd.Run()
 }
 
@@ -160,7 +189,7 @@ func (t Test) IntegrationBwsOfficialWithCLIArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Bitwarden Secrets integration tests with CLI on official bitwarden.com instances...")
-	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integrationBws", "-coverpkg=./...", "./..."}
+	args := []string{"test", "-count=1", "-v", "-race", "-coverprofile=profile.cov", "-tags=integrationBws", "-coverpkg=./...", "./..."}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern, "-timeout", "1m")
 	} else {
@@ -169,9 +198,7 @@ func (t Test) IntegrationBwsOfficialWithCLIArgs(testPattern string) error {
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, accTestEnv()...)
-	cmd.Env = append(cmd.Env, "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
+	cmd.Env = goTestEnv("TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
 	return cmd.Run()
 }
 
@@ -185,7 +212,7 @@ func (t Test) IntegrationBwsOfficialWithEmbeddedClientArgs(testPattern string) e
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on official bitwarden.com instances...")
-	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integrationBws", "-coverpkg=./...", "./..."}
+	args := []string{"test", "-count=1", "-v", "-race", "-coverprofile=profile.cov", "-tags=integrationBws", "-coverpkg=./...", "./..."}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern, "-timeout", "1m")
 	} else {
@@ -194,9 +221,7 @@ func (t Test) IntegrationBwsOfficialWithEmbeddedClientArgs(testPattern string) e
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, accTestEnv()...)
-	cmd.Env = append(cmd.Env, "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
+	cmd.Env = goTestEnv("TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
 	return cmd.Run()
 }
 
@@ -210,7 +235,7 @@ func (t Test) IntegrationBwsMockedWithEmbeddedClientArgs(testPattern string) err
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on mocked backend...")
-	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integrationBws", "-coverpkg=./...", "./..."}
+	args := []string{"test", "-count=1", "-v", "-race", "-coverprofile=profile.cov", "-tags=integrationBws", "-coverpkg=./...", "./..."}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern, "-timeout", "30s")
 	} else {
@@ -219,9 +244,7 @@ func (t Test) IntegrationBwsMockedWithEmbeddedClientArgs(testPattern string) err
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, accTestEnv()...)
-	cmd.Env = append(cmd.Env, "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
+	cmd.Env = goTestEnv("TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
 	return cmd.Run()
 }
 
@@ -235,7 +258,7 @@ func (t Test) IntegrationBwsMockedWithCLIArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on mocked backend...")
-	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integrationBws", "-coverpkg=./...", "./..."}
+	args := []string{"test", "-count=1", "-v", "-race", "-coverprofile=profile.cov", "-tags=integrationBws", "-coverpkg=./...", "./..."}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern, "-timeout", "30s")
 	} else {
@@ -244,9 +267,7 @@ func (t Test) IntegrationBwsMockedWithCLIArgs(testPattern string) error {
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, accTestEnv()...)
-	cmd.Env = append(cmd.Env, "TEST_BACKEND=vaultwarden")
+	cmd.Env = goTestEnv("TEST_BACKEND=vaultwarden")
 	return cmd.Run()
 }
 
@@ -260,7 +281,7 @@ func (t Test) IntegrationPwdVaultwardenWithEmbeddedClientArgs(testPattern string
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running integration tests with embedded client on locally running Vaultwarden...")
-	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integration", "-coverpkg=./...", "./..."}
+	args := []string{"test", "-count=1", "-v", "-race", "-coverprofile=profile.cov", "-tags=integration", "-coverpkg=./...", "./..."}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern, "-timeout", "60s")
 	} else {
@@ -269,9 +290,7 @@ func (t Test) IntegrationPwdVaultwardenWithEmbeddedClientArgs(testPattern string
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, accTestEnv()...)
-	cmd.Env = append(cmd.Env, "TEST_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
+	cmd.Env = goTestEnv("TEST_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=1")
 	return cmd.Run()
 }
 
@@ -285,7 +304,7 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running integration tests with CLI on locally running Vaultwarden...")
-	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integration", "-coverpkg=./...", "./..."}
+	args := []string{"test", "-count=1", "-v", "-race", "-coverprofile=profile.cov", "-tags=integration", "-coverpkg=./...", "./..."}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern, "-timeout", "3m")
 	} else {
@@ -294,10 +313,7 @@ func (t Test) IntegrationPwdVaultwardenWithCLIArgs(testPattern string) error {
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "TEST_REVERSE_PROXY_URL=http://127.0.0.1:8080")
-	cmd.Env = append(cmd.Env, accTestEnv()...)
-	cmd.Env = append(cmd.Env, "TEST_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
+	cmd.Env = goTestEnv("TEST_REVERSE_PROXY_URL=http://127.0.0.1:8080", "TEST_SERVER_URL=http://127.0.0.1:8000", "TEST_BACKEND=vaultwarden", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
 	return cmd.Run()
 }
 
@@ -311,7 +327,7 @@ func (t Test) IntegrationPwdOfficialWithCLIArgs(testPattern string) error {
 	mg.Deps(InstallDeps)
 
 	fmt.Println("Running integration tests with CLI on official bitwarden.com instance...")
-	args := []string{"test", "-v", "-race", "-coverprofile=profile.cov", "-tags=integration", "-coverpkg=./...", "./..."}
+	args := []string{"test", "-count=1", "-v", "-race", "-coverprofile=profile.cov", "-tags=integration", "-coverpkg=./...", "./..."}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern, "-timeout", "3m")
 	} else {
@@ -320,9 +336,7 @@ func (t Test) IntegrationPwdOfficialWithCLIArgs(testPattern string) error {
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, accTestEnv()...)
-	cmd.Env = append(cmd.Env, "TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
+	cmd.Env = goTestEnv("TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
 	return cmd.Run()
 }
 
@@ -343,9 +357,7 @@ func (Test) OfflineArgs(testPattern string) error {
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, accTestEnv()...)
-	cmd.Env = append(cmd.Env, "TEST_BACKEND=vaultwarden")
+	cmd.Env = goTestEnv("TEST_BACKEND=vaultwarden")
 	return cmd.Run()
 }
 

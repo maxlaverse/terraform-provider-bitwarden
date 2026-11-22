@@ -3,6 +3,7 @@ package provider
 import (
 	"crypto/rand"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -324,6 +325,53 @@ func loadTestServerConfiguration() {
 	testConfiguration.ReverseProxyServerURL = os.Getenv("TEST_REVERSE_PROXY_URL")
 	if testConfiguration.ReverseProxyServerURL == "" {
 		testConfiguration.ReverseProxyServerURL = testConfiguration.ServerURL
+	}
+	if IsOfficialBackend() && isLocalTestServerURL(testConfiguration.ServerURL) {
+		fmt.Printf("TEST_BACKEND=official cannot use local TEST_SERVER_URL %q\n", testConfiguration.ServerURL)
+		os.Exit(1)
+	}
+}
+
+func isLocalTestServerURL(raw string) bool {
+	if raw == "" {
+		return false
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return strings.Contains(raw, "localhost") || strings.Contains(raw, "127.0.0.1")
+	}
+	host := strings.ToLower(u.Hostname())
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+}
+
+func TestGoTestCacheKeyIncludesBackendEnv(t *testing.T) {
+	// go test only records os.Getenv during tests, not init or TestMain.
+	// TEST_BACKEND is set on the go test process (mage), so this puts official
+	// vs mock in the cache key. Without it, a mock PASS is replayed as official.
+	for _, key := range []string{
+		"TEST_BACKEND",
+		"TEST_EXPERIMENTAL_EMBEDDED_CLIENT",
+		"TEST_SERVER_URL",
+	} {
+		_ = os.Getenv(key)
+	}
+}
+
+func TestIsLocalTestServerURL(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]bool{
+		"":                            false,
+		"https://vault.bitwarden.eu":  false,
+		"https://vault.bitwarden.com": false,
+		"http://localhost:8081":       true,
+		"http://127.0.0.1:8000":       true,
+		"http://[::1]:8081":           true,
+	}
+	for raw, want := range tests {
+		if got := isLocalTestServerURL(raw); got != want {
+			t.Errorf("isLocalTestServerURL(%q) = %v, want %v", raw, got, want)
+		}
 	}
 }
 
