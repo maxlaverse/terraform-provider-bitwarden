@@ -434,6 +434,28 @@ func TestEncryptItem(t *testing.T) {
 	assert.NotContains(t, string(newOut), "sensitive")
 }
 
+func TestEncryptItemReusesExistingCipherKey(t *testing.T) {
+	accountSecrets := computeTestAccountSecrets(t)
+
+	objectToEncrypt := testFullyFilledItem()
+	first, err := encryptItem(t.Context(), objectToEncrypt, *accountSecrets, true, true)
+	require.NoError(t, err)
+
+	decrypted, err := decryptItem(*first, *accountSecrets)
+	require.NoError(t, err)
+	require.NotEmpty(t, decrypted.Key)
+
+	objectToEncrypt.Key = decrypted.Key
+	second, err := encryptItem(t.Context(), objectToEncrypt, *accountSecrets, true, true)
+	require.NoError(t, err)
+
+	firstKey, err := getObjectKey(*first, *accountSecrets)
+	require.NoError(t, err)
+	secondKey, err := getObjectKey(*second, *accountSecrets)
+	require.NoError(t, err)
+	assert.Equal(t, firstKey.Key, secondKey.Key)
+}
+
 func assertEncryptedValueOf(t *testing.T, expected, value string, k symmetrickey.Key) {
 	out, err := decryptStringAsBytes(value, k)
 	assert.Nil(t, err)
