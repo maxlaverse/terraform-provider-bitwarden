@@ -145,9 +145,9 @@ type webAPIVault struct {
 	client       webapi.Client
 	clientOpts   []webapi.Options
 	serverConfig struct {
-		disableCipherKeyEncryption bool
-		serverType                 webapi.ServerType
-		version                    string
+		cipherKeyEncryption bool
+		serverType          webapi.ServerType
+		version             string
 	}
 
 	syncAfterWrite                   bool
@@ -335,7 +335,7 @@ func (v *webAPIVault) CreateItem(ctx context.Context, obj models.Item) (*models.
 	}
 
 	var resObj *models.Item
-	encObj, err := encryptItem(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption, v.serverConfig.disableCipherKeyEncryption)
+	encObj, err := encryptItem(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption, v.serverConfig.cipherKeyEncryption)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting item for creation: %w", err)
 	}
@@ -803,8 +803,13 @@ func (v *webAPIVault) EditItem(ctx context.Context, obj models.Item) (*models.It
 		}
 	}
 
+	// Terraform does not persist Item.Key; reuse the decrypted key from the vault cache.
+	if v.serverConfig.cipherKeyEncryption && len(obj.Key) == 0 {
+		obj.Key = currentObj.Key
+	}
+
 	var resObj *models.Item
-	encObj, err := encryptItem(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption, v.serverConfig.disableCipherKeyEncryption)
+	encObj, err := encryptItem(ctx, obj, v.loginAccount.Secrets, v.verifyObjectEncryption, v.serverConfig.cipherKeyEncryption)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting item for edition: %w", err)
 	}
@@ -1209,15 +1214,13 @@ func (v *webAPIVault) applyServerConfig(ctx context.Context, config *webapi.Conf
 		return
 	}
 
-	if config.FeatureStates.CipherKeyEncryption {
-		v.serverConfig.disableCipherKeyEncryption = true
-	}
-
+	v.serverConfig.cipherKeyEncryption = cipherKeyEncryptionEnabled(config.Version, config.FeatureStates.CipherKeyEncryption)
 	v.serverConfig.serverType = config.ServerType()
 	v.serverConfig.version = config.Version
 	tflog.Info(ctx, "Detected password manager server", map[string]interface{}{
-		"server_type": v.serverConfig.serverType,
-		"version":     v.serverConfig.version,
+		"server_type":           v.serverConfig.serverType,
+		"version":               v.serverConfig.version,
+		"cipher_key_encryption": v.serverConfig.cipherKeyEncryption,
 	})
 }
 

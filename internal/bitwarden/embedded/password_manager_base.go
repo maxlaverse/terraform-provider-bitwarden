@@ -680,7 +680,7 @@ func encryptItem(ctx context.Context, obj models.Item, secret AccountSecrets, ve
 			return nil, fmt.Errorf("error decrypting item for verification: %w", err)
 		}
 
-		if objectKeyEncryption {
+		if len(obj.Key) == 0 {
 			actualObj.Key = ""
 		}
 

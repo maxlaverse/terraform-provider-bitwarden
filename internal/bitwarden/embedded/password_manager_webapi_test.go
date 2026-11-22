@@ -29,6 +29,7 @@ func TestLoginAsPasswordLoadsAccountInformationForPbkdf2(t *testing.T) {
 	assert.Equal(t, AccountPbkdf2.ProtectedSymmetricKey, vault.loginAccount.ProtectedSymmetricKey)
 	assert.Equal(t, webapi.ServerTypeBitwarden, vault.ServerType())
 	assert.Equal(t, "2025.6.1", vault.ServerVersion())
+	assert.True(t, vault.serverConfig.cipherKeyEncryption)
 }
 
 func TestLoginAsAPILoadsAccountInformationForPbkdf2(t *testing.T) {
@@ -171,11 +172,43 @@ func TestApplyServerConfigStoresServerType(t *testing.T) {
 	})
 	assert.Equal(t, webapi.ServerTypeVaultwarden, vaultwarden.ServerType())
 	assert.Equal(t, "2026.6.0", vaultwarden.ServerVersion())
+	assert.True(t, vaultwarden.serverConfig.cipherKeyEncryption)
 
 	official := webAPIVault{}
 	official.applyServerConfig(t.Context(), &webapi.ConfigResponse{Version: "2025.6.2"})
 	assert.Equal(t, webapi.ServerTypeBitwarden, official.ServerType())
 	assert.Equal(t, "2025.6.2", official.ServerVersion())
+	assert.True(t, official.serverConfig.cipherKeyEncryption)
+}
+
+func TestItemCreationWrapsCipherKeyOnNewServer(t *testing.T) {
+	vault, reset := newMockedPasswordManager(MockedClient(t, Pdkdf2Mocks))
+	defer reset()
+
+	ctx := t.Context()
+	err := vault.LoginWithPassword(ctx, AccountPbkdf2.Email, TestPassword)
+	if err != nil {
+		t.Fatalf("vault unlock failed: %v", err)
+	}
+
+	assert.True(t, vault.serverConfig.cipherKeyEncryption)
+
+	newObj := testFullyFilledItem()
+	newObj.OrganizationID = ""
+	newObj.CollectionIds = nil
+
+	encObj, err := encryptItem(ctx, newObj, vault.loginAccount.Secrets, true, vault.serverConfig.cipherKeyEncryption)
+	assert.NoError(t, err)
+	if !assert.NotNil(t, encObj) {
+		return
+	}
+	assert.NotEmpty(t, encObj.Key)
+
+	objectKey, err := getObjectKey(*encObj, vault.loginAccount.Secrets)
+	assert.NoError(t, err)
+	if assert.NotNil(t, objectKey) {
+		assert.Len(t, objectKey.Key, 64)
+	}
 }
 
 func TestVerifyObjectAfterWrite(t *testing.T) {
