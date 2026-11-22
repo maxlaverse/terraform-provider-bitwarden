@@ -124,6 +124,12 @@ func tfConfigAttachmentSpecificPasswordManagerProvider() string {
 func testOrRealSecretsManagerProvider(t *testing.T) (string, func()) {
 	bindTestName(t)
 	if IsOfficialBackend() {
+		if os.Getenv("TEST_SECRETS_MANAGER_ACCESS_TOKEN") == "" {
+			t.Fatal("TEST_BACKEND=official requires TEST_SECRETS_MANAGER_ACCESS_TOKEN")
+		}
+		if isLocalTestServerURL(testConfiguration.ServerURL) {
+			t.Fatalf("TEST_BACKEND=official must not use a local Secrets Manager, got %q", testConfiguration.ServerURL)
+		}
 		t.Logf("Using real Bitwarden Secrets Manager")
 		return tfConfigSecretsManagerProvider(), func() {}
 	}
@@ -132,6 +138,10 @@ func testOrRealSecretsManagerProvider(t *testing.T) (string, func()) {
 }
 
 func spawnTestSecretsManager(t *testing.T) (string, func()) {
+	if IsOfficialBackend() {
+		t.Fatal("refusing to spawn mock Secrets Manager when TEST_BACKEND=official")
+	}
+
 	testSecretsManager := NewTestSecretsManager()
 	ctx, stop := context.WithCancel(t.Context())
 	go testSecretsManager.Run(ctx, 8081)
