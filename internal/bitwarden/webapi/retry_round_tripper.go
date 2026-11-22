@@ -151,7 +151,7 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	}
 	waitDuration := backoff(attemptNumber)
 	if is429 {
-		if d := tryToReadWaitDurationFromHeaders(resp); d > 0 {
+		if d := tryToReadWaitDurationFromHeaders(resp.Header, time.Now()); d > 0 {
 			waitDuration = d
 		}
 	}
@@ -161,26 +161,32 @@ func (rrt *RetryRoundTripper) doRequest(originalCtx context.Context, httpReq *ht
 	return nil, true, sleepWithContext(originalCtx, waitDuration)
 }
 
-func tryToReadWaitDurationFromHeaders(resp *http.Response) time.Duration {
-	rateLimitResetRaw := resp.Header.Get("X-Rate-Limit-Reset")
+func tryToReadWaitDurationFromHeaders(header http.Header, now time.Time) time.Duration {
+	if value := header.Get("Retry-After"); value != "" {
+		seconds, err := strconv.ParseUint(value, 10, 64)
+		if err == nil && seconds > 0 && seconds <= uint64(math.MaxInt64/int64(time.Second)) {
+			return time.Duration(seconds) * time.Second
+		}
 
-	if len(rateLimitResetRaw) != 0 {
-		resetTime, err := time.Parse(time.RFC3339Nano, rateLimitResetRaw)
-		if err == nil {
-			waitDuration := time.Until(resetTime)
-			if waitDuration > 0 {
-				return waitDuration
-			}
+		if date, err := http.ParseTime(value); err == nil && date.After(now) {
+			return date.Sub(now)
 		}
 	}
 
-	retryAfterRaw := resp.Header.Get("X-Retry-After")
-	if len(retryAfterRaw) != 0 {
-		retryAfter, err := strconv.ParseInt(retryAfterRaw, 10, 64)
-		if err == nil {
-			return time.Minute * time.Duration(retryAfter)
+	// Fall back to the legacy reset timestamp or the delay in minutes.
+	if value := header.Get("X-Rate-Limit-Reset"); value != "" {
+		if date, err := time.Parse(time.RFC3339Nano, value); err == nil && date.After(now) {
+			return date.Sub(now)
 		}
 	}
+
+	if value := header.Get("X-Retry-After"); value != "" {
+		minutes, err := strconv.ParseInt(value, 10, 64)
+		if err == nil && minutes > 0 && minutes <= math.MaxInt64/int64(time.Minute) {
+			return time.Duration(minutes) * time.Minute
+		}
+	}
+
 	return 0
 }
 
