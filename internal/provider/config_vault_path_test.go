@@ -84,7 +84,7 @@ func TestApplyProviderConfigEnvDefaults_VaultPath(t *testing.T) {
 func configureFrameworkWithVaultPath(t *testing.T, vaultPath *string) bitwarden.PasswordManager {
 	t.Helper()
 	ctx := t.Context()
-	p := New(versionTestSkippedLogin)()
+	p := New("", WithSkipLogin())()
 
 	var schemaResp fwprovider.SchemaResponse
 	p.Schema(ctx, fwprovider.SchemaRequest{}, &schemaResp)

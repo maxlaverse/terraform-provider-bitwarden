@@ -15,7 +15,7 @@ import (
 )
 
 func TestSecretReadValidation(t *testing.T) {
-	server := NewProviderServer(versionTestSkippedLogin)()
+	server := NewProviderServer("", WithSkipLogin())()
 	schemaResp, err := server.GetProviderSchema(t.Context(), &tfprotov6.GetProviderSchemaRequest{})
 	require.NoError(t, err)
 	require.Empty(t, schemaResp.Diagnostics)
@@ -86,7 +86,7 @@ func TestEphemeralSecretProviderClients(t *testing.T) {
 
 	for _, implementation := range []string{"cli", "embedded"} {
 		t.Run(implementation, func(t *testing.T) {
-			p := New(versionTestSkippedLogin)()
+			p := New("", WithSkipLogin())()
 			var schemaResp fwprovider.SchemaResponse
 			p.Schema(t.Context(), fwprovider.SchemaRequest{}, &schemaResp)
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,16 +17,32 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
 )
 
+// cliSession is the BW_SESSION for the account currently logged into the
+// shared test vault directory. CLI acceptance tests reuse it so Configure
+// skips Unlock (and its KDF) on every Terraform command.
+type cliSession struct {
+	account testAccountName
+	key     string
+}
+
+var (
+	cliSessionMu     sync.Mutex
+	cachedCLISession cliSession
+)
+
 // providerFactories are used to instantiate a provider during acceptance testing.
 // The factory function will be invoked for every Terraform CLI command executed
 // to create a provider server to which the CLI can reattach.
 var providerFactories = map[string]func() (tfprotov6.ProviderServer, error){
 	"bitwarden": func() (tfprotov6.ProviderServer, error) {
-		version := versionTestDefault
+		opts := []ProviderOption{}
 		if !IsOfficialBackend() {
-			version = versionTestDisabledRetries
+			opts = append(opts, WithDisableRetries())
 		}
-		return NewProviderServer(version)(), nil
+		if !testConfiguration.UseEmbeddedClient {
+			opts = append(opts, WithDisableConfigureSync())
+		}
+		return NewProviderServer("", opts...)(), nil
 	},
 }
 
@@ -33,6 +50,33 @@ func ensureTestConfigurationReady(t *testing.T) {
 	bindTestName(t)
 	ensureTestAccountsExist(t)
 	ensureTestResourcesExist(t)
+	ensureCLISession(t)
+}
+
+func ensureCLISession(t *testing.T) {
+	t.Helper()
+	if testConfiguration.UseEmbeddedClient {
+		return
+	}
+	_ = bwCLITestClient(t)
+}
+
+func rememberCLISession(account testAccountName, key string) {
+	cliSessionMu.Lock()
+	defer cliSessionMu.Unlock()
+	cachedCLISession = cliSession{account: account, key: key}
+}
+
+func cliSessionKeyFor(account testAccountName) (string, bool) {
+	if testConfiguration.UseEmbeddedClient {
+		return "", false
+	}
+	cliSessionMu.Lock()
+	defer cliSessionMu.Unlock()
+	if cachedCLISession.key == "" || cachedCLISession.account != account {
+		return "", false
+	}
+	return cachedCLISession.key, true
 }
 
 func bwEmbeddedTestClient(t *testing.T) bitwarden.PasswordManager {
@@ -53,18 +97,32 @@ func bwCLITestClient(t *testing.T) bwcli.PasswordManagerClient {
 	}
 
 	client := bwcli.NewPasswordManagerClient(bwcli.DisableRetryBackoff(), bwcli.WithAppDataDir(vault))
+	if key, ok := cliSessionKeyFor(testAccountFullAdmin); ok {
+		client.SetSessionKey(key)
+	}
 	status, err := client.Status(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(status.ServerURL) == 0 {
+	acc := testConfiguration.Accounts[testAccountFullAdmin]
+	loggedIn := status.Status == bwcli.StatusLocked || status.Status == bwcli.StatusUnlocked
+	wrongIdentity := loggedIn && (!status.VaultFromServer(testConfiguration.ServerURL) || (status.UserEmail != "" && !status.VaultOfUser(acc.Email)))
+	if wrongIdentity {
+		rememberCLISession("", "")
+		client.SetSessionKey("")
+		if err := client.Logout(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		status.Status = bwcli.StatusUnauthenticated
+	}
+
+	if !status.VaultFromServer(testConfiguration.ServerURL) {
 		if err := client.SetServer(t.Context(), testConfiguration.ServerURL); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	acc := testConfiguration.Accounts[testAccountFullAdmin]
 	switch status.Status {
 	case bwcli.StatusUnauthenticated:
 		if err := loginWithRetry(t, client, acc); err != nil {
@@ -76,6 +134,9 @@ func bwCLITestClient(t *testing.T) bwcli.PasswordManagerClient {
 		}
 	default:
 		t.Logf("Official test client already logged-in: %s", status.Status)
+	}
+	if key := client.GetSessionKey(); key != "" {
+		rememberCLISession(testAccountFullAdmin, key)
 	}
 	return client
 }
@@ -93,6 +154,16 @@ func loginWithRetry(t *testing.T, client bwcli.PasswordManagerClient, acc testAc
 
 func tfConfigPasswordManagerProvider(account testAccountName) string {
 	acc := testConfiguration.Accounts[account]
+	if key, ok := cliSessionKeyFor(account); ok {
+		return fmt.Sprintf(`
+	provider "bitwarden" {
+		server          = "%s"
+		email           = "%s"
+		session_key     = "%s"
+		client_implementation = "%s"
+	}
+`, testConfiguration.ServerURL, acc.Email, key, testConfiguration.ClientImplementationStr())
+	}
 	return fmt.Sprintf(`
 	provider "bitwarden" {
 		master_password = "%s"
@@ -107,6 +178,12 @@ func tfConfigPasswordManagerProvider(account testAccountName) string {
 
 func tfConfigAttachmentSpecificPasswordManagerProvider() string {
 	if testConfiguration.UseEmbeddedClient {
+		return tfConfigPasswordManagerProvider(testAccountFullAdmin)
+	}
+
+	// session_key Configure compares server URLs; a reverse proxy that is not
+	// the vault's configured server would log out and then fail to re-login.
+	if testConfiguration.ReverseProxyServerURL == "" || testConfiguration.ReverseProxyServerURL == testConfiguration.ServerURL {
 		return tfConfigPasswordManagerProvider(testAccountFullAdmin)
 	}
 
