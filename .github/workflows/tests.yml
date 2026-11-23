@@ -3,10 +3,10 @@ name: tests
 on:
   push:
     branches: [main]
-    paths: ["tools/**", "internal/**", "*.go", "go.*", ".github/workflows/tests.yml"]
+    paths: ["tools/**", "internal/**", "*.go", "go.*", "mise.toml", ".github/workflows/tests.yml", ".github/actions/**"]
   pull_request:
     branches: [main]
-    paths: ["tools/**", "internal/**", "*.go", "go.*", ".github/workflows/tests.yml"]
+    paths: ["tools/**", "internal/**", "*.go", "go.*", "mise.toml", ".github/workflows/tests.yml", ".github/actions/**"]
   workflow_dispatch:
 
 
