@@ -52,13 +52,15 @@ func NewSecretsManagerClient(serverURL, deviceIdentifier, providerVersion string
 	}
 
 	c.client = webapi.NewClient(serverURL, deviceIdentifier, providerVersion, c.clientOpts...)
+	c.secretReads = secretReadBatcher{client: c.client}
 
 	return c
 }
 
 type secretsManager struct {
-	client     webapi.Client
-	clientOpts []webapi.Options
+	client      webapi.Client
+	clientOpts  []webapi.Options
+	secretReads secretReadBatcher
 
 	mainEncryptionKey  *symmetrickey.Key
 	mainOrganizationId string
@@ -218,7 +220,7 @@ func (v *secretsManager) GetSecret(ctx context.Context, secret models.Secret) (*
 		return nil, models.ErrLoggedOut
 	}
 
-	rawSecret, err := v.client.GetSecret(ctx, secret.ID)
+	rawSecret, err := v.secretReads.get(ctx, secret.ID)
 	if err != nil {
 		if httpErr, ok := webapi.IsHTTPError(err); ok && httpErr.GetStatusCode() == 404 {
 			return nil, models.ErrObjectNotFound

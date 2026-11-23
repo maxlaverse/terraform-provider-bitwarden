@@ -8,13 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"net/http"
 	"os"
 	"sync"
 	"syscall"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -119,29 +119,29 @@ func TestRetryRoundTripper_4xxWithGET(t *testing.T) {
 	assert.Equal(t, 2, transport.index)
 }
 
-func TestRetryRoundTripper_4xxWithPOST(t *testing.T) {
-	lowerBackoffFactor()
-	defer lowerBackoffFactor()
+func TestRetryRoundTripper_POSTHonorsRetryAfter(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		transport := &mockTransport{
+			responses: []*http.Response{
+				{StatusCode: http.StatusTooManyRequests, Header: http.Header{"Retry-After": {"7"}}},
+				{StatusCode: http.StatusOK},
+			},
+			errors: []error{nil, nil},
+		}
 
-	// Create a transport that returns 429 (4xx) then succeeds
-	transport := &mockTransport{
-		responses: []*http.Response{
-			{StatusCode: http.StatusTooManyRequests},
-			{StatusCode: http.StatusOK},
-		},
-		errors: []error{nil, nil},
-	}
+		rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
+		rrt.Transport = transport
 
-	rrt := NewRetryRoundTripper(1, 3, time.Second, time.Second, time.Second, time.Second)
-	rrt.Transport = transport
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com", nil)
+		require.NoError(t, err)
 
-	req, err := http.NewRequest("POST", "http://example.com", nil)
-	require.NoError(t, err)
-
-	resp, err := rrt.RoundTrip(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Equal(t, 2, transport.index)
+		start := time.Now()
+		resp, err := rrt.RoundTrip(req)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, 2, transport.index)
+		assert.Equal(t, 7*time.Second, time.Since(start))
+	})
 }
 
 func TestRetryRoundTripper_4xxWithPOSTRewindsBody(t *testing.T) {
@@ -606,25 +606,27 @@ func TestRetryRoundTripper_IsResponseHeaderTimeout(t *testing.T) {
 }
 
 func TestRetryRoundTripper_ReadWaitDurationFromHeaders(t *testing.T) {
+	now := time.Date(2026, time.November, 22, 12, 0, 0, 0, time.UTC)
+	reset := now.Add(15 * time.Second).Format(time.RFC3339Nano)
 
-	testData := []struct {
-		header   http.Header
-		duration time.Duration
+	for _, tc := range []struct {
+		name   string
+		header http.Header
+		want   time.Duration
 	}{
-		{
-			header:   http.Header{"X-Retry-After": []string{"1"}},
-			duration: 1 * time.Minute,
-		},
-		{
-			header:   http.Header{"X-Rate-Limit-Reset": []string{time.Now().Add(15 * time.Second).UTC().Format(time.RFC3339)}, "X-Retry-After": []string{"1"}},
-			duration: 15 * time.Second,
-		},
-	}
-
-	for _, test := range testData {
-		duration := tryToReadWaitDurationFromHeaders(&http.Response{StatusCode: http.StatusTooManyRequests, Header: test.header})
-		assert.True(t, math.Abs(float64(duration-test.duration)) <= float64(time.Second),
-			"Duration %v should be within 1 second of expected %v", duration, test.duration)
+		{"seconds", http.Header{"Retry-After": {"7"}}, 7 * time.Second},
+		{"HTTP date", http.Header{"Retry-After": {now.Add(8 * time.Second).Format(http.TimeFormat)}}, 8 * time.Second},
+		{"standard takes precedence", http.Header{"Retry-After": {"1"}, "X-Rate-Limit-Reset": {reset}, "X-Retry-After": {"1"}}, time.Second},
+		{"legacy minutes", http.Header{"X-Retry-After": {"1"}}, time.Minute},
+		{"invalid standard falls back to reset", http.Header{"Retry-After": {"bad"}, "X-Rate-Limit-Reset": {reset}, "X-Retry-After": {"1"}}, 15 * time.Second},
+		{"zero delay", http.Header{"Retry-After": {"0"}}, 0},
+		{"past date", http.Header{"Retry-After": {now.Add(-time.Minute).Format(http.TimeFormat)}}, 0},
+		{"overflow", http.Header{"Retry-After": {"18446744073709551615"}}, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			delay := tryToReadWaitDurationFromHeaders(tc.header, now)
+			assert.Equal(t, tc.want, delay)
+		})
 	}
 }
 
