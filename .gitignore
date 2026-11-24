@@ -48,3 +48,6 @@ internal/provider/.bitwarden/
 debug/
 .env
 .env.*
+
+# Debug bws built for Secrets Manager CLI tests (cargo install --debug).
+/tools/bws-debug/

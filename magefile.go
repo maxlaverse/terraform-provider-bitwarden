@@ -13,6 +13,11 @@ import (
 	"github.com/magefile/mage/mg"
 )
 
+const (
+	debugBwsVersion = "2.1.0"
+	debugBwsRoot    = "tools/bws-debug"
+)
+
 // accTestEnv returns env vars common to all acceptance tests: avoid checkpoint (use local
 // binary or fixed version), OpenTofu provider registry, and TF_ACC/CHECKPOINT_DISABLE.
 func accTestEnv() []string {
@@ -56,6 +61,88 @@ func overlayEnv(overrides ...string) []string {
 
 func goTestEnv(overrides ...string) []string {
 	return overlayEnv(append(accTestEnv(), overrides...)...)
+}
+
+func debugBwsBin() string {
+	return filepath.Join(debugBwsRoot, "bin", "bws")
+}
+
+func debugBwsTargetDir() string {
+	return filepath.Join(debugBwsRoot, "target")
+}
+
+func debugBwsInstalledVersion() string {
+	out, err := exec.Command(debugBwsBin(), "--version").Output()
+	if err != nil {
+		return ""
+	}
+	fields := strings.Fields(string(out))
+	if len(fields) == 0 {
+		return ""
+	}
+	return fields[len(fields)-1]
+}
+
+func requireMiseCargo() error {
+	if _, err := exec.LookPath("mise"); err != nil {
+		return fmt.Errorf("mise is required to build debug bws %s for Secrets Manager CLI tests (install mise and run `mise install`): %w", debugBwsVersion, err)
+	}
+	cmd := exec.Command("mise", "exec", "--", "cargo", "--version")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("rust/cargo from mise is required to build debug bws %s; run `mise install` to install the toolchain pinned in mise.toml: %w\n%s", debugBwsVersion, err, out)
+	}
+	return nil
+}
+
+func goTestEnvWithDebugBws(overrides ...string) ([]string, error) {
+	binDir, err := filepath.Abs(filepath.Join(debugBwsRoot, "bin"))
+	if err != nil {
+		return nil, fmt.Errorf("debug bws bin dir: %w", err)
+	}
+	path := binDir + string(os.PathListSeparator) + os.Getenv("PATH")
+	return goTestEnv(append([]string{"PATH=" + path}, overrides...)...), nil
+}
+
+// EnsureDebugBws installs a cargo --debug bws 2.1.0 into ./tools/bws-debug.
+// Release bws sets https_only; the debug build is needed so CLI tests can talk
+// to the HTTP mock. Skips if the prefix already contains bws 2.1.0.
+func EnsureDebugBws() error {
+	if debugBwsInstalledVersion() == debugBwsVersion {
+		fmt.Printf("Using existing debug bws %s at %s\n", debugBwsVersion, debugBwsBin())
+		return nil
+	}
+
+	if err := requireMiseCargo(); err != nil {
+		return err
+	}
+
+	root, err := filepath.Abs(debugBwsRoot)
+	if err != nil {
+		return fmt.Errorf("debug bws install root: %w", err)
+	}
+	targetDir, err := filepath.Abs(debugBwsTargetDir())
+	if err != nil {
+		return fmt.Errorf("debug bws cargo target dir: %w", err)
+	}
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		return fmt.Errorf("creating %s: %w", targetDir, err)
+	}
+
+	fmt.Printf("Installing debug bws %s into %s (CARGO_TARGET_DIR=%s)...\n", debugBwsVersion, root, targetDir)
+	cmd := exec.Command("mise", "exec", "--", "cargo", "install", "--debug", "--locked", "--version", debugBwsVersion, "--root", root, "bws")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = overlayEnv("CARGO_TARGET_DIR=" + targetDir)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("cargo install --debug bws %s: %w", debugBwsVersion, err)
+	}
+
+	if got := debugBwsInstalledVersion(); got != debugBwsVersion {
+		return fmt.Errorf("installed debug bws version %q, want %s", got, debugBwsVersion)
+	}
+	fmt.Printf("Installed debug bws %s at %s\n", debugBwsVersion, debugBwsBin())
+	return nil
 }
 
 type Test mg.Namespace
@@ -186,7 +273,7 @@ func (t Test) IntegrationBwsOfficialWithCLI() error {
 
 // Like test:integrationBwsOfficialWithCLI but with a test pattern.
 func (t Test) IntegrationBwsOfficialWithCLIArgs(testPattern string) error {
-	mg.Deps(InstallDeps)
+	mg.Deps(InstallDeps, EnsureDebugBws)
 
 	fmt.Println("Running Bitwarden Secrets integration tests with CLI on official bitwarden.com instances...")
 	args := []string{"test", "-count=1", "-v", "-race", "-coverprofile=profile.cov", "-tags=integrationBws", "-coverpkg=./...", "./..."}
@@ -195,10 +282,14 @@ func (t Test) IntegrationBwsOfficialWithCLIArgs(testPattern string) error {
 	} else {
 		args = append(args, "-timeout", "20m")
 	}
+	env, err := goTestEnvWithDebugBws("TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
+	if err != nil {
+		return err
+	}
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = goTestEnv("TEST_BACKEND=official", "TEST_EXPERIMENTAL_EMBEDDED_CLIENT=0")
+	cmd.Env = env
 	return cmd.Run()
 }
 
@@ -255,19 +346,23 @@ func (t Test) IntegrationBwsMockedWithCLI() error {
 
 // Run certain Bitwarden Secrets integration tests with CLI on mocked backend.
 func (t Test) IntegrationBwsMockedWithCLIArgs(testPattern string) error {
-	mg.Deps(InstallDeps)
+	mg.Deps(InstallDeps, EnsureDebugBws)
 
-	fmt.Println("Running Bitwarden Secrets integration tests with embedded client on mocked backend...")
+	fmt.Println("Running Bitwarden Secrets integration tests with CLI on mocked backend...")
 	args := []string{"test", "-count=1", "-v", "-race", "-coverprofile=profile.cov", "-tags=integrationBws", "-coverpkg=./...", "./..."}
 	if testPattern != "" {
 		args = append(args, "-run", testPattern, "-timeout", "30s")
 	} else {
 		args = append(args, "-timeout", "20m")
 	}
+	env, err := goTestEnvWithDebugBws("TEST_BACKEND=vaultwarden")
+	if err != nil {
+		return err
+	}
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = goTestEnv("TEST_BACKEND=vaultwarden")
+	cmd.Env = env
 	return cmd.Run()
 }
 

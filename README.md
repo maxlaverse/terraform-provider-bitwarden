@@ -29,7 +29,7 @@ The plugin has been tested with the following components:
 
 - [Terraform] v1.11.4 / [OpenTofu] v1.12.6
 - [Bitwarden CLI] v2025.4.0 (when not using the [embedded client](#client-implementation))
-- [BWS CLI] v1.0.0 (when not using the [embedded client](#client-implementation))
+- [BWS CLI] v2.1.0 (when not using the [embedded client](#client-implementation))
 - [Vaultwarden] v1.33.2
 - official [bitwarden.com] servers v2025.6.2
 
@@ -172,12 +172,17 @@ By participating, you agree to follow the [Code of Conduct](.github/CODE_OF_COND
 
 ## Developing the Provider
 
-If you wish to work on the provider, you need the following software:
+If you wish to work on the provider, install [mise] and run `mise install`. That provides the versions pinned in `mise.toml`:
+
 - [Go] 1.27.3
+- [Rust] 1.88.0 (needed only for Secrets Manager CLI tests)
 - [Mage] 1.15.0
+- [OpenTofu] 1.12.6
 - [Docker Compose] 2.35.0
 
-Mage is a make/rake-like build tool using Go. You can list all available targets by running `mage` 
+Vaultwarden tests also need a Docker engine (`mage vaultwarden`); mise does not install that.
+
+Mage is a make/rake-like build tool using Go. You can list all available targets by running `mage`. 
 
 ### Building the Provider
 
@@ -254,6 +259,8 @@ Distributed under the Mozilla License. See [LICENSE](./LICENSE) for more informa
 [Docker Compose]: https://docs.docker.com/compose/install/
 [Go]: https://golang.org/doc/install
 [Mage]: https://magefile.org/
+[mise]: https://mise.jdx.dev/
+[Rust]: https://www.rust-lang.org/tools/install
 [OpenTofu]: https://opentofu.org/
 [Password Manager]: https://bitwarden.com/products/personal/
 [Secrets Manager]: https://bitwarden.com/products/secrets-manager/

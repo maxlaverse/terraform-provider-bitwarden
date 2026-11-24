@@ -1,2 +1,7 @@
 [tools]
 go = "1.27.3"
+# bws 2.1.0 MSRV; used only to cargo-install a debug bws for Secrets Manager CLI tests.
+rust = "1.88.0"
+mage = "1.15.0"
+opentofu = "1.12.6"
+docker-compose = "2.35.0"

@@ -13,15 +13,10 @@ inputs:
     default: '2025.2.0'
     type: string
   installBWSCLI:
-    description: 'Install Bitwarden Secrets CLI'
+    description: 'Install Rust from mise.toml so mage can cargo-install debug bws 2.1.0 for Secrets Manager CLI tests'
     required: false
     default: 'false'
     type: boolean
-  bwscliVersion:
-    description: 'Version of Bitwarden Secrets CLI to install'
-    required: false
-    default: '1.0.0'
-    type: string
   goVersion:
     description: 'Version of Go to install'
     required: false
@@ -45,6 +40,15 @@ inputs:
 runs:
   using: "composite"
   steps:
+      # Before setup-go so Go from actions/setup-go stays first on PATH.
+      # install_args: rust skips the Go pin in mise.toml (setup-go owns Go + its cache).
+      - name: Install Rust from mise.toml
+        if: ${{ inputs.installBWSCLI }}
+        uses: jdx/mise-action@v2
+        with:
+          cache: true
+          install_args: rust
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -67,15 +71,16 @@ runs:
         run: |
           npm install -g @bitwarden/cli@${{ inputs.bwcliVersion }}
 
-      - name: Install BWS CLI
+      - name: Cache cargo registry and debug bws
         if: ${{ inputs.installBWSCLI }}
-        shell: bash
-        run: |
-          wget https://github.com/bitwarden/sdk-sm/releases/download/bws-v${{ inputs.bwscliVersion }}/bws-x86_64-unknown-linux-gnu-${{ inputs.bwscliVersion }}.zip -O /tmp/bws.zip
-          unzip /tmp/bws.zip -d /tmp/
-          mv /tmp/bws /usr/local/bin/bws
-          chmod +x /usr/local/bin/bws
-          /usr/local/bin/bws --version
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: debug-bws-2.1.0
+          cache-all-crates: "true"
+          cache-bin: "false"
+          cache-targets: "false"
+          cache-on-failure: "true"
+          cache-directories: tools/bws-debug
 
       - name: Install Mage
         shell: bash
