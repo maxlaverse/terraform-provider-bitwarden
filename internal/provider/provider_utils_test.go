@@ -15,6 +15,7 @@ import (
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/bwcli"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/embedded"
+	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
 )
 
 // cliSession is the BW_SESSION for the account currently logged into the
@@ -251,6 +252,29 @@ func tfConfigSecretsManagerProvider() string {
 		client_implementation = "%s"
 	}
 `, os.Getenv("TEST_SECRETS_MANAGER_ACCESS_TOKEN"), testConfiguration.ServerURL, testConfiguration.ClientImplementationStr())
+}
+
+// updateItemOutsideTerraform applies a mutation as if it came from the Bitwarden
+// UI or another client, then syncs the CLI vault when tests are not using the
+// embedded client.
+func updateItemOutsideTerraform(t *testing.T, objectID string, mutate func(*models.Item)) {
+	t.Helper()
+
+	client := bwEmbeddedTestClient(t)
+	item, err := client.GetItem(t.Context(), models.Item{ID: objectID, Object: models.ObjectTypeItem})
+	if err != nil {
+		t.Fatalf("getting item %s: %v", objectID, err)
+	}
+	mutate(item)
+	if _, err := client.EditItem(t.Context(), *item); err != nil {
+		t.Fatalf("editing item %s: %v", objectID, err)
+	}
+	if testConfiguration.UseEmbeddedClient {
+		return
+	}
+	if err := bwCLITestClient(t).Sync(t.Context()); err != nil {
+		t.Fatalf("syncing CLI vault after out-of-band edit: %v", err)
+	}
 }
 
 func getObjectID(n string, objectId *string) resource.TestCheckFunc {

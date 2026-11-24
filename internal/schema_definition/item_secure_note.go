@@ -8,7 +8,7 @@ import (
 
 func SecureNoteResourceSchema() rsschema.Schema {
 	attrs := itemBaseResourceAttributes()
-	attrs[AttributeFavorite] = rsschema.BoolAttribute{Description: DescriptionFavorite, Optional: true, Computed: true}
+	attrs[AttributeFavorite] = optionalComputedBool(DescriptionFavorite)
 	attrs[AttributeAttachments] = attachmentsResourceAttribute()
 
 	return rsschema.Schema{

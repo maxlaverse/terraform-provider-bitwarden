@@ -6,8 +6,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -135,7 +139,7 @@ func TestOrganizationIDUnknownPlanDoesNotReplaceWithItemSchemaModifiers(t *testi
 	attr, ok := LoginResourceSchema().Attributes[AttributeOrganizationID].(rsschema.StringAttribute)
 	require.True(t, ok)
 
-	req, resp := unknownOrganizationIDPlan(t)
+	req, resp := unknownStringPlan(t, "")
 	for _, m := range attr.PlanModifiers {
 		m.PlanModifyString(context.Background(), req, resp)
 		req.PlanValue = resp.PlanValue
@@ -145,22 +149,148 @@ func TestOrganizationIDUnknownPlanDoesNotReplaceWithItemSchemaModifiers(t *testi
 	assert.Equal(t, types.StringValue(""), resp.PlanValue)
 }
 
-func unknownOrganizationIDPlan(t *testing.T) (planmodifier.StringRequest, *planmodifier.StringResponse) {
-	t.Helper()
+func TestItemResourceComputedAttributesUseStateForUnknown(t *testing.T) {
+	skip := map[string]struct{}{
+		AttributeCreationDate: {},
+		AttributeDeletedDate:  {},
+		AttributeRevisionDate: {},
+	}
 
-	// Non-null resource plan/state so RequiresReplace does not treat this as create/destroy.
-	raw := tftypes.NewValue(tftypes.Object{
-		AttributeTypes: map[string]tftypes.Type{"id": tftypes.String},
-	}, map[string]tftypes.Value{
-		"id": tftypes.NewValue(tftypes.String, "item-1"),
+	for name, schema := range map[string]rsschema.Schema{
+		"login":       LoginResourceSchema(),
+		"secure_note": SecureNoteResourceSchema(),
+		"ssh_key":     SSHKeyResourceSchema(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			for attrName, attr := range schema.Attributes {
+				if !attr.IsComputed() {
+					continue
+				}
+				if _, ok := skip[attrName]; ok {
+					continue
+				}
+				assertUseStateForUnknownFirst(t, schema, attrName)
+			}
+		})
+	}
+}
+
+func TestOptionalComputedUnknownPlanKeepsState(t *testing.T) {
+	login := LoginResourceSchema()
+
+	t.Run("string", func(t *testing.T) {
+		attr, ok := login.Attributes[AttributeNotes].(rsschema.StringAttribute)
+		require.True(t, ok)
+
+		req, resp := unknownStringPlan(t, "written-in-the-ui")
+		for _, m := range attr.PlanModifiers {
+			m.PlanModifyString(context.Background(), req, resp)
+			req.PlanValue = resp.PlanValue
+		}
+		assert.Equal(t, types.StringValue("written-in-the-ui"), resp.PlanValue)
 	})
 
+	t.Run("bool", func(t *testing.T) {
+		attr, ok := login.Attributes[AttributeFavorite].(rsschema.BoolAttribute)
+		require.True(t, ok)
+
+		req, resp := unknownBoolPlan(t, true)
+		for _, m := range attr.PlanModifiers {
+			m.PlanModifyBool(context.Background(), req, resp)
+			req.PlanValue = resp.PlanValue
+		}
+		assert.Equal(t, types.BoolValue(true), resp.PlanValue)
+	})
+
+	t.Run("set", func(t *testing.T) {
+		collectionIDs, ok := login.Attributes[AttributeCollectionIDs].(rsschema.SetAttribute)
+		require.True(t, ok)
+
+		state := types.SetValueMust(types.StringType, []attr.Value{types.StringValue("col-1")})
+		req, resp := unknownSetPlan(t, state)
+		for _, m := range collectionIDs.PlanModifiers {
+			m.PlanModifySet(context.Background(), req, resp)
+			req.PlanValue = resp.PlanValue
+		}
+		assert.Equal(t, state, resp.PlanValue)
+	})
+}
+
+func assertUseStateForUnknownFirst(t *testing.T, schema rsschema.Schema, name string) {
+	t.Helper()
+
+	attr, ok := schema.Attributes[name]
+	require.Truef(t, ok, "missing attribute %s", name)
+
+	switch a := attr.(type) {
+	case rsschema.StringAttribute:
+		require.NotEmptyf(t, a.PlanModifiers, "%s", name)
+		assert.IsTypef(t, stringplanmodifier.UseStateForUnknown(), a.PlanModifiers[0], "%s", name)
+	case rsschema.BoolAttribute:
+		require.NotEmptyf(t, a.PlanModifiers, "%s", name)
+		assert.IsTypef(t, boolplanmodifier.UseStateForUnknown(), a.PlanModifiers[0], "%s", name)
+	case rsschema.SetAttribute:
+		require.NotEmptyf(t, a.PlanModifiers, "%s", name)
+		assert.IsTypef(t, setplanmodifier.UseStateForUnknown(), a.PlanModifiers[0], "%s", name)
+	case rsschema.ListNestedAttribute:
+		require.NotEmptyf(t, a.PlanModifiers, "%s", name)
+		assert.IsTypef(t, listplanmodifier.UseStateForUnknown(), a.PlanModifiers[0], "%s", name)
+	default:
+		t.Fatalf("%s: unexpected attribute type %T", name, attr)
+	}
+}
+
+func unknownOrganizationIDPlan(t *testing.T) (planmodifier.StringRequest, *planmodifier.StringResponse) {
+	return unknownStringPlan(t, "")
+}
+
+func unknownStringPlan(t *testing.T, state string) (planmodifier.StringRequest, *planmodifier.StringResponse) {
+	t.Helper()
+
+	raw := existingItemRaw()
 	req := planmodifier.StringRequest{
 		ConfigValue: types.StringNull(),
 		PlanValue:   types.StringUnknown(),
-		StateValue:  types.StringValue(""),
+		StateValue:  types.StringValue(state),
 		Plan:        tfsdk.Plan{Raw: raw},
 		State:       tfsdk.State{Raw: raw},
 	}
 	return req, &planmodifier.StringResponse{PlanValue: req.PlanValue}
+}
+
+func unknownBoolPlan(t *testing.T, state bool) (planmodifier.BoolRequest, *planmodifier.BoolResponse) {
+	t.Helper()
+
+	raw := existingItemRaw()
+	req := planmodifier.BoolRequest{
+		ConfigValue: types.BoolNull(),
+		PlanValue:   types.BoolUnknown(),
+		StateValue:  types.BoolValue(state),
+		Plan:        tfsdk.Plan{Raw: raw},
+		State:       tfsdk.State{Raw: raw},
+	}
+	return req, &planmodifier.BoolResponse{PlanValue: req.PlanValue}
+}
+
+func unknownSetPlan(t *testing.T, state types.Set) (planmodifier.SetRequest, *planmodifier.SetResponse) {
+	t.Helper()
+
+	raw := existingItemRaw()
+	req := planmodifier.SetRequest{
+		ConfigValue: types.SetNull(types.StringType),
+		PlanValue:   types.SetUnknown(types.StringType),
+		StateValue:  state,
+		Plan:        tfsdk.Plan{Raw: raw},
+		State:       tfsdk.State{Raw: raw},
+	}
+	return req, &planmodifier.SetResponse{PlanValue: req.PlanValue}
+}
+
+func existingItemRaw() tftypes.Value {
+	// Non-null resource plan/state so RequiresReplace does not treat this as create/destroy.
+	return tftypes.NewValue(tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{"id": tftypes.String},
+	}, map[string]tftypes.Value{
+		"id": tftypes.NewValue(tftypes.String, "item-1"),
+	})
 }

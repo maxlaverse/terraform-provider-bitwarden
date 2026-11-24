@@ -8,9 +8,9 @@ import (
 
 func SSHKeyResourceSchema() rsschema.Schema {
 	attrs := itemBaseResourceAttributes()
-	attrs[AttributeSSHKeyPrivateKey] = rsschema.StringAttribute{Description: DescriptionPrivateKey, Optional: true, Computed: true, Sensitive: true}
-	attrs[AttributeSSHKeyPublicKey] = rsschema.StringAttribute{Description: DescriptionPublicKey, Optional: true, Computed: true, Sensitive: true}
-	attrs[AttributeSSHKeyKeyFingerprint] = rsschema.StringAttribute{Description: DescriptionKeyFingerprint, Optional: true, Computed: true, Sensitive: true}
+	attrs[AttributeSSHKeyPrivateKey] = optionalComputedSensitiveString(DescriptionPrivateKey)
+	attrs[AttributeSSHKeyPublicKey] = optionalComputedSensitiveString(DescriptionPublicKey)
+	attrs[AttributeSSHKeyKeyFingerprint] = optionalComputedSensitiveString(DescriptionKeyFingerprint)
 
 	return rsschema.Schema{
 		Description: "Manages an SSH key item.",

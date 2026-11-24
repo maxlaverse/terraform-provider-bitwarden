@@ -15,6 +15,12 @@ const (
 	regExpDate = `^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z)?$`
 )
 
+func checkObjectIDUnchanged(resourceName string, objectID *string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		return resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeID, *objectID)(s)
+	}
+}
+
 func checkObject(resourceName string) resource.TestCheckFunc {
 	return resource.ComposeTestCheckFunc(
 		resource.TestMatchResourceAttr(
