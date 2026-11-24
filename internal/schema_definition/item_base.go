@@ -4,8 +4,10 @@ import (
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -13,6 +15,33 @@ import (
 
 	fwstringvalidator "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 )
+
+// Optional+Computed item attributes without UseStateForUnknown are planned as
+// unknown whenever anything else changes. Update then converts unknown to a
+// zero value and EditItem overwrites the whole cipher (#446).
+func optionalComputedString(description string) rsschema.StringAttribute {
+	return rsschema.StringAttribute{
+		Description:   description,
+		Optional:      true,
+		Computed:      true,
+		PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+	}
+}
+
+func optionalComputedSensitiveString(description string) rsschema.StringAttribute {
+	attr := optionalComputedString(description)
+	attr.Sensitive = true
+	return attr
+}
+
+func optionalComputedBool(description string) rsschema.BoolAttribute {
+	return rsschema.BoolAttribute{
+		Description:   description,
+		Optional:      true,
+		Computed:      true,
+		PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+	}
+}
 
 func fieldResourceBlock() rsschema.ListNestedBlock {
 	// Nested attrs are all Sensitive: ListNestedBlock cannot mark the list itself
@@ -149,22 +178,14 @@ func itemBaseResourceAttributes() map[string]rsschema.Attribute {
 			Required:    true,
 		},
 		AttributeCollectionIDs: rsschema.SetAttribute{
-			Description: DescriptionCollectionIDs,
-			ElementType: types.StringType,
-			Optional:    true,
-			Computed:    true,
+			Description:   DescriptionCollectionIDs,
+			ElementType:   types.StringType,
+			Optional:      true,
+			Computed:      true,
+			PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 		},
-		AttributeFolderID: rsschema.StringAttribute{
-			Description: DescriptionFolderID,
-			Optional:    true,
-			Computed:    true,
-		},
-		AttributeNotes: rsschema.StringAttribute{
-			Description: DescriptionNotes,
-			Optional:    true,
-			Computed:    true,
-			Sensitive:   true,
-		},
+		AttributeFolderID: optionalComputedString(DescriptionFolderID),
+		AttributeNotes:    optionalComputedSensitiveString(DescriptionNotes),
 		AttributeOrganizationID: rsschema.StringAttribute{
 			Description: DescriptionOrganizationID,
 			Optional:    true,
@@ -176,11 +197,7 @@ func itemBaseResourceAttributes() map[string]rsschema.Attribute {
 				stringplanmodifier.RequiresReplace(),
 			},
 		},
-		AttributeReprompt: rsschema.BoolAttribute{
-			Description: DescriptionReprompt,
-			Optional:    true,
-			Computed:    true,
-		},
+		AttributeReprompt: optionalComputedBool(DescriptionReprompt),
 		AttributeCreationDate: rsschema.StringAttribute{
 			Description: DescriptionCreationDate,
 			Computed:    true,

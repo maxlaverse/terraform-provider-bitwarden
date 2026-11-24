@@ -86,10 +86,10 @@ func StrMatchToInt(ctx context.Context, match string) *models.URIMatch {
 
 func LoginResourceSchema() rsschema.Schema {
 	attrs := itemBaseResourceAttributes()
-	attrs[AttributeLoginPassword] = rsschema.StringAttribute{Description: DescriptionLoginPassword, Optional: true, Computed: true, Sensitive: true}
-	attrs[AttributeLoginUsername] = rsschema.StringAttribute{Description: DescriptionLoginUsername, Optional: true, Computed: true, Sensitive: true}
-	attrs[AttributeLoginTotp] = rsschema.StringAttribute{Description: DescriptionLoginTotp, Optional: true, Computed: true, Sensitive: true}
-	attrs[AttributeFavorite] = rsschema.BoolAttribute{Description: DescriptionFavorite, Optional: true, Computed: true}
+	attrs[AttributeLoginPassword] = optionalComputedSensitiveString(DescriptionLoginPassword)
+	attrs[AttributeLoginUsername] = optionalComputedSensitiveString(DescriptionLoginUsername)
+	attrs[AttributeLoginTotp] = optionalComputedSensitiveString(DescriptionLoginTotp)
+	attrs[AttributeFavorite] = optionalComputedBool(DescriptionFavorite)
 	attrs[AttributeAttachments] = attachmentsResourceAttribute()
 
 	return rsschema.Schema{

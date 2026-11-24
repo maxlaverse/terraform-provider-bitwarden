@@ -186,6 +186,50 @@ func TestAccMissingResourceItemLoginIsRecreated(t *testing.T) {
 	})
 }
 
+func TestAccResourceItemLoginPreservesUnconfiguredAttributesOnUpdate(t *testing.T) {
+	ensureTestConfigurationReady(t)
+
+	resourceName := "bitwarden_item_login.foo"
+	var objectID string
+	uiNotes := "written-in-the-ui"
+	managedNotes := "managed-by-terraform"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginMinimal("login-keep-bar", "secret"),
+				Check: resource.ComposeTestCheckFunc(
+					getObjectID(resourceName, &objectID),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginPassword, "secret"),
+				),
+			},
+			{
+				PreConfig: func() {
+					updateItemOutsideTerraform(t, objectID, func(item *models.Item) {
+						item.Notes = uiNotes
+					})
+				},
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginMinimal("login-keep-renamed-bar", "secret"),
+				Check: resource.ComposeTestCheckFunc(
+					checkObjectIDUnchanged(resourceName, &objectID),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeName, testName("login-keep-renamed-bar")),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeNotes, uiNotes),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginPassword, "secret"),
+				),
+			},
+			{
+				Config: tfConfigPasswordManagerProvider(testAccountFullAdmin) + tfConfigResourceItemLoginMinimalWithNotes("login-keep-renamed-bar", managedNotes),
+				Check: resource.ComposeTestCheckFunc(
+					checkObjectIDUnchanged(resourceName, &objectID),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeNotes, managedNotes),
+					resource.TestCheckResourceAttr(resourceName, schema_definition.AttributeLoginPassword, "secret"),
+				),
+			},
+		},
+	})
+}
+
 func tfConfigResourceItemLoginSmall() string {
 	return fmt.Sprintf(`
 	resource "bitwarden_item_login" "foo" {
@@ -194,6 +238,26 @@ func tfConfigResourceItemLoginSmall() string {
 		name     			= "%s"
 	}
 `, testName("login-bar"))
+}
+
+func tfConfigResourceItemLoginMinimal(nameSuffix, password string) string {
+	return fmt.Sprintf(`
+	resource "bitwarden_item_login" "foo" {
+		provider = bitwarden
+		name     = %q
+		password = %q
+	}
+`, testName(nameSuffix), password)
+}
+
+func tfConfigResourceItemLoginMinimalWithNotes(nameSuffix, notes string) string {
+	return fmt.Sprintf(`
+	resource "bitwarden_item_login" "foo" {
+		provider = bitwarden
+		name     = %q
+		notes    = %q
+	}
+`, testName(nameSuffix), notes)
 }
 
 func tfConfigResourceItemManyLogins() string {
