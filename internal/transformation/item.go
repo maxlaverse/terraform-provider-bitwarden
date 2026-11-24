@@ -85,17 +85,30 @@ func ItemObjectToSchema(ctx context.Context, obj *models.Item, d AttrData) error
 
 	switch obj.Type {
 	case models.ItemTypeLogin:
-		err = d.Set(schema_definition.AttributeLoginPassword, obj.Login.Password)
+		// A write-only password/username is never persisted, so leave the
+		// plain attribute null rather than writing the actual secret back
+		// into state.
+		usingPasswordWO, _ := d.Get(schema_definition.AttributeLoginPasswordWO).(bool)
+		if usingPasswordWO {
+			err = d.Set(schema_definition.AttributeLoginPassword, nil)
+		} else {
+			err = d.Set(schema_definition.AttributeLoginPassword, obj.Login.Password)
+		}
+		if err != nil {
+			return err
+		}
+
+		usingUsernameWO, _ := d.Get(schema_definition.AttributeLoginUsernameWO).(bool)
+		if usingUsernameWO {
+			err = d.Set(schema_definition.AttributeLoginUsername, nil)
+		} else {
+			err = d.Set(schema_definition.AttributeLoginUsername, obj.Login.Username)
+		}
 		if err != nil {
 			return err
 		}
 
 		err = d.Set(schema_definition.AttributeLoginTotp, obj.Login.Totp)
-		if err != nil {
-			return err
-		}
-
-		err = d.Set(schema_definition.AttributeLoginUsername, obj.Login.Username)
 		if err != nil {
 			return err
 		}

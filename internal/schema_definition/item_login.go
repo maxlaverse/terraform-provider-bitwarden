@@ -5,9 +5,13 @@ import (
 
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	epschema "github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/maxlaverse/terraform-provider-bitwarden/internal/bitwarden/models"
+
+	fwstringvalidator "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 )
 
 type URIMatchStr string
@@ -86,8 +90,29 @@ func StrMatchToInt(ctx context.Context, match string) *models.URIMatch {
 
 func LoginResourceSchema() rsschema.Schema {
 	attrs := itemBaseResourceAttributes()
-	attrs[AttributeLoginPassword] = rsschema.StringAttribute{Description: DescriptionLoginPassword, Optional: true, Computed: true, Sensitive: true}
-	attrs[AttributeLoginUsername] = rsschema.StringAttribute{Description: DescriptionLoginUsername, Optional: true, Computed: true, Sensitive: true}
+	attrs[AttributeLoginPassword] = rsschema.StringAttribute{
+		Description: DescriptionLoginPassword, Optional: true, Computed: true, Sensitive: true,
+		Validators: []validator.String{fwstringvalidator.ConflictsWith(path.MatchRoot(AttributeLoginPasswordWO))},
+	}
+	attrs[AttributeLoginPasswordWO] = rsschema.StringAttribute{
+		Description: DescriptionLoginPasswordWO, Optional: true, Sensitive: true, WriteOnly: true,
+		Validators: []validator.String{
+			fwstringvalidator.ConflictsWith(path.MatchRoot(AttributeLoginPassword)),
+			fwstringvalidator.AlsoRequires(path.MatchRoot(AttributeLoginWOVersion)),
+		},
+	}
+	attrs[AttributeLoginUsername] = rsschema.StringAttribute{
+		Description: DescriptionLoginUsername, Optional: true, Computed: true, Sensitive: true,
+		Validators: []validator.String{fwstringvalidator.ConflictsWith(path.MatchRoot(AttributeLoginUsernameWO))},
+	}
+	attrs[AttributeLoginUsernameWO] = rsschema.StringAttribute{
+		Description: DescriptionLoginUsernameWO, Optional: true, Sensitive: true, WriteOnly: true,
+		Validators: []validator.String{
+			fwstringvalidator.ConflictsWith(path.MatchRoot(AttributeLoginUsername)),
+			fwstringvalidator.AlsoRequires(path.MatchRoot(AttributeLoginWOVersion)),
+		},
+	}
+	attrs[AttributeLoginWOVersion] = rsschema.Int64Attribute{Description: DescriptionLoginWOVersion, Optional: true}
 	attrs[AttributeLoginTotp] = rsschema.StringAttribute{Description: DescriptionLoginTotp, Optional: true, Computed: true, Sensitive: true}
 	attrs[AttributeFavorite] = rsschema.BoolAttribute{Description: DescriptionFavorite, Optional: true, Computed: true}
 	attrs[AttributeAttachments] = attachmentsResourceAttribute()
